@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tropebook - Research Knowledge Base</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Tropebook</h1>
+            <nav>
+                <button class="nav-btn active" data-view="citations">Citations</button>
+                <button class="nav-btn" data-view="research">Research</button>
+                <button class="nav-btn" data-view="add">Add New</button>
+                <button class="nav-btn" data-view="graph">Graph</button>
+            </nav>
+        </header>
+
+        <main id="app">
+            <section id="citations-view" class="view active">
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Search citations...">
+                    <button id="search-btn">Search</button>
+                </div>
+                <div class="filters">
+                    <select id="tag-filter">
+                        <option value="">All Tags</option>
+                    </select>
+                    <select id="source-filter">
+                        <option value="">All Sources</option>
+                    </select>
+                </div>
+                <div id="citations-list" class="citations-grid"></div>
+            </section>
+
+            <section id="research-view" class="view">
+                <div class="search-bar">
+                    <input type="text" id="research-input" placeholder="Research query...">
+                    <button id="research-btn">Search Web</button>
+                </div>
+                <div id="research-results" class="citations-grid"></div>
+            </section>
+
+            <section id="add-view" class="view">
+                <form id="add-form">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="add-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input type="url" id="add-url" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Summary</label>
+                        <textarea id="add-summary"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Tags (comma-separated)</label>
+                        <input type="text" id="add-tags">
+                    </div>
+                    <button type="submit">Add Citation</button>
+                </form>
+            </section>
+
+            <section id="graph-view" class="view">
+                <div id="graph-container"></div>
+                <div class="stats-panel">
+                    <h3>Statistics</h3>
+                    <div id="stats-content"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Tropebook v1.0.0 | <span id="citation-count">0</span> citations</p>
+        </footer>
+    </div>
+
+    <div id="citation-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title"></h2>
+            <a id="modal-url" href="#" target="_blank">Open URL</a>
+            <p id="modal-summary"></p>
+            <div class="modal-tags" id="modal-tags"></div>
+            <div class="modal-relations">
+                <h4>Related Citations</h4>
+                <div id="modal-related"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-link">Add Relationship</button>
+                <button id="modal-delete" class="danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
