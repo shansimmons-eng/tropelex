@@ -1,10 +1,41 @@
 # AGENTS.md for Tropelex
 
-This file provides guidance to AI coding agents when working with code in this repository.
+**⚠️ LINUX ONLY PROJECT - NO WINDOWS PATHS OR COMMANDS ⚠️**
+
+This is a Linux-native project. All paths must use forward slashes (`/`). 
+All commands must run in WSL (`cd ~/tropelex-test` or `cd ~/Tropelex`).
+Never use Windows paths (e.g., `\\wsl$`, `C:\`, `\` separators).
+Never use Windows commands or Git Bash. Use native Linux terminals only.
+
+---
+
+## Tropelex Integration
+
+**CRITICAL:** At session start, immediately run `/tropelex-show-context` to load accumulated project memory.
+
+Tropelex is a persistent memory system that stores:
+- Architectural decisions and rationale
+- Session summaries and learned patterns  
+- Tech stack choices and preferences
+
+**Commands:**
+- `/tropelex-context` - View project memory summary
+- `/tropelex-show-context` - Load project memory (run first!)
+- `/tropelex-record-decision <what> | <why>` - Save decisions
+- `/tropelex-up <description> | <tech-stack>` - Update/create project
+- `/tropelex-end-session <summary>` - End session + learn patterns
+
+**Workflow:**
+1. Start session → run `/tropelex-context`
+2. Work on tasks → use `/tropelex-record-decision` for key choices
+3. Update project → `/tropelex-up description | tech-stack`
+4. End session → run `/tropelex-end-session` to trigger learning
+
+---
 
 ## Tropelex Overview
 
-Tropelex is a persistent memory and learning system for AI agents. It accumulates knowledge across projects — patterns, decisions, preferences — so sessions don't start from scratch.
+Tropelex accumulates knowledge across sessions so agents don't start from scratch.
 
 ## Core Components
 

@@ -1,0 +1,2552 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tropelex - Persistent Memory for AI Agents</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+    darkMode: "class",
+    theme: {
+        extend: {
+            colors: {
+                "surface": "#0c1324",
+                "surface-raised": "#141b2d",
+                "surface-high": "#232a3c",
+                "glass-border": "rgba(165, 128, 250, 0.2)",
+                "accent-lavender": "#a580fa",
+                "accent-periwinkle": "#8098fa",
+                "accent-sky": "#80d5fa",
+                "accent-lime": "#98fa80",
+                "terminal-bg": "#010515",
+                "on-surface": "#dce2fa",
+                "outline": "#958e9e",
+            },
+            fontFamily: {
+                sans: ["Inter", "system-ui", "sans-serif"],
+                mono: ["JetBrains Mono", "monospace"],
+            }
+        }
+    }
+}
+</script>
+<style>
+    /* ── Background ── */
+    body {
+        background: #010515;
+        background-image:
+            radial-gradient(ellipse 80% 60% at 20% 10%, rgba(128, 80, 200, 0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 80% at 80% 90%, rgba(80, 120, 250, 0.10) 0%, transparent 60%),
+            linear-gradient(160deg, #010515 0%, #0c1324 60%, #070e1f 100%);
+        background-attachment: fixed;
+    }
+
+    /* ── Animated background grid ── */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(165, 128, 250, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(165, 128, 250, 0.03) 1px, transparent 1px);
+        background-size: 64px 64px;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    main, header, nav { position: relative; z-index: 1; }
+
+    /* ── Glass panels ── */
+    .glass-panel {
+        background: rgba(12, 19, 36, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(165, 128, 250, 0.12);
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .glass-panel:hover {
+        border-color: rgba(165, 128, 250, 0.3);
+        box-shadow: 0 0 24px rgba(165, 128, 250, 0.06);
+    }
+
+    /* ── Nav ── */
+    .nav-item { transition: color 0.2s ease; position: relative; }
+    .nav-item.active { color: #a580fa; }
+    .nav-item.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #a580fa, #80d5fa);
+        border-radius: 2px;
+        animation: slideIn 0.2s ease-out;
+    }
+    @keyframes slideIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .nav-item:hover:not(.active) { color: #80d5fa; }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; animation: sectionIn 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+    @keyframes sectionIn {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Glow ── */
+    .glow { box-shadow: 0 0 24px rgba(165, 128, 250, 0.35); }
+
+    /* ── Status pulse ── */
+    .status-pulse { animation: statusPulse 2.5s ease-in-out infinite; }
+    @keyframes statusPulse {
+        0%, 100% { opacity: 1;   box-shadow: 0 0 0 0   rgba(152, 250, 128, 0.7); }
+        50%      { opacity: 0.8; box-shadow: 0 0 0 10px rgba(152, 250, 128, 0); }
+    }
+
+    /* ── Fade in ── */
+    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Card hover lift ── */
+    article.glass-panel {
+        transition: transform 0.2s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    article.glass-panel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(165, 128, 250, 0.12);
+    }
+
+    /* ── Button press ── */
+    button:active { transform: scale(0.97); }
+
+    /* ── Spin animation for sync ── */
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    .toast {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        padding: 12px 20px;
+        background: rgba(20, 27, 45, 0.95);
+        border: 1px solid rgba(165, 128, 250, 0.3);
+        border-radius: 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: #dce2fa;
+        backdrop-filter: blur(12px);
+        animation: toastIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateY(16px) scale(0.95); }
+        to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+    .toast-out { animation: toastOut 0.25s ease-in forwards; }
+    @keyframes toastOut {
+        to { opacity: 0; transform: translateY(8px) scale(0.95); }
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #010515; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(#8098fa, #a580fa); border-radius: 4px; }
+
+    /* ── Pipeline stage indicators ── */
+    .stage-active { border-left-color: #80d5fa !important; animation: stagePulse 1s ease-in-out infinite; }
+    .stage-done   { border-left-color: #98fa80 !important; }
+    @keyframes stagePulse {
+        0%, 100% { box-shadow: none; }
+        50%       { box-shadow: -3px 0 12px rgba(128, 213, 250, 0.4); }
+    }
+
+    /* ── Trailing Border Animations ── */
+    @keyframes trailBorder {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+
+    @keyframes trailGlow {
+        0%, 100% {
+            box-shadow: 0 0 8px rgba(165, 128, 250, 0.3);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(128, 152, 250, 0.5);
+        }
+    }
+
+    /* Animated border for buttons */
+    button.cursor-pointer:not(:disabled) {
+        position: relative;
+        background: linear-gradient(135deg, 
+            rgba(165, 128, 250, 0.1), 
+            rgba(128, 152, 250, 0.1), 
+            rgba(128, 213, 250, 0.1),
+            rgba(165, 128, 250, 0.1)
+        );
+        background-size: 300% 300%;
+        transition: all 0.3s ease;
+    }
+
+    button.cursor-pointer:not(:disabled):hover {
+        animation: trailBorder 3s ease infinite, trailGlow 2s ease-in-out infinite;
+        border-color: rgba(165, 128, 250, 0.6);
+    }
+
+    /* Animated border for glass panels */
+    .glass-panel {
+        position: relative;
+        background: rgba(12, 19, 36, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid;
+        border-image: linear-gradient(
+            135deg,
+            rgba(165, 128, 250, 0.12),
+            rgba(128, 152, 250, 0.12),
+            rgba(128, 213, 250, 0.12),
+            rgba(165, 128, 250, 0.12)
+        ) 1;
+        background-clip: padding-box;
+        transition: all 0.3s ease;
+    }
+
+    .glass-panel::before {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(
+            135deg,
+            rgba(165, 128, 250, 0.3),
+            rgba(128, 152, 250, 0.3),
+            rgba(128, 213, 250, 0.3),
+            rgba(165, 128, 250, 0.3)
+        );
+        background-size: 300% 300%;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    .glass-panel:hover::before {
+        animation: trailBorder 4s ease infinite;
+        opacity: 1;
+    }
+
+    .glass-panel:hover {
+        border-color: rgba(165, 128, 250, 0.3);
+        box-shadow: 0 0 24px rgba(165, 128, 250, 0.08), 0 0 48px rgba(128, 152, 250, 0.04);
+    }
+
+    /* Animated borders for input fields */
+    input[type="text"],
+    input[type="url"],
+    input[type="number"],
+    input[type="password"],
+    textarea,
+    select {
+        background: rgba(20, 27, 45, 0.6) !important;
+        border: 1px solid rgba(165, 128, 250, 0.2) !important;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+        border-color: rgba(165, 128, 250, 0.5) !important;
+        box-shadow: 0 0 0 3px rgba(165, 128, 250, 0.1),
+                    0 0 12px rgba(165, 128, 250, 0.2) !important;
+        animation: trailGlow 2s ease-in-out infinite;
+    }
+
+    /* Card animation on hover */
+    article.glass-panel {
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
+                    border-color 0.3s ease, 
+                    box-shadow 0.3s ease;
+    }
+
+    article.glass-panel:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 48px rgba(165, 128, 250, 0.15),
+                    0 4px 16px rgba(128, 152, 250, 0.1);
+    }
+
+    /* Special glow for primary actions */
+    .glass-panel.rounded-xl:has(button[id*="save"], button[id*="add"], button[id*="run"]):hover::before {
+        background: linear-gradient(
+            135deg,
+            rgba(152, 250, 128, 0.3),
+            rgba(128, 213, 250, 0.3),
+            rgba(165, 128, 250, 0.3),
+            rgba(152, 250, 128, 0.3)
+        );
+        background-size: 300% 300%;
+    }
+</style>
+</head>
+<body class="font-sans text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation -->
+<header class="fixed top-0 left-0 w-full z-50 glass-panel">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">psychology</span>
+            <span class="font-mono text-lg font-bold text-accent-lavender tracking-tight">TROPELEX</span>
+        </div>
+        <nav class="hidden md:flex items-center gap-8">
+            <button class="nav-item active font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors" data-section="tropebook">
+                Tropebook
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="memory">
+                Memory
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="patterns">
+                Patterns
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="pipeline">
+                Prompt Lab
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="settings">
+                Settings
+            </button>
+        </nav>
+        <div class="flex items-center gap-4">
+            <!-- Global Project Selector -->
+            <div class="flex items-center gap-2">
+                <select id="global-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1.5 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer hover:border-accent-lavender/50 transition-colors">
+                    <option value="">Select project...</option>
+                </select>
+                <button id="btn-new-project-header" class="px-3 py-1.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all flex items-center gap-1" title="New Project">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    <span class="hidden sm:inline">New</span>
+                </button>
+            </div>
+            <div class="hidden md:flex items-center gap-2 glass-panel px-3 py-1.5 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-accent-lime status-pulse"></span>
+                <span class="font-mono text-xs text-accent-lime" id="engine-status">ONLINE</span>
+            </div>
+            <button class="md:hidden text-accent-lavender" id="mobile-menu-btn">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Navigation -->
+<div id="mobile-nav" class="fixed inset-0 z-40 bg-surface/95 backdrop-blur-lg hidden flex-col pt-20">
+    <div class="flex flex-col items-center gap-6 p-8">
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-accent-lavender" data-section="tropebook">Tropebook</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="memory">Memory</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="patterns">Patterns</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="pipeline">Prompt Lab</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="settings">Settings</button>
+        <button class="mt-8 px-6 py-2 glass-panel rounded text-accent-lavender hover:glow transition-all" id="close-mobile-nav">Close</button>
+    </div>
+</div>
+</div>
+
+<!-- Main Content -->
+<main class="flex-grow pt-20 pb-24 md:pb-8">
+    <!-- Tropebook Section -->
+    <section id="section-tropebook" class="section active max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender">Tropebook</h2>
+            <span id="tropebook-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Sidebar -->
+            <aside class="lg:col-span-3 space-y-6">
+                <!-- Search -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-accent-periwinkle">search</span>
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Search</span>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Search citations or web..." 
+                        autocomplete="off" data-1p-ignore data-lpignore="true"
+                        class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 text-sm font-mono text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none transition-colors"/>
+                    
+                    <div class="flex items-center gap-2 mt-3">
+                        <select id="search-mode" class="flex-1 bg-surface-raised border-2 border-accent-periwinkle/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-periwinkle focus:outline-none cursor-pointer hover:border-accent-periwinkle/50 transition-colors">
+                            <option value="local">📍 Local Only</option>
+                            <option value="web">🌐 Web Only</option>
+                            <option value="fallback" selected>🔄 Local → Web</option>
+                        </select>
+                        <select id="search-count" class="bg-surface-raised border-2 border-accent-sky/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer hover:border-accent-sky/50 transition-colors">
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    
+                    <button id="search-btn" class="w-full mt-3 glass-panel hover:bg-surface-high py-2 rounded-lg text-accent-lavender font-mono text-sm uppercase tracking-wider transition-all hover:glow cursor-pointer">
+                        Search
+                    </button>
+                </div>
+
+                <!-- System Status -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Neural Engine</span>
+                        <span class="font-mono text-xs text-accent-lime">ACTIVE</span>
+                    </div>
+                    <div class="space-y-2 text-sm font-mono">
+                        <div class="flex justify-between">
+                            <span class="text-outline">Citations</span>
+                            <span class="text-accent-sky" id="citation-count">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-outline">Entities</span>
+                            <span class="text-accent-sky" id="entity-count">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-outline">Relationships</span>
+                            <span class="text-accent-sky" id="relationship-count">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="glass-panel rounded-xl p-4">
+                    <span class="font-mono text-sm text-outline uppercase tracking-wider mb-4 block">Quick Actions</span>
+                    <div class="space-y-2">
+                        <button id="btn-add-citation" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-lavender">add_circle</span>
+                            <span class="font-mono text-sm">Add Citation</span>
+                        </button>
+                        <button id="btn-import" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-sky">upload</span>
+                            <span class="font-mono text-sm">Import</span>
+                        </button>
+                        <button id="btn-export" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-periwinkle">download</span>
+                            <span class="font-mono text-sm">Export</span>
+                        </button>
+                        <button id="btn-sync" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-lime">sync</span>
+                            <span class="font-mono text-sm">Force Sync</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Feed -->
+            <div class="lg:col-span-9 space-y-6">
+                <!-- Sort/Filter Bar -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="font-mono text-sm text-outline" id="results-count">0 results</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="sort-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
+                            <option value="relevance">Relevance</option>
+                            <option value="date">Date</option>
+                            <option value="source">Source</option>
+                        </select>
+                        <select id="filter-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
+                            <option value="all">All Sources</option>
+                            <option value="manual">Manual</option>
+                            <option value="web">Web Scraped</option>
+                            <option value="imported">Imported</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Results Grid -->
+                <div id="citations-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Citation cards will be injected here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="glass-panel rounded-xl p-12 text-center">
+                    <span class="material-symbols-outlined text-6xl text-outline mb-4">library_books</span>
+                    <h3 class="text-xl font-semibold mb-2">No citations yet</h3>
+                    <p class="text-outline mb-6">Start building your knowledge graph by adding research citations.</p>
+                    <button id="btn-add-first" class="glass-panel px-6 py-3 rounded-lg text-accent-lavender font-mono hover:bg-surface-raised transition-all hover:glow cursor-pointer">
+                        Add Your First Citation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Memory Section -->
+    <section id="section-memory" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender">Memory</h2>
+            <span id="memory-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-3">
+                <div class="glass-panel rounded-xl p-4 sticky top-24">
+                    <span class="font-mono text-sm text-outline uppercase tracking-wider mb-4 block">All Projects</span>
+                    <div id="project-list" class="space-y-2">
+                        <!-- Projects will be injected here -->
+                    </div>
+                    <button id="btn-new-project" class="w-full mt-4 flex items-center gap-2 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-accent-lavender font-mono text-sm">
+                        <span class="material-symbols-outlined text-sm">add</span>
+                        New Project
+                    </button>
+                </div>
+            </aside>
+            <div class="lg:col-span-9 space-y-6">
+                <div class="glass-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold" id="project-title">Select a project</h2>
+                        <div class="flex gap-2">
+                            <button id="btn-export-context" class="glass-panel px-4 py-2 rounded-lg text-accent-sky font-mono text-sm hover:bg-surface-raised transition-all cursor-pointer" title="Export context block">
+                                Export
+                            </button>
+                            <button id="btn-edit-project" class="glass-panel px-4 py-2 rounded-lg text-accent-lavender font-mono text-sm hover:bg-surface-raised transition-all cursor-pointer">
+                                Edit
+                            </button>
+                        </div>
+                    </div>
+                    <div id="project-details" class="text-outline">
+                        <p>Choose a project from the sidebar or create a new one to view its memory context.</p>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Key Decisions</span>
+                        <button id="btn-add-decision" class="px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer">
+                            + Add Decision
+                        </button>
+                    </div>
+                    <div id="decisions-list" class="space-y-3 mb-4">
+                        <!-- Decisions will be injected here -->
+                    </div>
+                    
+                    <!-- Add Decision Form (hidden by default) -->
+                    <div id="decision-form" class="hidden mt-4 p-4 bg-surface-raised rounded-lg border border-accent-lavender/20">
+                        <textarea id="decision-input" rows="3" placeholder="What did you decide? e.g., 'Using Python + FastAPI for backend'" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
+                        <textarea id="decision-context" rows="2" placeholder="Why? (optional context)" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
+                        <div class="flex gap-2">
+                            <button id="btn-save-decision" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Save</button>
+                            <button id="btn-cancel-decision" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Capture Box -->
+                    <div class="mt-4 p-4 bg-surface-high rounded-lg border border-accent-sky/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-accent-sky text-sm">flash_on</span>
+                            <span class="font-mono text-xs text-accent-sky uppercase">Quick Capture</span>
+                        </div>
+                        <input type="text" id="quick-capture-input" placeholder="Capture a thought, idea, or note..." 
+                            class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none mb-2"/>
+                        <div class="flex gap-2">
+                            <select id="quick-capture-type" class="bg-surface border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-outline focus:outline-none">
+                                <option value="thought">Thought</option>
+                                <option value="decision">Decision</option>
+                                <option value="note">Note</option>
+                            </select>
+                            <select id="quick-capture-project" class="flex-1 bg-surface border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-outline focus:outline-none">
+                                <option value="">Same project</option>
+                            </select>
+                            <button id="btn-quick-capture" class="px-3 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Capture</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Session History</span>
+                        <button id="btn-add-session" class="px-3 py-1.5 rounded-lg border border-accent-sky/30 text-accent-sky font-mono text-xs hover:bg-accent-sky/10 transition-all cursor-pointer">
+                            + End Session
+                        </button>
+                    </div>
+                    <div id="session-list" class="space-y-3 mb-4">
+                        <!-- Sessions will be injected here -->
+                    </div>
+                    
+                    <!-- Add Session Form (hidden by default) -->
+                    <div id="session-form" class="hidden mt-4 p-4 bg-surface-raised rounded-lg border border-accent-sky/20">
+                        <textarea id="session-summary" rows="4" placeholder="Summarize what you worked on this session... e.g., 'Built user authentication with JWT, added password reset flow'" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-3"></textarea>
+                        <div class="flex gap-2">
+                            <button id="btn-save-session" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Save & Analyze</button>
+                            <button id="btn-cancel-session" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Patterns Section -->
+    <section id="section-patterns" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-12 space-y-6">
+                <div class="glass-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold">Learned Patterns</h2>
+                        <button id="btn-refresh-patterns" class="glass-panel px-4 py-2 rounded-lg text-accent-lavender font-mono text-sm hover:bg-surface-raised transition-all cursor-pointer">
+                            Refresh
+                        </button>
+                    </div>
+                    <div id="patterns-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <!-- Pattern cards will be injected here -->
+                    </div>
+                    <div id="patterns-empty" class="text-center py-12 text-outline">
+                        <span class="material-symbols-outlined text-5xl mb-4">explore</span>
+                        <p>Patterns will appear as you use Tropelex over time.</p>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-6">
+                    <span class="font-mono text-sm text-outline uppercase tracking-wider mb-4 block">Suggestions</span>
+                    <div id="patterns-suggestions" class="space-y-3">
+                        <p class="text-sm text-outline">Suggestions will appear once patterns are detected.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Knowledge Graph Section -->
+    <section id="section-graph" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="glass-panel rounded-xl p-6 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-accent-periwinkle text-2xl">hub</span>
+                    <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Knowledge Graph</h2>
+                    <span id="graph-project-indicator" class="font-mono text-xs text-outline px-2 py-1 rounded bg-surface-raised"></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-mono text-xs text-outline" id="graph-stats">0 nodes · 0 edges</span>
+                    <button id="graph-reset-zoom" class="px-3 py-1 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-accent-lavender transition-colors">Reset</button>
+                    <button id="graph-embed-all" class="px-3 py-1 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-colors">Embed All</button>
+                </div>
+            </div>
+            <!-- Semantic search bar -->
+            <div class="flex gap-3 mb-4">
+                <input id="semantic-query" type="text" placeholder="Semantic search across citations..."
+                    autocomplete="off" data-1p-ignore data-lpignore="true"
+                    class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none"/>
+                <button id="semantic-search-btn" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">travel_explore</span>
+                    Semantic
+                </button>
+            </div>
+            <!-- Graph canvas -->
+            <div id="graph-container" class="relative w-full rounded-xl overflow-hidden" style="height:520px; background:rgba(1,5,21,0.8); border:1px solid rgba(165,128,250,0.1);">
+                <svg id="graph-svg" width="100%" height="100%"></svg>
+                <div id="graph-tooltip" class="hidden absolute pointer-events-none glass-panel rounded-lg p-3 max-w-xs z-10">
+                    <p class="font-mono text-xs text-accent-lavender" id="tooltip-title"></p>
+                    <p class="text-xs text-outline mt-1" id="tooltip-url"></p>
+                    <p class="text-xs text-on-surface mt-1" id="tooltip-summary"></p>
+                </div>
+                <div id="graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline">
+                    <span class="material-symbols-outlined text-5xl mb-3">hub</span>
+                    <p class="font-mono text-sm">Add citations and link them to see the graph</p>
+                </div>
+            </div>
+        </div>
+        <!-- Semantic search results -->
+        <div id="semantic-results" class="glass-panel rounded-xl p-6 hidden">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-accent-sky">travel_explore</span>
+                <h3 class="font-mono text-sm text-accent-sky uppercase">Semantic Results</h3>
+                <span class="font-mono text-xs text-outline" id="semantic-count"></span>
+            </div>
+            <div id="semantic-results-list" class="space-y-3"></div>
+        </div>
+    </section>
+
+    <!-- Agent Pipeline Section (Prompt Lab) -->
+    <section id="section-pipeline" class="section max-w-5xl mx-auto px-6 py-8 fade-in">
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Prompt Lab</h2>
+                    <span id="pipeline-project-indicator" class="font-mono text-xs text-outline px-2 py-1 rounded bg-surface-raised">No project</span>
+                </div>
+                <button id="btn-load-context" class="px-3 py-1.5 rounded-lg border border-accent-periwinkle/30 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/10 transition-all">
+                    Load Context
+                </button>
+            </div>
+            
+            <!-- Context Preview (collapsible) -->
+            <div id="context-preview-wrapper" class="hidden mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-accent-periwinkle uppercase">Project Context (will be prepended)</span>
+                    <button id="btn-clear-context" class="text-xs text-outline hover:text-red-400 transition-colors">Clear</button>
+                </div>
+                <pre id="context-preview" class="bg-surface-raised border border-glass-border rounded-lg px-4 py-3 font-mono text-xs text-outline max-h-32 overflow-auto"></pre>
+            </div>
+            
+            <textarea id="pipeline-input" rows="4" 
+                class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none"
+                placeholder="Enter your prompt here. If you selected a project above, its context (decisions, patterns, preferences) will be prepended automatically."></textarea>
+            
+            <!-- Stats bar -->
+            <div id="pipeline-stats" class="hidden flex items-center gap-6 mt-3 py-2 border-t border-glass-border">
+                <div class="text-center">
+                    <span class="font-mono text-lg text-outline" id="stat-original">0</span>
+                    <span class="font-mono text-xs text-outline block">original</span>
+                </div>
+                <div class="text-center">
+                    <span class="font-mono text-lg text-accent-lavender" id="stat-compressed">0</span>
+                    <span class="font-mono text-xs text-outline block">compressed</span>
+                </div>
+                <div class="text-center">
+                    <span class="font-mono text-lg text-green-400" id="stat-savings">0%</span>
+                    <span class="font-mono text-xs text-outline block">saved</span>
+                </div>
+                <div class="text-center">
+                    <span class="font-mono text-lg text-accent-sky" id="stat-context">0</span>
+                    <span class="font-mono text-xs text-outline block">context</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-compression" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Compression</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-context" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Context Check</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-structure" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Structure</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-project-context" checked class="w-4 h-4 accent-accent-periwinkle"/>
+                        <span class="font-mono text-sm text-outline">Inject Memory</span>
+                    </label>
+                </div>
+                <button id="run-pipeline" class="px-6 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm uppercase tracking-wider hover:bg-accent-lavender/30 transition-all flex items-center gap-2 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
+                    Run Pipeline
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-sky">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-sky text-xl">compress</span>
+                    <span class="font-mono text-sm text-accent-sky uppercase">1. Compression</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-compression" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+            <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-periwinkle">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-periwinkle text-xl">search</span>
+                    <span class="font-mono text-sm text-accent-periwinkle uppercase">2. Context Check</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-context" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+            <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-lavender">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-lavender text-xl">account_tree</span>
+                    <span class="font-mono text-sm text-accent-lavender uppercase">3. Structure</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-structure" class="font-mono text-xs text-on-surface opacity-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+        </div>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lime text-2xl">smart_toy</span>
+                    <h2 class="font-mono text-lg text-accent-lime uppercase">Master Agent Input</h2>
+                </div>
+                <button id="copy-master" class="px-4 py-2 rounded-lg border border-accent-lime/30 text-accent-lime font-mono text-sm hover:bg-accent-lime/10 transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">content_copy</span>
+                    Copy
+                </button>
+            </div>
+            <pre id="master-output" class="font-mono text-sm text-on-surface whitespace-pre-wrap"></pre>
+        </div>
+    </section>
+
+    <!-- Settings Section -->
+    <section id="section-settings" class="section max-w-4xl mx-auto px-6 py-8 fade-in">
+        <div class="space-y-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h2 class="text-xl font-semibold mb-6 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-accent-lavender">settings</span>
+                    Settings
+                </h2>
+                
+                <!-- Compression Settings -->
+                <div class="space-y-4">
+                    <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-accent-periwinkle">compress</span>
+                            Compression
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Max Tokens</label>
+                                <input type="number" id="setting-max-tokens" value="4000" min="1000" max="100000"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Compression Level</label>
+                                <select id="setting-compression-level" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:outline-none cursor-pointer">
+                                    <option value="1">Light (1)</option>
+                                    <option value="2">Medium (2)</option>
+                                    <option value="3">Aggressive (3)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- UI Settings -->
+                    <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-accent-sky">palette</span>
+                            Appearance
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Theme</label>
+                                <select id="setting-theme" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:outline-none cursor-pointer">
+                                    <option value="dark">Dark</option>
+                                    <option value="light">Light</option>
+                                    <option value="system">System</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Animations</label>
+                                <select id="setting-animations" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:outline-none cursor-pointer">
+                                    <option value="full">Full</option>
+                                    <option value="reduced">Reduced</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Memory Settings -->
+                    <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-accent-lime">storage</span>
+                            Memory
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Storage Path</label>
+                                <input type="text" id="setting-storage-path" value="memory/" readonly
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-outline"/>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Session History</label>
+                                <input type="number" id="setting-session-limit" value="50" min="10" max="500"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Keys -->
+                    <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-accent-lavender">key</span>
+                            API Keys
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-outline mb-2">OpenAI API Key <span class="text-accent-lavender font-mono text-xs">(required for AI compression)</span></label>
+                                <div class="relative">
+                                    <input type="password" id="setting-openai-key" placeholder="sk-..."
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none pr-24"/>
+                                    <button type="button" id="btn-test-openai" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test
+                                    </button>
+                                </div>
+                                <p class="text-xs text-outline mt-2">Used for AI-powered prompt compression. Key is stored in your <code class="text-accent-sky">.env</code> file — never sent to any third party except OpenAI.</p>
+                                <div id="openai-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Brave Search API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <input type="password" id="setting-brave-key" placeholder="Enter Brave API key for enhanced search..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <p class="text-xs text-outline mt-2">Enhances web research in Tropebook. Falls back to DuckDuckGo (free) if not set.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="mt-6 flex justify-end">
+                    <button id="btn-save-settings" class="glass-panel px-6 py-3 rounded-lg text-accent-lavender font-mono uppercase tracking-wider hover:bg-surface-high transition-all hover:glow cursor-pointer">
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="glass-panel rounded-xl p-6 border border-red-900/30">
+                <h3 class="font-semibold mb-4 flex items-center gap-2 text-red-400">
+                    <span class="material-symbols-outlined text-sm">warning</span>
+                    Danger Zone
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 rounded-lg bg-surface-raised">
+                        <div>
+                            <p class="font-medium">Clear Tropebook</p>
+                            <p class="text-sm text-outline">Remove all citations and relationships</p>
+                        </div>
+                        <button id="btn-clear-tropebook" class="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 font-mono text-sm hover:bg-red-900/50 transition-all cursor-pointer">
+                            Clear
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between p-4 rounded-lg bg-surface-raised">
+                        <div>
+                            <p class="font-medium">Reset Memory</p>
+                            <p class="text-sm text-outline">Clear all project memories and patterns</p>
+                        </div>
+                        <button id="btn-reset-memory" class="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 font-mono text-sm hover:bg-red-900/50 transition-all cursor-pointer">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 glass-panel md:hidden border-t border-glass-border">
+    <div class="flex justify-around items-center h-16">
+        <button class="flex flex-col items-center gap-1 text-accent-lavender nav-bottom-item" data-section="tropebook">
+            <span class="material-symbols-outlined text-2xl">library_books</span>
+            <span class="font-mono text-xs uppercase">Tropebook</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="memory">
+            <span class="material-symbols-outlined text-2xl">memory</span>
+            <span class="font-mono text-xs uppercase">Memory</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="patterns">
+            <span class="material-symbols-outlined text-2xl">hub</span>
+            <span class="font-mono text-xs uppercase">Patterns</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="settings">
+            <span class="material-symbols-outlined text-2xl">settings</span>
+            <span class="font-mono text-xs uppercase">Settings</span>
+        </button>
+    </div>
+</nav>
+
+<!-- Add Citation Modal -->
+<div id="add-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-panel rounded-xl p-6 w-full max-w-lg mx-4 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-semibold">Add Citation</h3>
+            <button id="close-modal" class="text-outline hover:text-accent-lavender transition-colors cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form id="add-form" class="space-y-4">
+            <div>
+                <label class="block text-sm text-outline mb-2">Title</label>
+                <input type="text" id="form-title" required
+                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+            </div>
+            <div>
+                <label class="block text-sm text-outline mb-2">URL</label>
+                <input type="url" id="form-url" required
+                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+            </div>
+            <div>
+                <label class="block text-sm text-outline mb-2">Summary</label>
+                <textarea id="form-summary" rows="3"
+                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none resize-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm text-outline mb-2">Tags (comma separated)</label>
+                <input type="text" id="form-tags" placeholder="ai, research, python"
+                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" id="cancel-add" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-outline hover:bg-surface-raised transition-all cursor-pointer">
+                    Cancel
+                </button>
+                <button type="submit" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-accent-lavender hover:bg-surface-high transition-all hover:glow cursor-pointer">
+                    Add Citation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 glass-panel rounded-lg px-6 py-3 hidden fade-in">
+    <span id="toast-message" class="font-mono text-sm"></span>
+</div>
+
+<script>
+// State
+const state = {
+    currentSection: 'tropebook',
+    currentProject: null,
+    citations: [],
+    projects: [],
+    patterns: []
+};
+
+// Toast helper
+function showToast(message, duration = 3000) {
+    // Remove existing toasts
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => {
+        el.classList.add('toast-out');
+        setTimeout(() => el.remove(), 280);
+    }, duration);
+}
+
+// Navigation
+function switchSection(section) {
+    state.currentSection = section;
+    
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`section-${section}`).classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.section === section);
+        n.classList.toggle('text-outline', n.dataset.section !== section);
+    });
+    
+    document.querySelectorAll('.nav-bottom-item').forEach(n => {
+        n.classList.toggle('text-accent-lavender', n.dataset.section === section);
+        n.classList.toggle('text-outline', n.dataset.section !== section);
+    });
+    
+    document.getElementById('mobile-nav').classList.add('hidden');
+    document.getElementById('mobile-nav').classList.remove('flex');
+}
+
+function switchSectionWithGraph(section) {
+    switchSection(section);
+    if (section === 'graph') loadGraph();
+}
+
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => switchSectionWithGraph(n.dataset.section)));
+document.querySelectorAll('.nav-item-mobile').forEach(n => n.addEventListener('click', () => switchSectionWithGraph(n.dataset.section)));
+document.querySelectorAll('.nav-bottom-item').forEach(n => n.addEventListener('click', () => switchSectionWithGraph(n.dataset.section)));
+
+document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+    const nav = document.getElementById('mobile-nav');
+    nav.classList.remove('hidden');
+    nav.classList.add('flex');
+});
+document.getElementById('close-mobile-nav').addEventListener('click', () => {
+    const nav = document.getElementById('mobile-nav');
+    nav.classList.add('hidden');
+    nav.classList.remove('flex');
+});
+
+// Modal
+function openModal() {
+    document.getElementById('add-modal').classList.remove('hidden');
+    document.getElementById('add-modal').classList.add('flex');
+}
+function closeModal() {
+    document.getElementById('add-modal').classList.add('hidden');
+    document.getElementById('add-modal').classList.remove('flex');
+    document.getElementById('add-form').reset();
+}
+
+document.getElementById('btn-add-citation').addEventListener('click', openModal);
+document.getElementById('btn-add-first').addEventListener('click', openModal);
+document.getElementById('close-modal').addEventListener('click', closeModal);
+document.getElementById('cancel-add').addEventListener('click', closeModal);
+document.getElementById('add-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('add-modal')) closeModal();
+});
+
+// API calls
+async function api(endpoint, method = 'GET', body = null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    try {
+        const res = await fetch(`/api${endpoint}`, opts);
+        const data = await res.json();
+        if (!res.ok) {
+            console.error('API error:', res.status, data);
+            showToast(`API Error ${res.status}: ${data.detail || 'Unknown'}`);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.error('API error:', e);
+        showToast(`Error: ${e.message}`);
+        return null;
+    }
+}
+
+// Load citations
+async function loadCitations() {
+    const data = await api('/citations');
+    if (data) {
+        state.citations = data.citations || [];
+        renderCitations();
+        updateStats();
+    }
+}
+
+function renderCitations() {
+    const grid = document.getElementById('citations-grid');
+    const empty = document.getElementById('empty-state');
+    
+    if (state.citations.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    
+    empty.classList.add('hidden');
+    
+    // Apply sorting
+    const sortBy = document.getElementById('sort-select').value;
+    const filterBy = document.getElementById('filter-select').value;
+    
+    let filtered = [...state.citations];
+    
+    // Filter by source type
+    if (filterBy !== 'all') {
+        const typeMap = { manual: 'manual', web: 'scraped', imported: 'imported' };
+        filtered = filtered.filter(c => c.source_type === typeMap[filterBy]);
+    }
+    
+    // Sort
+    filtered.sort((a, b) => {
+        switch (sortBy) {
+            case 'relevance':
+                // Use search score if available, otherwise fall back to date
+                const scoreA = a._relevance_score ?? 0;
+                const scoreB = b._relevance_score ?? 0;
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                // Fall through to date if no scores
+            case 'date':
+                return (b.created_at || '').localeCompare(a.created_at || '');
+            case 'source':
+                return (a.source_type || '').localeCompare(b.source_type || '');
+            default:
+                return 0;
+        }
+    });
+    
+    document.getElementById('results-count').textContent = `${filtered.length} citations`;
+    
+    grid.innerHTML = filtered.map((c, idx) => `
+        <article class="glass-panel rounded-xl p-5 hover:glow transition-all cursor-pointer group" data-id="${c.id || c.url || idx}">
+            <div class="flex items-start justify-between mb-3">
+                <span class="text-xs font-mono text-outline">${c.source_type?.toUpperCase() || 'MANUAL'}</span>
+                <div class="flex gap-2">
+                    <button class="bookmark-btn text-outline hover:text-accent-lavender transition-colors cursor-pointer" data-id="${c.id || c.url || idx}">
+                        <span class="material-symbols-outlined text-lg">bookmark_border</span>
+                    </button>
+                    <button class="delete-btn text-outline hover:text-red-400 transition-colors cursor-pointer" data-id="${c.id || c.url || idx}">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                </div>
+            </div>
+            <h3 class="font-semibold mb-2 group-hover:text-accent-lavender transition-colors line-clamp-2">${escapeHtml(c.title)}</h3>
+            <p class="text-sm text-outline line-clamp-2 mb-3">${escapeHtml(c.summary || '')}</p>
+            ${c.tags?.length ? `<div class="flex flex-wrap gap-2 mb-3">
+                ${c.tags.map(t => `<span class="text-xs font-mono px-2 py-1 rounded bg-surface-high text-accent-sky">${escapeHtml(t)}</span>`).join('')}
+            </div>` : ''}
+            <a href="${safeUrl(c.url)}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono text-accent-periwinkle hover:text-accent-lavender truncate block transition-colors">
+                ${escapeHtml(c.url)}
+            </a>
+        </article>
+    `).join('');
+    
+    // Attach delete handlers
+    grid.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const cid = btn.dataset.id;
+            console.log('Delete clicked, cid:', cid);
+            if (!cid) {
+                showToast('Error: no citation ID');
+                return;
+            }
+            if (confirm('Delete this citation?')) {
+                const res = await api(`/citations/${cid}`, 'DELETE');
+                if (res && res.deleted) { 
+                    loadCitations(); 
+                    showToast('Citation deleted'); 
+                } else if (res && res.detail) {
+                    showToast('Error: ' + res.detail);
+                }
+            }
+        });
+    });
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str ?? '');
+    return div.innerHTML;
+}
+
+function safeUrl(url) {
+    try {
+        const u = new URL(url);
+        return (u.protocol === 'https:' || u.protocol === 'http:') ? url : '#';
+    } catch { return '#'; }
+}
+
+// Update stats
+function updateStats() {
+    document.getElementById('citation-count').textContent = state.citations.length;
+}
+
+// Search
+document.getElementById('search-btn').addEventListener('click', async () => {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+
+    const mode = document.getElementById('search-mode').value;
+    const maxResults = parseInt(document.getElementById('search-count').value);
+
+    const btn = document.getElementById('search-btn');
+    btn.textContent = 'Searching...';
+    btn.disabled = true;
+
+    // Web Only mode
+    if (mode === 'web') {
+        showToast(`Searching the web for "${query}"...`);
+        const web = await api('/research/auto', 'POST', { query, max_results: maxResults });
+        btn.textContent = 'Search';
+        btn.disabled = false;
+        
+        if (web && web.added > 0) {
+            showToast(`Found ${web.added} results — added to Tropebook`);
+            await loadCitations();
+            const again = await api(`/search?q=${encodeURIComponent(query)}`);
+            if (again?.results?.length > 0) {
+                state.citations = again.results.map((c, i) => ({
+                    ...c,
+                    _relevance_score: again.results.length - i
+                }));
+                renderCitations();
+                document.getElementById('results-count').textContent = `${again.results.length} results`;
+            }
+        } else {
+            showToast(web?.error ? `Search error: ${web.error}` : 'No results found');
+        }
+        return;
+    }
+
+    // Local search
+    const local = await api(`/search?q=${encodeURIComponent(query)}`);
+    const localResults = local?.results || [];
+
+    if (localResults.length > 0 || mode === 'local') {
+        // Show local results or stop here if mode is local-only
+        state.citations = localResults.map((c, i) => ({
+            ...c,
+            _relevance_score: localResults.length - i
+        }));
+        renderCitations();
+        document.getElementById('results-count').textContent =
+            `${localResults.length} local results`;
+        btn.textContent = 'Search';
+        btn.disabled = false;
+        if (mode === 'local' && localResults.length === 0) {
+            showToast('No local results found');
+        }
+        return;
+    }
+
+    // Fallback mode: no local results, search web
+    showToast(`No local results — searching the web for "${query}"...`);
+    const web = await api('/research/auto', 'POST', { query, max_results: maxResults });
+
+    btn.textContent = 'Search';
+    btn.disabled = false;
+
+    if (web && web.added > 0) {
+        showToast(`Found ${web.added} results — added to Tropebook`);
+        await loadCitations();
+        // Now search local again to show the new results
+        const again = await api(`/search?q=${encodeURIComponent(query)}`);
+        if (again?.results?.length > 0) {
+            state.citations = again.results.map((c, i) => ({
+                ...c,
+                _relevance_score: again.results.length - i
+            }));
+            renderCitations();
+            document.getElementById('results-count').textContent =
+                `${again.results.length} web results`;
+        }
+    } else {
+        showToast(web?.error ? `Search error: ${web.error}` : 'No results found');
+    }
+});
+
+// Also trigger search on Enter key
+document.getElementById('search-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('search-btn').click();
+});
+
+// Add citation form
+document.getElementById('add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const citation = {
+        title: document.getElementById('form-title').value,
+        url: document.getElementById('form-url').value,
+        summary: document.getElementById('form-summary').value,
+        tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+        source_type: 'manual'
+    };
+    const res = await api('/citations', 'POST', citation);
+    if (res) {
+        closeModal();
+        loadCitations();
+        showToast('Citation added');
+    }
+});
+
+// Settings
+document.getElementById('btn-save-settings').addEventListener('click', async () => {
+    const openaiKey = document.getElementById('setting-openai-key').value.trim();
+    const settings = {
+        max_tokens: parseInt(document.getElementById('setting-max-tokens').value),
+        compression_level: parseInt(document.getElementById('setting-compression-level').value),
+        theme: document.getElementById('setting-theme').value,
+        animations: document.getElementById('setting-animations').value,
+        session_limit: parseInt(document.getElementById('setting-session-limit').value),
+        // brave_api_key intentionally NOT saved to localStorage
+    };
+    localStorage.setItem('tropelex-settings', JSON.stringify(settings));
+
+    // If an OpenAI key was entered, write it to .env via the server
+    if (openaiKey && openaiKey.startsWith('sk-')) {
+        const res = await api('/settings/apikey', 'POST', { key: 'OPENAI_API_KEY', value: openaiKey });
+        if (res && res.saved) {
+            showToast('Settings saved — restart server to apply API key');
+            document.getElementById('setting-openai-key').value = '';
+        } else {
+            showToast('Settings saved (API key not persisted — set OPENAI_API_KEY in .env manually)');
+        }
+    } else {
+        showToast('Settings saved');
+    }
+});
+
+// Test OpenAI key
+document.getElementById('btn-test-openai').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-test-openai');
+    const statusEl = document.getElementById('openai-key-status');
+    const key = document.getElementById('setting-openai-key').value.trim();
+    if (!key) {
+        // Test whatever key the server currently has
+        btn.textContent = 'Testing...';
+        const res = await api('/compress', 'POST', { prompt: 'test' });
+        if (res && !res.error) {
+            statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
+            statusEl.textContent = '✓ Server OpenAI key is working';
+        } else {
+            statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+            statusEl.textContent = '✗ ' + (res?.error || 'No key configured');
+        }
+        statusEl.classList.remove('hidden');
+        btn.textContent = 'Test';
+        return;
+    }
+    if (!key.startsWith('sk-')) {
+        statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+        statusEl.textContent = '✗ Key must start with sk-';
+        statusEl.classList.remove('hidden');
+        return;
+    }
+    statusEl.className = 'mt-2 font-mono text-xs text-outline';
+    statusEl.textContent = 'Testing...';
+    statusEl.classList.remove('hidden');
+    // Quick test via server proxy
+    const res = await api('/compress', 'POST', { prompt: 'hello world' });
+    if (res && !res.error) {
+        statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
+        statusEl.textContent = '✓ Key working — save settings to apply';
+    } else {
+        statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+        statusEl.textContent = '✗ ' + (res?.error || 'Test failed');
+    }
+});
+
+document.getElementById('btn-clear-tropebook').addEventListener('click', async () => {
+    if (confirm('Clear ALL citations? This cannot be undone.')) {
+        await api('/citations/clear', 'DELETE');
+        loadCitations();
+        showToast('Tropebook cleared');
+    }
+});
+
+document.getElementById('btn-reset-memory').addEventListener('click', async () => {
+    if (confirm('Reset ALL memory? This cannot be undone.')) {
+        await api('/memory/reset', 'DELETE');
+        loadProjects();
+        showToast('Memory reset');
+    }
+});
+
+// Load projects
+async function loadProjects() {
+    const data = await api('/memory');
+    if (data) {
+        state.projects = data.projects || [];
+        renderProjects();
+        updateGlobalProjectSelector();
+    }
+}
+
+function updateGlobalProjectSelector() {
+    const sel = document.getElementById('global-project-select');
+    sel.innerHTML = '<option value="">Select project...</option>';
+    state.projects.forEach(proj => {
+        const pName = proj.name || proj;
+        const opt = document.createElement('option');
+        opt.value = pName;
+        opt.textContent = pName;
+        if (pName === state.currentProject) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+// Global project selector
+document.getElementById('global-project-select').addEventListener('change', async (e) => {
+    const project = e.target.value;
+    if (project) {
+        await selectProject(project);
+    }
+});
+
+
+
+async function selectProject(name) {
+    state.currentProject = name;
+    updateGlobalProjectSelector();  // Sync global selector
+    
+    // Update all section project indicators
+    const indicator = name || 'No project';
+    document.getElementById('tropebook-project-indicator').textContent = indicator;
+    document.getElementById('memory-project-indicator').textContent = indicator;
+    document.getElementById('graph-project-indicator').textContent = name ? `Project: ${name}` : 'All citations';
+    if (document.getElementById('pipeline-project-indicator')) {
+        document.getElementById('pipeline-project-indicator').textContent = indicator;
+    }
+    
+    // Reload current section data
+    const data = await api(`/memory/${encodeURIComponent(name)}`);
+    if (data) {
+        document.getElementById('project-title').textContent = name;
+        const details = document.getElementById('project-details');
+        details.innerHTML = `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><span class="text-outline text-sm">Tech Stack</span><p class="font-mono text-sm mt-1">${(data.tech_stack || []).join(', ') || 'None'}</p></div>
+                <div><span class="text-outline text-sm">Last Updated</span><p class="font-mono text-sm mt-1">${data.last_updated || 'Never'}</p></div>
+            </div>
+            <p class="text-sm">${data.description || 'No description'}</p>
+        `;
+        renderDecisions(data.decisions || []);
+        renderSessions(data.session_history || []);
+    }
+    renderProjects();
+    // If on graph section, reload with project filter
+    if (state.currentSection === 'graph') loadGraph();
+    // If on pipeline section, auto-load context
+    if (state.currentSection === 'pipeline') loadPipelineContext();
+}
+
+function renderDecisions(decisions) {
+    const list = document.getElementById('decisions-list');
+    if (decisions.length === 0) {
+        list.innerHTML = '<p class="text-sm text-outline">No decisions recorded</p>';
+        return;
+    }
+    list.innerHTML = decisions.slice(-5).reverse().map(d => `
+        <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender">
+            <p class="text-sm font-medium">${escapeHtml(d.decision)}</p>
+            <span class="text-xs text-outline font-mono">${d.timestamp?.slice(0, 10) || ''}</span>
+        </div>
+    `).join('');
+}
+
+
+
+document.getElementById('btn-new-project').addEventListener('click', async () => {
+    const name = prompt('Project name (letters, numbers, underscore, dash only):');
+    if (name && name.trim()) {
+        // Clean: only allow alphanumeric, underscore, dash; strip consecutive dashes and leading/trailing
+        let cleanName = name.trim().replace(/[^a-zA-Z0-9_\-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (!cleanName || !/^[a-zA-Z0-9_\-]+$/.test(cleanName)) {
+            showToast('Invalid project name - use letters, numbers, underscore, dash');
+            return;
+        }
+        console.log('Creating project:', cleanName);
+        const result = await api('/memory', 'POST', { project_name: cleanName });
+        console.log('API result:', result);
+        if (result && result.created) {
+            showToast(`Project "${result.project}" created`);
+            loadProjects();
+            selectProject(result.project);
+        } else {
+            showToast('Failed to create project');
+        }
+    }
+});
+
+// Header "New Project" button
+document.getElementById('btn-new-project-header').addEventListener('click', async () => {
+    const name = prompt('New project name (letters, numbers, underscore, dash only):');
+    if (name && name.trim()) {
+        let cleanName = name.trim().replace(/[^a-zA-Z0-9_\-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (!cleanName || !/^[a-zA-Z0-9_\-]+$/.test(cleanName)) {
+            showToast('Invalid project name');
+            return;
+        }
+        const result = await api('/memory', 'POST', { project_name: cleanName });
+        if (result && result.created) {
+            showToast(`Project "${result.project}" created`);
+            await loadProjects();
+            await selectProject(result.project);
+        } else {
+            showToast('Failed to create project');
+        }
+    }
+});
+
+document.getElementById('btn-edit-project').addEventListener('click', () => {
+    if (!state.currentProject) return;
+    const desc = prompt('Project description:', '');
+    if (desc !== null) {
+        api(`/memory/${encodeURIComponent(state.currentProject)}`, 'PATCH', { description: desc });
+        selectProject(state.currentProject);
+    }
+});
+
+document.getElementById('btn-refresh-patterns').addEventListener('click', loadPatterns);
+
+document.getElementById('btn-export-context').addEventListener('click', async () => {
+    if (!state.currentProject) {
+        showToast('Select a project first');
+        return;
+    }
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/context`);
+    if (!data?.context) {
+        showToast('No context to export');
+        return;
+    }
+    
+    const contextBlock = `<TROPELEX_CONTEXT project="${state.currentProject}">
+${data.context}
+</TROPELEX_CONTEXT>`;
+    
+    navigator.clipboard.writeText(contextBlock).then(() => {
+        showToast('Context copied to clipboard!');
+    }).catch(() => {
+        // Fallback: show in alert
+        prompt('Copy this context:', contextBlock);
+    });
+});
+
+// Memory: Add Decision
+document.getElementById('btn-add-decision').addEventListener('click', () => {
+    document.getElementById('decision-form').classList.remove('hidden');
+    document.getElementById('decision-input').focus();
+});
+
+document.getElementById('btn-cancel-decision').addEventListener('click', () => {
+    document.getElementById('decision-form').classList.add('hidden');
+    document.getElementById('decision-input').value = '';
+    document.getElementById('decision-context').value = '';
+});
+
+document.getElementById('btn-save-decision').addEventListener('click', async () => {
+    if (!state.currentProject) {
+        showToast('Select a project first');
+        return;
+    }
+    const decision = document.getElementById('decision-input').value.trim();
+    const context = document.getElementById('decision-context').value.trim();
+    if (!decision) {
+        showToast('Decision cannot be empty');
+        return;
+    }
+    
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
+        decision,
+        context
+    });
+    
+    if (res) {
+        showToast('Decision recorded');
+        document.getElementById('decision-form').classList.add('hidden');
+        document.getElementById('decision-input').value = '';
+        document.getElementById('decision-context').value = '';
+        selectProject(state.currentProject); // Refresh
+    }
+});
+
+// Memory: Add Session
+document.getElementById('btn-add-session').addEventListener('click', () => {
+    document.getElementById('session-form').classList.remove('hidden');
+    document.getElementById('session-summary').focus();
+});
+
+document.getElementById('btn-cancel-session').addEventListener('click', () => {
+    document.getElementById('session-form').classList.add('hidden');
+    document.getElementById('session-summary').value = '';
+});
+
+// Quick Capture
+document.getElementById('btn-quick-capture').addEventListener('click', async () => {
+    const text = document.getElementById('quick-capture-input').value.trim();
+    const type = document.getElementById('quick-capture-type').value;
+    const project = document.getElementById('quick-capture-project').value || state.currentProject;
+    
+    if (!text) {
+        showToast('Enter something to capture');
+        return;
+    }
+    if (!project) {
+        showToast('Select a project first');
+        return;
+    }
+    
+    const res = await api('/capture', 'POST', { text, type, project });
+    if (res?.captured) {
+        showToast(`Captured as ${type} in ${project}`);
+        document.getElementById('quick-capture-input').value = '';
+    }
+});
+
+// Update quick capture project dropdown when projects load
+const originalLoadProjects = loadProjects;
+loadProjects = async function() {
+    await originalLoadProjects();
+    const select = document.getElementById('quick-capture-project');
+    if (select) {
+        select.innerHTML = '<option value="">Same project</option>' + 
+            state.projects.map(p => `<option value="${p.name || p}">${p.name || p}</option>`).join('');
+    }
+};
+
+document.getElementById('btn-save-session').addEventListener('click', async () => {
+    if (!state.currentProject) {
+        showToast('Select a project first');
+        return;
+    }
+    const summary = document.getElementById('session-summary').value.trim();
+    if (!summary) {
+        showToast('Session summary cannot be empty');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-save-session');
+    btn.textContent = 'Analyzing...';
+    btn.disabled = true;
+    
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/sessions`, 'POST', {
+        summary
+    });
+    
+    btn.textContent = 'Save & Analyze';
+    btn.disabled = false;
+    
+    if (res) {
+        showToast('Session recorded & patterns learned');
+        document.getElementById('session-form').classList.add('hidden');
+        document.getElementById('session-summary').value = '';
+        selectProject(state.currentProject); // Refresh
+        loadPatterns(); // Refresh patterns
+    }
+});
+
+// Pipeline
+// Client-side compression (from hijacker)
+const PHRASE_REMAPS = {
+    "i would like to": "",
+    "i would appreciate": "",
+    "could you please": "please",
+    "would you mind": "please",
+    "i need to": "need to",
+    "i want to": "want to",
+    "in order to": "to",
+    "in the process of": "while",
+    "at this point in time": "now",
+    "for the purpose of": "to",
+    "in the event that": "if",
+    "on the other hand": "however",
+    "in addition to this": "also",
+    "as a result of": "so",
+    "with regard to": "about",
+    "in spite of the fact that": "although",
+    "for the reason that": "because",
+    "due to the fact that": "because",
+    "it is important to note": "notably",
+    "it should be noted that": "notably",
+    "let me know if": "tell me if",
+    "feel free to": "you can",
+    "i hope this helps": "",
+    "thank you for": "thanks for",
+    "best regards": "",
+    "sincerely": "",
+    "please note": "",
+    "keep in mind": "remember",
+};
+
+const COMPACT_PATTERNS = [
+    { pattern: /\bplease\b/gi, replacement: "" },
+    { pattern: /\bthank you\b/gi, replacement: "" },
+    { pattern: /\bthanks\b/gi, replacement: "" },
+    { pattern: /\bsorry\b/gi, replacement: "" },
+    { pattern: /\bactually\b/gi, replacement: "" },
+    { pattern: /\bbasically\b/gi, replacement: "" },
+    { pattern: /\bjust\b/gi, replacement: "" },
+    { pattern: /\breally\b/gi, replacement: "" },
+    { pattern: /\bvery\b/gi, replacement: "" },
+    { pattern: /\bquite\b/gi, replacement: "" },
+];
+
+function clientCompress(text, level = 2) {
+    let compressed = text;
+    
+    // 1. Phrase remapping
+    for (const [phrase, replacement] of Object.entries(PHRASE_REMAPS)) {
+        if (compressed.toLowerCase().includes(phrase.toLowerCase())) {
+            const regex = new RegExp(phrase, 'gi');
+            compressed = compressed.replace(regex, replacement);
+        }
+    }
+    
+    // 2. Compact patterns (filler words)
+    if (level >= 2) {
+        for (const { pattern, replacement } of COMPACT_PATTERNS) {
+            compressed = compressed.replace(pattern, replacement);
+        }
+    }
+    
+    // 3. Whitespace cleanup
+    compressed = compressed
+        .replace(/\s+/g, ' ')
+        .replace(/\s+([.,!?;:])/g, '$1')
+        .replace(/([.,!?;:])\s+/g, '$1 ')
+        .trim();
+    
+    return compressed;
+}
+
+async function compressionAgent(input) {
+    if (!input) return '';
+    
+    // Try client-side compression first (instant)
+    const clientCompressed = clientCompress(input, 2);
+    
+    // If compression made a significant difference, use it
+    const savings = ((input.length - clientCompressed.length) / input.length) * 100;
+    if (savings > 5) {
+        return clientCompressed;
+    }
+    
+    // Otherwise try server-side AI compression (slower but smarter)
+    try {
+        const response = await fetch('/api/compress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: input })
+        });
+        const data = await response.json();
+        return data.compressed || clientCompressed || input;
+    } catch (e) {
+        console.error('Server compression failed, using client compression:', e);
+        return clientCompressed || input;
+    }
+}
+
+function contextAgent(input) {
+    const issues = [];
+    const words = input.toLowerCase().split(/\s+/);
+    if (words.includes('something') || words.includes('stuff') || words.includes('things')) {
+        issues.push("VAGUE: 'something/stuff/things' detected");
+    }
+    if (!input.includes('file') && !input.includes('function') && !input.includes('data') && !input.includes('code') && !input.includes('format') && !input.includes('image') && !input.includes('upload')) {
+        issues.push("CONTEXT: No clear deliverable type");
+    }
+    if (input.length > 800 && input.split('.').length < 3) {
+        issues.push("COMPLEX: Long prompt without short sentences");
+    }
+    return issues;
+}
+
+function structureAgent(input) {
+    // If input is already very short or structured, don't modify it
+    if (input.length < 100 || input.includes('TASK:') || input.includes('###')) {
+        return input;
+    }
+    
+    const sentences = input.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10);
+    
+    // For short prompts (1-2 sentences), just wrap as TASK
+    if (sentences.length <= 2) {
+        return `TASK:\n${input}`;
+    }
+    
+    // For longer prompts, extract main action from first sentence
+    const mainTask = sentences[0];
+    const details = sentences.slice(1);
+    
+    // Check if there are actual constraints/requirements mentioned
+    const constraintKeywords = /\b(must|should|need|require|ensure|with|using|format|in|as|like|prefer|want)\b/gi;
+    const hasConstraints = details.some(s => constraintKeywords.test(s));
+    
+    if (hasConstraints && details.length > 0) {
+        return `TASK:\n${mainTask}\n\nDETAILS:\n${details.join('. ')}`;
+    }
+    
+    // Otherwise just return as a clean task
+    return `TASK:\n${input}`;
+}
+
+async function runPipeline() {
+    const input = document.getElementById('pipeline-input').value.trim();
+    if (!input) return;
+    const useCompression = document.getElementById('use-compression').checked;
+    const useContext = document.getElementById('use-context').checked;
+    const useStructure = document.getElementById('use-structure').checked;
+    const useProjectContext = document.getElementById('use-project-context').checked;
+    const selectedProject = document.getElementById('pipeline-project').value;
+
+    const originalLength = input.length;
+    let projectContext = '';
+    let result = input;
+    let compressedLength = input.length; // Track actual compression
+
+    const setStage = (id, state, text) => {
+        const panel = document.getElementById(id).closest('.glass-panel') || document.getElementById(id).parentElement.parentElement;
+        panel.classList.remove('stage-active', 'stage-done');
+        if (state === 'running') panel.classList.add('stage-active');
+        if (state === 'done')    panel.classList.add('stage-done');
+        document.getElementById(id).textContent = text;
+    };
+
+    // Fetch project context if enabled
+    if (useProjectContext && selectedProject) {
+        try {
+            const ctxData = await api(`/memory/${encodeURIComponent(selectedProject)}/context`);
+            if (ctxData?.context) {
+                projectContext = ctxData.context;
+            }
+        } catch (e) {
+            console.warn('Failed to load project context:', e);
+        }
+    }
+
+    // Compression Stage
+    if (useCompression) {
+        setStage('output-compression', 'running', 'Compressing...');
+        result = await compressionAgent(result);
+        compressedLength = result.length; // Save compressed length before structure adds to it
+        setStage('output-compression', 'done', result);
+    } else {
+        setStage('output-compression', '', 'Skipped');
+    }
+
+    // Context Stage
+    if (useContext) {
+        setStage('output-context', 'running', 'Checking...');
+        await new Promise(r => setTimeout(r, 150));
+        const issues = contextAgent(result);
+        setStage('output-context', 'done', issues.length === 0 ? 'CONTEXT OK: Clear request' : 'ISSUES:\n' + issues.join('\n'));
+    } else {
+        setStage('output-context', '', 'Skipped');
+    }
+
+    // Structure Stage
+    if (useStructure) {
+        setStage('output-structure', 'running', 'Structuring...');
+        await new Promise(r => setTimeout(r, 150));
+        const structured = structureAgent(result);
+        setStage('output-structure', 'done', structured);
+        result = structured;
+    } else {
+        setStage('output-structure', '', 'Skipped');
+    }
+
+    // Prepend project context if available
+    let finalOutput = result;
+    if (projectContext) {
+        finalOutput = `<TROPELEX_CONTEXT project="${selectedProject}">\n${projectContext}\n</TROPELEX_CONTEXT>\n\n${result}`;
+    }
+
+    document.getElementById('master-output').textContent = finalOutput;
+    
+    // Update stats (use compressed length, not final structured length)
+    const statsEl = document.getElementById('pipeline-stats');
+    statsEl.classList.remove('hidden');
+    document.getElementById('stat-original').textContent = originalLength;
+    document.getElementById('stat-compressed').textContent = compressedLength;
+    const savings = originalLength > 0 ? Math.round((1 - compressedLength / originalLength) * 100) : 0;
+    document.getElementById('stat-savings').textContent = (savings > 0 ? savings : 0) + '%';
+    document.getElementById('stat-context').textContent = projectContext.length;
+}
+
+document.getElementById('run-pipeline').addEventListener('click', runPipeline);
+document.getElementById('copy-master').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('master-output').textContent).then(() => {
+        const btn = document.getElementById('copy-master');
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Copied!';
+        setTimeout(() => btn.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span> Copy', 1500);
+    });
+});
+
+// Prompt Lab: Auto-load context when project changes
+async function loadPipelineContext() {
+    const indicator = document.getElementById('pipeline-project-indicator');
+    if (!state.currentProject) {
+        indicator.textContent = 'No project';
+        document.getElementById('context-preview').textContent = '';
+        document.getElementById('context-preview-wrapper').classList.add('hidden');
+        return;
+    }
+    indicator.textContent = state.currentProject;
+    const btn = document.getElementById('btn-load-context');
+    btn.textContent = 'Loading...';
+    try {
+        const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/context`);
+        if (data?.context) {
+            document.getElementById('context-preview').textContent = data.context;
+            document.getElementById('context-preview-wrapper').classList.remove('hidden');
+        }
+    } catch (e) { /* silent */ }
+    btn.textContent = 'Load Context';
+}
+
+// Prompt Lab: Load and preview context (manual trigger)
+document.getElementById('btn-load-context').addEventListener('click', async () => {
+    if (!state.currentProject) {
+        showToast('Select a project from the header first');
+        return;
+    }
+    await loadPipelineContext();
+});
+
+// Prompt Lab: Clear context preview
+document.getElementById('btn-clear-context').addEventListener('click', () => {
+    document.getElementById('context-preview').textContent = '';
+    document.getElementById('context-preview-wrapper').classList.add('hidden');
+});
+
+// Health check — update status indicator
+async function checkHealth() {
+    try {
+        const res = await fetch('/api/health');
+        const ok = res.ok;
+        const el = document.getElementById('engine-status');
+        if (ok) {
+            el.textContent = 'ONLINE';
+            el.classList.remove('text-red-400');
+            el.classList.add('text-accent-lime');
+        } else {
+            el.textContent = 'ERROR';
+            el.classList.add('text-red-400');
+            el.classList.remove('text-accent-lime');
+        }
+    } catch {
+        const el = document.getElementById('engine-status');
+        el.textContent = 'OFFLINE';
+        el.classList.add('text-red-400');
+        el.classList.remove('text-accent-lime');
+    }
+}
+
+// Settings — load on startup
+function loadSettings() {
+    const saved = localStorage.getItem('tropelex-settings');
+    if (!saved) return;
+    try {
+        const s = JSON.parse(saved);
+        if (s.max_tokens)          document.getElementById('setting-max-tokens').value = s.max_tokens;
+        if (s.compression_level)   document.getElementById('setting-compression-level').value = s.compression_level;
+        if (s.theme)               document.getElementById('setting-theme').value = s.theme;
+        if (s.animations)          document.getElementById('setting-animations').value = s.animations;
+        if (s.session_limit)       document.getElementById('setting-session-limit').value = s.session_limit;
+        // Note: brave_api_key intentionally NOT restored to DOM for security
+    } catch(e) { console.warn('Could not load settings', e); }
+}
+
+// Import button - supports JSON, CSV, TXT
+document.getElementById('btn-import').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.csv,.txt';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const btn = document.getElementById('btn-import');
+        const originalText = btn.querySelector('span.font-mono').textContent;
+        btn.querySelector('span.font-mono').textContent = 'Importing...';
+        
+        try {
+            const text = await file.text();
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (ext === 'json') {
+                const data = JSON.parse(text);
+                const res = await api('/import', 'POST', { data, source_type: 'imported' });
+                if (res) {
+                    showToast(`Imported ${res.imported} citations`);
+                    loadCitations();
+                }
+            } else if (ext === 'csv' || ext === 'txt') {
+                // Parse CSV/TXT format: URL, Title, Description (one per line or CSV)
+                const lines = text.split('\n').filter(l => l.trim());
+                let imported = 0;
+                
+                for (const line of lines) {
+                    const parts = line.includes(',') ? line.split(',').map(p => p.trim()) : [line.trim()];
+                    const url = parts[0];
+                    const title = parts[1] || url;
+                    const summary = parts[2] || '';
+                    
+                    if (url && url.startsWith('http')) {
+                        await api('/citations', 'POST', {
+                            url,
+                            title,
+                            summary,
+                            source: 'imported',
+                            tags: [],
+                            entities: []
+                        });
+                        imported++;
+                    }
+                }
+                
+                showToast(`Imported ${imported} citations`);
+                loadCitations();
+            }
+        } catch(err) {
+            console.error('Import error:', err);
+            showToast('Import failed: ' + err.message);
+        } finally {
+            btn.querySelector('span.font-mono').textContent = originalText;
+        }
+    };
+    input.click();
+});
+
+// Export button - exports all citations as JSON or CSV
+document.getElementById('btn-export').addEventListener('click', async () => {
+    const format = prompt('Export format? (json or csv)', 'json');
+    if (!format || !['json', 'csv'].includes(format.toLowerCase())) return;
+    
+    const btn = document.getElementById('btn-export');
+    const originalText = btn.querySelector('span.font-mono').textContent;
+    btn.querySelector('span.font-mono').textContent = 'Exporting...';
+    
+    try {
+        const data = await api('/citations');
+        const citations = data.citations || [];
+        
+        let content, filename, mimeType;
+        
+        if (format.toLowerCase() === 'csv') {
+            // CSV format: URL, Title, Summary, Tags, Created
+            const rows = [['URL', 'Title', 'Summary', 'Tags', 'Source', 'Created']];
+            citations.forEach(c => {
+                rows.push([
+                    c.url,
+                    c.title,
+                    c.summary,
+                    c.tags.join(';'),
+                    c.source_type,
+                    c.created_at
+                ]);
+            });
+            content = rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',')).join('\n');
+            filename = `tropebook-export-${new Date().toISOString().split('T')[0]}.csv`;
+            mimeType = 'text/csv';
+        } else {
+            // JSON format
+            content = JSON.stringify({ citations, exported_at: new Date().toISOString() }, null, 2);
+            filename = `tropebook-export-${new Date().toISOString().split('T')[0]}.json`;
+            mimeType = 'application/json';
+        }
+        
+        // Download
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showToast(`Exported ${citations.length} citations as ${format.toUpperCase()}`);
+    } catch (err) {
+        console.error('Export error:', err);
+        showToast('Export failed: ' + err.message);
+    } finally {
+        btn.querySelector('span.font-mono').textContent = originalText;
+    }
+});
+
+// Sort and filter dropdowns
+document.getElementById('sort-select').addEventListener('change', renderCitations);
+document.getElementById('filter-select').addEventListener('change', renderCitations);
+
+// Sync button — refresh all data from server
+document.getElementById('btn-sync').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-sync');
+    btn.querySelector('span').textContent = 'sync';
+    btn.querySelector('span').classList.add('animate-spin');
+    await Promise.all([loadCitations(), loadProjects(), loadPatterns(), checkHealth()]);
+    btn.querySelector('span').classList.remove('animate-spin');
+    showToast('Synced');
+});
+
+// Fix project names: escape HTML in renderProjects
+function renderProjects() {
+    const list = document.getElementById('project-list');
+    if (state.projects.length === 0) {
+        list.innerHTML = '<p class="text-sm text-outline">No projects yet</p>';
+        return;
+    }
+    list.innerHTML = state.projects.map(p => {
+        const name = p.name || p;
+        const desc = p.description || '';
+        return `<button class="w-full text-left p-3 rounded-lg hover:bg-surface-raised transition-colors project-btn cursor-pointer ${state.currentProject === name ? 'bg-surface-high' : ''}" data-name="${escapeHtml(name)}">
+            <span class="font-mono text-sm">${escapeHtml(name)}</span>
+            <span class="block text-xs text-outline">${escapeHtml(desc)}</span>
+        </button>`;
+    }).join('');
+    list.querySelectorAll('.project-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectProject(btn.dataset.name));
+    });
+}
+
+// Fix sessions — use summary field (now set by learner)
+function renderSessions(sessions) {
+    const list = document.getElementById('session-list');
+    if (sessions.length === 0) {
+        list.innerHTML = '<p class="text-sm text-outline">No sessions recorded</p>';
+        return;
+    }
+    list.innerHTML = sessions.slice(-5).reverse().map(s => {
+        const text = s.summary || (s.insights ? s.insights.join('; ') : '');
+        return `
+            <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-sky/30 fade-in">
+                <p class="text-sm">${escapeHtml(text)}</p>
+                <span class="text-xs text-outline font-mono">${(s.timestamp || '').slice(0, 10)}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Fix patterns display — include category label and suggestions
+function renderPatterns() {
+    const grid = document.getElementById('patterns-grid');
+    const empty = document.getElementById('patterns-empty');
+
+    if (!state.patterns || state.patterns.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+    const colorMap = {
+        'category:ui':           'text-accent-sky',
+        'category:backend':      'text-accent-periwinkle',
+        'category:bug':          'text-red-400',
+        'category:architecture': 'text-accent-lavender',
+        'category:performance':  'text-accent-lime',
+        'category:security':     'text-yellow-400',
+    };
+    grid.innerHTML = state.patterns.map(p => {
+        const color = colorMap[p.name] || 'text-outline';
+        const label = p.name.replace('category:', '').toUpperCase();
+        const bar = Math.min(100, (p.count / 10) * 100);
+        return `
+            <div class="glass-panel rounded-lg p-4 fade-in">
+                <span class="font-mono text-xs ${color} uppercase">${label}</span>
+                <div class="flex items-center justify-between mt-2">
+                    <span class="font-mono text-2xl font-bold text-on-surface">${p.count}</span>
+                    <span class="font-mono text-xs text-outline">sessions</span>
+                </div>
+                <div class="mt-3 h-1.5 bg-surface-raised rounded-full overflow-hidden">
+                    <div class="h-full ${color.replace('text-', 'bg-')} rounded-full transition-all" style="width:${bar}%"></div>
+                </div>
+                <div class="flex justify-between mt-2 text-xs font-mono text-outline">
+                    <span>First: ${(p.first_seen || '').slice(0, 10)}</span>
+                    <span>Last: ${(p.last_seen || '').slice(0, 10)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+// Render suggestions if present
+    if (state.suggestions && state.suggestions.length > 0) {
+        document.getElementById('patterns-suggestions').innerHTML = state.suggestions.map(s => `
+            <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lime/30">
+                <span class="material-symbols-outlined text-accent-lime text-sm mr-2">lightbulb</span>
+                <span class="text-sm">${escapeHtml(s)}</span>
+            </div>
+        `).join('');
+    }
+    
+    // Load and display insights for current project
+    if (state.currentProject) {
+        loadProjectInsights();
+    }
+}
+
+async function loadProjectInsights() {
+    if (!state.currentProject) return;
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/insights`);
+    if (!data) return;
+    
+    // Add insights panel if not already there
+    let insightsPanel = document.getElementById('insights-panel');
+    if (!insightsPanel) {
+        const patternsSection = document.getElementById('section-memory')?.querySelector('.lg\\:col-span-12');
+        if (patternsSection) {
+            const panel = document.createElement('div');
+            panel.className = 'glass-panel rounded-xl p-6';
+            panel.id = 'insights-panel';
+            panel.innerHTML = `
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="material-symbols-outlined text-accent-lavender text-xl">insights</span>
+                    <h3 class="font-mono text-lg text-accent-lavender uppercase">Time Insights</h3>
+                </div>
+                <div id="insights-content" class="space-y-4"></div>
+            `;
+            patternsSection.appendChild(panel);
+        }
+    }
+    
+    const content = document.getElementById('insights-content');
+    if (!content) return;
+    
+    let html = '';
+    
+    if (data.best_day) {
+        html += `
+            <div class="p-4 bg-surface-raised rounded-lg border-l-2 border-accent-sky/30">
+                <span class="font-mono text-xs text-accent-sky uppercase">Most Productive Day</span>
+                <p class="text-xl font-bold mt-1">${data.best_day}</p>
+                <p class="text-sm text-outline">${data.day_counts[data.best_day]} sessions</p>
+            </div>
+        `;
+    }
+    
+    if (data.suggestions && data.suggestions.length > 0) {
+        html += `<div class="space-y-2 mt-4">
+            <span class="font-mono text-xs text-outline uppercase">Suggestions</span>`;
+        data.suggestions.forEach(s => {
+            html += `<div class="flex items-center gap-2 p-3 bg-surface-high rounded-lg">
+                <span class="material-symbols-outlined text-accent-lime text-sm">auto_awesome</span>
+                <span class="text-sm">${escapeHtml(s)}</span>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    
+    if (data.category_counts && Object.keys(data.category_counts).length > 0) {
+        html += `<div class="mt-4">
+            <span class="font-mono text-xs text-outline uppercase">Category Breakdown</span>
+            <div class="grid grid-cols-2 gap-2 mt-2">`;
+        for (const [cat, count] of Object.entries(data.category_counts)) {
+            html += `<div class="p-3 bg-surface-high rounded-lg text-center">
+                <span class="font-mono text-lg font-bold text-${getCategoryColor(cat)}">${count}</span>
+                <span class="block text-xs text-outline">${cat}</span>
+            </div>`;
+        }
+        html += '</div></div>';
+    }
+    
+    content.innerHTML = html || '<p class="text-outline text-sm">Not enough data yet. End more sessions to see insights.</p>';
+}
+
+function getCategoryColor(cat) {
+    const map = {
+        'ui': 'accent-sky',
+        'backend': 'accent-periwinkle',
+        'bug': 'text-red-400',
+        'architecture': 'accent-lavender',
+        'performance': 'accent-lime',
+        'security': 'text-yellow-400'
+    };
+    return map[cat] || 'text-outline';
+}
+
+// Updated loadPatterns to include suggestions
+async function loadPatterns() {
+    const project = state.currentProject || '';
+    const endpoint = project ? `/patterns?project=${encodeURIComponent(project)}` : '/patterns';
+    const data = await api(endpoint);
+    if (data) {
+        state.patterns = data.patterns || [];
+        state.suggestions = data.suggestions || [];
+        renderPatterns();
+    }
+}
+
+// ============================
+//  Knowledge Graph (D3)
+// ============================
+
+let graphSimulation = null;
+
+async function loadGraph() {
+    // Update project indicator
+    const indicator = document.getElementById('graph-project-indicator');
+    if (state.currentProject) {
+        indicator.textContent = `Project: ${state.currentProject}`;
+        indicator.style.display = 'inline';
+    } else {
+        indicator.textContent = 'All citations';
+        indicator.style.display = 'inline';
+    }
+    
+    const data = await api('/export');
+    if (!data) return;
+    const { graph, citations } = data;
+    const nodes = Object.entries(graph.nodes).map(([id, n]) => ({
+        id,
+        title: n.data?.title || id,
+        url: n.data?.url || '',
+        summary: citations[id]?.summary || '',
+        tags: citations[id]?.tags || [],
+        type: n.type,
+        connections: n.connections || [],
+    }));
+    const edges = graph.edges.map(e => ({ source: e.from, target: e.to, label: e.relationship }));
+
+    document.getElementById('graph-stats').textContent =
+        `${nodes.length} node${nodes.length !== 1 ? 's' : ''} · ${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
+
+    const empty = document.getElementById('graph-empty');
+    empty.style.display = nodes.length === 0 ? 'flex' : 'none';
+
+    renderGraph(nodes, edges);
+}
+
+function renderGraph(nodes, edges) {
+    const container = document.getElementById('graph-container');
+    const svg = d3.select('#graph-svg');
+    svg.selectAll('*').remove();
+    if (graphSimulation) graphSimulation.stop();
+
+    const W = container.clientWidth;
+    const H = container.clientHeight;
+
+    // Zoom
+    const g = svg.append('g');
+    const zoom = d3.zoom()
+        .scaleExtent([0.2, 4])
+        .on('zoom', e => g.attr('transform', e.transform));
+    svg.call(zoom);
+    document.getElementById('graph-reset-zoom').onclick = () =>
+        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+
+    // Arrow marker
+    svg.append('defs').append('marker')
+        .attr('id', 'arrow')
+        .attr('viewBox', '0 -4 8 8')
+        .attr('refX', 16).attr('refY', 0)
+        .attr('markerWidth', 6).attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-4L8,0L0,4')
+        .attr('fill', 'rgba(128,152,250,0.6)');
+
+    // Simulation
+    graphSimulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(edges).id(d => d.id).distance(120).strength(0.8))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(W / 2, H / 2))
+        .force('collision', d3.forceCollide(32));
+
+    // Edges
+    const link = g.append('g').selectAll('line')
+        .data(edges).join('line')
+        .attr('stroke', 'rgba(128,152,250,0.35)')
+        .attr('stroke-width', 1.5)
+        .attr('marker-end', 'url(#arrow)');
+
+    // Edge labels
+    const linkLabel = g.append('g').selectAll('text')
+        .data(edges).join('text')
+        .attr('font-size', 9)
+        .attr('fill', 'rgba(149,142,158,0.8)')
+        .attr('font-family', 'JetBrains Mono, monospace')
+        .text(d => d.label || '');
+
+    // Color by tag count
+    const colorScale = d3.scaleSequential(d3.interpolatePlasma)
+        .domain([0, Math.max(1, ...nodes.map(n => n.tags.length))]);
+
+    // Nodes
+    const node = g.append('g').selectAll('g')
+        .data(nodes).join('g')
+        .attr('cursor', 'pointer')
+        .call(d3.drag()
+            .on('start', (e, d) => { if (!e.active) graphSimulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+            .on('end',   (e, d) => { if (!e.active) graphSimulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+    // Glow filter
+    const defs = svg.select('defs');
+    const filter = defs.append('filter').attr('id', 'glow');
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'coloredBlur');
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    node.append('circle')
+        .attr('r', d => 10 + d.tags.length * 2)
+        .attr('fill', d => colorScale(d.tags.length))
+        .attr('fill-opacity', 0.85)
+        .attr('stroke', 'rgba(165,128,250,0.5)')
+        .attr('stroke-width', 1.5)
+        .attr('filter', 'url(#glow)');
+
+    node.append('text')
+        .attr('dy', 22)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 10)
+        .attr('fill', '#dce2fa')
+        .attr('font-family', 'JetBrains Mono, monospace')
+        .text(d => d.title.length > 20 ? d.title.slice(0, 18) + '…' : d.title);
+
+    // Tooltip
+    const tooltip = document.getElementById('graph-tooltip');
+    node.on('mouseover', (e, d) => {
+        document.getElementById('tooltip-title').textContent = d.title;
+        document.getElementById('tooltip-url').textContent = d.url;
+        document.getElementById('tooltip-summary').textContent = d.summary.slice(0, 100) || '';
+        tooltip.classList.remove('hidden');
+    }).on('mousemove', e => {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left + 12;
+        const y = e.clientY - rect.top + 12;
+        tooltip.style.left = Math.min(x, W - 220) + 'px';
+        tooltip.style.top  = Math.min(y, H - 120) + 'px';
+    }).on('mouseout', () => tooltip.classList.add('hidden'));
+
+    node.on('click', (e, d) => {
+        if (d.url) window.open(safeUrl(d.url), '_blank', 'noopener');
+    });
+
+    graphSimulation.on('tick', () => {
+        link
+            .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        linkLabel
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
+
+// Semantic search
+document.getElementById('semantic-search-btn').addEventListener('click', async () => {
+    const query = document.getElementById('semantic-query').value.trim();
+    if (!query) return;
+    const btn = document.getElementById('semantic-search-btn');
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">sync</span> Searching...';
+
+    const data = await api('/semantic-search', 'POST', { query, top_k: 10, min_score: 0.4, scope: 'citations' });
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">travel_explore</span> Semantic';
+
+    const container = document.getElementById('semantic-results');
+    const list      = document.getElementById('semantic-results-list');
+    const count     = document.getElementById('semantic-count');
+
+    if (!data || data.results.length === 0) {
+        container.classList.remove('hidden');
+        count.textContent = '— no results (try embedding citations first)';
+        list.innerHTML = '<p class="text-sm text-outline">No semantic matches found. Click "Embed All" to index your citations first.</p>';
+        return;
+    }
+
+    container.classList.remove('hidden');
+    count.textContent = `— ${data.results.length} results`;
+    list.innerHTML = data.results.map(r => `
+        <div class="flex items-start gap-4 p-3 rounded-lg bg-surface-raised border border-glass-border fade-in">
+            <span class="font-mono text-lg text-accent-periwinkle font-bold min-w-[3rem] text-right">${Math.round(r.score * 100)}%</span>
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm text-on-surface">${escapeHtml(r.meta?.title || r.id)}</p>
+                <p class="text-xs text-outline truncate">${escapeHtml(r.meta?.url || '')}</p>
+                <p class="text-xs text-on-surface/70 mt-1">${escapeHtml(r.text.slice(0, 120))}…</p>
+            </div>
+        </div>
+    `).join('');
+});
+
+document.getElementById('semantic-query').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('semantic-search-btn').click();
+});
+
+document.getElementById('graph-embed-all').addEventListener('click', async () => {
+    const btn = document.getElementById('graph-embed-all');
+    btn.textContent = 'Embedding...';
+    btn.disabled = true;
+    const data = await api('/embed-all', 'POST', {});
+    btn.disabled = false;
+    btn.textContent = 'Embed All';
+    if (data) showToast(data.embedded > 0 ? `Embedded ${data.embedded} citations` : data.message || 'Done');
+});
+
+// Load graph when section becomes active
+const _origSwitch = switchSection;
+window._graphLoaded = false;
+
+// Reinit
+async function init() {
+    loadSettings();
+    await checkHealth();
+    await loadCitations();
+    await loadProjects();
+    await loadPatterns();
+    
+    // Initialize all project indicators to "No project"
+    document.getElementById('tropebook-project-indicator').textContent = 'No project';
+    document.getElementById('memory-project-indicator').textContent = 'No project';
+    document.getElementById('graph-project-indicator').textContent = 'All citations';
+    if (document.getElementById('pipeline-project-indicator')) {
+        document.getElementById('pipeline-project-indicator').textContent = 'No project';
+    }
+    
+    // Poll health every 30s
+    setInterval(checkHealth, 30000);
+}
+
+init();
+</script>
+</body>
+</html>

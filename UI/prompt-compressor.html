@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tropelex - Prompt Compressor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        surface: "#0c1324",
+                        "surface-raised": "#141b2d",
+                        "accent-lavender": "#a580fa",
+                        "accent-sky": "#80d5fa",
+                        "on-surface": "#dce2fa",
+                        outline: "#958e9e",
+                    },
+                    fontFamily: {
+                        mono: ["JetBrains Mono", "monospace"],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: linear-gradient(135deg, #010515 0%, #0c1324 50%, #070e1f 100%); }
+        .glass-panel {
+            background: rgba(12, 19, 36, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(165, 128, 250, 0.15);
+        }
+        .glass-panel:hover { border-color: rgba(165, 128, 250, 0.35); }
+        .transform-tag { background: rgba(128, 213, 250, 0.1); border: 1px solid rgba(128, 213, 250, 0.3); }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="font-sans text-on-surface min-h-screen p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-accent-lavender text-3xl">psychology</span>
+                <h1 class="font-mono text-2xl font-bold text-accent-lavender">TROPELEX</h1>
+            </div>
+            <div class="font-mono text-sm text-outline">Prompt Efficiency Tool</div>
+        </header>
+
+        <!-- Input Section -->
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <h2 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Enter Your Prompt</h2>
+            <textarea id="prompt-input" rows="6" 
+                class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none"
+                placeholder="Type or paste your prompt here...
+
+Example:
+Hello! I need your help with something please. 
+I would like to ask you to help me with a Python project.
+Could you please create a function that calculates the sum of numbers?
+Thank you so much for your help, I really appreciate it!"></textarea>
+            <div class="flex items-center justify-between mt-4">
+                <div class="flex gap-3">
+                    <select id="level-select" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-outline focus:outline-none cursor-pointer">
+                        <option value="1">Light compression</option>
+                        <option value="2" selected>Medium compression</option>
+                        <option value="3">Aggressive compression</option>
+                    </select>
+                </div>
+                <button id="compress-btn" class="px-6 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm uppercase tracking-wider hover:bg-accent-lavender/30 transition-all">
+                    Compress
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden fade-in">
+            <!-- Stats Bar -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex gap-6">
+                    <div class="text-center">
+                        <div class="font-mono text-2xl text-accent-sky" id="original-chars">0</div>
+                        <div class="font-mono text-xs text-outline uppercase">Original Chars</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-mono text-2xl text-accent-lavender" id="compressed-chars">0</div>
+                        <div class="font-mono text-xs text-outline uppercase">Compressed Chars</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-mono text-2xl text-green-400" id="savings">0%</div>
+                        <div class="font-mono text-xs text-outline uppercase">Savings</div>
+                    </div>
+                </div>
+                <button id="copy-btn" class="px-4 py-2 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/10 transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">content_copy</span>
+                    Copy Compressed
+                </button>
+            </div>
+
+            <!-- Side by Side -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Original -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Original</span>
+                        <span class="font-mono text-xs text-outline" id="original-lines">0 lines</span>
+                    </div>
+                    <pre id="original-output" class="font-mono text-sm whitespace-pre-wrap text-on-surface opacity-80"></pre>
+                </div>
+
+                <!-- Compressed -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-mono text-sm text-accent-lavender uppercase tracking-wider">Compressed</span>
+                        <span class="font-mono text-xs text-outline" id="compressed-lines">0 lines</span>
+                    </div>
+                    <pre id="compressed-output" class="font-mono text-sm whitespace-pre-wrap text-on-surface"></pre>
+                </div>
+            </div>
+
+            <!-- Transformations Applied -->
+            <div class="glass-panel rounded-xl p-4 mt-4">
+                <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-3">Transformations Applied</h3>
+                <div id="transformations-list" class="flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Preset Examples -->
+        <div class="glass-panel rounded-xl p-6 mt-6">
+            <h2 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Try These Examples</h2>
+            <div class="flex flex-wrap gap-3">
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-sm hover:bg-surface-raised transition-all" data-prompt="Hello! I need your help with something please. I would like to ask you to help me with a Python project. Could you please create a function that calculates the sum of numbers? Thank you so much for your help, I really appreciate it!">Verbose greeting</button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-sm hover:bg-surface-raised transition-all" data-prompt="For the purpose of this task, I need you to please create a function. In order to achieve this, the function should take a list of numbers as input. Thank you for your assistance with this.">Business verbose</button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-sm hover:bg-surface-raised transition-all" data-prompt="Step 1. First, go to the file. Step 2. Then, open it. Step 3. After that, make your changes. Step 4. Finally, save the file.">Numbered steps</button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-sm hover:bg-surface-raised transition-all" data-prompt="I want you to act as a Python expert. Please help me build a web scraper that can extract data from websites. The scraper should handle errors gracefully and log its progress.">Role assignment</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Compression transformations
+        const PHRASE_REMAPS = {
+            "please provide": "give",
+            "please help": "help",
+            "please could you": "please",
+            "i would like to": "i want",
+            "i need to": "need to",
+            "i want to": "want to",
+            "could you please": "please",
+            "would you mind": "please",
+            "in order to": "to",
+            "in the process of": "while",
+            "at this point in time": "now",
+            "for the purpose of": "to",
+            "in the event that": "if",
+            "on the other hand": "however",
+            "in addition to this": "also",
+            "as a result of": "so",
+            "with regard to": "about",
+            "in spite of the fact that": "although",
+            "for the reason that": "because",
+            "due to the fact that": "because",
+            "in order to ensure": "to ensure",
+            "it is important to note": "notably",
+            "it should be noted that": "notably",
+            "let me know if": "tell me if",
+            "feel free to": "you can",
+            "i hope this helps": "",
+            "thank you for": "thanks for",
+            "best regards": "",
+            "sincerely": "",
+            "kind regards": "",
+            "please note": "",
+            "keep in mind": "remember",
+            "just to be clear": "clarify",
+            "here are the items": ":",
+            "the following": ":",
+            "including": "",
+            "such as": "e.g.",
+            "for example": "e.g.",
+            "that is to say": "i.e.",
+            "in other words": "i.e.",
+            "step 1.": "1.",
+            "step 2.": "2.",
+            "step 3.": "3.",
+            "step 4.": "4.",
+        };
+
+        const COMPACT_PATTERNS = [
+            { pattern: /\bplease\b/gi, replacement: "", name: "please" },
+            { pattern: /\bthank you\b/gi, replacement: "", name: "thank you" },
+            { pattern: /\bthanks\b/gi, replacement: "", name: "thanks" },
+            { pattern: /\bsorry\b/gi, replacement: "", name: "sorry" },
+            { pattern: /\bactually\b/gi, replacement: "", name: "actually" },
+            { pattern: /\bbasically\b/gi, replacement: "", name: "basically" },
+            { pattern: /\bjust\b/gi, replacement: "", name: "just" },
+            { pattern: /\bmaybe\b/gi, replacement: "", name: "maybe" },
+            { pattern: /\bprobably\b/gi, replacement: "", name: "probably" },
+            { pattern: /\breally\b/gi, replacement: "", name: "really" },
+            { pattern: /\bvery\b/gi, replacement: "", name: "very" },
+            { pattern: /\bquite\b/gi, replacement: "", name: "quite" },
+            { pattern: /\bkind of\b/gi, replacement: "", name: "kind of" },
+            { pattern: /\bsort of\b/gi, replacement: "", name: "sort of" },
+            { pattern: /\bdefinitely\b/gi, replacement: "", name: "definitely" },
+            { pattern: /\bcan you\b/gi, replacement: "can", name: "can you" },
+        ];
+
+        const STOP_WORDS = new Set([
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
+            "be", "have", "has", "had", "do", "does", "did", "will", "would",
+            "could", "should", "may", "might", "must", "shall", "can", "need",
+            "this", "that", "these", "those", "it", "its", "they", "them",
+            "their", "we", "our", "you", "your", "he", "she", "him", "her",
+            "i", "me", "my", "what", "which", "who", "whom", "when", "where",
+            "why", "how", "all", "each", "every", "both", "few", "more", "most",
+            "other", "some", "such", "no", "nor", "not", "only", "own", "same",
+            "so", "than", "too", "very", "just", "also", "now", "here", "there",
+        ]);
+
+        function compress(text, level = 2) {
+            const original = text;
+            const transformations = [];
+            let compressed = text;
+
+            // 1. Phrase remapping
+            for (const [phrase, replacement] of Object.entries(PHRASE_REMAPS)) {
+                if (compressed.toLowerCase().includes(phrase.toLowerCase())) {
+                    const regex = new RegExp(phrase, 'gi');
+                    if (regex.test(compressed)) {
+                        compressed = compressed.replace(regex, replacement);
+                        transformations.push({ type: "phrase", from: phrase, to: replacement || "(removed)" });
+                    }
+                }
+            }
+
+            // 2. Compact patterns
+            for (const { pattern, replacement, name } of COMPACT_PATTERNS) {
+                if (pattern.test(compressed)) {
+                    compressed = compressed.replace(pattern, replacement);
+                    transformations.push({ type: "compact", from: name, to: "(removed)" });
+                }
+            }
+
+            // 3. Aggressive stop word removal
+            if (level >= 3) {
+                const words = compressed.split(/\s+/);
+                const filtered = words.filter(w => {
+                    const lower = w.toLowerCase().replace(/[^a-z]/g, '');
+                    return lower && !STOP_WORDS.has(lower);
+                });
+                const stopWordsRemoved = words.length - filtered.length;
+                if (stopWordsRemoved > 0) {
+                    transformations.push({ type: "stop_words", from: `${stopWordsRemoved} words`, to: "(removed)" });
+                }
+                compressed = filtered.join(' ');
+            }
+
+            // 4. Whitespace cleanup
+            const originalWs = compressed;
+            compressed = compressed.replace(/\n{3,}/g, '\n\n');
+            compressed = compressed.replace(/[ \t]+/g, ' ');
+            if (originalWs !== compressed) {
+                transformations.push({ type: "whitespace", from: "extra lines/spaces", to: "(cleaned)" });
+            }
+
+            return { compressed, transformations };
+        }
+
+        // Event handlers
+        document.getElementById('compress-btn').addEventListener('click', () => {
+            const text = document.getElementById('prompt-input').value.trim();
+            if (!text) return;
+
+            const level = parseInt(document.getElementById('level-select').value);
+            const { compressed, transformations } = compress(text, level);
+
+            // Stats
+            document.getElementById('original-chars').textContent = text.length;
+            document.getElementById('compressed-chars').textContent = compressed.length;
+            const savings = text.length > 0 ? Math.round((1 - compressed.length / text.length) * 100) : 0;
+            document.getElementById('savings').textContent = savings + '%';
+
+            // Outputs
+            document.getElementById('original-output').textContent = text;
+            document.getElementById('compressed-output').textContent = compressed;
+            document.getElementById('original-lines').textContent = text.split('\n').length + ' lines';
+            document.getElementById('compressed-lines').textContent = compressed.split('\n').length + ' lines';
+
+            // Transformations
+            const listEl = document.getElementById('transformations-list');
+            if (transformations.length === 0) {
+                listEl.innerHTML = '<span class="text-outline font-mono text-sm">No transformations needed - prompt is already efficient!</span>';
+            } else {
+                listEl.innerHTML = transformations.map(t => 
+                    `<span class="transform-tag px-3 py-1 rounded-full font-mono text-xs text-accent-sky">
+                        ${t.type}: "${t.from}" → ${t.to}
+                    </span>`
+                ).join('');
+            }
+
+            // Show results
+            document.getElementById('results-section').classList.remove('hidden');
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const compressed = document.getElementById('compressed-output').textContent;
+            navigator.clipboard.writeText(compressed).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const original = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Copied!';
+                setTimeout(() => btn.innerHTML = original, 1500);
+            });
+        });
+
+        // Example buttons
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('prompt-input').value = btn.dataset.prompt;
+                document.getElementById('compress-btn').click();
+            });
+        });
+
+        // Auto-compress on paste
+        document.getElementById('prompt-input').addEventListener('paste', () => {
+            setTimeout(() => {
+                const text = document.getElementById('prompt-input').value.trim();
+                if (text.length > 20) {
+                    document.getElementById('compress-btn').click();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

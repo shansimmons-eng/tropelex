@@ -2,6 +2,7 @@
 Tropebook - Research Knowledge Base
 Stores links, summaries, and relationships for building extended knowledge graphs.
 """
+
 import json
 import uuid
 from datetime import datetime
@@ -10,12 +11,14 @@ from typing import Optional, List, Dict, Set, Any, Union
 from pathlib import Path
 from enum import Enum
 
+
 class SourceType(Enum):
     BRAVE_SEARCH = "brave_search"
     GOOGLE_DEEP_RESEARCH = "google_deep_research"
     MANUAL = "manual"
     SCRAPED = "scraped"
     IMPORTED = "imported"
+
 
 @dataclass
 class Citation:
@@ -32,13 +35,17 @@ class Citation:
     source_type: str = SourceType.MANUAL.value
     metadata: Dict = field(default_factory=dict)
 
-    def to_dict(self) -> dict:
-        return asdict(self)
+    def to_dict(self, id: str = None) -> dict:
+        d = asdict(self)
+        if id:
+            d["id"] = id
+        return d
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'Citation':
-        data.pop('id', None)
+    def from_dict(cls, data: dict) -> "Citation":
+        data.pop("id", None)
         return cls(**data)
+
 
 @dataclass
 class KnowledgeGraph:
@@ -48,19 +55,22 @@ class KnowledgeGraph:
     def add_node(self, node_id: str, node_type: str, data: dict):
         self.nodes[node_id] = {"type": node_type, "data": data, "connections": []}
 
-    def add_edge(self, from_id: str, to_id: str, relationship: str, weight: float = 1.0):
+    def add_edge(
+        self, from_id: str, to_id: str, relationship: str, weight: float = 1.0
+    ):
         edge = {
             "from": from_id,
             "to": to_id,
             "relationship": relationship,
             "weight": weight,
-            "created": datetime.utcnow().isoformat()
+            "created": datetime.utcnow().isoformat(),
         }
         self.edges.append(edge)
         if from_id in self.nodes:
             self.nodes[from_id]["connections"].append(to_id)
         if to_id in self.nodes:
             self.nodes[to_id]["connections"].append(from_id)
+
 
 class Tropebook:
     def __init__(self, storage_path: str = "memory/tropebook/"):
@@ -75,18 +85,17 @@ class Tropebook:
 
     def _load(self):
         if self.citations_file.exists():
-            with open(self.citations_file, 'r') as f:
+            with open(self.citations_file, "r") as f:
                 data = json.load(f)
                 self.citations = {k: Citation.from_dict(v) for k, v in data.items()}
         if self.graph_file.exists():
-            with open(self.graph_file, 'r') as f:
+            with open(self.graph_file, "r") as f:
                 data = json.load(f)
                 self.graph = KnowledgeGraph(
-                    nodes=data.get("nodes", {}),
-                    edges=data.get("edges", [])
+                    nodes=data.get("nodes", {}), edges=data.get("edges", [])
                 )
         if self.index_file.exists():
-            with open(self.index_file, 'r') as f:
+            with open(self.index_file, "r") as f:
                 self._index = json.load(f)
         else:
             self._build_index()
@@ -111,23 +120,34 @@ class Tropebook:
         self._save_index()
 
     def _save_index(self):
-        with open(self.index_file, 'w') as f:
+        with open(self.index_file, "w") as f:
             json.dump(self._index, f, indent=2)
 
-    def add(self, title: str, url: str, summary: str = "", source: str = "",
-            tags: Optional[List[str]] = None, entities: Optional[List[str]] = None,
-            source_type: SourceType = SourceType.MANUAL, 
-            metadata: Optional[Dict[str, Any]] = None) -> str:
+    def add(
+        self,
+        title: str,
+        url: str,
+        summary: str = "",
+        source: str = "",
+        tags: Optional[List[str]] = None,
+        entities: Optional[List[str]] = None,
+        source_type: SourceType = SourceType.MANUAL,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
         if url in self._index["by_url"]:
             cid = self._index["by_url"][url]
             self.update(cid, summary=summary, tags=tags, entities=entities)
             return cid
         cid = str(uuid.uuid4())[:8]
         citation = Citation(
-            title=title, url=url, summary=summary, source=source,
-            tags=tags if tags is not None else [], 
+            title=title,
+            url=url,
+            summary=summary,
+            source=source,
+            tags=tags if tags is not None else [],
             entities=entities if entities is not None else [],
-            source_type=source_type.value, metadata=metadata if metadata is not None else {}
+            source_type=source_type.value,
+            metadata=metadata if metadata is not None else {},
         )
         self.citations[cid] = citation
         self.graph.add_node(cid, "citation", {"title": title, "url": url})
@@ -146,6 +166,27 @@ class Tropebook:
 
     def get(self, cid: str) -> Optional[Citation]:
         return self.citations.get(cid)
+
+    def delete(self, cid: str) -> bool:
+        """Delete a citation and its graph connections."""
+        if cid not in self.citations:
+            return False
+
+        del self.citations[cid]
+
+        for key in list(self._index.keys()):
+            if cid in self._index[key]:
+                self._index[key].pop(cid, None)
+
+        self.graph.nodes.pop(cid, None)
+        self.graph.edges = [
+            e for e in self.graph.edges if e.get("from") != cid and e.get("to") != cid
+        ]
+
+        self._build_index()
+        self._save()
+
+        return True
 
     def find_by_url(self, url: str) -> Optional[Citation]:
         cid = self._index["by_url"].get(url)
@@ -174,21 +215,34 @@ class Tropebook:
         source = self.find_by_url(source_url)
         target = self.find_by_url(target_url)
         if source and target:
-            self.link(list(self._index["by_url"].values())[list(self._index["by_url"].keys()).index(source_url)],
-                     list(self._index["by_url"].values())[list(self._index["by_url"].keys()).index(target_url)],
-                     relationship)
+            self.link(
+                list(self._index["by_url"].values())[
+                    list(self._index["by_url"].keys()).index(source_url)
+                ],
+                list(self._index["by_url"].values())[
+                    list(self._index["by_url"].keys()).index(target_url)
+                ],
+                relationship,
+            )
 
     def search(self, query: str, limit: int = 20) -> List[Citation]:
-        query_lower = query.lower()
+        # Split query into words for better matching
+        query_words = [w.lower() for w in query.split() if len(w) > 2]
         results = []
         for cite in self.citations.values():
             score = 0
-            if query_lower in cite.title.lower():
-                score += 10
-            if query_lower in cite.summary.lower():
-                score += 5
-            if any(query_lower in tag.lower() for tag in cite.tags):
-                score += 3
+            title_lower = cite.title.lower()
+            summary_lower = cite.summary.lower()
+            tags_lower = [t.lower() for t in cite.tags]
+
+            for word in query_words:
+                if word in title_lower:
+                    score += 10
+                if word in summary_lower:
+                    score += 5
+                if any(word in tag for tag in tags_lower):
+                    score += 3
+
             if score > 0:
                 results.append((score, cite))
         results.sort(key=lambda x: x[0], reverse=True)
@@ -229,7 +283,7 @@ class Tropebook:
                         tags=source.get("topics", source.get("tags", [])),
                         entities=source.get("entities", []),
                         source_type=SourceType.GOOGLE_DEEP_RESEARCH,
-                        metadata=source
+                        metadata=source,
                     )
                     count += 1
         return count
@@ -237,18 +291,17 @@ class Tropebook:
     def export_json(self) -> dict:
         return {
             "citations": {k: v.to_dict() for k, v in self.citations.items()},
-            "graph": {
-                "nodes": self.graph.nodes,
-                "edges": self.graph.edges
-            },
-            "exported_at": datetime.utcnow().isoformat()
+            "graph": {"nodes": self.graph.nodes, "edges": self.graph.edges},
+            "exported_at": datetime.utcnow().isoformat(),
         }
 
     def _save(self):
-        with open(self.citations_file, 'w') as f:
+        with open(self.citations_file, "w") as f:
             json.dump({k: v.to_dict() for k, v in self.citations.items()}, f, indent=2)
-        with open(self.graph_file, 'w') as f:
-            json.dump({"nodes": self.graph.nodes, "edges": self.graph.edges}, f, indent=2)
+        with open(self.graph_file, "w") as f:
+            json.dump(
+                {"nodes": self.graph.nodes, "edges": self.graph.edges}, f, indent=2
+            )
 
     def stats(self) -> dict:
         return {
@@ -256,8 +309,30 @@ class Tropebook:
             "by_source": {k: len(v) for k, v in self._index["by_source"].items()},
             "total_tags": len(self._index["by_tag"]),
             "total_entities": len(self._index["by_entity"]),
-            "total_relationships": len(self.graph.edges)
+            "total_relationships": len(self.graph.edges),
         }
+
+    def clear(self):
+        """Clear all citations, graph, and index storage files."""
+        import logging
+
+        logger = logging.getLogger("tropelex.tropebook")
+        logger.info("Clearing all data...")
+
+        self.citations = {}
+        self.graph = KnowledgeGraph()
+        self._index = {"by_url": {}, "by_tag": {}, "by_entity": {}, "by_source": {}}
+
+        # Delete storage files
+        for f in [self.citations_file, self.graph_file, self.index_file]:
+            if f.exists():
+                try:
+                    f.unlink()
+                    logger.info(f"Deleted {f}")
+                except Exception as e:
+                    logger.warning(f"Could not delete {f}: {e}")
+
+        logger.info("Clear complete")
 
     def merge_duplicates(self):
         url_to_cid = {}

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tropelex - Agent Pipeline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        surface: "#0c1324",
+                        "surface-raised": "#141b2d",
+                        "accent-lavender": "#a580fa",
+                        "accent-periwinkle": "#8098fa",
+                        "accent-sky": "#80d5fa",
+                        "accent-lime": "#98fa80",
+                        "on-surface": "#dce2fa",
+                        outline: "#958e9e",
+                    },
+                    fontFamily: {
+                        mono: ["JetBrains Mono", "monospace"],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: linear-gradient(135deg, #010515 0%, #0c1324 50%, #070e1f 100%); min-height: 100vh; }
+        .glass-panel { background: rgba(12, 19, 36, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(165, 128, 250, 0.15); }
+        .glass-panel:hover { border-color: rgba(165, 128, 250, 0.35); }
+        .pipeline-stage { border-left: 2px solid rgba(165, 128, 250, 0.3); }
+        .stage-complete { border-left-color: #98fa80; }
+        .stage-running { border-left-color: #80d5fa; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="font-sans text-on-surface p-6">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-accent-lavender text-3xl">account_tree</span>
+                <h1 class="font-mono text-2xl font-bold text-accent-lavender">AGENT PIPELINE</h1>
+            </div>
+            <div class="font-mono text-xs text-outline">Free agents → Master agent</div>
+        </header>
+
+        <!-- Input -->
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <h2 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Your Prompt</h2>
+            <textarea id="prompt-input" rows="4" 
+                class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none"
+                placeholder="Describe what you need the master agent to do..."></textarea>
+            <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-compression" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Compression</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-context" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Context Check</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="use-structure" checked class="w-4 h-4 accent-accent-lavender"/>
+                        <span class="font-mono text-sm text-outline">Structure</span>
+                    </label>
+                </div>
+                <button id="run-pipeline" class="px-6 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm uppercase tracking-wider hover:bg-accent-lavender/30 transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
+                    Run Pipeline
+                </button>
+            </div>
+        </div>
+
+        <!-- Pipeline Stages -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6" id="stages-container">
+            <!-- Compression Stage -->
+            <div class="glass-panel rounded-xl p-4 pipeline-stage" id="stage-compression">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-sky text-xl">compress</span>
+                    <span class="font-mono text-sm text-accent-sky uppercase">1. Compression</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-compression" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+
+            <!-- Context Check Stage -->
+            <div class="glass-panel rounded-xl p-4 pipeline-stage" id="stage-context">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-periwinkle text-xl">search</span>
+                    <span class="font-mono text-sm text-accent-periwinkle uppercase">2. Context Check</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-context" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+
+            <!-- Structure Stage -->
+            <div class="glass-panel rounded-xl p-4 pipeline-stage" id="stage-structure">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-accent-lavender text-xl">account_tree</span>
+                    <span class="font-mono text-sm text-accent-lavender uppercase">3. Structure</span>
+                </div>
+                <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
+                <pre id="output-structure" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+            </div>
+        </div>
+
+        <!-- Master Output -->
+        <div class="glass-panel rounded-xl p-6" id="master-section">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lime text-2xl">smart_toy</span>
+                    <h2 class="font-mono text-lg text-accent-lime uppercase">Master Agent Input</h2>
+                </div>
+                <button id="copy-master" class="px-4 py-2 rounded-lg border border-accent-lime/30 text-accent-lime font-mono text-sm hover:bg-accent-lime/10 transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">content_copy</span>
+                    Copy
+                </button>
+            </div>
+            <pre id="master-output" class="font-mono text-sm text-on-surface whitespace-pre-wrap"></pre>
+        </div>
+
+        <!-- Example Presets -->
+        <div class="glass-panel rounded-xl p-6 mt-6">
+            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Try These Pipeline Examples</h3>
+            <div class="flex flex-wrap gap-3">
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-xs hover:bg-surface-raised transition-all" data-prompt="I need you to help me build a Python function that can calculate the sum of all the numbers in a list. Please make sure it handles errors properly and can work with empty lists too. Thanks!">
+                    Python function task
+                </button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-xs hover:bg-surface-raised transition-all" data-prompt="Can you please help me with creating a website? I want it to look professional and modern. It should have a header, some content area, and a footer. Please use HTML and CSS. Thank you so much for your help!">
+                    Website request
+                </button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-sky font-mono text-xs hover:bg-surface-raised transition-all" data-prompt="For the purpose of data analysis, I would like to request that you assist me in creating a function that can process some data. In order to achieve this goal, the function should be able to read from a CSV file and then perform some calculations on the data. Please let me know if you need any additional information.">
+                    Data processing (verbose)
+                </button>
+                <button class="example-btn px-4 py-2 rounded-lg bg-surface-high text-accent-lime font-mono text-xs hover:bg-surface-raised transition-all" data-prompt="For data analysis: create a function that reads from CSV & calculates.">
+                    Data processing (direct)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Compression agent
+        const PHRASE_REMAPS = {
+            "for the purpose of": ": ",
+            "i would like to": "",
+            "i want you to": "",
+            "i need you to": "",
+            "i need to": "",
+            "i want to": "",
+            "could you please": "please",
+            "in order to": "",
+            "in order to achieve this goal": "",
+            "to achieve this goal": "",
+            "for data analysis": "data analysis:",
+            "for data processing": "data processing:",
+            "for the analysis of": ": ",
+            "for the processing of": ": ",
+            "assist me in creating": "create",
+            "assist me": "",
+            "request that you": "",
+            "that can": "to",
+            "should be able to": "to",
+            "let me know if you need any additional information": "",
+            "please let me know if you need any additional information": "",
+            "tell me if you need any additional information": "",
+            "let me know if you need anything else": "",
+            "would like to request that you assist": "",
+            "i would like to request": "",
+            "would like to": "want to",
+        };
+
+        const IMPERATIVE_PATTERNS = [
+            { pattern: /^(hi|hello|hey)\s*,?\s*/i, replacement: "" },
+            { pattern: /\bplease\s+(create|build|make|write|implement|add|fix|update|calculate|process|read|calculate)\b/i, replacement: "$1" },
+            { pattern: /^(want|need)\s+(me\s+)?to\s+/i, replacement: "" },
+            { pattern: /^(create|build|make|write|implement|add|fix|update|calculate|process|read)\s+(a\s+)?function\b/i, replacement: "create function" },
+            { pattern: /create\s+(a\s+)?function\s+that\s+(can\s+)?(\w+)/i, replacement: "create function to $3" },
+            { pattern: /\s+then\s+(perform|calculate|do)\s+/i, replacement: " & " },
+            { pattern: /\s+and\s+then\s+/i, replacement: " & " },
+            { pattern: /\s+and\s+(also\s+)?/i, replacement: " & " },
+        ];
+
+        const COMPACT_PATTERNS = [
+            { pattern: /\bplease\b/gi, replacement: "" },
+            { pattern: /\bthank you\b/gi, replacement: "" },
+            { pattern: /\bthanks\b/gi, replacement: "" },
+            { pattern: /\bsorry\b/gi, replacement: "" },
+            { pattern: /\bactually\b/gi, replacement: "" },
+            { pattern: /\bbasically\b/gi, replacement: "" },
+            { pattern: /\bjust\b/gi, replacement: "" },
+            { pattern: /\bmaybe\b/gi, replacement: "" },
+            { pattern: /\breally\b/gi, replacement: "" },
+            { pattern: /\bvery\b/gi, replacement: "" },
+            { pattern: /\bcan you\b/gi, replacement: "can" },
+            { pattern: /\betc\b/gi, replacement: "..." },
+            { pattern: /\band so on\b/gi, replacement: "..." },
+            { pattern: /\band stuff\b/gi, replacement: "" },
+        ];
+
+        function compressionAgent(input) {
+            if (!input) return '';
+            
+            let text = input.trim();
+            
+            // Remove leading "I would like to"
+            text = text.replace(/I would like to\s+/gi, '');
+            
+            // Remove "for the purpose of X" -> "X:"
+            text = text.replace(/For the purpose of\s+/gi, '');
+            text = text.replace(/for the purpose of\s+/gi, '');
+            
+            // Remove "assist me in"
+            text = text.replace(/assist me in\s+/gi, '');
+            text = text.replace(/assist me\s+/gi, '');
+            
+            // Remove "that you"
+            text = text.replace(/that you\s+/gi, ' ');
+            
+            // Fix "I would like to you" -> just "you"
+            text = text.replace(/I would like to\s+you\s+/gi, '');
+            
+            // Remove "in order to"
+            text = text.replace(/in order to\s+/gi, '');
+            
+            // Remove "to achieve this goal"
+            text = text.replace(/to achieve this goal\s*,?\s*/gi, '');
+            
+            // Handle "creating a function" -> "create function"
+            text = text.replace(/creating a function/gi, 'create function');
+            
+            // "create a function" -> "create function"
+            text = text.replace(/create a function/gi, 'create function');
+            text = text.replace(/create function/gi, 'create function');
+            
+            // Remove "that can"
+            text = text.replace(/that can\s+/gi, 'to ');
+            
+            // Remove "should be able to"
+            text = text.replace(/should be able to\s+/gi, 'to ');
+            
+            // Remove trailing filler
+            text = text.replace(/\s+Please let me know if you need any additional information.*$/gi, '');
+            text = text.replace(/\s+Tell me if you need any additional information.*$/gi, '');
+            text = text.replace(/\s+Let me know if you need anything else.*$/gi, '');
+            text = text.replace(/Please\s*$/gi, '');
+            
+            // Remove "and then"
+            text = text.replace(/\s+and then\s+/gi, ' ');
+            text = text.replace(/\s+then\s+/gi, ' ');
+            
+            // Clean up punctuation
+            text = text.replace(/\s+/g, ' ');
+            text = text.replace(/,\s*/g, ', ');
+            text = text.replace(/:\s+/g, ': ');
+            
+            // Fix "data: analysis" -> "data analysis:" if colons wrong
+            text = text.replace(/^data\s*:\s*analysis/gi, 'data analysis');
+            
+            // Remove leading/trailing punctuation
+            text = text.replace(/^[\s,.:;]+/, '');
+            text = text.replace(/[\s,.:;]+$/, '');
+            
+            return text.trim();
+        }
+
+        // Context check agent
+        function contextAgent(input) {
+            const issues = [];
+            const words = input.toLowerCase().split(/\s+/);
+            
+            // Check for ambiguity
+            if (words.includes('something') || words.includes('stuff') || words.includes('things')) {
+                issues.push("VAGUE: contains 'something/stuff/things' - be specific");
+            }
+            
+            // Check for missing context
+            if (!input.includes('file') && !input.includes('function') && !input.includes('data') && 
+                !input.includes('code') && !input.includes('format')) {
+                issues.push("CONTEXT: No clear deliverable type specified");
+            }
+            
+            // Check for assumptions
+            if (input.includes('it should') && !input.includes('because')) {
+                issues.push("ASSUMPTION: 'it should' without explanation - clarify why");
+            }
+            
+            // Check length
+            if (input.length > 500 && input.split('.').length < 3) {
+                issues.push("COMPLEX: Long prompt without short sentences - break it up");
+            }
+            
+            if (issues.length === 0) {
+                return "CONTEXT OK: Prompt has clear context and specific request";
+            }
+            return "ISSUES FOUND:\n" + issues.join('\n');
+        }
+
+        // Structure agent
+        function structureAgent(input) {
+            const lines = input.split('\n').filter(l => l.trim());
+            const sections = [];
+            let currentSection = null;
+            
+            // Try to identify structure
+            const actionWords = ['create', 'build', 'make', 'write', 'implement', 'add', 'fix', 'update', 'calculate', 'process'];
+            const constraintWords = ['must', 'should', 'need', 'require', 'handle', 'support'];
+            
+            let action = '';
+            let constraints = [];
+            let context = '';
+            
+            for (const line of lines) {
+                const lower = line.toLowerCase();
+                if (actionWords.some(w => lower.includes(w))) {
+                    action = line;
+                } else if (constraintWords.some(w => lower.includes(w))) {
+                    constraints.push(line);
+                } else if (line.length > 10) {
+                    context = line;
+                }
+            }
+            
+            let structured = "TASK:\n" + (action || input);
+            if (constraints.length > 0) {
+                structured += "\n\nCONSTRAINTS:\n" + constraints.join('\n');
+            }
+            if (context && context !== action) {
+                structured += "\n\nCONTEXT:\n" + context;
+            }
+            
+            return structured || input;
+        }
+
+        // Run pipeline
+        async function runPipeline() {
+            const input = document.getElementById('prompt-input').value.trim();
+            if (!input) return;
+
+            const useCompression = document.getElementById('use-compression').checked;
+            const useContext = document.getElementById('use-context').checked;
+            const useStructure = document.getElementById('use-structure').checked;
+
+            // Reset stages
+            document.querySelectorAll('.pipeline-stage').forEach(s => {
+                s.classList.remove('stage-complete', 'stage-running');
+                s.querySelector('.status').textContent = 'Waiting...';
+                s.querySelector('pre').textContent = '';
+            });
+
+            let result = input;
+
+            // Stage 1: Compression
+            if (useCompression) {
+                const stage = document.getElementById('stage-compression');
+                stage.classList.add('stage-running');
+                stage.querySelector('.status').textContent = 'Processing...';
+                await new Promise(r => setTimeout(r, 300));
+                
+                result = compressionAgent(result);
+                
+                stage.classList.remove('stage-running');
+                stage.classList.add('stage-complete');
+                stage.querySelector('.status').textContent = 'Complete ✓';
+                stage.querySelector('pre').textContent = result;
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Stage 2: Context
+            if (useContext) {
+                const stage = document.getElementById('stage-context');
+                stage.classList.add('stage-running');
+                stage.querySelector('.status').textContent = 'Processing...';
+                await new Promise(r => setTimeout(r, 300));
+                
+                const contextResult = contextAgent(result);
+                
+                stage.classList.remove('stage-running');
+                stage.classList.add('stage-complete');
+                stage.querySelector('.status').textContent = 'Complete ✓';
+                stage.querySelector('pre').textContent = contextResult;
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Stage 3: Structure
+            if (useStructure) {
+                const stage = document.getElementById('stage-structure');
+                stage.classList.add('stage-running');
+                stage.querySelector('.status').textContent = 'Processing...';
+                await new Promise(r => setTimeout(r, 300));
+                
+                result = structureAgent(result);
+                
+                stage.classList.remove('stage-running');
+                stage.classList.add('stage-complete');
+                stage.querySelector('.status').textContent = 'Complete ✓';
+                stage.querySelector('pre').textContent = result;
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Master output
+            document.getElementById('master-output').textContent = result;
+        }
+
+        // Event listeners
+        document.getElementById('run-pipeline').addEventListener('click', runPipeline);
+
+        document.getElementById('copy-master').addEventListener('click', () => {
+            const text = document.getElementById('master-output').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copy-master');
+                btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span> Copy';
+                }, 1500);
+            });
+        });
+
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('prompt-input').value = btn.dataset.prompt;
+            });
+        });
+    </script>
+</body>
+</html>

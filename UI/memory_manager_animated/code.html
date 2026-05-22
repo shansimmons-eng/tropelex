@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#32394c",
+                        "on-secondary": "#003546",
+                        "primary-fixed-dim": "#d1bcff",
+                        "accent-periwinkle": "#8098fa",
+                        "surface-tint": "#d1bcff",
+                        "error-container": "#93000a",
+                        "primary": "#d1bcff",
+                        "secondary-container": "#007697",
+                        "surface-variant": "#2e3447",
+                        "surface-container": "#181f31",
+                        "on-primary": "#3c058d",
+                        "accent-sky": "#80d5fa",
+                        "surface": "#0c1324",
+                        "tertiary-container": "#4ca93a",
+                        "on-tertiary-container": "#023700",
+                        "accent-lavender": "#a580fa",
+                        "primary-container": "#a580fa",
+                        "status-warning": "#a580fa",
+                        "tertiary-fixed-dim": "#7cdc67",
+                        "on-secondary-fixed-variant": "#004d64",
+                        "surface-container-lowest": "#070e1f",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#293042",
+                        "on-secondary-container": "#def3ff",
+                        "on-tertiary-fixed": "#012200",
+                        "status-success": "#98fa80",
+                        "on-tertiary-fixed-variant": "#045300",
+                        "surface-container-high": "#232a3c",
+                        "terminal-bg": "#010515",
+                        "secondary": "#7cd1f6",
+                        "status-info": "#80d5fa",
+                        "on-primary-fixed-variant": "#532ba4",
+                        "on-error": "#690005",
+                        "primary-fixed": "#eaddff",
+                        "background": "#0c1324",
+                        "on-primary-container": "#3a008b",
+                        "on-secondary-fixed": "#001f2a",
+                        "secondary-fixed-dim": "#7cd1f6",
+                        "glass-border": "rgba(165, 128, 250, 0.2)",
+                        "on-surface": "#dce2fa",
+                        "on-primary-fixed": "#24005b",
+                        "secondary-fixed": "#bde9ff",
+                        "inverse-surface": "#dce2fa",
+                        "accent-lime": "#98fa80",
+                        "surface-dim": "#0c1324",
+                        "on-tertiary": "#023a00",
+                        "tertiary": "#7cdc67",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#98fa80",
+                        "on-background": "#dce2fa",
+                        "on-surface-variant": "#cbc3d5",
+                        "surface-container-low": "#141b2d",
+                        "surface-container-highest": "#2e3447",
+                        "outline-variant": "#494452",
+                        "outline": "#958e9e",
+                        "inverse-primary": "#6c46bd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "32px",
+                        "gutter": "16px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "code-md": ["JetBrains Mono"],
+                        "code-sm": ["JetBrains Mono"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "code-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.terminal-bg');
+            color: theme('colors.on-surface');
+        }
+        
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.terminal-bg');
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.accent-periwinkle');
+            border-radius: theme('borderRadius.full');
+        }
+        
+        .glow-active {
+            box-shadow: 0 0 8px theme('colors.accent-lavender');
+        }
+        
+        .glow-sky {
+            box-shadow: 0 0 8px theme('colors.accent-sky');
+        }
+
+        /* Motion effects */
+        @keyframes entranceSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulseDot {
+            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(152, 250, 128, 0.7); }
+            50% { transform: scale(1.15); opacity: 0.8; box-shadow: 0 0 0 6px rgba(152, 250, 128, 0); }
+            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(152, 250, 128, 0); }
+        }
+
+        @keyframes shimmerBorder {
+            0% { border-color: theme('colors.glass-border'); }
+            50% { border-color: theme('colors.accent-lavender'); }
+            100% { border-color: theme('colors.glass-border'); }
+        }
+
+        .animate-entrance {
+            animation: entranceSlideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .status-dot-pulse {
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        .btn-shimmer:hover {
+            animation: shimmerBorder 2s infinite linear;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-entrance, .status-dot-pulse, .btn-shimmer:hover {
+                animation: none !important;
+                transition: none !important;
+            }
+            .animate-pulse {
+                animation: none !important;
+            }
+        }
+
+        /* Stagger delays */
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .stagger-5 { animation-delay: 0.5s; }
+        .stagger-6 { animation-delay: 0.6s; }
+        .stagger-7 { animation-delay: 0.7s; }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md bg-terminal-bg selection:bg-accent-lavender selection:text-terminal-bg">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 docked full-width bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-glass-border flex justify-between items-center w-full px-margin-mobile h-14 z-50 animate-entrance">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-accent-lavender dark:text-accent-lavender" style="font-variation-settings: 'FILL' 0;">terminal</span>
+<h1 class="font-code-md text-code-md font-bold text-accent-lavender dark:text-accent-lavender uppercase tracking-tight">tropelex / core / context_alpha</h1>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" href="#">Tropebook</a>
+<a class="font-label-caps text-label-caps text-accent-sky font-bold hover:text-accent-lavender transition-colors scale-95 duration-75" href="#">Memory</a>
+<a class="font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" href="#">Patterns</a>
+<a class="font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" href="#">Settings</a>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-accent-lavender dark:text-accent-lavender" style="font-variation-settings: 'FILL' 0;">sensors</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[calc(56px+32px)] pb-[calc(64px+32px)] md:pb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Project Header & Context Panel (Left Col Desktop) -->
+<div class="md:col-span-4 flex flex-col gap-unit h-full">
+<div class="bg-[#0c1324] border border-glass-border p-4 flex flex-col gap-2 rounded-none relative overflow-hidden group animate-entrance stagger-1">
+<div class="absolute inset-0 bg-gradient-to-br from-accent-lavender/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<div class="flex justify-between items-start">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Project Alpha</h2>
+<span class="flex items-center gap-1 font-code-sm text-code-sm text-accent-lime">
+<span class="w-2 h-2 rounded-sm bg-accent-lime status-dot-pulse"></span>
+                        Active
+                    </span>
+</div>
+<p class="font-code-sm text-code-sm text-outline-variant uppercase">Last Synced: 2024-05-20T14:32:01Z</p>
+<div class="mt-4 pt-4 border-t border-glass-border">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                        High-performance AI memory management interface. Currently tracking contextual decisions and technical architecture choices for the v2.0 refactor.
+                    </p>
+</div>
+</div>
+<!-- Tech Stack Chip Cloud -->
+<div class="bg-[#0c1324] border border-glass-border p-4 rounded-none mt-4 animate-entrance stagger-2">
+<h3 class="font-label-caps text-label-caps text-accent-sky mb-4 uppercase">Tech Stack Topology</h3>
+<div class="flex flex-wrap gap-2">
+<span class="font-label-caps text-label-caps bg-accent-lavender/15 text-accent-lavender px-2 py-1 border border-accent-lavender/30 hover:scale-105 hover:bg-accent-lavender/25 hover:shadow-[0_0_10px_rgba(165,128,250,0.3)] transition-all cursor-default">React</span>
+<span class="font-label-caps text-label-caps bg-accent-sky/15 text-accent-sky px-2 py-1 border border-accent-sky/30 hover:scale-105 hover:bg-accent-sky/25 hover:shadow-[0_0_10px_rgba(128,213,250,0.3)] transition-all cursor-default">Tailwind CSS</span>
+<span class="font-label-caps text-label-caps bg-status-success/15 text-status-success px-2 py-1 border border-status-success/30 hover:scale-105 hover:bg-status-success/25 hover:shadow-[0_0_10px_rgba(152,250,128,0.3)] transition-all cursor-default">Node.js</span>
+<span class="font-label-caps text-label-caps bg-accent-periwinkle/15 text-accent-periwinkle px-2 py-1 border border-accent-periwinkle/30 hover:scale-105 hover:bg-accent-periwinkle/25 hover:shadow-[0_0_10px_rgba(128,152,250,0.3)] transition-all cursor-default">PostgreSQL</span>
+<span class="font-label-caps text-label-caps bg-accent-lavender/15 text-accent-lavender px-2 py-1 border border-accent-lavender/30 hover:scale-105 hover:bg-accent-lavender/25 hover:shadow-[0_0_10px_rgba(165,128,250,0.3)] transition-all cursor-default">Redis</span>
+<span class="font-label-caps text-label-caps bg-accent-sky/15 text-accent-sky px-2 py-1 border border-accent-sky/30 hover:scale-105 hover:bg-accent-sky/25 hover:shadow-[0_0_10px_rgba(128,213,250,0.3)] transition-all cursor-default">Docker</span>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="flex gap-2 mt-4 animate-entrance stagger-3">
+<button class="flex-1 bg-transparent border border-accent-lavender text-accent-lavender font-label-caps text-label-caps py-2 px-4 hover:bg-accent-lavender/10 active:scale-95 transition-all duration-200 flex justify-center items-center gap-2 uppercase btn-shimmer group">
+<span class="material-symbols-outlined text-[16px] group-hover:rotate-90 transition-transform duration-300">add</span>
+                    New Entry
+                </button>
+</div>
+</div>
+<!-- Decisions Log (Right Col Desktop) -->
+<div class="md:col-span-8 flex flex-col gap-unit mt-6 md:mt-0">
+<h3 class="font-label-caps text-label-caps text-accent-sky mb-2 uppercase px-2 animate-entrance stagger-4">Decision Context Log</h3>
+<div class="flex flex-col gap-[1px] bg-glass-border">
+<!-- Active Memory Item -->
+<div class="bg-surface border border-accent-lavender p-4 glow-active relative transition-all duration-300 hover:bg-surface-bright/20 animate-entrance stagger-4">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-lavender shadow-[0_0_12px_#a580fa]"></div>
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-accent-lavender text-[16px]">terminal</span>
+<span class="font-code-sm text-code-sm text-accent-lavender">SYS_ARCH_042</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline">2024-05-19 10:15Z</span>
+</div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">Migrate to Glassmorphism UI</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                        Decision to adopt a modern-terminal aesthetic with functional glassmorphism to enhance the perception of depth and technical precision. Replaces traditional material elevation shadows.
+                    </p>
+</div>
+<!-- Past Memory Item 1 -->
+<div class="bg-[#0c1324] hover:bg-surface-variant/30 transition-all duration-300 p-4 relative group border-l-2 border-transparent hover:border-accent-sky animate-entrance stagger-5">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[16px] group-hover:text-accent-sky transition-colors">description</span>
+<span class="font-code-sm text-code-sm text-outline group-hover:text-accent-sky transition-colors">DATA_MODEL_011</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline-variant">2024-05-15 14:00Z</span>
+</div>
+<h4 class="font-body-lg text-body-lg text-on-surface mb-2 transition-colors group-hover:text-white">Denormalize User Preferences</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                        To improve read performance on the main dashboard, user configuration settings are now embedded directly within the active session object rather than requiring a separate join.
+                    </p>
+</div>
+<!-- Past Memory Item 2 -->
+<div class="bg-[#0c1324] hover:bg-surface-variant/30 transition-all duration-300 p-4 relative group border-l-2 border-transparent hover:border-accent-sky animate-entrance stagger-6">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[16px] group-hover:text-accent-sky transition-colors">public</span>
+<span class="font-code-sm text-code-sm text-outline group-hover:text-accent-sky transition-colors">API_SEC_009</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline-variant">2024-05-10 09:30Z</span>
+</div>
+<h4 class="font-body-lg text-body-lg text-on-surface mb-2 transition-colors group-hover:text-white">Implement Rate Limiting Middleware</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                        Added Redis-based sliding window rate limiting to all public-facing graph endpoints to mitigate potential scraping abuse observed during the beta phase.
+                    </p>
+</div>
+<!-- Past Memory Item 3 -->
+<div class="bg-[#0c1324] hover:bg-surface-variant/30 transition-all duration-300 p-4 relative group border-l-2 border-transparent hover:border-accent-sky opacity-80 animate-entrance stagger-7">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[16px] group-hover:text-accent-sky transition-colors">terminal</span>
+<span class="font-code-sm text-code-sm text-outline group-hover:text-accent-sky transition-colors">SYS_ARCH_001</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline-variant">2024-04-01 08:00Z</span>
+</div>
+<h4 class="font-body-lg text-body-lg text-on-surface mb-2 transition-colors group-hover:text-white">Initial Repository Setup</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                        Project initialized. Base layout established using a 4px grid system and dark-mode default theme.
+                    </p>
+</div>
+</div>
+<button class="w-full mt-4 py-3 border border-glass-border text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-variant/30 hover:text-accent-sky active:scale-[0.98] transition-all uppercase tracking-widest btn-shimmer animate-entrance stagger-7">
+                Load Historical Context
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-16 bg-surface-container-lowest/90 dark:bg-surface-container-lowest/90 backdrop-blur-md border-t border-glass-border">
+<a class="flex flex-col items-center justify-center text-outline pt-2 pb-1 hover:bg-surface-variant/30 transition-all w-full h-full" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">menu_book</span>
+<span class="font-label-caps text-[10px] tracking-widest uppercase">Tropebook</span>
+</a>
+<a class="flex flex-col items-center justify-center text-accent-lavender border-t-2 border-accent-lavender pt-2 pb-1 shadow-[0_0_8px_#a580fa] duration-200 hover:bg-surface-variant/30 transition-all w-full h-full" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">memory</span>
+<span class="font-label-caps text-[10px] tracking-widest uppercase font-bold">Memory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline pt-2 pb-1 hover:bg-surface-variant/30 transition-all w-full h-full" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">hub</span>
+<span class="font-label-caps text-[10px] tracking-widest uppercase">Patterns</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline pt-2 pb-1 hover:bg-surface-variant/30 transition-all w-full h-full" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">settings</span>
+<span class="font-label-caps text-[10px] tracking-widest uppercase">Settings</span>
+</a>
+</nav>
+</body></html>
