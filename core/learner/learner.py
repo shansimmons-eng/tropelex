@@ -3,11 +3,9 @@ Tropelex Learner
 Tracks patterns over time and evolves project memory.
 """
 
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional
-from collections import defaultdict
-import json
 import re
+from datetime import datetime, timezone
+from typing import Any
 
 
 class PatternLearner:
@@ -68,7 +66,7 @@ class PatternLearner:
 
     def analyze_session(
         self, project_name: str, session_summary: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze a session summary and extract patterns.
         Returns pattern updates to apply to memory.
@@ -99,7 +97,7 @@ class PatternLearner:
         return updates
 
     def update_project_from_session(
-        self, project_name: str, session_data: Dict[str, Any]
+        self, project_name: str, session_data: dict[str, Any]
     ) -> None:
         """Update project memory based on session analysis."""
         project_memory = self.memory.get_project_memory(project_name)
@@ -138,7 +136,7 @@ class PatternLearner:
         project_memory["last_updated"] = datetime.now(timezone.utc).isoformat()
         self.memory.save_project_memory(project_name, project_memory)
 
-    def _increment_pattern(self, project_memory: Dict, pattern_key: str) -> None:
+    def _increment_pattern(self, project_memory: dict, pattern_key: str) -> None:
         """Increment a pattern counter."""
         patterns = project_memory["patterns"]
         pattern_names = [p["name"] for p in patterns]
@@ -158,7 +156,7 @@ class PatternLearner:
                 }
             )
 
-    def get_common_patterns(self, project_name: str, limit: int = 5) -> List[Dict]:
+    def get_common_patterns(self, project_name: str, limit: int = 5) -> list[dict]:
         """Get most common patterns for a project."""
         project_memory = self.memory.get_project_memory(project_name)
         patterns = project_memory.get("patterns", [])
@@ -167,7 +165,7 @@ class PatternLearner:
         )
         return sorted_patterns[:limit]
 
-    def suggest_next_steps(self, project_name: str) -> List[str]:
+    def suggest_next_steps(self, project_name: str) -> list[str]:
         """Analyze patterns and suggest likely next steps."""
         common = self.get_common_patterns(project_name, 3)
         suggestions = []
@@ -191,7 +189,7 @@ class PatternLearner:
 
         return suggestions
 
-    def detect_decisions(self, text: str) -> List[Dict[str, str]]:
+    def detect_decisions(self, text: str) -> list[dict[str, str]]:
         """
         Analyze text to detect potential decisions that should be recorded.
         Returns list of detected decisions with context.
@@ -237,7 +235,7 @@ class PatternLearner:
 
     def get_similar_projects(
         self, project_name: str, limit: int = 3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find projects with similar tech stacks or patterns.
         Returns list of similar projects with match reasons.

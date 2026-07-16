@@ -1,0 +1,333 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+/* Design Tokens as CSS Variables */
+:root {
+  /* Surfaces */
+  --surface-bright: #32394c;
+  --surface-dim: #0c1324;
+  --surface: #0c1324;
+  --surface-container-lowest: #070e1f;
+  --surface-container-low: #141b2d;
+  --surface-container: #181f31;
+  --surface-container-high: #232a3c;
+  --surface-container-highest: #2e3447;
+  --surface-variant: #2e3447;
+
+  /* Text */
+  --on-surface: #dce2fa;
+  --on-surface-variant: #cbc3d5;
+  --inverse-surface: #dce2fa;
+  --inverse-on-surface: #293042;
+
+  /* Primary (Lavender) */
+  --primary: #d1bcff;
+  --on-primary: #3c058d;
+  --primary-container: #a580fa;
+  --on-primary-container: #3a008b;
+  --primary-fixed: #eaddff;
+  --primary-fixed-dim: #d1bcff;
+  --on-primary-fixed: #24005b;
+  --on-primary-fixed-variant: #532ba4;
+
+  /* Secondary (Sky) */
+  --secondary: #7cd1f6;
+  --on-secondary: #003546;
+  --secondary-container: #007697;
+  --on-secondary-container: #def3ff;
+  --secondary-fixed: #bde9ff;
+  --secondary-fixed-dim: #7cd1f6;
+  --on-secondary-fixed: #001f2a;
+  --on-secondary-fixed-variant: #004d64;
+
+  /* Tertiary (Lime) */
+  --tertiary: #7cdc67;
+  --on-tertiary: #023a00;
+  --tertiary-container: #4ca93a;
+  --on-tertiary-container: #023700;
+  --tertiary-fixed: #98fa80;
+  --tertiary-fixed-dim: #7cdc67;
+  --on-tertiary-fixed: #012200;
+  --on-tertiary-fixed-variant: #045300;
+
+  /* Accents */
+  --accent-lavender: #a580fa;
+  --accent-periwinkle: #8098fa;
+  --accent-sky: #80d5fa;
+  --accent-lime: #98fa80;
+
+  /* Terminal */
+  --terminal-bg: #010515;
+
+  /* Glass */
+  --glass-border: rgba(165, 128, 250, 0.2);
+
+  /* Status */
+  --status-success: #98fa80;
+  --status-info: #80d5fa;
+  --status-warning: #a580fa;
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+
+  /* Outline */
+  --outline: #958e9e;
+  --outline-variant: #494452;
+
+  /* Spacing */
+  --spacing-unit: 4px;
+  --spacing-gutter: 16px;
+  --spacing-margin-desktop: 32px;
+  --spacing-margin-mobile: 16px;
+  --spacing-container-max: 1440px;
+
+  /* Border Radius */
+  --radius-default: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+}
+
+/* Base Styles */
+body {
+  background-color: var(--terminal-bg);
+  color: var(--on-surface);
+  min-height: 100dvh;
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+}
+
+/* Ambient Background Animation */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 50% 50%, rgba(165, 128, 250, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 20% 30%, rgba(124, 209, 246, 0.02) 0%, transparent 30%);
+  z-index: -1;
+  animation: bgPulse 30s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Glass Panel Component */
+.glass-panel {
+  background-color: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(165, 128, 250, 0.4);
+  background-color: rgba(22, 33, 49, 0.9);
+}
+
+/* Glow Effects */
+.glow-active {
+  box-shadow: 0 0 8px var(--accent-lavender);
+}
+
+.glow-success {
+  box-shadow: 0 0 8px var(--accent-lime);
+}
+
+.glow-info {
+  box-shadow: 0 0 8px var(--accent-sky);
+}
+
+/* Status Dot Pulse */
+.status-dot-pulse {
+  animation: statusPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes statusPulse {
+  0% { 
+    transform: scale(1); 
+    opacity: 1; 
+    box-shadow: 0 0 0 0 rgba(152, 250, 128, 0.7); 
+  }
+  70% { 
+    transform: scale(1.1); 
+    opacity: 0.8; 
+    box-shadow: 0 0 0 6px rgba(152, 250, 128, 0); 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
+    box-shadow: 0 0 0 0 rgba(152, 250, 128, 0); 
+  }
+}
+
+/* Entrance Animations */
+@keyframes slideUpFade {
+  from { 
+    opacity: 0; 
+    transform: translateY(12px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.animate-entrance {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes breathe {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 0.6; 
+    transform: scale(1.2); 
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Waveform Animation */
+@keyframes waveform {
+  0%, 100% { 
+    transform: scaleY(0.8); 
+  }
+  50% { 
+    transform: scaleY(1.2); 
+  }
+}
+
+.animate-waveform {
+  animation: waveform 2s ease-in-out infinite;
+}
+
+/* Background Pulse */
+@keyframes bgPulse {
+  0%, 100% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+}
+
+/* Shimmer Button Effect */
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: none;
+}
+
+.shimmer-btn:hover::after {
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Interactive Scale */
+.interactive-scale {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.interactive-scale:active {
+  transform: scale(0.96);
+}
+
+/* Search Bar Focus */
+.search-bar-focus:focus-within {
+  box-shadow: 0 0 12px rgba(165, 128, 250, 0.3);
+  border-color: rgba(165, 128, 250, 0.6);
+}
+
+/* Card Tap Effect */
+.card-tap-effect {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.card-tap-effect:active {
+  border-color: var(--accent-lavender);
+  background-color: rgba(165, 128, 250, 0.05);
+  box-shadow: 0 0 15px rgba(165, 128, 250, 0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--terminal-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-periwinkle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-lavender);
+}
+
+/* Bottom Nav Safe Area */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Font Families */
+.font-headline-xl { font-family: 'Hanken Grotesk', sans-serif; font-size: 40px; line-height: 48px; letter-spacing: -0.02em; font-weight: 700; }
+.font-headline-lg { font-family: 'Hanken Grotesk', sans-serif; font-size: 32px; line-height: 40px; letter-spacing: -0.01em; font-weight: 600; }
+.font-headline-md { font-family: 'Hanken Grotesk', sans-serif; font-size: 24px; line-height: 32px; font-weight: 600; }
+.font-body-lg { font-family: 'Hanken Grotesk', sans-serif; font-size: 18px; line-height: 28px; font-weight: 400; }
+.font-body-md { font-family: 'Hanken Grotesk', sans-serif; font-size: 16px; line-height: 24px; font-weight: 400; }
+.font-body-sm { font-family: 'Hanken Grotesk', sans-serif; font-size: 14px; line-height: 20px; font-weight: 400; }
+.font-code-md { font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 22px; font-weight: 400; }
+.font-code-sm { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 18px; font-weight: 400; }
+.font-label-caps { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 16px; letter-spacing: 0.1em; font-weight: 700; }
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-entrance,
+  .status-dot-pulse,
+  .animate-breathe,
+  .animate-waveform,
+  .animate-slide-up-fade,
+  .interactive-scale,
+  .search-bar-focus {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+  .font-headline-xl { font-size: 32px; }
+  .font-headline-lg { font-size: 28px; }
+}

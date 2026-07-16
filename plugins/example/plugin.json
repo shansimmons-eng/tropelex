@@ -1,0 +1,6 @@
+{
+  "name": "example",
+  "version": "0.1.0",
+  "hooks": ["on_session_start", "on_decision_recorded"],
+  "entry_point": "plugin:register"
+}

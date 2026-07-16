@@ -5,20 +5,34 @@
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Tropelex                             │
-├─────────────────────────────────────────────────────────────┤
-│  Adapters          Core                    Storage           │
-│  ┌─────────┐     ┌──────────┐           ┌──────────────┐     │
-│  │ OpenCode│     │ Memory   │           │  memory/     │     │
-│  │ Tropebook│    │ Manager  │           │  *.json       │     │
-│  └─────────┘     │          │           └──────────────┘     │
-│                  │ Context  │           ┌──────────────┐     │
-│                  │ Compress │           │  Tropebook/  │     │
-│                  │          │           │  citations   │     │
-│                  │ Learner  │           │  graph       │     │
-│                  └──────────┘           └──────────────┘     │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                            Tropelex                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│  Adapters          Core                         Storage              │
+│  ┌─────────┐     ┌──────────┐                ┌──────────────┐       │
+│  │ OpenCode│     │ Memory   │                │  memory/     │       │
+│  │ Tropebook│    │ Manager  │                │  *.json       │       │
+│  └─────────┘     │          │                └──────────────┘       │
+│                  │ Context  │                ┌──────────────┐       │
+│                  │ Compress │                │  Tropebook/  │       │
+│                  │          │                │  citations   │       │
+│                  │ Learner  │                │  graph       │       │
+│                  ├──────────┤                └──────────────┘       │
+│                  │ Git      │                ┌──────────────┐       │
+│                  │ Decision │                │  replays/    │       │
+│                  │ ADR      │                │  chains/     │       │
+│                  │ Decay    │                │  skills/     │       │
+│                  │ RAG      │                │  genealogy/  │       │
+│                  │ Chains   │                └──────────────┘       │
+│                  │ Skills   │                                       │
+│                  ├──────────┤                                       │
+│                  │ Webhooks │  ← POST /api/webhooks/git             │
+│                  │ Sync     │  ← GET/POST /api/sync/*               │
+│                  │ Plugins  │  ← HookRegistry + manifest loader     │
+│                  │ Auth     │  ← JWT HS256 + RBAC middleware        │
+│                  │ Collab   │  ← WebSocket /ws/{room_id}            │
+│                  └──────────┘                                       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
@@ -72,7 +86,107 @@
 - `analyze_session(project, summary)` → Returns pattern updates
 - `suggest_next_steps(project)` → Suggests likely next work
 
-### 4. Tropebook (`core/tropebook/`)
+### 4. Git Integration (`core/git_integration.py`)
+
+**Purpose:** Auto-extract decisions, rationale, and tech stack changes from git history.
+
+**Key Methods:**
+- `get_recent_commits(repo_path, limit)` → Recent commits with metadata
+- `extract_deep_decisions(repo_path, commits)` → Deep analysis with diffs, rationale, dependency changes
+- `sync_repo_to_memory(repo_path, project, memory_manager)` → Sync git data to memory
+- `get_deep_repo_summary(repo_path)` → Work categories, structural changes, reverts
+- `detect_tech_stack_changes(repo_path, previous)` → Detect added/removed technologies
+
+**Analysis Features:**
+- Commit body parsing for rationale extraction
+- File classification (ui, backend, testing, devops, database, config)
+- Dependency file diff parsing (requirements.txt, package.json, pyproject.toml)
+- Revert chain detection
+- Structural change detection (new modules, migrations, tests)
+
+### 5. Decision Tree (`core/decision_tree.py`)
+
+**Purpose:** Builds a graph of decisions with relationships to track evolution and rationale.
+
+**Relationship Types:**
+- `supersedes` — A replaces/overrides B
+- `caused_by` — A happened because of B
+- `related_to` — A and B are thematically similar
+- `reverts` — A reverts B
+- `depends_on` — A requires B to be valid
+- `evolves` — A is a refinement of B
+
+**Key Methods:**
+- `DecisionTree.from_decisions(decisions)` → Auto-detects relationships via keyword overlap
+- `get_timeline()` → Sorted decisions with relationship info
+- `get_chains()` → Sequences where A caused B caused C
+- `get_ancestors(decision_id)` → Walk backwards through rationale chain
+- `get_descendants(decision_id)` → Walk forwards to see what followed
+
+### 6. Knowledge Decay (`core/knowledge_decay.py`)
+
+**Purpose:** Time-based reliability scoring. Decisions lose confidence over age, gain it from references.
+
+**Scoring Formula:**
+```
+score = (base_decay + reference_boost) * contradiction_penalty
+```
+- Base decay: exponential with configurable half-life (default 90 days)
+- Reference boost: logarithmic, caps at 2x (from re-references)
+- Contraction penalty: each contradiction halves confidence
+
+**Tiers:** high (≥0.8), medium (≥0.5), low (≥0.2), stale (<0.2)
+
+### 7. Living ADRs (`core/adr_generator.py`)
+
+**Purpose:** Auto-generates Architecture Decision Records from project memory.
+
+**Formats:**
+- **Nygard** — Michael Nygard's original format (Status/Context/Decision)
+- **MADR** — Markdown Any Decision Records (with metadata table)
+- **Tropelex** — Enhanced format with decision tree lineage, confidence scores
+
+### 8. Session Replay (`core/session_replay.py`)
+
+**Purpose:** Tracks structured diffs of memory changes per session.
+
+**Key Methods:**
+- `record_session()` → Saves before/after snapshots + structured diff
+- `get_sessions()` → List recent sessions
+- `rollback_session()` → Restore memory to before a session
+- `get_weekly_summary()` → What changed this week
+
+### 9. Memory RAG & Cross-Pollination (`core/rag.py`)
+
+**Purpose:** Semantic retrieval from memory + surface solutions from similar projects.
+
+**Key Classes:**
+- `MemoryRAG` → Retrieves relevant decisions, sessions, captures by keyword matching
+- `CrossPollinator` → Finds transferable knowledge from projects with overlapping tech stacks
+
+### 10. Research Chains (`core/research_chains.py`)
+
+**Purpose:** Multi-hop knowledge building — search → find gaps → search again → link → synthesize.
+
+**Key Methods:**
+- `ResearchChain(goal)` → Create a research investigation
+- `add_step(query, findings, gaps)` → Record a research step
+- `auto_research(project, goal)` → Automated multi-hop research
+
+### 11. Agent Skills & Prompt Genealogy (`core/agent_skills.py`)
+
+**Purpose:** Track agent proficiency and compression strategy effectiveness.
+
+**AgentSkillGraph:**
+- Records session outcomes per category (success/partial/failure)
+- Scores proficiency: expert (≥0.9), proficient (≥0.7), competent (≥0.5), learning (≥0.3), novice
+
+**PromptGenealogy:**
+- Records compression events with strategy and ratio
+- Tracks outcomes (good/rephrased/failed)
+- Ranks strategies by effectiveness
+
+### 12. Compression Dictionary (`core/compression/dictionary.py`)
 
 **Purpose:** Research knowledge base for storing links, summaries, and relationships.
 
@@ -117,7 +231,7 @@ FastAPI server with:
 - Vanilla JS frontend
 - Dark theme UI
 
-**Run:** `python -m core.tropebook.web.server` → `http://localhost:8765`
+**Run:** `python -m core.tropebook.web.server` → `http://localhost:8766`
 
 #### CLI (`cli.py`)
 ```bash
@@ -128,7 +242,7 @@ python -m core.tropebook.cli stats
 python -m core.tropebook.cli link url1 url2 relationship
 ```
 
-### 5. Compression Dictionary (`core/compression/dictionary.py`)
+### 12. Compression Dictionary (`core/compression/dictionary.py`)
 
 **Stop Words:** 100+ common words (the, a, and, or, etc.)
 
@@ -147,7 +261,7 @@ python -m core.tropebook.cli link url1 url2 relationship
 
 **Compact Patterns:** Regex-based filler word removal (just, actually, basically, etc.)
 
-### 6. Adapters (`adapters/`)
+### 13. Adapters (`adapters/`)
 
 #### OpenCode Adapter (`opencode.py`)
 Primary integration for OpenCode agent.
@@ -175,26 +289,31 @@ User/Agent Input
 └────────┬────────┘
          │
          ▼
-┌─────────────────────────────────────┐
-│         Core Components             │
-│  ┌──────────┐  ┌────────────────┐  │
-│  │ Memory   │  │ Context        │  │
-│  │ Manager  │  │ Compressor     │  │
-│  └────┬─────┘  └───────┬────────┘  │
-│       │                │            │
-│       ▼                ▼            │
-│  ┌──────────┐  ┌────────────────┐  │
-│  │ Learner  │  │ Compression    │  │
-│  │          │  │ Dictionary     │  │
-│  └──────────┘  └────────────────┘  │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Core Components                      │
+│  ┌──────────┐  ┌────────────────┐  ┌────────────────┐  │
+│  │ Memory   │  │ Context        │  │ Git            │  │
+│  │ Manager  │  │ Compressor     │  │ Integration    │  │
+│  └────┬─────┘  └───────┬────────┘  └───────┬────────┘  │
+│       │                │                    │           │
+│       ▼                ▼                    ▼           │
+│  ┌──────────┐  ┌────────────────┐  ┌────────────────┐  │
+│  │ Learner  │  │ Compression    │  │ Decision Tree  │  │
+│  │          │  │ Dictionary     │  │ ADR Generator  │  │
+│  └────┬─────┘  └────────────────┘  │ Knowledge Decay│  │
+│       │                            │ Session Replay │  │
+│       ▼                            │ RAG + CrossPol │  │
+│  ┌──────────┐                      │ Agent Skills   │  │
+│  │ Patterns │                      └────────────────┘  │
+│  └──────────┘                                          │
+└─────────────────────────────────────────────────────────┘
          │
          ▼
-┌─────────────────────────────────────┐
-│         Storage                     │
-│  memory/*.json                      │
-│  memory/tropebook/*.json            │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Storage                              │
+│  memory/*.json  │  tropebook/  │  replays/  │  chains/  │
+│  skills/  │  genealogy/  │  embeddings/                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ## Integration Patterns
@@ -236,28 +355,82 @@ Tropelex/
 │   │   └── dictionary.py
 │   ├── learner/             # Pattern tracking
 │   │   └── learner.py
+│   ├── git_integration.py   # Git-aware memory
+│   ├── decision_tree.py     # Decision graph
+│   ├── adr_generator.py     # Living ADRs
+│   ├── session_replay.py    # Session diffs + rollback
+│   ├── knowledge_decay.py   # Confidence scoring
+│   ├── research_chains.py   # Multi-hop research
+│   ├── rag.py               # Memory RAG + Cross-Pollination
+│   ├── agent_skills.py      # Agent skills + Prompt genealogy
+│   ├── embeddings.py        # Vector embeddings
+│   ├── research_pipeline.py # Auto-research pipeline
+│   ├── llm.py               # LLM backend abstraction
 │   └── tropebook/            # Research knowledge base
 │       ├── __init__.py
-│       ├── ropebook.py       # Core KB + graph
+│       ├── tropebook.py       # Core KB + graph
 │       ├── research.py       # Search + scraping
+│       ├── research_feeds.py # Scheduled feed monitoring
+│       ├── scheduler.py      # FeedScheduler (run/tick/search)
 │       ├── deep_research.py  # Import tools
 │       ├── cli.py            # CLI
-│       ├── web/              # Web interface
-│       │   ├── server.py
-│       │   ├── static/
-│       │   └── templates/
-│       └── adapters/
-│           └── tropebook_adapter.py
+│       └── web/              # Web interface
+│           ├── server.py     # FastAPI (80+ endpoints, rate limiting)
+│           ├── static/
+│           └── templates/
 ├── adapters/                 # Agent integrations
 │   ├── __init__.py
 │   └── opencode.py
-├── memory/                   # Persistent storage
+├── scripts/                  # CLI tools
+│   ├── init_project.py
+│   ├── git_sync.py
+│   └── feed_cli.py           # Feed management CLI
+├── core/
+│   ├── webhooks/              # Git webhook auto-sync (Phase 1)
+│   │   ├── signature.py       # HMAC-SHA256 verification
+│   │   ├── idempotency.py     # Duplicate event prevention
+│   │   └── router.py          # POST /api/webhooks/git
+│   ├── sync/                  # Cross-device export/import (Phase 1)
+│   │   ├── exporter.py        # Gzip-compressed memory export
+│   │   ├── importer.py        # Import with schema validation
+│   │   └── router.py          # GET/POST /api/sync/*
+│   ├── plugins/               # Plugin system (Phase 2)
+│   │   ├── loader.py          # Manifest discovery + validation
+│   │   └── hooks.py           # HookRegistry (before/after hooks)
+│   ├── auth/                  # Multi-user auth (Phase 3)
+│   │   ├── jwt_service.py     # JWT HS256 generate/validate
+│   │   ├── models.py          # User model, Role enum, UserStore
+│   │   └── middleware.py       # FastAPI auth dependencies
+│   ├── collaboration/         # Real-time updates (Phase 3)
+│   │   ├── connection_manager.py  # Room-based WebSocket tracking
+│   │   ├── router.py          # WebSocket /ws/{room_id}
+│   │   └── broadcast.py       # Memory change notifications
+│   └── ...                    # (existing modules)
+├── plugins/
+│   ├── example/               # Example plugin
+│   │   ├── plugin.json
+│   │   └── plugin.py          # register(registry) entry point
+│   └── ...
+├── vscode-tropelex/           # VS Code extension (Phase 2)
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── extension.ts
+│       ├── memoryTreeProvider.ts
+│       └── memoryWebviewPanel.ts
+├── UI/                        # Web interfaces
+│   ├── animated_tropebook_dashboard/code.html
+│   └── prompt-compressor.html
+├── memory/                   # Persistent storage (gitignored)
 ├── plugins/                  # Skill loaders
+├── tests/                    # 495 tests
 ├── requirements.txt
 ├── README.md
-├── AGENTS.md                # Agent guidance
-└── design.md               # This file
+├── AGENTS.md                 # Agent guidance
+├── design.md                 # This file
+└── wishlist.md               # Future feature roadmap
 ```
+
 
 ## Anti-Patterns
 
@@ -268,9 +441,39 @@ Tropelex/
 
 ## Future Considerations
 
-- [ ] Vector embeddings for semantic search
-- [ ] TUI interface (blessed/textual)
-- [ ] VS Code extension
-- [ ] Multi-user support
-- [ ] Sync across devices
-- [ ] Plugin system for custom integrations
+See `wishlist.md` for detailed roadmap including:
+- Versioned Memory Snapshots
+- Memory Health Dashboard
+- Knowledge Graph Visualization
+- Cross-Project Learning Automation
+- Decision Impact Analysis
+- Research Feed Intelligence
+- Collaborative Memory
+- Memory Backup & Restore
+- Research Feed Alerts
+- Memory Search API (semantic)
+- Knowledge Decay Prevention
+- Memory Analytics
+- Prompt Effectiveness Tracking
+- Session Replay with AI Analysis
+
+### Quick Wins (Implemented)
+- [x] **Webhook-based git hooks** — POST /api/webhooks/git with HMAC-SHA256 verification, idempotency, GitHub/GitLab support
+- [x] **Sync across devices** — GET/POST /api/sync/* for gzip-compressed memory export/import with schema validation
+- [x] **Plugin system** — HookRegistry with before/after hooks, manifest-based discovery, example plugin
+- [x] **VS Code extension** — TypeScript extension with TreeView, Webview panel, and commands
+- [x] **Multi-user support** — JWT auth (HS256), User model with RBAC roles, FastAPI auth middleware
+- [x] **Real-time collaboration** — WebSocket /ws/{room_id} with room-based broadcasting and heartbeat
+
+## UI
+### Pallette
+
+Accents
+-#a580fa
+-#8098fa
+-#80d5fa
+-#98fa80
+
+Background
+-#010515
+-#ffffff

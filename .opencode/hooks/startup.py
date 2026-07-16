@@ -4,11 +4,11 @@ OpenCode Startup Hook - Tropelex Integration
 Automatically loads project context and injects it into the system prompt.
 """
 
-import os
-import sys
 import json
-import httpx
+import sys
 from pathlib import Path
+
+import httpx
 
 
 def get_project_name():

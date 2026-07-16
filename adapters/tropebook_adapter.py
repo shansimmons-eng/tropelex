@@ -2,7 +2,8 @@
 Tropebook Adapter for Tropelex
 Integrates Tropebook research capabilities with Tropelex memory system.
 """
-from typing import Optional, List, Dict, Any
+from typing import Any
+
 
 class TropebookAdapter:
     def __init__(self, storage_path: str = "memory/tropebook/"):
@@ -13,24 +14,24 @@ class TropebookAdapter:
 
     def _init_components(self):
         try:
-            from core.tropebook import Tropebook, ResearchTool, create_researcher
+            from core.tropebook import Tropebook, create_researcher
             self.tropebook = Tropebook(self.storage_path)
             self.researcher = create_researcher()
         except ImportError as e:
             print(f"Tropebook components not available: {e}")
 
-    def research(self, query: str, num_results: int = 10) -> List[Any]:
+    def research(self, query: str, num_results: int = 10) -> list[Any]:
         if not self.researcher:
             return []
         return self.researcher.research(query, num_results)
 
     def add_citation(self, title: str, url: str, summary: str = "",
-                    tags: List[str] = None, entities: List[str] = None) -> Optional[str]:
+                    tags: list[str] = None, entities: list[str] = None) -> str | None:
         if not self.tropebook:
             return None
         return self.tropebook.add(title, url, summary, tags=tags, entities=entities)
 
-    def search_knowledge(self, query: str, limit: int = 20) -> List[Any]:
+    def search_knowledge(self, query: str, limit: int = 20) -> list[Any]:
         if not self.tropebook:
             return []
         return self.tropebook.search(query, limit)
@@ -40,7 +41,7 @@ class TropebookAdapter:
             return 0
         return self.tropebook.import_from_deep_research(data)
 
-    def get_related(self, url: str, depth: int = 1) -> Dict[str, Any]:
+    def get_related(self, url: str, depth: int = 1) -> dict[str, Any]:
         if not self.tropebook:
             return {}
         cite = self.tropebook.find_by_url(url)
@@ -61,7 +62,7 @@ class TropebookAdapter:
             return 0
         return self.researcher.extend_from_source(source_data, source_type)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         if not self.tropebook:
             return {}
         return self.tropebook.stats()

@@ -3,17 +3,18 @@ Tropelex Web API - FastAPI server for Tropelex web interface
 Linux-native, portable — no hardcoded paths.
 """
 
-import os
 import logging
+import os
+import time
 from collections import defaultdict
-from pathlib import Path
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # --- .env loader (no dependency on python-dotenv) ---
@@ -29,15 +30,40 @@ if _env_path.exists():
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tropelex")
 
-app = FastAPI(title="Tropelex API", version="1.1.0")
+app = FastAPI(title="Tropelex API", version="1.2.0")
 
 # CORS — localhost only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8765", "http://127.0.0.1:8765"],
+    allow_origins=["http://localhost:8766", "http://127.0.0.1:8766"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Rate limiting (in-memory, per-IP) ---
+_rate_limits: dict[str, list[float]] = {}
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX = 30     # requests per window
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Simple in-memory rate limiter: 30 requests per 60s per IP."""
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    # Clean old entries
+    if client_ip in _rate_limits:
+        _rate_limits[client_ip] = [t for t in _rate_limits[client_ip] if now - t < RATE_LIMIT_WINDOW]
+    else:
+        _rate_limits[client_ip] = []
+    # Check limit
+    if len(_rate_limits[client_ip]) >= RATE_LIMIT_MAX:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Rate limit exceeded. Try again later."},
+        )
+    _rate_limits[client_ip].append(now)
+    return await call_next(request)
 
 # --- Paths (fully computed, no hardcoding) ---
 SCRIPT_DIR = Path(__file__).parent
@@ -59,6 +85,19 @@ try:
 except Exception as exc:
     logger.warning("Static files not mounted: %s", exc)
 
+# --- Mount quick-wins routers ---
+from core.webhooks.router import webhook_router       # noqa: E402
+from core.sync.router import sync_router               # noqa: E402
+from core.collaboration.router import router as collaboration_router  # noqa: E402
+
+# Point sync router's BASE_DIR at the actual project root
+import core.sync.router as _sync_mod                   # noqa: E402
+_sync_mod.BASE_DIR = BASE_DIR
+
+app.include_router(webhook_router)
+app.include_router(sync_router)
+app.include_router(collaboration_router)
+
 
 # --- Request body models ---
 class CitationCreate(BaseModel):
@@ -66,14 +105,14 @@ class CitationCreate(BaseModel):
     url: str = Field(..., max_length=2000)
     summary: str = Field("", max_length=5000)
     source: str = Field("", max_length=200)
-    tags: List[str] = Field(default_factory=list, max_length=20)
-    entities: List[str] = Field(default_factory=list, max_length=20)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    entities: list[str] = Field(default_factory=list, max_length=20)
 
 
 class CitationUpdate(BaseModel):
-    summary: Optional[str] = Field(None, max_length=5000)
-    tags: Optional[List[str]] = Field(None, max_length=20)
-    entities: Optional[List[str]] = Field(None, max_length=20)
+    summary: str | None = Field(None, max_length=5000)
+    tags: list[str] | None = Field(None, max_length=20)
+    entities: list[str] | None = Field(None, max_length=20)
 
 
 class CompressRequest(BaseModel):
@@ -88,7 +127,7 @@ class LinkRequest(BaseModel):
 
 
 class ImportRequest(BaseModel):
-    data: Dict[str, Any]
+    data: dict[str, Any]
     source_type: str = "deep_research"
 
 
@@ -97,13 +136,13 @@ class MemoryProjectCreate(BaseModel):
 
 
 class MemoryUpdate(BaseModel):
-    description: Optional[str] = Field(None, max_length=1000)
-    tech_stack: Optional[List[str]] = Field(None, max_length=50)
-    preferences: Optional[Dict[str, Any]] = None
+    description: str | None = Field(None, max_length=1000)
+    tech_stack: list[str] | None = Field(None, max_length=50)
+    preferences: dict[str, Any] | None = None
 
 
 # --- App state (lazy init) ---
-_state: Dict[str, Any] = {"tropebook": None, "memory_manager": None}
+_state: dict[str, Any] = {"tropebook": None, "memory_manager": None}
 
 
 def get_tropebook():
@@ -138,7 +177,12 @@ def _sanitise_project(name: str) -> str:
 async def root():
     from fastapi.responses import HTMLResponse
 
-    with open(UI_DASHBOARD_PATH, "r", encoding="utf-8") as f:
+    if not UI_DASHBOARD_PATH.exists():
+        return HTMLResponse(
+            content=f"<h1>Tropelex</h1><p>Dashboard not found at {UI_DASHBOARD_PATH}</p>",
+            status_code=500,
+        )
+    with open(UI_DASHBOARD_PATH, encoding="utf-8") as f:
         content = f.read()
     return HTMLResponse(
         content=content,
@@ -167,13 +211,14 @@ async def health():
 
 @app.get("/api/debug/env")
 async def debug_env():
-    """Debug endpoint to check environment variables (localhost only)."""
+    """Debug endpoint to check environment variables (localhost only, DEBUG=1 required)."""
+    if os.environ.get("DEBUG") != "1":
+        raise HTTPException(status_code=403, detail="Set DEBUG=1 to enable")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
     brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
     return {
         "openai_key_present": bool(openai_key),
         "openai_key_valid": openai_key.startswith("sk-") if openai_key else False,
-        "openai_key_preview": openai_key[:10] + "..." if openai_key else None,
         "brave_key_present": bool(brave_key),
         "env_file_path": str(_env_path),
         "env_file_exists": _env_path.exists(),
@@ -200,39 +245,66 @@ async def clear_all_citations():
 
 
 @app.get("/api/citations")
-async def list_citations(tag: Optional[str] = None, source: Optional[str] = None):
-    tb = get_tropebook()
-    if tag:
-        citations = tb.find_by_tag(tag)
-    elif source:
-        from core.tropebook import SourceType
+async def list_citations(tag: str | None = None, source: str | None = None):
+    """List citations, optionally filtered by tag or source."""
+    try:
+        tb = get_tropebook()
+        if tag:
+            # Sanitize tag input
+            tag = tag.strip()[:100]
+            filtered_cids = tb._index["by_tag"].get(tag, [])
+            citations = [
+                (cid, tb.citations[cid])
+                for cid in filtered_cids
+                if cid in tb.citations
+            ]
+        elif source:
+            from core.tropebook import SourceType
 
-        source_type = (
-            SourceType(source)
-            if source in [s.value for s in SourceType]
-            else SourceType.MANUAL
-        )
-        citations = tb.find_by_source(source_type)
-    else:
-        citations = list(tb.citations.values())
-    return {
-        "citations": [c.to_dict(id=cid) for cid, c in tb.citations.items()],
-        "count": len(citations),
-    }
+            source = source.strip()[:50]
+            source_type = (
+                SourceType(source)
+                if source in [s.value for s in SourceType]
+                else SourceType.MANUAL
+            )
+            filtered_cids = tb._index["by_source"].get(source_type.value, [])
+            citations = [
+                (cid, tb.citations[cid])
+                for cid in filtered_cids
+                if cid in tb.citations
+            ]
+        else:
+            citations = list(tb.citations.items())
+        return {
+            "citations": [c.to_dict(id=cid) for cid, c in citations],
+            "count": len(citations),
+        }
+    except Exception as e:
+        logger.error("list_citations failed: %s", e)
+        raise HTTPException(500, f"Failed to list citations: {e}")
 
 
 @app.post("/api/citations")
 async def create_citation(citation: CitationCreate):
-    tb = get_tropebook()
-    cid = tb.add(
-        title=citation.title,
-        url=citation.url,
-        summary=citation.summary,
-        source=citation.source,
-        tags=citation.tags,
-        entities=citation.entities,
-    )
-    return {"id": cid, "citation": tb.get(cid).to_dict()}
+    """Create a new citation."""
+    try:
+        tb = get_tropebook()
+        # Sanitize inputs
+        title = citation.title.strip()[:500]
+        url = citation.url.strip()[:2000]
+        summary = citation.summary.strip()[:5000]
+        source = citation.source.strip()[:200]
+        tags = [t.strip()[:50] for t in citation.tags[:20]]
+        entities = [e.strip()[:50] for e in citation.entities[:20]]
+        
+        cid = tb.add(
+            title=title, url=url, summary=summary,
+            source=source, tags=tags, entities=entities,
+        )
+        return {"id": cid, "citation": tb.get(cid).to_dict()}
+    except Exception as e:
+        logger.error("create_citation failed: %s", e)
+        raise HTTPException(500, f"Failed to create citation: {e}")
 
 
 @app.get("/api/citations/{cid}")
@@ -270,47 +342,88 @@ async def delete_citation(cid: str):
 async def search_citations(
     q: str = Query(..., min_length=1, max_length=200), limit: int = Query(20, le=100)
 ):
-    tb = get_tropebook()
-    results = tb.search(q, limit)
-    return {"results": [r.to_dict() for r in results], "count": len(results)}
+    """Search citations by query."""
+    try:
+        tb = get_tropebook()
+        # Sanitize query
+        q = q.strip()[:200]
+        results = tb.search(q, limit)
+        return {"results": [r.to_dict() for r in results], "count": len(results)}
+    except Exception as e:
+        logger.error("search_citations failed: %s", e)
+        raise HTTPException(500, f"Search failed: {e}")
 
 
 @app.get("/api/tags")
 async def list_tags():
-    tb = get_tropebook()
-    return {"tags": list(tb._index["by_tag"].keys())}
+    """List all tags across citations."""
+    try:
+        tb = get_tropebook()
+        return {"tags": list(tb._index["by_tag"].keys())}
+    except Exception as e:
+        logger.error("list_tags failed: %s", e)
+        raise HTTPException(500, f"Failed to list tags: {e}")
 
 
 @app.get("/api/entities")
 async def list_entities():
-    tb = get_tropebook()
-    return {"entities": list(tb._index["by_entity"].keys())}
+    """List all entities across citations."""
+    try:
+        tb = get_tropebook()
+        return {"entities": list(tb._index["by_entity"].keys())}
+    except Exception as e:
+        logger.error("list_entities failed: %s", e)
+        raise HTTPException(500, f"Failed to list entities: {e}")
 
 
 @app.get("/api/stats")
 async def get_stats():
-    tb = get_tropebook()
-    return tb.stats()
+    """Get aggregate statistics for the tropebook."""
+    try:
+        tb = get_tropebook()
+        return tb.stats()
+    except Exception as e:
+        logger.error("get_stats failed: %s", e)
+        raise HTTPException(500, f"Failed to get stats: {e}")
 
 
 @app.post("/api/import")
 async def import_sources(import_req: ImportRequest):
-    tb = get_tropebook()
-    count = tb.import_from_deep_research(import_req.data)
-    return {"imported": count}
+    """Import citations from JSON data."""
+    try:
+        tb = get_tropebook()
+        count = tb.import_from_deep_research(import_req.data)
+        return {"imported": count}
+    except Exception as e:
+        logger.error("import_sources failed: %s", e)
+        raise HTTPException(500, f"Import failed: {e}")
 
 
 @app.get("/api/export")
 async def export_all():
-    tb = get_tropebook()
-    return tb.export_json()
+    """Export all citations and graph as JSON."""
+    try:
+        tb = get_tropebook()
+        return tb.export_json()
+    except Exception as e:
+        logger.error("export_all failed: %s", e)
+        raise HTTPException(500, f"Export failed: {e}")
 
 
 @app.post("/api/link")
 async def link_citations(req: LinkRequest):
-    tb = get_tropebook()
-    tb.add_relationship(req.source_url, req.target_url, req.relationship)
-    return {"linked": True}
+    """Create a relationship between two citations."""
+    try:
+        tb = get_tropebook()
+        # Sanitize inputs
+        source_url = req.source_url.strip()[:2000]
+        target_url = req.target_url.strip()[:2000]
+        relationship = req.relationship.strip()[:100]
+        tb.add_relationship(source_url, target_url, relationship)
+        return {"linked": True}
+    except Exception as e:
+        logger.error("link_citations failed: %s", e)
+        raise HTTPException(500, f"Failed to link citations: {e}")
 
 
 # ============================
@@ -329,24 +442,39 @@ async def reset_all_memory():
 
 @app.get("/api/memory")
 async def list_memory_projects():
-    mm = get_memory_manager()
-    return {"projects": [{"name": p} for p in mm.list_projects()]}
+    """List all projects in memory."""
+    try:
+        mm = get_memory_manager()
+        return {"projects": [{"name": p} for p in mm.list_projects()]}
+    except Exception as e:
+        logger.error("list_memory_projects failed: %s", e)
+        raise HTTPException(500, f"Failed to list projects: {e}")
 
 
 @app.post("/api/memory")
 async def create_memory_project(data: MemoryProjectCreate):
-    mm = get_memory_manager()
-    name = _sanitise_project(data.project_name)
-    memory = mm.get_project_memory(name)
-    mm.save_project_memory(name, memory)
-    return {"created": True, "project": name}
+    """Create a new project in memory."""
+    try:
+        mm = get_memory_manager()
+        name = _sanitise_project(data.project_name)
+        memory = mm.get_project_memory(name)
+        mm.save_project_memory(name, memory)
+        return {"created": True, "project": name}
+    except Exception as e:
+        logger.error("create_memory_project failed: %s", e)
+        raise HTTPException(500, f"Failed to create project: {e}")
 
 
 @app.get("/api/memory/{project}")
 async def get_memory_project(project: str):
-    project = _sanitise_project(project)
-    mm = get_memory_manager()
-    return mm.get_project_memory(project)
+    """Get a project's memory data."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        return mm.get_project_memory(project)
+    except Exception as e:
+        logger.error("get_memory_project failed: %s", e)
+        raise HTTPException(500, f"Failed to get project: {e}")
 
 
 @app.patch("/api/memory/{project}")
@@ -431,11 +559,11 @@ async def add_session(project: str, data: SessionCreate):
 class QuickCapture(BaseModel):
     text: str = Field(..., max_length=1000)
     type: str = Field("thought", max_length=50)  # thought, decision, note
-    project: Optional[str] = None
+    project: str | None = None
 
 
 @app.post("/api/capture")
-async def quick_capture(data: QuickCapture, project_name: Optional[str] = None):
+async def quick_capture(data: QuickCapture, project_name: str | None = None):
     """Quick capture endpoint - can capture to any project without selecting it first."""
     target_project = data.project or project_name or "inbox"
 
@@ -496,9 +624,6 @@ async def get_project_insights(project: str):
     if best_day:
         suggestions.append(f"Your most productive day is {best_day}s")
 
-    # Similar project suggestions based on tech stack
-    project_tech = set(memory.get("tech_stack", []))
-
     return {
         "best_day": best_day,
         "day_counts": dict(day_counts),
@@ -515,9 +640,10 @@ async def get_project_insights(project: str):
 
 
 @app.get("/api/patterns")
-async def get_patterns(project: Optional[str] = None):
-    mm = get_memory_manager()
+async def get_patterns(project: str | None = None):
+    """Get learned patterns and suggestions."""
     try:
+        mm = get_memory_manager()
         from core.learner.learner import PatternLearner
 
         learner = PatternLearner(mm)
@@ -539,12 +665,17 @@ async def get_patterns(project: Optional[str] = None):
 
 @app.get("/api/projects")
 async def list_projects():
-    mm = get_memory_manager()
-    return {"projects": mm.list_projects()}
+    """List all projects."""
+    try:
+        mm = get_memory_manager()
+        return {"projects": mm.list_projects()}
+    except Exception as e:
+        logger.error("list_projects failed: %s", e)
+        raise HTTPException(500, f"Failed to list projects: {e}")
 
 
 @app.post("/api/analyze/decisions")
-async def detect_decisions(data: Dict[str, str]):
+async def detect_decisions(data: dict[str, str]):
     """Analyze text to detect potential decisions worth recording."""
     mm = get_memory_manager()
     try:
@@ -610,18 +741,25 @@ async def get_backends():
 
 @app.post("/api/compress")
 async def compress_prompt(req: CompressRequest):
-    from core.llm import compress as llm_compress
+    """Compress a prompt using AI."""
+    try:
+        from core.llm import compress as llm_compress
 
-    result = await llm_compress(req.prompt)
-    compressed = result["compressed"]
-    return {
-        "compressed": compressed,
-        "backend": result["backend"],
-        "error": result.get("error"),
-        "original_length": len(req.prompt),
-        "compressed_length": len(compressed),
-        "saved_pct": round((1 - len(compressed) / max(len(req.prompt), 1)) * 100, 1),
-    }
+        # Sanitize input
+        prompt = req.prompt.strip()[:8000]
+        result = await llm_compress(prompt)
+        compressed = result["compressed"]
+        return {
+            "compressed": compressed,
+            "backend": result["backend"],
+            "error": result.get("error"),
+            "original_length": len(prompt),
+            "compressed_length": len(compressed),
+            "saved_pct": round((1 - len(compressed) / max(len(prompt), 1)) * 100, 1),
+        }
+    except Exception as e:
+        logger.error("compress_prompt failed: %s", e)
+        raise HTTPException(500, f"Compression failed: {e}")
 
 
 class ApiKeyRequest(BaseModel):
@@ -683,16 +821,25 @@ def _get_embed_store(scope: str = "citations"):
 
 @app.post("/api/semantic-search")
 async def semantic_search(req: SemanticSearchRequest):
-    from core.llm import embed_one
+    """Semantic search across citations using embeddings."""
+    try:
+        from core.llm import embed_one
 
-    vec = await embed_one(req.query)
-    if vec is None:
-        raise HTTPException(
-            status_code=503, detail="Embeddings unavailable — configure OPENAI_API_KEY"
-        )
-    store = _get_embed_store(req.scope)
-    results = store.search(vec, top_k=req.top_k, min_score=req.min_score)
-    return {"results": results, "count": len(results), "query": req.query}
+        # Sanitize query
+        query = req.query.strip()[:1000]
+        vec = await embed_one(query)
+        if vec is None:
+            raise HTTPException(
+                status_code=503, detail="Embeddings unavailable — configure OPENAI_API_KEY"
+            )
+        store = _get_embed_store(req.scope)
+        results = store.search(vec, top_k=req.top_k, min_score=req.min_score)
+        return {"results": results, "count": len(results), "query": query}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("semantic_search failed: %s", e)
+        raise HTTPException(500, f"Semantic search failed: {e}")
 
 
 @app.post("/api/citations/{cid}/embed")
@@ -727,8 +874,8 @@ async def embed_all_citations():
     vecs = await embed(texts)
     if vecs is None:
         raise HTTPException(status_code=503, detail="Embeddings unavailable")
-    for (cid, c), vec in zip(to_embed, vecs):
-        store.put(cid, texts[0], vec, meta={"title": c.title, "url": c.url})
+    for idx, ((cid, c), vec) in enumerate(zip(to_embed, vecs)):
+        store.put(cid, texts[idx], vec, meta={"title": c.title, "url": c.url})
     return {"embedded": len(to_embed)}
 
 
@@ -744,6 +891,50 @@ class GitSyncRequest(BaseModel):
 
 @app.post("/api/git/sync")
 async def git_sync(req: GitSyncRequest):
+    """Sync git commits to project memory."""
+    try:
+        from core.git_integration import sync_repo_to_memory
+
+        mm = get_memory_manager()
+        # Sanitize inputs
+        repo_path = req.repo_path.strip()[:500]
+        project = _sanitise_project(req.project)
+        result = await sync_repo_to_memory(repo_path, project, mm)
+        return result
+    except Exception as e:
+        logger.error("git_sync failed: %s", e)
+        raise HTTPException(500, f"Git sync failed: {e}")
+
+
+@app.get("/api/git/summary")
+async def git_summary(repo_path: str = Query(..., max_length=500)):
+    """Get basic repo summary."""
+    try:
+        from core.git_integration import get_repo_summary
+
+        repo_path = repo_path.strip()[:500]
+        return get_repo_summary(repo_path)
+    except Exception as e:
+        logger.error("git_summary failed: %s", e)
+        raise HTTPException(500, f"Git summary failed: {e}")
+
+
+@app.get("/api/git/deep-summary")
+async def git_deep_summary(repo_path: str = Query(..., max_length=500)):
+    """Enhanced repo summary with deep commit analysis."""
+    try:
+        from core.git_integration import get_deep_repo_summary
+
+        repo_path = repo_path.strip()[:500]
+        return get_deep_repo_summary(repo_path)
+    except Exception as e:
+        logger.error("git_deep_summary failed: %s", e)
+        raise HTTPException(500, f"Git deep summary failed: {e}")
+
+
+@app.post("/api/git/sync-deep")
+async def git_sync_deep(req: GitSyncRequest):
+    """Deep sync: extracts decisions, rationale, dependency changes, patterns."""
     from core.git_integration import sync_repo_to_memory
 
     mm = get_memory_manager()
@@ -751,13 +942,6 @@ async def git_sync(req: GitSyncRequest):
         req.repo_path, _sanitise_project(req.project), mm
     )
     return result
-
-
-@app.get("/api/git/summary")
-async def git_summary(repo_path: str = Query(..., max_length=500)):
-    from core.git_integration import get_repo_summary
-
-    return get_repo_summary(repo_path)
 
 
 # ============================
@@ -805,6 +989,551 @@ async def decision_timeline(project: str):
         timeline.append({**d, "flags": flags, "index": i})
 
     return {"timeline": timeline, "total": len(timeline)}
+
+
+# ============================
+#  Decision Trees
+# ============================
+
+
+@app.get("/api/memory/{project}/decision-tree")
+async def get_decision_tree(project: str):
+    """Get the full decision tree with relationships."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions = memory.get("decisions", [])
+
+    from core.decision_tree import DecisionTree
+
+    tree = DecisionTree.from_decisions(decisions)
+    return {"tree": tree.to_dict(), "stats": tree.stats()}
+
+
+@app.get("/api/memory/{project}/decision-tree/timeline")
+async def get_decision_tree_timeline(project: str):
+    """Get decisions as a timeline with relationship info."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions = memory.get("decisions", [])
+
+    from core.decision_tree import DecisionTree
+
+    tree = DecisionTree.from_decisions(decisions)
+    return {"timeline": tree.get_timeline(), "stats": tree.stats()}
+
+
+@app.get("/api/memory/{project}/decision-tree/chains")
+async def get_decision_chains(project: str):
+    """Get decision chains (A caused B caused C)."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions = memory.get("decisions", [])
+
+    from core.decision_tree import DecisionTree
+
+    tree = DecisionTree.from_decisions(decisions)
+    chains = tree.get_chains()
+    return {"chains": chains, "count": len(chains)}
+
+
+@app.get("/api/memory/{project}/decision-tree/{decision_id}")
+async def get_decision_detail(project: str, decision_id: str):
+    """Get a single decision with its ancestors and descendants."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions = memory.get("decisions", [])
+
+    from core.decision_tree import DecisionTree
+
+    tree = DecisionTree.from_decisions(decisions)
+    node = tree.get_decision(decision_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Decision not found")
+
+    ancestors = tree.get_ancestors(decision_id)
+    descendants = tree.get_descendants(decision_id)
+
+    return {
+        "decision": node,
+        "ancestors": ancestors,
+        "descendants": descendants,
+    }
+
+
+# ============================
+#  Living ADRs
+# ============================
+
+
+@app.get("/api/memory/{project}/adrs")
+async def generate_adrs(
+    project: str,
+    format: str = Query("tropelex", pattern=r"^(nygard|madr|tropelex)$"),
+    only_significant: bool = Query(True),
+):
+    """Generate ADRs for all decisions in a project."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.adr_generator import generate_adrs_for_project
+
+    adrs = generate_adrs_for_project(memory, format, only_significant)
+    return {"adrs": adrs, "count": len(adrs), "format": format}
+
+
+@app.get("/api/memory/{project}/adrs/bundle")
+async def generate_adr_bundle(
+    project: str,
+    format: str = Query("tropelex", pattern=r"^(nygard|madr|tropelex)$"),
+):
+    """Generate a single markdown file with all ADRs."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.adr_generator import generate_adr_markdown_bundle
+
+    bundle = generate_adr_markdown_bundle(memory, format)
+    from fastapi.responses import PlainTextResponse
+
+    return PlainTextResponse(
+        content=bundle,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename={project}-adrs.md"},
+    )
+
+
+# ============================
+#  Session Replay
+# ============================
+
+
+@app.get("/api/memory/{project}/sessions")
+async def get_sessions(project: str, limit: int = Query(20, ge=1, le=100)):
+    """Get recent sessions for a project."""
+    project = _sanitise_project(project)
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    sessions = replay.get_sessions(project, limit)
+    return {"sessions": sessions, "count": len(sessions)}
+
+
+@app.get("/api/memory/{project}/sessions/{session_id}")
+async def get_session_detail(project: str, session_id: str):
+    """Get full session detail including snapshots."""
+    project = _sanitise_project(project)
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    session = replay.get_session(project, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@app.get("/api/memory/{project}/sessions/{session_id}/changes")
+async def get_session_changes(project: str, session_id: str):
+    """Get just the changes for a session."""
+    project = _sanitise_project(project)
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    changes = replay.get_session_changes(project, session_id)
+    if changes is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"changes": changes, "count": len(changes)}
+
+
+class SessionRecordRequest(BaseModel):
+    summary: str = Field("", max_length=2000)
+    session_type: str = Field("manual", max_length=50)
+
+
+@app.post("/api/memory/{project}/sessions/record")
+async def record_session(project: str, req: SessionRecordRequest):
+    """Record current memory state as a session snapshot."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    current = mm.get_project_memory(project)
+
+    # Get previous snapshot for diffing
+    sessions = replay.get_sessions(project, limit=1)
+    if sessions:
+        prev = replay.get_session(project, sessions[0]["session_id"])
+        before = prev.get("snapshot_after", current) if prev else current
+    else:
+        before = current
+
+    result = replay.record_session(
+        project, before, current,
+        summary=req.summary,
+        session_type=req.session_type,
+    )
+    return result
+
+
+@app.post("/api/memory/{project}/sessions/{session_id}/rollback")
+async def rollback_session(project: str, session_id: str):
+    """Rollback memory to the state before a session."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    result = replay.rollback_session(project, session_id, mm)
+    if not result.get("rolled_back"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Rollback failed"))
+    return result
+
+
+@app.get("/api/memory/{project}/sessions/weekly-summary")
+async def get_weekly_summary(project: str):
+    """Get a summary of what changed this week."""
+    project = _sanitise_project(project)
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    return replay.get_weekly_summary(project)
+
+
+# ============================
+#  Knowledge Decay & Confidence
+# ============================
+
+
+@app.get("/api/memory/{project}/confidence")
+async def get_confidence(project: str):
+    """Get confidence summary for a project's decisions."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.knowledge_decay import get_confidence_summary
+
+    return get_confidence_summary(memory)
+
+
+@app.get("/api/memory/{project}/stale")
+async def get_stale_decisions(
+    project: str,
+    threshold: float = Query(0.3, ge=0.0, le=1.0),
+    max_age_days: float = Query(180, ge=1, le=3650),
+):
+    """Get stale decisions (low confidence or old)."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.knowledge_decay import get_stale_decisions
+
+    stale = get_stale_decisions(memory.get("decisions", []), threshold, max_age_days)
+    return {"stale": stale, "count": len(stale)}
+
+
+@app.get("/api/memory/{project}/decisions/scored")
+async def get_scored_decisions(project: str):
+    """Get all decisions with confidence scores."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.knowledge_decay import score_decisions
+
+    scored = score_decisions(memory.get("decisions", []))
+    return {"decisions": scored, "count": len(scored)}
+
+
+@app.post("/api/memory/{project}/decay/apply")
+async def apply_decay(project: str):
+    """Apply confidence scores to all decisions in memory."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    from core.knowledge_decay import apply_decay_to_memory
+    from datetime import datetime, timezone
+
+    memory = apply_decay_to_memory(memory)
+    memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+    mm.save_project_memory(project, memory)
+
+    return {"applied": True, "summary": memory.get("confidence_summary", {})}
+
+
+# ============================
+#  Research Chains
+# ============================
+
+
+class ResearchChainCreate(BaseModel):
+    goal: str = Field(..., max_length=500)
+
+
+class ResearchStepAdd(BaseModel):
+    chain_id: str = Field(..., max_length=64)
+    query: str = Field(..., max_length=300)
+    findings: list[dict] = Field(default_factory=list, max_length=20)
+    gaps: list[str] = Field(default_factory=list, max_length=10)
+
+
+@app.get("/api/memory/{project}/research-chains")
+async def list_research_chains(project: str, status: str | None = None):
+    """List research chains for a project."""
+    project = _sanitise_project(project)
+    from core.research_chains import ResearchChainManager
+
+    manager = ResearchChainManager(str(BASE_DIR))
+    chains = manager.list_chains(project, status)
+    return {"chains": chains, "count": len(chains)}
+
+
+@app.post("/api/memory/{project}/research-chains")
+async def create_research_chain(project: str, req: ResearchChainCreate):
+    """Create a new research chain."""
+    project = _sanitise_project(project)
+    from core.research_chains import ResearchChain, ResearchChainManager
+
+    manager = ResearchChainManager(str(BASE_DIR))
+    chain = ResearchChain(req.goal)
+    chain_id = manager.save_chain(project, chain)
+    return {"chain_id": chain_id, "goal": req.goal}
+
+
+@app.get("/api/memory/{project}/research-chains/{chain_id}")
+async def get_research_chain(project: str, chain_id: str):
+    """Get a full research chain."""
+    project = _sanitise_project(project)
+    from core.research_chains import ResearchChainManager
+
+    manager = ResearchChainManager(str(BASE_DIR))
+    chain = manager.load_chain(project, chain_id)
+    if not chain:
+        raise HTTPException(status_code=404, detail="Chain not found")
+    return chain.to_dict()
+
+
+@app.post("/api/memory/{project}/research-chains/{chain_id}/step")
+async def add_research_step(project: str, chain_id: str, req: ResearchStepAdd):
+    """Add a step to a research chain."""
+    project = _sanitise_project(project)
+    from core.research_chains import ResearchChainManager
+
+    manager = ResearchChainManager(str(BASE_DIR))
+    chain = manager.load_chain(project, chain_id)
+    if not chain:
+        raise HTTPException(status_code=404, detail="Chain not found")
+
+    chain.add_step(req.query, req.findings, req.gaps)
+    manager.save_chain(project, chain)
+    return {"step_count": len(chain.steps)}
+
+
+@app.post("/api/memory/{project}/research-chains/{chain_id}/complete")
+async def complete_research_chain(project: str, chain_id: str, synthesis: str = ""):
+    """Complete a research chain with a synthesis."""
+    project = _sanitise_project(project)
+    from core.research_chains import ResearchChainManager
+
+    manager = ResearchChainManager(str(BASE_DIR))
+    chain = manager.load_chain(project, chain_id)
+    if not chain:
+        raise HTTPException(status_code=404, detail="Chain not found")
+
+    chain.complete(synthesis or f"Completed with {len(chain.steps)} steps")
+    manager.save_chain(project, chain)
+    return {"status": "completed", "synthesis": chain.synthesis}
+
+
+# ============================
+#  Memory-Driven RAG & Cross-Pollination
+# ============================
+
+
+class RAGQuery(BaseModel):
+    query: str = Field(..., max_length=500)
+    top_k: int = Field(5, ge=1, le=20)
+
+
+@app.post("/api/memory/{project}/rag")
+async def memory_rag(project: str, req: RAGQuery):
+    """Retrieve relevant memory snippets for a query."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+
+    from core.rag import MemoryRAG
+
+    rag = MemoryRAG(mm)
+    results = rag.retrieve(project, req.query, req.top_k)
+    return {"results": results, "count": len(results), "query": req.query}
+
+
+@app.post("/api/memory/{project}/rag/context")
+async def memory_rag_context(project: str, req: RAGQuery):
+    """Retrieve relevant memory as formatted context string."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+
+    from core.rag import MemoryRAG
+
+    rag = MemoryRAG(mm)
+    context = rag.retrieve_with_context(project, req.query, req.top_k)
+    return {"context": context, "query": req.query}
+
+
+@app.get("/api/memory/{project}/cross-pollinate")
+async def cross_pollinate(project: str, query: str = Query("", max_length=500)):
+    """Find transferable knowledge from similar projects."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+
+    from core.rag import CrossPollinator
+
+    cp = CrossPollinator(mm)
+    transfers = cp.find_transferable_knowledge(project, query or None)
+    return {"transfers": transfers, "count": len(transfers)}
+
+
+@app.get("/api/memory/{project}/cross-pollinate/briefing")
+async def cross_pollinate_briefing(project: str, query: str = Query("", max_length=500)):
+    """Get a briefing of cross-project knowledge."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+
+    from core.rag import CrossPollinator
+
+    cp = CrossPollinator(mm)
+    briefing = cp.get_project_briefing(project, query or None)
+    return {"briefing": briefing, "project": project}
+
+
+class ApproachRequest(BaseModel):
+    problem: str = Field(..., max_length=500)
+
+
+@app.post("/api/memory/{project}/suggest-approaches")
+async def suggest_approaches(project: str, req: ApproachRequest):
+    """Suggest approaches from similar projects for a problem."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+
+    from core.rag import CrossPollinator
+
+    cp = CrossPollinator(mm)
+    approaches = cp.suggest_approaches(project, req.problem)
+    return {"approaches": approaches, "count": len(approaches)}
+
+
+# ============================
+#  Agent Skills & Prompt Genealogy
+# ============================
+
+
+class SkillRecordRequest(BaseModel):
+    session_type: str = Field("manual", max_length=50)
+    categories: list[str] = Field(default_factory=list, max_length=10)
+    outcome: str = Field("success", pattern=r"^(success|partial|failure)$")
+    details: str = Field("", max_length=500)
+
+
+@app.get("/api/memory/{project}/agent-skills")
+async def get_agent_skills(project: str):
+    """Get agent skill scores for a project."""
+    project = _sanitise_project(project)
+    from core.agent_skills import AgentSkillGraph
+
+    graph = AgentSkillGraph(str(BASE_DIR))
+    skills = graph.get_skills(project)
+    return {"skills": skills, "count": len(skills)}
+
+
+@app.post("/api/memory/{project}/agent-skills/record")
+async def record_agent_skill(project: str, req: SkillRecordRequest):
+    """Record a session outcome to update agent skills."""
+    project = _sanitise_project(project)
+    from core.agent_skills import AgentSkillGraph
+
+    graph = AgentSkillGraph(str(BASE_DIR))
+    graph.record_session_outcome(
+        project, req.session_type, req.categories, req.outcome, req.details
+    )
+    return {"recorded": True, "categories": req.categories}
+
+
+@app.get("/api/memory/{project}/agent-skills/briefing")
+async def get_agent_briefing(project: str):
+    """Get agent proficiency briefing for context injection."""
+    project = _sanitise_project(project)
+    from core.agent_skills import AgentSkillGraph
+
+    graph = AgentSkillGraph(str(BASE_DIR))
+    briefing = graph.get_briefing(project)
+    return {"briefing": briefing, "project": project}
+
+
+class PromptRecordRequest(BaseModel):
+    original: str = Field(..., max_length=5000)
+    compressed: str = Field(..., max_length=5000)
+    strategy: str = Field("default", max_length=100)
+    compression_ratio: float = Field(0.0, ge=0.0, le=1.0)
+
+
+class PromptOutcomeRequest(BaseModel):
+    prompt_id: str = Field(..., max_length=64)
+    outcome: str = Field(..., pattern=r"^(good|rephrased|failed)$")
+
+
+@app.get("/api/memory/{project}/prompt-genealogy")
+async def get_prompt_genealogy(project: str):
+    """Get prompt genealogy stats."""
+    project = _sanitise_project(project)
+    from core.agent_skills import PromptGenealogy
+
+    pg = PromptGenealogy(str(BASE_DIR))
+    return pg.get_stats(project)
+
+
+@app.post("/api/memory/{project}/prompt-genealogy/record")
+async def record_prompt_compression(project: str, req: PromptRecordRequest):
+    """Record a prompt compression event."""
+    project = _sanitise_project(project)
+    from core.agent_skills import PromptGenealogy
+
+    pg = PromptGenealogy(str(BASE_DIR))
+    prompt_id = pg.record_compression(
+        project, req.original, req.compressed, req.strategy, req.compression_ratio
+    )
+    return {"prompt_id": prompt_id}
+
+
+@app.post("/api/memory/{project}/prompt-genealogy/outcome")
+async def record_prompt_outcome(project: str, req: PromptOutcomeRequest):
+    """Record the outcome of a compressed prompt."""
+    project = _sanitise_project(project)
+    from core.agent_skills import PromptGenealogy
+
+    pg = PromptGenealogy(str(BASE_DIR))
+    pg.record_outcome(project, req.prompt_id, req.outcome)
+    return {"recorded": True, "prompt_id": req.prompt_id}
+
+
+@app.get("/api/memory/{project}/prompt-genealogy/rankings")
+async def get_strategy_rankings(project: str):
+    """Get compression strategy rankings."""
+    project = _sanitise_project(project)
+    from core.agent_skills import PromptGenealogy
+
+    pg = PromptGenealogy(str(BASE_DIR))
+    rankings = pg.get_strategy_rankings(project)
+    return {"rankings": rankings, "count": len(rankings)}
 
 
 # ============================
@@ -939,31 +1668,48 @@ class AutoResearchRequest(BaseModel):
 
 @app.post("/api/research/auto")
 async def auto_research(req: AutoResearchRequest):
-    from core.research_pipeline import auto_research as _auto_research
+    """Run automated research on a query."""
+    try:
+        from core.research_pipeline import auto_research as _auto_research
 
-    tb = get_tropebook()
-    return await _auto_research(req.query, tb, req.max_results)
+        tb = get_tropebook()
+        # Sanitize query
+        query = req.query.strip()[:300]
+        return await _auto_research(query, tb, req.max_results)
+    except Exception as e:
+        logger.error("auto_research failed: %s", e)
+        raise HTTPException(500, f"Auto research failed: {e}")
 
 
 @app.get("/api/research/stale")
 async def stale_citations(max_age_days: int = Query(90, ge=1, le=3650)):
-    from core.research_pipeline import check_staleness
+    """Find stale citations that need updating."""
+    try:
+        from core.research_pipeline import check_staleness
 
-    tb = get_tropebook()
-    stale = check_staleness(
-        {k: v.to_dict() for k, v in tb.citations.items()}, max_age_days
-    )
-    return {"stale": stale, "count": len(stale)}
+        tb = get_tropebook()
+        stale = check_staleness(
+            {k: v.to_dict() for k, v in tb.citations.items()}, max_age_days
+        )
+        return {"stale": stale, "count": len(stale)}
+    except Exception as e:
+        logger.error("stale_citations failed: %s", e)
+        raise HTTPException(500, f"Staleness check failed: {e}")
 
 
 @app.get("/api/research/duplicates")
 async def semantic_duplicates(threshold: float = Query(0.92, ge=0.5, le=1.0)):
-    from core.research_pipeline import find_semantic_duplicates
+    """Find semantically duplicate citations."""
+    try:
+        from core.research_pipeline import find_semantic_duplicates
 
-    tb = get_tropebook()
-    store = _get_embed_store("citations")
-    dups = await find_semantic_duplicates(tb, store, threshold)
-    return {"duplicates": dups, "count": len(dups)}
+        tb = get_tropebook()
+        store = _get_embed_store("citations")
+        dups = await find_semantic_duplicates(tb, store, threshold)
+        return {"duplicates": dups, "count": len(dups)}
+    except Exception as e:
+        logger.error("semantic_duplicates failed: %s", e)
+        raise HTTPException(500, f"Duplicate detection failed: {e}")
 
 
 @app.get("/api/citations/{cid}/related")
@@ -973,6 +1719,201 @@ async def get_related_citations(cid: str, top_k: int = Query(5, ge=1, le=20)):
     tb = get_tropebook()
     store = _get_embed_store("citations")
     return {"related": await suggest_related(cid, tb, store, top_k)}
+
+
+# ============================
+#  Research Feeds
+# ============================
+
+_feed_manager = None
+_feed_scheduler = None
+_feed_run_timestamps: list[float] = []
+_FEED_RUN_RATE_LIMIT = 5  # max 5 feed runs per minute
+
+
+def _check_feed_rate_limit():
+    """Stricter rate limit for expensive feed operations."""
+    now = time.time()
+    _feed_run_timestamps[:] = [t for t in _feed_run_timestamps if now - t < 60]
+    if len(_feed_run_timestamps) >= _FEED_RUN_RATE_LIMIT:
+        raise HTTPException(429, "Feed run rate limit exceeded. Max 5 runs per minute.")
+    _feed_run_timestamps.append(now)
+
+
+def _get_feed_manager():
+    global _feed_manager
+    if _feed_manager is None:
+        from core.tropebook.research_feeds import ResearchFeedManager
+
+        _feed_manager = ResearchFeedManager(storage_path=str(BASE_DIR / "memory"))
+    return _feed_manager
+
+
+def _get_feed_scheduler():
+    global _feed_scheduler
+    if _feed_scheduler is None:
+        from core.tropebook.scheduler import FeedScheduler
+
+        _feed_scheduler = FeedScheduler(
+            feed_manager=_get_feed_manager(),
+            brave_api_key=os.environ.get("BRAVE_API_KEY"),
+            storage_path=str(BASE_DIR / "memory" / "tropebook"),
+        )
+    return _feed_scheduler
+
+
+def _sanitize_feed_id(feed_id: str) -> str:
+    """Reject feed IDs that aren't alphanumeric/hyphen/underscore."""
+    import re
+
+    if not re.match(r"^[a-zA-Z0-9_-]{4,64}$", feed_id):
+        raise HTTPException(400, "Invalid feed ID format")
+    return feed_id
+
+
+class FeedCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    query: str = Field(..., min_length=1, max_length=500)
+    description: str = Field("", max_length=1000)
+    interval: str = Field("weekly")
+    sources: list[str] = Field(default_factory=lambda: ["web"])
+    tags: list[str] = Field(default_factory=list)
+    max_results_per_run: int = Field(20, ge=1, le=100)
+
+
+class FeedUpdateRequest(BaseModel):
+    name: str | None = None
+    query: str | None = None
+    description: str | None = None
+    interval: str | None = None
+    sources: list[str] | None = None
+    tags: list[str] | None = None
+    max_results_per_run: int | None = None
+    enabled: bool | None = None
+
+
+@app.get("/api/research-feeds")
+async def list_feeds(
+    enabled_only: bool = Query(False),
+    tag: str | None = Query(None),
+):
+    """List all research feeds, optionally filtered by enabled state or tag."""
+    fm = _get_feed_manager()
+    feeds = fm.list_feeds(enabled_only=enabled_only, tag=tag)
+    return {"feeds": [f.to_dict() for f in feeds], "count": len(feeds)}
+
+
+@app.post("/api/research-feeds")
+async def create_feed(req: FeedCreateRequest):
+    """Create a new research feed with the given query and schedule."""
+    fm = _get_feed_manager()
+    try:
+        feed = fm.create(
+            name=req.name, query=req.query, description=req.description,
+            interval=req.interval, sources=req.sources, tags=req.tags,
+            max_results_per_run=req.max_results_per_run,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return feed.to_dict()
+
+
+@app.get("/api/research-feeds/{feed_id}")
+async def get_feed(feed_id: str):
+    """Get a single feed's configuration and metadata."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.get(feed_id)
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    return feed.to_dict()
+
+
+@app.put("/api/research-feeds/{feed_id}")
+async def update_feed(feed_id: str, req: FeedUpdateRequest):
+    """Update whitelisted fields on a feed (name, query, interval, etc.)."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    feed = fm.update(feed_id, **updates)
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    return feed.to_dict()
+
+
+@app.delete("/api/research-feeds/{feed_id}")
+async def delete_feed(feed_id: str):
+    """Delete a feed, its run history, and its markdown output."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    if not fm.delete(feed_id):
+        raise HTTPException(404, "Feed not found")
+    return {"deleted": feed_id}
+
+
+@app.post("/api/research-feeds/{feed_id}/run")
+async def run_feed_now(feed_id: str):
+    """Trigger an immediate execution of the given feed."""
+    _check_feed_rate_limit()
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.get(feed_id)
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    scheduler = _get_feed_scheduler()
+    run = scheduler.run_feed(feed)
+    return run.to_dict()
+
+
+@app.get("/api/research-feeds/{feed_id}/markdown")
+async def get_feed_markdown(feed_id: str):
+    """Return the persistent markdown output for a feed."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    if not fm.get(feed_id):
+        raise HTTPException(404, "Feed not found")
+    return {"feed_id": feed_id, "markdown": fm.get_feed_markdown(feed_id)}
+
+
+@app.get("/api/research-feeds/{feed_id}/runs")
+async def get_feed_runs(feed_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Return recent run history for a feed."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    runs = fm.get_runs(feed_id=feed_id, limit=limit)
+    return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
+
+
+@app.post("/api/research-feeds/tick")
+async def tick_feeds():
+    """Run all feeds whose next_run is in the past. Returns results of each run."""
+    _check_feed_rate_limit()
+    scheduler = _get_feed_scheduler()
+    runs = scheduler.tick()
+    return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
+
+
+@app.get("/api/research-feeds/stats")
+async def feed_stats():
+    """Aggregate stats: total feeds, active, total runs, total citations, by interval."""
+    return _get_feed_manager().stats()
+
+
+@app.get("/api/research-feeds/{feed_id}/citations")
+async def get_feed_citations(feed_id: str, limit: int = Query(50, ge=1, le=200)):
+    """Return citations accumulated by a feed, most recent first."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.get(feed_id)
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    tb = get_tropebook()
+    citations = [
+        {"id": cid, **tb.get(cid).to_dict()}
+        for cid in feed.citation_ids[-limit:]
+        if tb.get(cid)
+    ]
+    return {"citations": citations, "count": len(citations)}
 
 
 if __name__ == "__main__":

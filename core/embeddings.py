@@ -5,17 +5,17 @@ Uses cosine similarity for semantic search — no external vector DB needed.
 """
 
 import json
-import math
 import logging
+import math
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any
 
 logger = logging.getLogger("tropelex.embeddings")
 
 EMBED_DIM = 1536  # text-embedding-3-small
 
 
-def _cosine(a: List[float], b: List[float]) -> float:
+def _cosine(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(x * x for x in b))
@@ -33,7 +33,7 @@ class EmbeddingStore:
     def __init__(self, storage_path: str):
         self.path = Path(storage_path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._store: Dict[str, Dict[str, Any]] = {}  # id -> {text, vector, meta}
+        self._store: dict[str, dict[str, Any]] = {}  # id -> {text, vector, meta}
         self._load()
 
     def _load(self):
@@ -51,7 +51,7 @@ class EmbeddingStore:
         return key in self._store
 
     def put(
-        self, key: str, text: str, vector: List[float], meta: Optional[Dict] = None
+        self, key: str, text: str, vector: list[float], meta: dict | None = None
     ):
         self._store[key] = {"text": text, "vector": vector, "meta": meta or {}}
         self._save()
@@ -62,8 +62,8 @@ class EmbeddingStore:
             self._save()
 
     def search(
-        self, query_vector: List[float], top_k: int = 10, min_score: float = 0.5
-    ) -> List[Dict]:
+        self, query_vector: list[float], top_k: int = 10, min_score: float = 0.5
+    ) -> list[dict]:
         """Return top_k most similar items above min_score."""
         scored = []
         for key, entry in self._store.items():

@@ -4,9 +4,8 @@ Auto-research, staleness detection, and semantic deduplication.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+from datetime import datetime, timezone
+from typing import Any
 
 logger = logging.getLogger("tropelex.research")
 
@@ -15,7 +14,7 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _age_days(iso_date: str) -> Optional[float]:
+def _age_days(iso_date: str) -> float | None:
     try:
         dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
         return (datetime.now(timezone.utc) - dt).days
@@ -26,7 +25,7 @@ def _age_days(iso_date: str) -> Optional[float]:
 # ── Staleness Detection ───────────────────────────────────────────────────────
 
 
-def check_staleness(citations: Dict, max_age_days: int = 90) -> List[Dict]:
+def check_staleness(citations: dict, max_age_days: int = 90) -> list[dict]:
     """
     Return citations that are stale (older than max_age_days with no recent access).
     """
@@ -56,16 +55,14 @@ async def find_semantic_duplicates(
     tropebook,
     embed_store,
     threshold: float = 0.92,
-) -> List[Dict]:
+) -> list[dict]:
     """
     Find citation pairs that are semantically similar above threshold.
     Uses existing embedding store — only checks already-embedded citations.
     """
-    from core.llm import embed_one
-
     duplicates = []
     cids = list(tropebook.citations.keys())
-    scored: List[tuple] = []  # (score, cid_a, cid_b)
+    scored: list[tuple] = []  # (score, cid_a, cid_b)
 
     for i, cid_a in enumerate(cids):
         if not embed_store.has(cid_a):
@@ -108,7 +105,7 @@ async def find_semantic_duplicates(
 # ── Auto Research ─────────────────────────────────────────────────────────────
 
 
-async def auto_research(query: str, tropebook, max_results: int = 5) -> Dict[str, Any]:
+async def auto_research(query: str, tropebook, max_results: int = 5) -> dict[str, Any]:
     """
     Search the web for a query and auto-add results as citations.
     Uses DuckDuckGo (free) or Brave if key is configured.
@@ -190,7 +187,7 @@ async def auto_research(query: str, tropebook, max_results: int = 5) -> Dict[str
 
 async def suggest_related(
     cid: str, tropebook, embed_store, top_k: int = 5
-) -> List[Dict]:
+) -> list[dict]:
     """
     Given a citation, find semantically related citations via embeddings.
     Falls back to tag matching if no embedding exists.

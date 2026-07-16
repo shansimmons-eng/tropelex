@@ -3,100 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tropebook - Research Knowledge Base</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Tropelex - AI Memory System</title>
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>📚 Tropebook</h1>
-            <nav>
-                <button class="nav-btn active" data-view="citations">Citations</button>
-                <button class="nav-btn" data-view="research">Research</button>
-                <button class="nav-btn" data-view="add">Add New</button>
-                <button class="nav-btn" data-view="graph">Graph</button>
-            </nav>
-        </header>
+<body class="font-body-md">
+    <header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-glass-border flex justify-between items-center px-margin-mobile h-14">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-accent-lavender" style="font-variation-settings: 'FILL' 1;">terminal</span>
+            <span class="font-code-md text-code-md font-bold text-accent-lavender uppercase tracking-tight">tropelex / core / context_alpha</span>
+        </div>
+        <nav class="hidden md:flex gap-6 items-center">
+            <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="tropebook-view">Tropebook</a>
+            <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="memory-view">Memory</a>
+            <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="patterns-view">Patterns</a>
+            <a class="font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" href="#">Settings</a>
+        </nav>
+        <span class="material-symbols-outlined text-accent-lavender" style="font-variation-settings: 'FILL' 0;">sensors</span>
+    </header>
 
-        <main id="app">
-            <section id="citations-view" class="view active">
-                <div class="search-bar">
-                    <input type="text" id="search-input" placeholder="Search citations...">
-                    <button id="search-btn">Search</button>
+    <main class="flex-grow pt-[calc(56px+32px)] pb-[calc(64px+32px)] md:pb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+        <div id="tropebook-view" class="view-section">
+            <div class="glass-panel p-4 rounded flex items-center justify-between mb-6">
+                <span class="font-label-caps text-label-caps text-outline">NEURAL ENGINE</span>
+                <div class="flex items-center gap-2">
+                    <span class="font-code-sm text-code-sm text-accent-lime" id="tb-status">IDLE</span>
+                    <div class="w-2.5 h-2.5 rounded-full bg-accent-lime status-dot-pulse"></div>
                 </div>
-                <div class="filters">
-                    <select id="tag-filter">
-                        <option value="">All Tags</option>
-                    </select>
-                    <select id="source-filter">
-                        <option value="">All Sources</option>
-                    </select>
-                </div>
-                <div id="citations-list" class="citations-grid"></div>
-            </section>
-
-            <section id="research-view" class="view">
-                <div class="search-bar">
-                    <input type="text" id="research-input" placeholder="Research query...">
-                    <button id="research-btn">Search Web</button>
-                </div>
-                <div id="research-results" class="citations-grid"></div>
-            </section>
-
-            <section id="add-view" class="view">
-                <form id="add-form">
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" id="add-title" required>
-                    </div>
-                    <div class="form-group">
-                        <label>URL</label>
-                        <input type="url" id="add-url" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Summary</label>
-                        <textarea id="add-summary"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Tags (comma-separated)</label>
-                        <input type="text" id="add-tags">
-                    </div>
-                    <button type="submit">Add Citation</button>
-                </form>
-            </section>
-
-            <section id="graph-view" class="view">
-                <div id="graph-container"></div>
-                <div class="stats-panel">
-                    <h3>Statistics</h3>
-                    <div id="stats-content"></div>
-                </div>
-            </section>
-        </main>
-
-        <footer>
-            <p>Tropebook v1.0.0 | <span id="citation-count">0</span> citations</p>
-        </footer>
-    </div>
-
-    <div id="citation-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2 id="modal-title"></h2>
-            <a id="modal-url" href="#" target="_blank">Open URL</a>
-            <p id="modal-summary"></p>
-            <div class="modal-tags" id="modal-tags"></div>
-            <div class="modal-relations">
-                <h4>Related Citations</h4>
-                <div id="modal-related"></div>
             </div>
-            <div class="modal-actions">
-                <button id="modal-link">Add Relationship</button>
-                <button id="modal-delete" class="danger">Delete</button>
+
+            <div class="search-bar glass-panel rounded p-unit flex items-center gap-unit search-bar-focus mb-6">
+                <span class="material-symbols-outlined text-outline pl-2">search</span>
+                <input type="text" id="tb-search-input" class="w-full bg-transparent border-none text-on-surface font-code-md text-code-md focus:ring-0 focus:outline-none placeholder-outline-variant h-8" placeholder="QUERY GRAPH...">
+                <button id="tb-search-btn" class="bg-transparent border border-glass-border text-accent-lavender font-label-caps text-label-caps px-3 py-1 rounded hover:bg-accent-lavender hover:text-terminal-bg transition-all">SEARCH</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                <aside class="col-span-1 lg:col-span-3 flex flex-col gap-gutter">
+                    <div class="glass-panel rounded p-4 flex flex-col gap-4">
+                        <h2 class="font-label-caps text-label-caps text-accent-periwinkle border-b border-glass-border pb-2">RECENT INGESTION</h2>
+                        <div id="recent-ingestion" class="flex flex-col gap-2"></div>
+                    </div>
+                </aside>
+                <div class="col-span-1 lg:col-span-9">
+                    <div class="flex justify-between items-center px-2 py-1 mb-4">
+                        <span class="font-label-caps text-label-caps text-outline" id="citation-count">INDEX: 0 ENTITIES FOUND</span>
+                    </div>
+                    <div id="citations-list" class="flex flex-col gap-4"></div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div id="memory-view" class="view-section hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                <div class="lg:col-span-4 flex flex-col gap-gutter">
+                    <div class="glass-panel p-4 rounded flex flex-col gap-2">
+                        <div class="flex justify-between items-start">
+                            <h2 class="font-headline-lg text-headline-lg text-on-surface" id="project-name">Select Project</h2>
+                            <span class="flex items-center gap-1 font-code-sm text-code-sm text-accent-lime">
+                                <span class="w-2 h-2 rounded-sm bg-accent-lime status-dot-pulse"></span>
+                                <span id="project-status">Active</span>
+                            </span>
+                        </div>
+                        <p class="font-code-sm text-code-sm text-outline-variant uppercase" id="project-sync">Last Synced: Never</p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-4" id="project-description"></p>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded">
+                        <h3 class="font-label-caps text-label-caps text-accent-sky mb-4 uppercase">Tech Stack</h3>
+                        <div id="tech-stack" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded">
+                        <h3 class="font-label-caps text-label-caps text-accent-sky mb-4 uppercase">Quick Actions</h3>
+                        <div class="flex flex-col gap-2">
+                            <button id="new-decision-btn" class="w-full bg-transparent border border-accent-lavender text-accent-lavender font-label-caps text-label-caps py-2 px-4 hover:bg-accent-lavender/10 transition-all uppercase">+ New Decision</button>
+                            <button id="new-project-btn" class="w-full bg-transparent border border-glass-border text-outline font-label-caps text-label-caps py-2 px-4 hover:bg-surface-variant/30 transition-all uppercase">+ New Project</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 flex flex-col gap-gutter">
+                    <h3 class="font-label-caps text-label-caps text-accent-sky mb-2 uppercase px-2">Decision Context Log</h3>
+                    <div id="decisions-log" class="flex flex-col gap-[1px] bg-glass-border rounded overflow-hidden"></div>
+                    <button id="load-more-decisions" class="w-full mt-4 py-3 border border-glass-border text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-variant/30 hover:text-accent-sky transition-all uppercase">Load Historical Context</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="patterns-view" class="view-section hidden">
+            <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Pattern Learner</h1>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Visualization of identified behavioral and structural patterns.</p>
+                </div>
+                <div class="flex items-center gap-2 bg-surface-container-low border border-glass-border rounded px-3 py-1.5">
+                    <div class="w-2.5 h-2.5 rounded-full bg-accent-lime animate-breathe shadow-[0_0_8px_rgba(152,250,128,0.5)]"></div>
+                    <span class="font-code-sm text-code-sm text-accent-lime uppercase tracking-wider">Active Learning</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <section class="md:col-span-8 flex flex-col gap-4">
+                    <h2 class="font-headline-md text-headline-md text-on-surface border-b border-surface-variant pb-2">Pattern Insights</h2>
+                    <div id="pattern-insights" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                </section>
+
+                <section class="md:col-span-4 flex flex-col gap-4">
+                    <h2 class="font-headline-md text-headline-md text-on-surface border-b border-surface-variant pb-2">Next Steps</h2>
+                    <div id="next-steps" class="glass-panel rounded flex flex-col h-full overflow-hidden">
+                        <div class="flex flex-col"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-16 bg-surface-container-lowest/90 backdrop-blur-md border-t border-glass-border">
+        <a class="mobile-nav flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" data-view="tropebook-view">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="font-label-caps text-label-caps mt-1">Tropebook</span>
+        </a>
+        <a class="mobile-nav flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" data-view="memory-view">
+            <span class="material-symbols-outlined">memory</span>
+            <span class="font-label-caps text-label-caps mt-1">Memory</span>
+        </a>
+        <a class="mobile-nav flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" data-view="patterns-view">
+            <span class="material-symbols-outlined">hub</span>
+            <span class="font-label-caps text-label-caps mt-1">Patterns</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" href="#">
+            <span class="material-symbols-outlined">settings</span>
+            <span class="font-label-caps text-label-caps mt-1">Settings</span>
+        </a>
+    </nav>
 
     <script src="/static/app.js"></script>
+    <script>
+        const API = '';
+        let currentView = 'tropebook-view';
+        let currentProject = null;
+
+        function showView(viewId) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden'));
+            document.querySelectorAll('.nav-link, .mobile-nav').forEach(n => {
+                n.classList.remove('text-accent-sky', 'text-accent-lavender', 'border-accent-lavender');
+                n.classList.add('text-outline');
+            });
+            
+            document.getElementById(viewId).classList.remove('hidden');
+            const activeLink = document.querySelector(`[data-view="${viewId}"]`);
+            if (activeLink) {
+                activeLink.classList.remove('text-outline');
+                activeLink.classList.add('text-accent-lavender');
+            }
+            
+            currentView = viewId;
+            
+            if (viewId === 'memory-view' && !currentProject) {
+                loadProjects();
+            }
+            if (viewId === 'patterns-view') {
+                loadPatterns();
+            }
+        }
+
+        document.querySelectorAll('.nav-link, .mobile-nav').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                showView(link.dataset.view);
+            });
+        });
+
+        async function loadProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                const data = await res.json();
+                if (data.projects.length > 0) {
+                    selectProject(data.projects[0]);
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function selectProject(name) {
+            currentProject = name;
+            try {
+                const res = await fetch(`/api/projects/${name}`);
+                const proj = await res.json();
+                
+                document.getElementById('project-name').textContent = proj.project_name || name;
+                document.getElementById('project-sync').textContent = `Last Synced: ${proj.last_updated || 'Never'}`;
+                document.getElementById('project-description').textContent = proj.description || 'No description';
+                
+                const techStack = document.getElementById('tech-stack');
+                techStack.innerHTML = (proj.tech_stack || []).map(t => 
+                    `<span class="font-label-caps text-label-caps bg-accent-lavender/15 text-accent-lavender px-2 py-1 border border-accent-lavender/30">${t}</span>`
+                ).join('');
+                
+                const decisions = document.getElementById('decisions-log');
+                decisions.innerHTML = (proj.decisions || []).slice().reverse().map(d => `
+                    <div class="bg-surface p-4 hover:bg-surface-bright/20 transition-colors relative">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-lavender text-[16px]">terminal</span>
+                                <span class="font-code-sm text-code-sm text-accent-lavender">${name.toUpperCase()}_DECISION</span>
+                            </div>
+                            <span class="font-code-sm text-code-sm text-outline">${(d.timestamp || '').split('T')[0]}</span>
+                        </div>
+                        <h4 class="font-headline-md text-headline-md text-on-surface mb-2">${d.decision}</h4>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">${d.context || 'No context provided'}</p>
+                    </div>
+                `).join('') || '<div class="bg-surface p-4 text-on-surface-variant">No decisions recorded yet</div>';
+                
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadPatterns() {
+            if (!currentProject) {
+                document.getElementById('pattern-insights').innerHTML = '<p class="text-on-surface-variant col-span-2">Select a project in Memory to view patterns</p>';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/projects/${currentProject}/patterns`);
+                const data = await res.json();
+                
+                const insights = document.getElementById('pattern-insights');
+                insights.innerHTML = data.patterns.map(p => `
+                    <div class="glass-panel p-4 rounded flex flex-col gap-3 hover:bg-surface-variant/30 group cursor-pointer">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-sky text-sm">schedule</span>
+                                <span class="font-label-caps text-label-caps text-on-surface uppercase">${p.name}</span>
+                            </div>
+                            <span class="font-code-md text-code-md text-accent-lime bg-accent-lime/10 px-2 py-0.5 rounded border border-accent-lime/30 group-hover:bg-accent-lime/20 transition-colors">${p.count} hits</span>
+                        </div>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Pattern detected in recent sessions.</p>
+                    </div>
+                `).join('') || '<p class="text-on-surface-variant col-span-2">No patterns detected yet</p>';
+                
+                const nextSteps = document.getElementById('next-steps').querySelector('div');
+                nextSteps.innerHTML = (data.suggestions || []).map((s, i) => `
+                    <div class="p-4 border-b border-glass-border hover:bg-surface-variant/20 transition-colors flex gap-3">
+                        <div class="mt-1">
+                            <span class="material-symbols-outlined text-accent-lime" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        </div>
+                        <div>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">${s}</p>
+                        </div>
+                    </div>
+                `).join('') || '<div class="p-4 text-on-surface-variant">No suggestions yet</div>';
+                
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('new-decision-btn')?.addEventListener('click', async () => {
+            if (!currentProject) { alert('Select a project first'); return; }
+            const decision = prompt('Enter decision:');
+            if (!decision) return;
+            const context = prompt('Enter context (optional):') || '';
+            await fetch(`/api/projects/${currentProject}/decisions?decision=${encodeURIComponent(decision)}&context=${encodeURIComponent(context)}`, { method: 'POST' });
+            selectProject(currentProject);
+        });
+
+        document.getElementById('new-project-btn')?.addEventListener('click', async () => {
+            const name = prompt('Enter project name:');
+            if (!name) return;
+            await fetch(`/api/projects?name=${encodeURIComponent(name)}`, { method: 'POST' });
+            selectProject(name);
+        });
+
+        showView('tropebook-view');
+    </script>
 </body>
 </html>

@@ -3,15 +3,15 @@ Research Tool - Web search and scraping for Tropebook
 Supports Brave Search API and free alternatives.
 """
 from __future__ import annotations
-import requests
-import time
-from typing import List, Dict, Optional, Callable, Any
-from dataclasses import dataclass, field
-from urllib.parse import urlparse, quote
+
 import re
+import time
+from dataclasses import dataclass, field
+
+import requests
 
 try:
-    from duckduckgo_search import DDGS
+    from duckduckgo_search import DDGS  # noqa: F401
     DUCKDUCKGO_AVAILABLE = True
 except ImportError:
     DUCKDUCKGO_AVAILABLE = False
@@ -29,20 +29,20 @@ class ScrapedContent:
     title: str
     content: str
     excerpt: str = ""
-    links: List[str] = field(default_factory=list)
+    links: list[str] = field(default_factory=list)
 
 class BraveSearch:
     BASE_URL = "https://api.search.brave.com/res/v1/web/search"
-    
-    def __init__(self, api_key: Optional[str] = None, rate_limit: float = 1.0):
+
+    def __init__(self, api_key: str | None = None, rate_limit: float = 1.0):
         self.api_key = api_key
         self.rate_limit = rate_limit
         self.last_request = 0
 
-    def search(self, query: str, num_results: int = 10) -> List[SearchResult]:
+    def search(self, query: str, num_results: int = 10) -> list[SearchResult]:
         if not self.api_key:
             return self._free_search_fallback(query, num_results)
-        
+
         headers = {
             "Accept": "application/json",
             "X-Subscription-Token": self.api_key,
@@ -53,15 +53,15 @@ class BraveSearch:
             "count": min(num_results, 20),
             "safesearch": "moderate"
         }
-        
+
         while time.time() - self.last_request < self.rate_limit:
             time.sleep(0.1)
-        
+
         try:
             resp = requests.get(self.BASE_URL, headers=headers, params=params, timeout=10)
             resp.raise_for_status()
             data = resp.json()
-            
+
             results = []
             for item in data.get("web", {}).get("results", []):
                 results.append(SearchResult(
@@ -75,7 +75,7 @@ class BraveSearch:
             print(f"Brave API error: {e}")
             return self._free_search_fallback(query, num_results)
 
-    def _free_search_fallback(self, query: str, num_results: int) -> List[SearchResult]:
+    def _free_search_fallback(self, query: str, num_results: int) -> list[SearchResult]:
         results = []
         try:
             from duckduckgo_search import DDGS
@@ -97,21 +97,21 @@ class WebScraper:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent})
 
-    def scrape(self, url: str, extract_links: bool = True) -> Optional[ScrapedContent]:
+    def scrape(self, url: str, extract_links: bool = True) -> ScrapedContent | None:
         try:
             resp = self.session.get(url, timeout=15)
             resp.raise_for_status()
-            
+
             content_type = resp.headers.get("content-type", "")
             if "text/html" not in content_type and "application/xhtml" not in content_type:
                 return None
-            
+
             html = resp.text
             title = self._extract_title(html)
             text = self._extract_text(html)
             excerpt = text[:500] if len(text) > 500 else text
             links = self._extract_links(html) if extract_links else []
-            
+
             return ScrapedContent(
                 url=url,
                 title=title,
@@ -135,16 +135,16 @@ class WebScraper:
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
-    def _extract_links(self, html: str) -> List[str]:
+    def _extract_links(self, html: str) -> list[str]:
         pattern = r'href=["\'](https?://[^"\']+)["\']'
         return list(set(re.findall(pattern, html, re.IGNORECASE)))[:50]
 
 class ResearchTool:
-    def __init__(self, brave_api_key: Optional[str] = None, storage_path: str = "memory/tropebook/"):
+    def __init__(self, brave_api_key: str | None = None, storage_path: str = "memory/tropebook/"):
         self.search = BraveSearch(api_key=brave_api_key)
         self.scraper = WebScraper()
         self.tropebook = None
-        
+
         try:
             from .ropebook import Tropebook
             self.tropebook = Tropebook(storage_path)
@@ -152,9 +152,9 @@ class ResearchTool:
             pass
 
     def research(self, query: str, num_results: int = 10, scrape: bool = True,
-                add_to_tropebook: bool = True) -> List[SearchResult]:
+                add_to_tropebook: bool = True) -> list[SearchResult]:
         results = self.search.search(query, num_results)
-        
+
         if add_to_tropebook and self.tropebook and scrape:
             for result in results:
                 content = self.scraper.scrape(result.url, extract_links=True)
@@ -179,10 +179,10 @@ class ResearchTool:
                                 url=link,
                                 source="scraped"
                             )
-        
+
         return results
 
-    def research_and_scrape(self, query: str, num_results: int = 10) -> List[ScrapedContent]:
+    def research_and_scrape(self, query: str, num_results: int = 10) -> list[ScrapedContent]:
         results = self.search.search(query, num_results)
         scraped = []
         for result in results:
@@ -191,7 +191,7 @@ class ResearchTool:
                 scraped.append(content)
         return scraped
 
-    def _extract_entities(self, text: str, max_entities: int = 10) -> List[str]:
+    def _extract_entities(self, text: str, max_entities: int = 10) -> list[str]:
         entities = []
         patterns = [
             r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b',
@@ -203,9 +203,8 @@ class ResearchTool:
             entities.extend(matches[:max_entities])
         return list(set(entities))[:max_entities]
 
-    def _extract_tags(self, text: str, query: str) -> List[str]:
+    def _extract_tags(self, text: str, query: str) -> list[str]:
         tags = [query]
-        query_words = set(query.lower().split())
         common_tags = ["tutorial", "guide", "documentation", "api", "framework",
                        "tool", "library", "paper", "blog", "research", "code"]
         for tag in common_tags:
@@ -216,11 +215,11 @@ class ResearchTool:
     def extend_from_source(self, source_data: dict, source_type: str = "deep_research"):
         if not self.tropebook:
             return 0
-        
+
         if source_type == "deep_research":
             return self.tropebook.import_from_deep_research(source_data)
-        
+
         return 0
 
-def create_researcher(api_key: Optional[str] = None) -> ResearchTool:
+def create_researcher(api_key: str | None = None) -> ResearchTool:
     return ResearchTool(brave_api_key=api_key)

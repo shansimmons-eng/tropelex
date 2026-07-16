@@ -3,12 +3,12 @@ Tropelex OpenCode Adapter
 Enables Tropelex memory system for OpenCode agent sessions.
 """
 import sys
-import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
 
 # Default Tropelex location
 DEFAULT_TROPELEX_PATH = Path.home() / "Tropelex"
+
 
 class TropelexAdapter:
     """
@@ -19,7 +19,7 @@ class TropelexAdapter:
         context = adapter.get_context_for_project("sovereign-mirror")
     """
 
-    def __init__(self, tropelex_path: Optional[str] = None):
+    def __init__(self, tropelex_path: str | None = None):
         self.tropelex_path = Path(tropelex_path) if tropelex_path else DEFAULT_TROPELEX_PATH
         self.memory_manager = None
         self._init_memory()
@@ -27,9 +27,12 @@ class TropelexAdapter:
     def _init_memory(self):
         """Lazy-load memory manager."""
         if self.tropelex_path.exists():
-            import sys
-            sys.path.insert(0, str(self.tropelex_path / "core" / "memory"))
-            from manager import MemoryManager
+            # Add Tropelex root to sys.path once so core.* imports work
+            tropelex_str = str(self.tropelex_path)
+            if tropelex_str not in sys.path:
+                sys.path.insert(0, tropelex_str)
+            from core.memory.manager import MemoryManager
+
             self.memory_manager = MemoryManager(str(self.tropelex_path))
 
     def get_context_for_project(self, project_name: str) -> str:
@@ -39,17 +42,15 @@ class TropelexAdapter:
         """
         if not self.memory_manager:
             return f"[Tropelex not initialized at {self.tropelex_path}]"
-        
         return self.memory_manager.get_context_for_project(project_name)
 
-    def inject_preferences(self, project_name: str, agent_preferences: Dict[str, Any]) -> None:
+    def inject_preferences(self, project_name: str, agent_preferences: dict[str, Any]) -> None:
         """
         Inject agent/user preferences for a project.
         Call this at start of session.
         """
         if not self.memory_manager:
             return
-        
         for key, value in agent_preferences.items():
             self.memory_manager.set_preference(project_name, key, value)
 
@@ -60,7 +61,6 @@ class TropelexAdapter:
         """
         if not self.memory_manager:
             return
-        
         self.memory_manager.add_decision(project_name, decision, context)
 
     def summarize_session(self, project_name: str, session_text: str) -> None:
@@ -70,10 +70,8 @@ class TropelexAdapter:
         """
         if not self.memory_manager:
             return
-        
-        sys.path.insert(0, str(self.tropelex_path / "core" / "learner"))
-        from learner import PatternLearner
-        
+        from core.learner.learner import PatternLearner
+
         learner = PatternLearner(self.memory_manager)
         analysis = learner.analyze_session(project_name, session_text)
         learner.update_project_from_session(project_name, analysis)
@@ -82,9 +80,8 @@ class TropelexAdapter:
         """
         Compress context for prompt optimization.
         """
-        sys.path.insert(0, str(self.tropelex_path / "core" / "context-compressor"))
-        from compressor import ContextCompressor
-        
+        from core.context_compressor.compressor import ContextCompressor
+
         compressor = ContextCompressor(max_tokens=max_tokens)
         result = compressor.compress(content)
         return result.content
@@ -103,7 +100,6 @@ class TropelexAdapter:
         context = self.get_context_for_project(project_name)
         if not context:
             return ""
-        
         return f"""
 [TROPELEX MEMORY]
 {context}

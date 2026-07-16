@@ -325,6 +325,15 @@ tailwind.config = {
             <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="pipeline">
                 Prompt Lab
             </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="insights">
+                Insights
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="git">
+                <span class="material-symbols-outlined text-sm align-middle mr-1">commit</span>Git
+            </button>
+            <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="feeds">
+                <span class="material-symbols-outlined text-sm align-middle mr-1">rss_feed</span>Feeds
+            </button>
             <button class="nav-item font-mono text-sm uppercase tracking-wider py-2 px-1 transition-colors text-outline" data-section="settings">
                 Settings
             </button>
@@ -358,6 +367,9 @@ tailwind.config = {
         <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="memory">Memory</button>
         <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="patterns">Patterns</button>
         <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="pipeline">Prompt Lab</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="insights">Insights</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="git">Git</button>
+        <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="feeds">Feeds</button>
         <button class="nav-item-mobile font-mono text-lg uppercase tracking-wider text-outline hover:text-accent-sky" data-section="settings">Settings</button>
         <button class="mt-8 px-6 py-2 glass-panel rounded text-accent-lavender hover:glow transition-all" id="close-mobile-nav">Close</button>
     </div>
@@ -782,6 +794,247 @@ tailwind.config = {
         </div>
     </section>
 
+    <!-- ==================== INSIGHTS SECTION ==================== -->
+    <section id="section-insights" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
+                <span class="material-symbols-outlined">insights</span>
+                Insights
+            </h2>
+            <div class="flex items-center gap-3">
+                <select id="insights-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1.5 font-mono text-sm text-on-surface cursor-pointer">
+                    <option value="">Select project...</option>
+                </select>
+                <button id="btn-refresh-insights" class="px-3 py-1.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">refresh</span> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Confidence Overview -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">verified</span>
+                    Decision Confidence
+                </h3>
+                <div id="confidence-overview" class="space-y-3">
+                    <p class="text-sm text-outline">Select a project to view confidence scores.</p>
+                </div>
+            </div>
+
+            <!-- Agent Skills -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">psychology</span>
+                    Agent Proficiency
+                </h3>
+                <div id="agent-skills-list" class="space-y-3">
+                    <p class="text-sm text-outline">Select a project to view agent skills.</p>
+                </div>
+            </div>
+
+            <!-- Decision Tree Timeline -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">account_tree</span>
+                        Decision Timeline
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-show-chains" class="px-3 py-1 rounded bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">
+                            Chains
+                        </button>
+                        <button id="btn-generate-adrs" class="px-3 py-1 rounded bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">
+                            Generate ADRs
+                        </button>
+                    </div>
+                </div>
+                <div id="decision-timeline" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-sm text-outline">Select a project to view the decision timeline.</p>
+                </div>
+                <div id="decision-chains" class="hidden space-y-2 mt-4 p-4 rounded-lg bg-surface-raised border border-glass-border">
+                    <h4 class="font-mono text-xs uppercase text-accent-sky mb-2">Decision Chains</h4>
+                    <div id="chains-list" class="space-y-2"></div>
+                </div>
+                <div id="adr-output" class="hidden mt-4 p-4 rounded-lg bg-surface-raised border border-glass-border">
+                    <h4 class="font-mono text-xs uppercase text-accent-lime mb-2">Generated ADRs</h4>
+                    <div id="adr-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- Session Replay -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">history</span>
+                    Session Replay
+                </h3>
+                <div id="session-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-sm text-outline">Select a project to view session history.</p>
+                </div>
+            </div>
+
+            <!-- Cross-Project Knowledge -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">swap_horiz</span>
+                    Cross-Project Knowledge
+                </h3>
+                <div id="cross-pollinate-results" class="space-y-2">
+                    <p class="text-sm text-outline">Select a project to find transferable knowledge from similar projects.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== GIT SECTION ==================== -->
+    <section id="section-git" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
+                <span class="material-symbols-outlined">commit</span>
+                Git Integration
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Git Sync -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">sync</span>
+                    Sync Repository
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Repository Path</label>
+                        <input type="text" id="git-repo-path" placeholder="/home/user/myproject"
+                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Project Name</label>
+                        <input type="text" id="git-project-name" placeholder="myproject"
+                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="btn-git-summary" class="flex-1 px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">preview</span> Summary
+                        </button>
+                        <button id="btn-git-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">sync</span> Sync
+                        </button>
+                        <button id="btn-git-deep-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">biotech</span> Deep Sync
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Git Summary Output -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">summarize</span>
+                    Repository Summary
+                </h3>
+                <div id="git-summary-output" class="space-y-3 max-h-96 overflow-y-auto">
+                    <p class="text-sm text-outline">Enter a repo path and click Summary to analyze.</p>
+                </div>
+            </div>
+
+            <!-- Sync Results -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">output</span>
+                    Sync Results
+                </h3>
+                <div id="git-sync-output" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-sm text-outline">Sync results will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FEEDS SECTION ==================== -->
+    <section id="section-feeds" class="section max-w-7xl mx-auto px-6 py-8 fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
+                <span class="material-symbols-outlined">rss_feed</span>
+                Research Feeds
+            </h2>
+            <div class="flex items-center gap-3">
+                <button id="btn-tick-feeds" class="px-3 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">play_arrow</span> Run Due
+                </button>
+                <button id="btn-create-feed" class="px-3 py-1.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">add</span> New Feed
+                </button>
+            </div>
+        </div>
+
+        <!-- Feed Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <div id="feed-stat-total" class="font-mono text-2xl text-accent-lavender">0</div>
+                <div class="font-mono text-xs text-outline uppercase mt-1">Total Feeds</div>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <div id="feed-stat-active" class="font-mono text-2xl text-accent-sky">0</div>
+                <div class="font-mono text-xs text-outline uppercase mt-1">Active</div>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <div id="feed-stat-runs" class="font-mono text-2xl text-accent-lime">0</div>
+                <div class="font-mono text-xs text-outline uppercase mt-1">Total Runs</div>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <div id="feed-stat-citations" class="font-mono text-2xl text-accent-periwinkle">0</div>
+                <div class="font-mono text-xs text-outline uppercase mt-1">Citations</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Feed List -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-1">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">list</span>
+                    Feeds
+                </h3>
+                <div id="feed-list" class="space-y-2 max-h-[32rem] overflow-y-auto">
+                    <p class="text-sm text-outline">No feeds yet. Create one to get started.</p>
+                </div>
+            </div>
+
+            <!-- Feed Detail / Markdown Preview -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="feed-detail-title" class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">article</span>
+                        Feed Detail
+                    </h3>
+                    <div class="flex items-center gap-2" id="feed-detail-actions" style="display:none;">
+                        <button id="btn-run-feed" class="px-3 py-1 rounded bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">play_arrow</span> Run Now
+                        </button>
+                        <button id="btn-delete-feed" class="px-3 py-1 rounded bg-red-500/20 text-red-400 font-mono text-xs hover:bg-red-500/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="feed-detail-content" class="space-y-4">
+                    <p class="text-sm text-outline">Select a feed to view its details and markdown output.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Run History -->
+        <div class="glass-panel rounded-xl p-6 mt-6">
+            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">history</span>
+                Recent Runs
+            </h3>
+            <div id="feed-runs-list" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-sm text-outline">No runs yet.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Settings Section -->
     <section id="section-settings" class="section max-w-4xl mx-auto px-6 py-8 fade-in">
         <div class="space-y-6">
@@ -946,6 +1199,18 @@ tailwind.config = {
             <span class="material-symbols-outlined text-2xl">hub</span>
             <span class="font-mono text-xs uppercase">Patterns</span>
         </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="insights">
+            <span class="material-symbols-outlined text-2xl">insights</span>
+            <span class="font-mono text-xs uppercase">Insights</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="git">
+            <span class="material-symbols-outlined text-2xl">commit</span>
+            <span class="font-mono text-xs uppercase">Git</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="feeds">
+            <span class="material-symbols-outlined text-2xl">rss_feed</span>
+            <span class="font-mono text-xs uppercase">Feeds</span>
+        </button>
         <button class="flex flex-col items-center gap-1 text-outline nav-bottom-item" data-section="settings">
             <span class="material-symbols-outlined text-2xl">settings</span>
             <span class="font-mono text-xs uppercase">Settings</span>
@@ -1073,7 +1338,9 @@ function openModal() {
 function closeModal() {
     document.getElementById('add-modal').classList.add('hidden');
     document.getElementById('add-modal').classList.remove('flex');
-    document.getElementById('add-form').reset();
+    const form = document.getElementById('add-form');
+    form.reset();
+    form.dataset.mode = '';
 }
 
 document.getElementById('btn-add-citation').addEventListener('click', openModal);
@@ -1315,18 +1582,37 @@ document.getElementById('search-input').addEventListener('keydown', e => {
 // Add citation form
 document.getElementById('add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const citation = {
-        title: document.getElementById('form-title').value,
-        url: document.getElementById('form-url').value,
-        summary: document.getElementById('form-summary').value,
-        tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
-        source_type: 'manual'
-    };
-    const res = await api('/citations', 'POST', citation);
-    if (res) {
-        closeModal();
-        loadCitations();
-        showToast('Citation added');
+    const form = e.target;
+    if (form.dataset.mode === 'feed') {
+        const feed = {
+            name: document.getElementById('form-title').value,
+            query: document.getElementById('form-url').value,
+            description: document.getElementById('form-summary').value,
+            tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+            interval: 'weekly',
+            sources: ['web'],
+        };
+        const res = await api('/research-feeds', 'POST', feed);
+        if (res) {
+            closeModal();
+            form.dataset.mode = '';
+            loadFeeds();
+            showToast('Feed created');
+        }
+    } else {
+        const citation = {
+            title: document.getElementById('form-title').value,
+            url: document.getElementById('form-url').value,
+            summary: document.getElementById('form-summary').value,
+            tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+            source_type: 'manual'
+        };
+        const res = await api('/citations', 'POST', citation);
+        if (res) {
+            closeModal();
+            loadCitations();
+            showToast('Citation added');
+        }
     }
 });
 
@@ -1426,6 +1712,8 @@ async function loadProjects() {
 function updateGlobalProjectSelector() {
     const sel = document.getElementById('global-project-select');
     sel.innerHTML = '<option value="">Select project...</option>';
+    const insightsSel = document.getElementById('insights-project-select');
+    insightsSel.innerHTML = '<option value="">Select project...</option>';
     state.projects.forEach(proj => {
         const pName = proj.name || proj;
         const opt = document.createElement('option');
@@ -1433,6 +1721,8 @@ function updateGlobalProjectSelector() {
         opt.textContent = pName;
         if (pName === state.currentProject) opt.selected = true;
         sel.appendChild(opt);
+        const opt2 = opt.cloneNode(true);
+        insightsSel.appendChild(opt2);
     });
 }
 
@@ -1479,6 +1769,13 @@ async function selectProject(name) {
     if (state.currentSection === 'graph') loadGraph();
     // If on pipeline section, auto-load context
     if (state.currentSection === 'pipeline') loadPipelineContext();
+    // Sync insights selector and load if on insights section
+    const insightsSel = document.getElementById('insights-project-select');
+    if (insightsSel) insightsSel.value = name;
+    if (state.currentSection === 'insights') loadAllInsights(name);
+    // Pre-fill git project name
+    const gitName = document.getElementById('git-project-name');
+    if (gitName && !gitName.value) gitName.value = name;
 }
 
 function renderDecisions(decisions) {
@@ -2526,6 +2823,484 @@ document.getElementById('graph-embed-all').addEventListener('click', async () =>
 const _origSwitch = switchSection;
 window._graphLoaded = false;
 
+// ==================== INSIGHTS & GIT JS ====================
+
+function getInsightsProject() {
+    return document.getElementById('insights-project-select').value || state.currentProject || '';
+}
+
+// Confidence Overview
+async function loadConfidence(project) {
+    if (!project) return;
+    const data = await api(`/memory/${project}/confidence`);
+    const el = document.getElementById('confidence-overview');
+    if (!data || data.total === 0) {
+        el.innerHTML = '<p class="text-sm text-outline">No decisions recorded yet.</p>';
+        return;
+    }
+    const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
+    const tierBg = { high: 'bg-accent-lime/10', medium: 'bg-accent-sky/10', low: 'bg-orange-500/10', stale: 'bg-red-500/10' };
+    el.innerHTML = `
+        <div class="flex items-center gap-4 mb-3">
+            <div class="text-3xl font-mono font-bold" style="color: ${tierColors[data.most_confident?.tier || 'medium']}">${Math.round(data.average_confidence * 100)}%</div>
+            <div class="text-xs text-outline">avg confidence across ${data.total} decisions</div>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+            ${Object.entries(data.by_tier).map(([tier, count]) => `
+                <div class="p-2 rounded-lg ${tierBg[tier]} border border-glass-border text-center">
+                    <div class="text-lg font-mono font-bold" style="color: ${tierColors[tier]}">${count}</div>
+                    <div class="text-xs text-outline capitalize">${tier}</div>
+                </div>
+            `).join('')}
+        </div>
+        ${data.stale_count > 0 ? `<p class="text-xs text-orange-400 mt-2">${data.stale_count} decisions need review (stale or low confidence)</p>` : ''}
+    `;
+}
+
+// Agent Skills
+async function loadAgentSkills(project) {
+    if (!project) return;
+    const data = await api(`/memory/${project}/agent-skills`);
+    const el = document.getElementById('agent-skills-list');
+    if (!data || data.skills.length === 0) {
+        el.innerHTML = '<p class="text-sm text-outline">No skill data yet. Skills are learned from session outcomes.</p>';
+        return;
+    }
+    const profColors = { expert: '#98fa80', proficient: '#80d5fa', competent: '#8098fa', learning: '#ffa500', novice: '#ff4444' };
+    el.innerHTML = data.skills.map(s => `
+        <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised">
+            <div class="w-12 text-right font-mono text-xs font-bold" style="color: ${profColors[s.proficiency] || '#958e9e'}">${Math.round(s.score * 100)}%</div>
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium capitalize">${s.skill}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full" style="color: ${profColors[s.profurity]}; background: ${profColors[s.proficiency]}20">${s.proficiency}</span>
+                </div>
+                <div class="w-full bg-surface rounded-full h-1.5 mt-1">
+                    <div class="h-1.5 rounded-full" style="width: ${s.score * 100}%; background: ${profColors[s.proficiency]}"></div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Decision Timeline
+async function loadDecisionTimeline(project) {
+    if (!project) return;
+    const data = await api(`/memory/${project}/decision-tree/timeline`);
+    const el = document.getElementById('decision-timeline');
+    if (!data || data.timeline.length === 0) {
+        el.innerHTML = '<p class="text-sm text-outline">No decisions recorded yet.</p>';
+        return;
+    }
+    const sourceColors = { git: '#98fa80', git_deep: '#80d5fa', git_stack: '#8098fa', manual: '#a580fa' };
+    el.innerHTML = data.timeline.map(d => {
+        const score = d.confidence?.score;
+        const tier = d.confidence?.tier || 'medium';
+        const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
+        const rels = (d.outgoing_relationships || []).map(r => `<span class="text-xs px-1.5 py-0.5 rounded bg-surface-high text-outline">${r.type}</span>`).join(' ');
+        return `
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border fade-in">
+                <div class="flex flex-col items-center gap-1 min-w-[3rem]">
+                    ${score != null ? `<div class="text-sm font-mono font-bold" style="color: ${tierColors[tier]}">${Math.round(score * 100)}%</div>` : ''}
+                    <span class="text-xs px-1.5 py-0.5 rounded" style="background: ${sourceColors[d.source] || '#a580fa'}20; color: ${sourceColors[d.source] || '#a580fa'}">${d.source || 'manual'}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-on-surface">${escapeHtml(d.decision || '')}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-xs text-outline">${(d.timestamp || '').slice(0, 10)}</span>
+                        ${rels}
+                    </div>
+                    ${d.rationale ? `<p class="text-xs text-accent-sky mt-1">${escapeHtml(d.rationale.slice(0, 120))}</p>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Decision Chains
+document.getElementById('btn-show-chains').addEventListener('click', async () => {
+    const project = getInsightsProject();
+    if (!project) return showToast('Select a project first');
+    const data = await api(`/memory/${project}/decision-tree/chains`);
+    const container = document.getElementById('decision-chains');
+    const list = document.getElementById('chains-list');
+    container.classList.toggle('hidden', !data || data.chains.length === 0);
+    if (!data || data.chains.length === 0) {
+        list.innerHTML = '<p class="text-xs text-outline">No decision chains found.</p>';
+        return;
+    }
+    list.innerHTML = data.chains.map((chain, i) => `
+        <div class="p-3 rounded bg-surface border border-glass-border">
+            <div class="text-xs text-accent-sky mb-2">Chain ${i + 1} (${chain.length} decisions)</div>
+            ${chain.map((d, j) => `
+                <div class="flex items-center gap-2 ${j > 0 ? 'ml-4 border-l border-glass-border pl-3' : ''}">
+                    ${j > 0 ? '<span class="text-xs text-outline">→</span>' : ''}
+                    <span class="text-sm">${escapeHtml((d.decision || '').slice(0, 80))}</span>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+});
+
+// ADR Generation
+document.getElementById('btn-generate-adrs').addEventListener('click', async () => {
+    const project = getInsightsProject();
+    if (!project) return showToast('Select a project first');
+    const data = await api(`/memory/${project}/adrs?format=tropelex&only_significant=true`);
+    const container = document.getElementById('adr-output');
+    const list = document.getElementById('adr-list');
+    container.classList.toggle('hidden', !data || data.adrs.length === 0);
+    if (!data || data.adrs.length === 0) {
+        list.innerHTML = '<p class="text-xs text-outline">No significant decisions to generate ADRs from.</p>';
+        return;
+    }
+    list.innerHTML = data.adrs.map(adr => `
+        <details class="p-3 rounded bg-surface border border-glass-border">
+            <summary class="text-sm font-medium cursor-pointer hover:text-accent-lavender">${escapeHtml(adr.filename)}</summary>
+            <pre class="mt-2 text-xs text-on-surface/80 whitespace-pre-wrap max-h-48 overflow-y-auto">${escapeHtml(adr.content)}</pre>
+        </details>
+    `).join('');
+    showToast(`Generated ${data.adrs.length} ADRs`);
+});
+
+// Session Replay
+async function loadSessions(project) {
+    if (!project) return;
+    const data = await api(`/memory/${project}/sessions?limit=10`);
+    const el = document.getElementById('session-list');
+    if (!data || data.sessions.length === 0) {
+        el.innerHTML = '<p class="text-sm text-outline">No sessions recorded yet.</p>';
+        return;
+    }
+    el.innerHTML = data.sessions.map(s => `
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
+            <div class="text-xs font-mono text-outline min-w-[6rem]">${(s.timestamp || '').slice(0, 16)}</div>
+            <div class="flex-1">
+                <span class="text-sm">${escapeHtml(s.summary || s.session_type || 'Session')}</span>
+                <span class="text-xs text-outline ml-2">${s.change_count || 0} changes</span>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full ${s.session_type === 'rollback' ? 'bg-red-500/20 text-red-400' : 'bg-accent-lavender/20 text-accent-lavender'}">${s.session_type || 'manual'}</span>
+        </div>
+    `).join('');
+}
+
+// Cross-Pollination
+async function loadCrossPollinate(project) {
+    if (!project) return;
+    const data = await api(`/memory/${project}/cross-pollinate`);
+    const el = document.getElementById('cross-pollinate-results');
+    if (!data || data.transfers.length === 0) {
+        el.innerHTML = '<p class="text-sm text-outline">No transferable knowledge found from similar projects.</p>';
+        return;
+    }
+    el.innerHTML = data.transfers.map(t => `
+        <div class="p-3 rounded-lg bg-surface-raised border border-glass-border">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-accent-sky/20 text-accent-sky">${t.project}</span>
+                <span class="text-xs text-outline">score: ${t.relevance_score}</span>
+            </div>
+            <p class="text-sm">${escapeHtml(t.relevance_reason || t.decision || '')}</p>
+            ${t.shared_tech?.length ? `<div class="flex gap-1 mt-1">${t.shared_tech.map(t => `<span class="text-xs px-1.5 rounded bg-surface-high text-outline">${t}</span>`).join('')}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+// Load all insights
+async function loadAllInsights(project) {
+    if (!project) return;
+    await Promise.all([
+        loadConfidence(project),
+        loadAgentSkills(project),
+        loadDecisionTimeline(project),
+        loadSessions(project),
+        loadCrossPollinate(project),
+    ]);
+}
+
+// Insights project selector
+document.getElementById('insights-project-select').addEventListener('change', (e) => {
+    loadAllInsights(e.target.value);
+});
+document.getElementById('btn-refresh-insights').addEventListener('click', () => {
+    loadAllInsights(getInsightsProject());
+});
+
+// ==================== GIT JS ====================
+
+// Git Summary
+document.getElementById('btn-git-summary').addEventListener('click', async () => {
+    const repoPath = document.getElementById('git-repo-path').value.trim();
+    if (!repoPath) return showToast('Enter a repo path');
+    const btn = document.getElementById('btn-git-summary');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Loading...';
+    const data = await api(`/git/deep-summary?repo_path=${encodeURIComponent(repoPath)}`);
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">preview</span> Summary';
+    const el = document.getElementById('git-summary-output');
+    if (!data) return;
+    if (data.error) { el.innerHTML = `<p class="text-sm text-red-400">${escapeHtml(data.error)}</p>`; return; }
+    const catFreq = data.category_frequency || {};
+    el.innerHTML = `
+        <div class="flex items-center gap-3 mb-3">
+            <span class="text-xs px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender">${data.branch || 'unknown'}</span>
+            <span class="text-xs text-outline">${data.total_commits_analyzed || 0} commits analyzed</span>
+        </div>
+        <div class="mb-3">
+            <h4 class="text-xs uppercase text-outline mb-1">Tech Stack</h4>
+            <div class="flex flex-wrap gap-1">${(data.stack || []).map(t => `<span class="text-xs px-2 py-0.5 rounded bg-accent-lime/20 text-accent-lime">${t}</span>`).join('')}</div>
+        </div>
+        ${Object.keys(catFreq).length > 0 ? `
+            <div class="mb-3">
+                <h4 class="text-xs uppercase text-outline mb-1">Work Categories</h4>
+                <div class="flex flex-wrap gap-1">${Object.entries(catFreq).sort((a,b) => b[1]-a[1]).map(([cat, count]) => `<span class="text-xs px-2 py-0.5 rounded bg-accent-sky/20 text-accent-sky">${cat} (${count})</span>`).join('')}</div>
+            </div>
+        ` : ''}
+        <div>
+            <h4 class="text-xs uppercase text-outline mb-1">Recent Commits</h4>
+            ${(data.commits || []).map(c => `
+                <div class="flex items-center gap-2 py-1">
+                    <span class="font-mono text-xs text-accent-periwinkle">${c.hash}</span>
+                    <span class="text-xs text-outline">${c.date}</span>
+                    <span class="text-sm">${escapeHtml(c.subject?.slice(0, 60) || '')}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+});
+
+// Git Sync
+document.getElementById('btn-git-sync').addEventListener('click', async () => {
+    const repoPath = document.getElementById('git-repo-path').value.trim();
+    const projectName = document.getElementById('git-project-name').value.trim();
+    if (!repoPath || !projectName) return showToast('Enter repo path and project name');
+    const btn = document.getElementById('btn-git-sync');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span>';
+    const data = await api('/git/sync', 'POST', { repo_path: repoPath, project: projectName });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">sync</span> Sync';
+    renderGitSyncResult(data);
+});
+
+// Git Deep Sync
+document.getElementById('btn-git-deep-sync').addEventListener('click', async () => {
+    const repoPath = document.getElementById('git-repo-path').value.trim();
+    const projectName = document.getElementById('git-project-name').value.trim();
+    if (!repoPath || !projectName) return showToast('Enter repo path and project name');
+    const btn = document.getElementById('btn-git-deep-sync');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span>';
+    const data = await api('/git/sync-deep', 'POST', { repo_path: repoPath, project: projectName });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">biotech</span> Deep Sync';
+    renderGitSyncResult(data);
+    if (data?.synced) loadProjects();
+});
+
+function renderGitSyncResult(data) {
+    const el = document.getElementById('git-sync-output');
+    if (!data) return;
+    if (data.error) { el.innerHTML = `<p class="text-sm text-red-400">${escapeHtml(data.error)}</p>`; return; }
+    const stackChanges = data.stack_changes || {};
+    const categories = data.work_categories || {};
+    el.innerHTML = `
+        <div class="p-3 rounded-lg ${data.synced ? 'bg-accent-lime/10 border-accent-lime/20' : 'bg-red-500/10 border-red-500/20'} border">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-sm ${data.synced ? 'text-accent-lime' : 'text-red-400'}">${data.synced ? 'check_circle' : 'error'}</span>
+                <span class="font-mono text-sm ${data.synced ? 'text-accent-lime' : 'text-red-400'}">${data.synced ? 'Synced' : 'Failed'}</span>
+                <span class="text-xs text-outline ml-2">${data.new_decisions || 0} new decisions</span>
+            </div>
+            ${data.shallow_decisions != null ? `<p class="text-xs text-outline">Shallow: ${data.shallow_decisions}, Deep: ${data.deep_decisions}</p>` : ''}
+            ${stackChanges.changed ? `
+                <div class="mt-2">
+                    ${stackChanges.added?.length ? `<p class="text-xs text-accent-lime">+ ${stackChanges.added.join(', ')}</p>` : ''}
+                    ${stackChanges.removed?.length ? `<p class="text-xs text-red-400">- ${stackChanges.removed.join(', ')}</p>` : ''}
+                </div>
+            ` : ''}
+            ${Object.keys(categories).length > 0 ? `
+                <div class="flex flex-wrap gap-1 mt-2">${Object.entries(categories).map(([cat, count]) => `<span class="text-xs px-1.5 rounded bg-accent-sky/20 text-accent-sky">${cat} (${count})</span>`).join('')}</div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// ==================== FEEDS JS ====================
+
+let feedsState = { feeds: [], selectedFeedId: null };
+
+async function loadFeeds() {
+    const data = await api('/research-feeds');
+    if (!data) return;
+    feedsState.feeds = data.feeds || [];
+    renderFeedList();
+    loadFeedStats();
+}
+
+function renderFeedList() {
+    const el = document.getElementById('feed-list');
+    if (!feedsState.feeds.length) {
+        el.innerHTML = '<p class="text-sm text-outline">No feeds yet. Create one to get started.</p>';
+        return;
+    }
+    el.innerHTML = feedsState.feeds.map(f => {
+        const isActive = f.id === feedsState.selectedFeedId;
+        const statusColor = f.status === 'active' ? 'text-accent-lime' : f.status === 'paused' ? 'text-yellow-400' : 'text-red-400';
+        const intervalLabel = {daily:'Daily', weekly:'Weekly', monthly:'Monthly', manual:'Manual'}[f.interval] || f.interval;
+        return `
+            <div class="p-3 rounded-lg cursor-pointer transition-all ${isActive ? 'bg-accent-lavender/15 border border-accent-lavender/30' : 'bg-surface-raised border border-transparent hover:border-glass-border'}"
+                 onclick="selectFeed('${f.id}')">
+                <div class="flex items-center justify-between">
+                    <span class="font-mono text-sm ${isActive ? 'text-accent-lavender' : 'text-on-surface'}">${escapeHtml(f.name)}</span>
+                    <span class="material-symbols-outlined text-sm ${statusColor}">${f.enabled ? 'circle' : 'pause_circle'}</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs text-outline">${intervalLabel}</span>
+                    <span class="text-xs text-outline">|</span>
+                    <span class="text-xs text-outline">${f.total_citations} citations</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadFeedStats() {
+    const data = await api('/research-feeds/stats');
+    if (!data) return;
+    document.getElementById('feed-stat-total').textContent = data.total_feeds || 0;
+    document.getElementById('feed-stat-active').textContent = data.active_feeds || 0;
+    document.getElementById('feed-stat-runs').textContent = data.total_runs || 0;
+    document.getElementById('feed-stat-citations').textContent = data.total_citations || 0;
+}
+
+async function selectFeed(feedId) {
+    feedsState.selectedFeedId = feedId;
+    renderFeedList();
+    const data = await api(`/research-feeds/${feedId}`);
+    if (!data) return;
+    document.getElementById('feed-detail-actions').style.display = 'flex';
+    document.getElementById('feed-detail-title').innerHTML = `
+        <span class="material-symbols-outlined text-sm">article</span>
+        ${escapeHtml(data.name)}
+    `;
+    const statusColor = data.status === 'active' ? 'text-accent-lime' : data.status === 'paused' ? 'text-yellow-400' : 'text-red-400';
+    const sources = (data.sources || []).map(s => `<span class="text-xs px-2 py-0.5 rounded bg-accent-sky/20 text-accent-sky">${s}</span>`).join(' ');
+    const tags = (data.tags || []).map(t => `<span class="text-xs px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender">${escapeHtml(t)}</span>`).join(' ');
+
+    const mdData = await api(`/research-feeds/${feedId}/markdown`);
+    const md = mdData?.markdown || '';
+
+    document.getElementById('feed-detail-content').innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="p-2 rounded bg-surface-raised text-center">
+                <div class="font-mono text-lg ${statusColor}">${data.total_runs}</div>
+                <div class="text-xs text-outline">Runs</div>
+            </div>
+            <div class="p-2 rounded bg-surface-raised text-center">
+                <div class="font-mono text-lg text-accent-periwinkle">${data.total_citations}</div>
+                <div class="text-xs text-outline">Citations</div>
+            </div>
+            <div class="p-2 rounded bg-surface-raised text-center">
+                <div class="font-mono text-lg text-accent-sky">${data.interval}</div>
+                <div class="text-xs text-outline">Interval</div>
+            </div>
+            <div class="p-2 rounded bg-surface-raised text-center">
+                <div class="font-mono text-xs text-outline truncate" title="${escapeHtml(data.next_run || '')}">${data.next_run ? new Date(data.next_run).toLocaleDateString() : 'N/A'}</div>
+                <div class="text-xs text-outline">Next Run</div>
+            </div>
+        </div>
+        <div class="p-3 rounded bg-surface-raised mb-3">
+            <div class="text-xs text-outline mb-1">Query</div>
+            <div class="font-mono text-sm text-on-surface">${escapeHtml(data.query)}</div>
+        </div>
+        ${data.description ? `<div class="p-3 rounded bg-surface-raised mb-3"><div class="text-xs text-outline mb-1">Description</div><div class="text-sm text-outline">${escapeHtml(data.description)}</div></div>` : ''}
+        <div class="flex flex-wrap gap-1 mb-4">${sources} ${tags}</div>
+        <div class="p-4 rounded-lg bg-surface border border-glass-border">
+            <h4 class="font-mono text-xs uppercase text-accent-periwinkle mb-2">Markdown Output</h4>
+            <div class="prose prose-invert prose-sm max-w-none text-sm text-outline whitespace-pre-wrap max-h-96 overflow-y-auto">${md ? escapeHtml(md) : '<p class="text-outline">No output yet. Run the feed to generate results.</p>'}</div>
+        </div>
+    `;
+
+    loadFeedRuns(feedId);
+}
+
+async function loadFeedRuns(feedId) {
+    const data = await api(`/research-feeds/${feedId}/runs?limit=20`);
+    if (!data) return;
+    const el = document.getElementById('feed-runs-list');
+    if (!data.runs?.length) {
+        el.innerHTML = '<p class="text-sm text-outline">No runs yet.</p>';
+        return;
+    }
+    el.innerHTML = data.runs.map(r => {
+        const statusColor = r.status === 'success' ? 'text-accent-lime' : 'text-red-400';
+        const icon = r.status === 'success' ? 'check_circle' : 'error';
+        const time = new Date(r.timestamp).toLocaleString();
+        return `
+            <div class="flex items-center gap-3 p-2 rounded bg-surface-raised">
+                <span class="material-symbols-outlined text-sm ${statusColor}">${icon}</span>
+                <span class="font-mono text-xs text-outline">${time}</span>
+                <span class="text-sm text-on-surface">${escapeHtml(r.query?.slice(0, 50) || '')}</span>
+                <span class="ml-auto font-mono text-xs ${statusColor}">${r.results_count} results</span>
+                <span class="text-xs text-outline">${r.duration_seconds}s</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Create Feed Modal
+document.getElementById('btn-create-feed')?.addEventListener('click', () => {
+    const modal = document.getElementById('add-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.querySelector('h3').textContent = 'Create Research Feed';
+    const form = modal.querySelector('form');
+    if (form) form.dataset.mode = 'feed';
+});
+
+document.getElementById('btn-tick-feeds')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-tick-feeds');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Running...';
+    const data = await api('/research-feeds/tick', { method: 'POST' });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">play_arrow</span> Run Due';
+    if (data) {
+        showToast(`Ran ${data.count || 0} feed(s)`);
+        loadFeeds();
+        if (feedsState.selectedFeedId) selectFeed(feedsState.selectedFeedId);
+    }
+});
+
+document.getElementById('btn-run-feed')?.addEventListener('click', async () => {
+    if (!feedsState.selectedFeedId) return;
+    const btn = document.getElementById('btn-run-feed');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Running...';
+    const data = await api(`/research-feeds/${feedsState.selectedFeedId}/run`, { method: 'POST' });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">play_arrow</span> Run Now';
+    if (data) {
+        showToast(data.status === 'success' ? `Added ${data.results_count} citations` : `Error: ${data.error}`);
+        selectFeed(feedsState.selectedFeedId);
+        loadFeeds();
+    }
+});
+
+document.getElementById('btn-delete-feed')?.addEventListener('click', async () => {
+    if (!feedsState.selectedFeedId) return;
+    if (!confirm('Delete this feed and its citation history?')) return;
+    const data = await api(`/research-feeds/${feedsState.selectedFeedId}`, { method: 'DELETE' });
+    if (data) {
+        feedsState.selectedFeedId = null;
+        document.getElementById('feed-detail-actions').style.display = 'none';
+        document.getElementById('feed-detail-content').innerHTML = '<p class="text-sm text-outline">Select a feed to view its details.</p>';
+        document.getElementById('feed-detail-title').innerHTML = '<span class="material-symbols-outlined text-sm">article</span> Feed Detail';
+        loadFeeds();
+        showToast('Feed deleted');
+    }
+});
+
 // Reinit
 async function init() {
     loadSettings();
@@ -2533,6 +3308,7 @@ async function init() {
     await loadCitations();
     await loadProjects();
     await loadPatterns();
+    await loadFeeds();
     
     // Initialize all project indicators to "No project"
     document.getElementById('tropebook-project-indicator').textContent = 'No project';

@@ -4,10 +4,8 @@ Unified interface for Ollama (primary, free) and OpenAI (fallback).
 All features in Tropelex call this module — never OpenAI/Ollama directly.
 """
 
-import os
-import json
 import logging
-from typing import Optional, List
+import os
 
 logger = logging.getLogger("tropelex.llm")
 
@@ -43,7 +41,7 @@ async def _ollama_available() -> bool:
         return False
 
 
-async def _ollama_chat(messages: list, model: str = OLLAMA_MODEL) -> Optional[str]:
+async def _ollama_chat(messages: list, model: str = OLLAMA_MODEL) -> str | None:
     try:
         import httpx
 
@@ -62,12 +60,12 @@ async def _ollama_chat(messages: list, model: str = OLLAMA_MODEL) -> Optional[st
 # ── OpenAI ───────────────────────────────────────────────────────────────────
 
 
-def _openai_key() -> Optional[str]:
+def _openai_key() -> str | None:
     key = os.environ.get("OPENAI_API_KEY", "")
     return key if key.startswith("sk-") else None
 
 
-async def _openai_chat(messages: list, max_tokens: int = 1000) -> Optional[str]:
+async def _openai_chat(messages: list, max_tokens: int = 1000) -> str | None:
     key = _openai_key()
     if not key:
         return None
@@ -96,7 +94,7 @@ async def _openai_chat(messages: list, max_tokens: int = 1000) -> Optional[str]:
     return None
 
 
-async def _openai_embed(texts: List[str]) -> Optional[List[List[float]]]:
+async def _openai_embed(texts: list[str]) -> list[list[float]] | None:
     key = _openai_key()
     if not key:
         return None
@@ -161,7 +159,7 @@ async def compress(prompt: str) -> dict:
     }
 
 
-async def chat(system: str, user: str, max_tokens: int = 500) -> Optional[str]:
+async def chat(system: str, user: str, max_tokens: int = 500) -> str | None:
     """
     General-purpose chat. Ollama → OpenAI fallback.
     """
@@ -176,7 +174,7 @@ async def chat(system: str, user: str, max_tokens: int = 500) -> Optional[str]:
     return await _openai_chat(messages, max_tokens=max_tokens)
 
 
-async def embed(texts: List[str]) -> Optional[List[List[float]]]:
+async def embed(texts: list[str]) -> list[list[float]] | None:
     """
     Generate embeddings. OpenAI text-embedding-3-small only (best quality/cost).
     Returns list of float vectors, or None if unavailable.
@@ -194,7 +192,7 @@ async def embed(texts: List[str]) -> Optional[List[List[float]]]:
     return results
 
 
-async def embed_one(text: str) -> Optional[List[float]]:
+async def embed_one(text: str) -> list[float] | None:
     """Embed a single string."""
     vecs = await embed([text])
     return vecs[0] if vecs else None

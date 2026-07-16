@@ -5,11 +5,11 @@ Stores links, summaries, and relationships for building extended knowledge graph
 
 import json
 import uuid
-from datetime import datetime
-from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Set, Any, Union
-from pathlib import Path
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 
 class SourceType(Enum):
@@ -26,14 +26,14 @@ class Citation:
     url: str
     summary: str = ""
     source: str = ""
-    tags: List[str] = field(default_factory=list)
-    entities: List[str] = field(default_factory=list)
-    relationships: List[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    tags: list[str] = field(default_factory=list)
+    entities: list[str] = field(default_factory=list)
+    relationships: list[str] = field(default_factory=list)
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_accessed: str = ""
     access_count: int = 0
     source_type: str = SourceType.MANUAL.value
-    metadata: Dict = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
 
     def to_dict(self, id: str = None) -> dict:
         d = asdict(self)
@@ -49,8 +49,8 @@ class Citation:
 
 @dataclass
 class KnowledgeGraph:
-    nodes: Dict[str, dict] = field(default_factory=dict)
-    edges: List[Dict] = field(default_factory=list)
+    nodes: dict[str, dict] = field(default_factory=dict)
+    edges: list[dict] = field(default_factory=list)
 
     def add_node(self, node_id: str, node_type: str, data: dict):
         self.nodes[node_id] = {"type": node_type, "data": data, "connections": []}
@@ -63,7 +63,7 @@ class KnowledgeGraph:
             "to": to_id,
             "relationship": relationship,
             "weight": weight,
-            "created": datetime.utcnow().isoformat(),
+            "created": datetime.now(timezone.utc).isoformat(),
         }
         self.edges.append(edge)
         if from_id in self.nodes:
@@ -75,27 +75,30 @@ class KnowledgeGraph:
 class Tropebook:
     def __init__(self, storage_path: str = "memory/tropebook/"):
         self.storage_path = Path(storage_path)
+        if not self.storage_path.is_absolute():
+            # Resolve relative to this file's location (project root)
+            self.storage_path = Path(__file__).parent.parent.parent / self.storage_path
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.citations_file = self.storage_path / "citations.json"
         self.graph_file = self.storage_path / "graph.json"
         self.index_file = self.storage_path / "index.json"
-        self.citations: Dict[str, Citation] = {}
+        self.citations: dict[str, Citation] = {}
         self.graph = KnowledgeGraph()
         self._load()
 
     def _load(self):
         if self.citations_file.exists():
-            with open(self.citations_file, "r") as f:
+            with open(self.citations_file) as f:
                 data = json.load(f)
                 self.citations = {k: Citation.from_dict(v) for k, v in data.items()}
         if self.graph_file.exists():
-            with open(self.graph_file, "r") as f:
+            with open(self.graph_file) as f:
                 data = json.load(f)
                 self.graph = KnowledgeGraph(
                     nodes=data.get("nodes", {}), edges=data.get("edges", [])
                 )
         if self.index_file.exists():
-            with open(self.index_file, "r") as f:
+            with open(self.index_file) as f:
                 self._index = json.load(f)
         else:
             self._build_index()
@@ -129,10 +132,10 @@ class Tropebook:
         url: str,
         summary: str = "",
         source: str = "",
-        tags: Optional[List[str]] = None,
-        entities: Optional[List[str]] = None,
+        tags: list[str] | None = None,
+        entities: list[str] | None = None,
         source_type: SourceType = SourceType.MANUAL,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         if url in self._index["by_url"]:
             cid = self._index["by_url"][url]
@@ -159,12 +162,12 @@ class Tropebook:
         if cid in self.citations:
             cite = self.citations[cid]
             for key, value in kwargs.items():
-                if hasattr(cite, key):
+                if hasattr(cite, key) and value is not None:
                     setattr(cite, key, value)
             self._build_index()
             self._save()
 
-    def get(self, cid: str) -> Optional[Citation]:
+    def get(self, cid: str) -> Citation | None:
         return self.citations.get(cid)
 
     def delete(self, cid: str) -> bool:
@@ -188,19 +191,19 @@ class Tropebook:
 
         return True
 
-    def find_by_url(self, url: str) -> Optional[Citation]:
+    def find_by_url(self, url: str) -> Citation | None:
         cid = self._index["by_url"].get(url)
         return self.citations.get(cid) if cid else None
 
-    def find_by_tag(self, tag: str) -> List[Citation]:
+    def find_by_tag(self, tag: str) -> list[Citation]:
         cids = self._index["by_tag"].get(tag, [])
         return [self.citations[cid] for cid in cids if cid in self.citations]
 
-    def find_by_entity(self, entity: str) -> List[Citation]:
+    def find_by_entity(self, entity: str) -> list[Citation]:
         cids = self._index["by_entity"].get(entity, [])
         return [self.citations[cid] for cid in cids if cid in self.citations]
 
-    def find_by_source(self, source_type: SourceType) -> List[Citation]:
+    def find_by_source(self, source_type: SourceType) -> list[Citation]:
         cids = self._index["by_source"].get(source_type.value, [])
         return [self.citations[cid] for cid in cids if cid in self.citations]
 
@@ -225,7 +228,7 @@ class Tropebook:
                 relationship,
             )
 
-    def search(self, query: str, limit: int = 20) -> List[Citation]:
+    def search(self, query: str, limit: int = 20) -> list[Citation]:
         # Split query into words for better matching
         query_words = [w.lower() for w in query.split() if len(w) > 2]
         results = []
@@ -248,19 +251,24 @@ class Tropebook:
         results.sort(key=lambda x: x[0], reverse=True)
         return [r[1] for r in results[:limit]]
 
-    def get_related(self, cid: str, depth: int = 1) -> Dict[str, Any]:
+    def get_related(self, cid: str, depth: int = 1) -> dict[str, Any]:
         if cid not in self.graph.nodes:
             return {}
         visited = set()
-        layers = {0: [cid]}
-        for d in range(depth):
-            layers[d + 1] = []
-            for node_id in layers[d]:
+        current_layer = [cid]
+        for _ in range(depth):
+            next_layer = []
+            for node_id in current_layer:
                 if node_id in visited:
                     continue
                 visited.add(node_id)
                 connections = self.graph.nodes[node_id].get("connections", [])
-                layers[d + 1].extend(connections)
+                next_layer.extend(connections)
+            current_layer = next_layer
+        # Also add the final layer to visited
+        for node_id in current_layer:
+            if node_id not in visited:
+                visited.add(node_id)
         related = {}
         for node_id in visited:
             if node_id != cid and node_id in self.citations:
@@ -292,7 +300,7 @@ class Tropebook:
         return {
             "citations": {k: v.to_dict() for k, v in self.citations.items()},
             "graph": {"nodes": self.graph.nodes, "edges": self.graph.edges},
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def _save(self):

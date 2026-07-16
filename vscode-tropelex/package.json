@@ -1,0 +1,67 @@
+{
+  "name": "tropelex-memory-viewer",
+  "displayName": "Tropelex Memory Viewer",
+  "description": "View and manage Tropelex project memory",
+  "version": "0.0.1",
+  "publisher": "tropelex",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/memory/*.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tropelex.openMemoryViewer",
+        "title": "Open Memory Viewer",
+        "category": "Tropelex"
+      },
+      {
+        "command": "tropelex.refreshMemory",
+        "title": "Refresh Memory",
+        "category": "Tropelex"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tropelex",
+          "title": "Tropelex",
+          "icon": "$(brain)"
+        }
+      ]
+    },
+    "views": {
+      "tropelex": [
+        {
+          "id": "tropelexMemory",
+          "name": "Project Memory",
+          "icon": "$(list-unordered)",
+          "contextualTitle": "Tropelex Memory"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -55,6 +55,49 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 - `analyze_session(project, summary)` → returns pattern updates
 - `suggest_next_steps(project)` → suggests likely next work
 
+### Git Integration (`core/git_integration.py`)
+- Auto-extracts decisions from conventional commits
+- Deep analysis: parses diffs, detects rationale, dependency changes, revert chains
+- `sync_repo_to_memory(repo_path, project, mm)` → syncs git history to memory
+- `get_deep_repo_summary(repo_path)` → work categories, structural changes
+
+### Decision Tree (`core/decision_tree.py`)
+- Builds graph of decisions with relationships (supersedes, caused_by, related_to, reverts)
+- `DecisionTree.from_decisions(decisions)` → auto-detects relationships
+- `get_timeline()`, `get_chains()`, `get_ancestors()`, `get_descendants()`
+
+### Knowledge Decay (`core/knowledge_decay.py`)
+- Time-based confidence scoring for decisions
+- Exponential decay with reference boosts and contradiction penalties
+- `score_decisions(decisions)` → each decision gets score + tier
+- `get_stale_decisions(decisions)` → finds decisions needing review
+
+### Living ADRs (`core/adr_generator.py`)
+- Auto-generates Architecture Decision Records from memory
+- Three formats: Nygard, MADR, Tropelex (enhanced with decision tree context)
+- `generate_adrs_for_project(memory, format)` → list of ADR markdown files
+
+### Session Replay (`core/session_replay.py`)
+- Snapshots memory state per session, computes structured diffs
+- `record_session()` → saves before/after snapshots + changes
+- `rollback_session()` → restores memory to before a session
+- `get_weekly_summary()` → what changed this week
+
+### RAG & Cross-Pollination (`core/rag.py`)
+- `MemoryRAG.retrieve(project, query)` → semantic retrieval from memory
+- `CrossPollinator.find_transferable_knowledge(project)` → solutions from similar projects
+- `CrossPollinator.suggest_approaches(project, problem)` → cross-project approaches
+
+### Research Chains (`core/research_chains.py`)
+- Multi-hop knowledge building: search → find gaps → search again → link
+- `ResearchChainManager.auto_research(project, goal)` → automated chain
+- Stores chains with steps, findings, links, synthesis
+
+### Agent Skills & Prompt Genealogy (`core/agent_skills.py`)
+- `AgentSkillGraph` → tracks proficiency per category (ui, backend, testing, etc.)
+- `PromptGenealogy` → tracks which compression strategies produce best outcomes
+- Both learn from session outcomes over time
+
 ### OpenCode Adapter (`adapters/opencode.py`)
 - Primary integration point for OpenCode agent
 - `generate_session_prompt(project_name)` → creates Tropelex context block
@@ -143,7 +186,7 @@ count = importer.import_file("research_export.json")
 Run the web server:
 ```bash
 python -m core.tropebook.web.server
-# Opens at http://localhost:8765
+# Opens at http://localhost:8766
 ```
 
 ## Integration with OpenCode

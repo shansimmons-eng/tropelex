@@ -2,18 +2,18 @@
 Tropebook CLI - Command line interface for Tropebook
 Usage: python -m core.tropebook.cli [command] [args]
 """
-import sys
 import json
-from pathlib import Path
+import sys
+
 
 def main():
     args = sys.argv[1:]
     if not args:
         print_help()
         return
-    
+
     cmd = args[0]
-    
+
     if cmd == "add":
         handle_add(args[1:])
     elif cmd == "search":
@@ -96,7 +96,7 @@ def handle_import(args):
     if not args:
         print("Usage: import <file>")
         return
-    from core.tropebook import DeepResearchImporter, create_importer
+    from core.tropebook import create_importer
     tb = get_tropebook()
     if not tb:
         return
