@@ -260,3 +260,84 @@ class CrossPollinator:
                 })
 
         return approaches[:5]
+
+
+# ---------------------------------------------------------------------------
+# Cross-Project Learning Automation (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+def auto_detect_similar_projects(
+    memory_manager, project_name: str, min_overlap: int = 1
+) -> list[dict[str, Any]]:
+    """Find projects with tech_stack overlap — no query needed.
+
+    Returns list of {project, shared_tech, overlap_ratio, decision_count}.
+    """
+    current = memory_manager.get_project_memory(project_name)
+    current_tech = {t.lower() for t in current.get("tech_stack", [])}
+    if not current_tech:
+        return []
+
+    results: list[dict[str, Any]] = []
+    for other_name in memory_manager.list_projects():
+        if other_name == project_name:
+            continue
+        other = memory_manager.get_project_memory(other_name)
+        other_tech = {t.lower() for t in other.get("tech_stack", [])}
+        shared = current_tech & other_tech
+        if len(shared) >= min_overlap:
+            results.append({
+                "project": other_name,
+                "shared_tech": sorted(shared),
+                "overlap_ratio": round(len(shared) / len(current_tech), 3),
+                "decision_count": len(other.get("decisions", [])),
+            })
+
+    results.sort(key=lambda x: x["overlap_ratio"], reverse=True)
+    return results
+
+
+def generate_auto_suggestions(
+    memory_manager, project_name: str, limit: int = 5
+) -> list[dict[str, Any]]:
+    """Produce cross-project suggestions without a specific query.
+
+    Surfaces decisions from similar projects that address topics
+    the current project hasn't covered yet.
+    """
+    current = memory_manager.get_project_memory(project_name)
+    current_decisions = current.get("decisions", [])
+    current_topics = _extract_decision_topics(current_decisions)
+
+    similar = auto_detect_similar_projects(memory_manager, project_name)
+    suggestions: list[dict[str, Any]] = []
+
+    for sim in similar:
+        other = memory_manager.get_project_memory(sim["project"])
+        for d in other.get("decisions", []):
+            decision_text = d.get("decision", "")
+            decision_topics = set(re.findall(r"[a-z][a-z0-9]+", decision_text.lower()))
+            # Only suggest if the topic is NOT already covered
+            novel_topics = decision_topics - current_topics
+            if novel_topics:
+                suggestions.append({
+                    "source_project": sim["project"],
+                    "suggestion_text": decision_text,
+                    "context": d.get("context", ""),
+                    "shared_tech": sim["shared_tech"],
+                    "novel_topics": sorted(novel_topics)[:5],
+                    "relevance_score": sim["overlap_ratio"],
+                })
+
+    suggestions.sort(key=lambda x: x["relevance_score"], reverse=True)
+    return suggestions[:limit]
+
+
+def _extract_decision_topics(decisions: list[dict]) -> set[str]:
+    """Extract lowercase keywords from all decisions."""
+    topics: set[str] = set()
+    for d in decisions:
+        text = d.get("decision", "") + " " + d.get("context", "")
+        topics.update(re.findall(r"[a-z][a-z0-9]+", text.lower()))
+    return topics

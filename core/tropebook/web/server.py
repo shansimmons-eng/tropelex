@@ -89,6 +89,10 @@ except Exception as exc:
 from core.webhooks.router import webhook_router       # noqa: E402
 from core.sync.router import sync_router               # noqa: E402
 from core.collaboration.router import router as collaboration_router  # noqa: E402
+from core.health.router import health_router            # noqa: E402
+from core.rag_router import rag_router                  # noqa: E402
+from core.tropebook.feed_intelligence_router import feed_intel_router  # noqa: E402
+from core.impact.router import impact_router             # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -97,6 +101,10 @@ _sync_mod.BASE_DIR = BASE_DIR
 app.include_router(webhook_router)
 app.include_router(sync_router)
 app.include_router(collaboration_router)
+app.include_router(health_router)
+app.include_router(rag_router)
+app.include_router(feed_intel_router)
+app.include_router(impact_router)
 
 
 # --- Request body models ---
