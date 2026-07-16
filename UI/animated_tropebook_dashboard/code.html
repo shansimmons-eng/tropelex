@@ -769,6 +769,10 @@ tailwind.config = {
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="font-mono text-xs text-outline" id="graph-stats">0 nodes · 0 edges</span>
+                    <select id="graph-mode" class="bg-surface-raised border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-on-surface cursor-pointer focus:outline-none">
+                        <option value="decisions">Decisions</option>
+                        <option value="citations">Citations</option>
+                    </select>
                     <button id="graph-reset-zoom" class="px-3 py-1 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-accent-lavender transition-colors">Reset</button>
                     <button id="graph-embed-all" class="px-3 py-1 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-colors">Embed All</button>
                 </div>
@@ -3001,7 +3005,45 @@ async function loadGraph() {
         indicator.textContent = 'All citations';
         indicator.style.display = 'inline';
     }
-    
+
+    const mode = document.getElementById('graph-mode')?.value || 'decisions';
+    if (mode === 'decisions') {
+        await loadDecisionGraph();
+    } else {
+        await loadCitationGraph();
+    }
+}
+
+async function loadDecisionGraph() {
+    if (!state.currentProject) {
+        document.getElementById('graph-empty').style.display = 'flex';
+        document.getElementById('graph-stats').textContent = 'Select a project';
+        return;
+    }
+    const data = await api(`/memory/${state.currentProject}/graph`);
+    if (!data) return;
+
+    const nodes = data.nodes.map(n => ({
+        id: n.id,
+        title: n.label,
+        fullText: n.full_text,
+        context: n.context,
+        confidence: n.confidence,
+        tier: n.tier,
+        timestamp: n.timestamp,
+        source: n.source,
+        categories: n.categories || [],
+        type: 'decision',
+    }));
+    const edges = data.edges.map(e => ({ source: e.source, target: e.target, label: e.relationship }));
+
+    document.getElementById('graph-stats').textContent =
+        `${nodes.length} node${nodes.length !== 1 ? 's' : ''} · ${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
+    document.getElementById('graph-empty').style.display = nodes.length === 0 ? 'flex' : 'none';
+    renderDecisionGraph(nodes, edges);
+}
+
+async function loadCitationGraph() {
     const data = await api('/export');
     if (!data) return;
     const { graph, citations } = data;
@@ -3143,7 +3185,120 @@ function renderGraph(nodes, edges) {
     });
 }
 
-// Semantic search
+// Decision graph renderer — confidence-sized nodes, relationship-colored edges
+function renderDecisionGraph(nodes, edges) {
+    const container = document.getElementById('graph-container');
+    const svg = d3.select('#graph-svg');
+    svg.selectAll('*').remove();
+    if (graphSimulation) graphSimulation.stop();
+
+    const W = container.clientWidth;
+    const H = container.clientHeight;
+    const g = svg.append('g');
+
+    // Zoom
+    const zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', e => g.attr('transform', e.transform));
+    svg.call(zoom);
+    document.getElementById('graph-reset-zoom').onclick = () =>
+        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+
+    // Arrow markers per relationship type
+    const relColors = {
+        supersedes: '#ff6b6b', reverts: '#ff6b6b',
+        caused_by: '#80d5fa', related_to: '#98fa80',
+        depends_on: '#a580fa', evolves: '#8098fa',
+    };
+    const defs = svg.append('defs');
+    Object.entries(relColors).forEach(([rel, color]) => {
+        defs.append('marker')
+            .attr('id', `arrow-${rel}`)
+            .attr('viewBox', '0 -4 8 8')
+            .attr('refX', 16).attr('refY', 0)
+            .attr('markerWidth', 6).attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', color);
+    });
+
+    // Glow filter
+    const filter = defs.append('filter').attr('id', 'glow');
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'coloredBlur');
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Tier colors
+    const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#a580fa', stale: '#ff6b6b' };
+
+    // Simulation
+    graphSimulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(edges).id(d => d.id).distance(140).strength(0.6))
+        .force('charge', d3.forceManyBody().strength(-400))
+        .force('center', d3.forceCenter(W / 2, H / 2))
+        .force('collision', d3.forceCollide(40));
+
+    // Edges
+    const link = g.append('g').selectAll('line')
+        .data(edges).join('line')
+        .attr('stroke', d => relColors[d.label] || 'rgba(128,152,250,0.35)')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-opacity', 0.6)
+        .attr('marker-end', d => `url(#arrow-${d.label || 'related_to'})`);
+
+    // Edge labels
+    const linkLabel = g.append('g').selectAll('text')
+        .data(edges).join('text')
+        .attr('font-size', 8)
+        .attr('fill', 'rgba(149,142,158,0.7)')
+        .attr('font-family', 'JetBrains Mono, monospace')
+        .text(d => d.label || '');
+
+    // Nodes — sized by confidence
+    const node = g.append('g').selectAll('g')
+        .data(nodes).join('g')
+        .attr('cursor', 'pointer')
+        .call(d3.drag()
+            .on('start', (e, d) => { if (!e.active) graphSimulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+            .on('end',   (e, d) => { if (!e.active) graphSimulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+    node.append('circle')
+        .attr('r', d => 8 + d.confidence * 16)
+        .attr('fill', d => tierColors[d.tier] || '#80d5fa')
+        .attr('fill-opacity', 0.8)
+        .attr('stroke', d => tierColors[d.tier] || '#80d5fa')
+        .attr('stroke-width', 2)
+        .attr('stroke-opacity', 0.4)
+        .attr('filter', 'url(#glow)');
+
+    node.append('text')
+        .attr('dy', d => 18 + d.confidence * 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 9)
+        .attr('fill', '#dce2fa')
+        .attr('font-family', 'JetBrains Mono, monospace')
+        .text(d => d.title.length > 24 ? d.title.slice(0, 22) + '…' : d.title);
+
+    // Tooltip
+    const tooltip = document.getElementById('graph-tooltip');
+    node.on('mouseover', (e, d) => {
+        document.getElementById('tooltip-title').textContent = d.fullText || d.title;
+        document.getElementById('tooltip-url').textContent = `${d.tier} confidence · ${d.source}`;
+        document.getElementById('tooltip-summary').textContent = d.context?.slice(0, 120) || '';
+        tooltip.classList.remove('hidden');
+    }).on('mousemove', e => {
+        const rect = container.getBoundingClientRect();
+        tooltip.style.left = Math.min(e.clientX - rect.left + 12, W - 220) + 'px';
+        tooltip.style.top  = Math.min(e.clientY - rect.top + 12, H - 120) + 'px';
+    }).on('mouseout', () => tooltip.classList.add('hidden'));
+
+    graphSimulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        linkLabel.attr('x', d => (d.source.x + d.target.x) / 2)
+                 .attr('y', d => (d.source.y + d.target.y) / 2);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
 document.getElementById('semantic-search-btn').addEventListener('click', async () => {
     const query = document.getElementById('semantic-query').value.trim();
     if (!query) return;
@@ -3182,6 +3337,7 @@ document.getElementById('semantic-query').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('semantic-search-btn').click();
 });
 
+document.getElementById('graph-mode')?.addEventListener('change', () => loadGraph());
 document.getElementById('graph-embed-all').addEventListener('click', async () => {
     const btn = document.getElementById('graph-embed-all');
     btn.textContent = 'Embedding...';

@@ -93,6 +93,10 @@ from core.health.router import health_router            # noqa: E402
 from core.rag_router import rag_router                  # noqa: E402
 from core.tropebook.feed_intelligence_router import feed_intel_router  # noqa: E402
 from core.impact.router import impact_router             # noqa: E402
+from core.graph_router import graph_router                # noqa: E402
+from core.search_router import search_router              # noqa: E402
+from core.analytics_router import analytics_router        # noqa: E402
+from core.tropebook.alert_router import alert_router      # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -105,6 +109,10 @@ app.include_router(health_router)
 app.include_router(rag_router)
 app.include_router(feed_intel_router)
 app.include_router(impact_router)
+app.include_router(graph_router)
+app.include_router(search_router)
+app.include_router(analytics_router)
+app.include_router(alert_router)
 
 
 # --- Request body models ---
