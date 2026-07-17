@@ -1,0 +1,215 @@
+"""
+Ghost Pattern Matcher — pure-function module for detecting when code
+contradicts recorded architectural decisions.
+
+Compares decision keywords against unified-diff hunks and scores
+the severity of each potential "ghost" (decision that was silently ignored).
+"""
+
+import re
+from dataclasses import dataclass
+from typing import Any
+
+# Stopwords — identical set to core/decision_tree.py _extract_keywords
+_STOPWORDS: set[str] = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "could",
+    "should", "may", "might", "shall", "can", "to", "of", "in", "for",
+    "on", "with", "at", "by", "from", "as", "into", "through", "during",
+    "before", "after", "above", "below", "between", "and", "but", "or",
+    "not", "so", "if", "then", "that", "this", "it", "its", "we", "our",
+    "i", "my", "you", "your", "he", "she", "they", "them", "their",
+    "added", "changed", "fixed", "refactored", "removed", "updated",
+    "switched", "migrated", "replaced", "reverted", "optimised",
+}
+
+# Unified diff header patterns
+_DIFF_FILE_RE = re.compile(r"^(---|\+\+\+) ")
+_DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+# Patterns for extract_decision_topics
+_CASE_PATTERNS: list[tuple[str, str]] = [
+    (r"\bsnake_case\b", "naming:snake_case"),
+    (r"\bcamelCase\b", "naming:camelCase"),
+    (r"(?<!\w)[A-Z][a-z]+[A-Z]\w*", "naming:PascalCase"),
+    (r"\bkebab-case\b", "naming:kebab-case"),
+    (r"\bUPPER_SNAKE_CASE\b", "naming:UPPER_SNAKE_CASE"),
+]
+_ERROR_PATTERNS: list[tuple[str, str]] = [
+    (r"\btry\s*/\s*except\b", "error_handling:try_except"),
+    (r"\braise\b", "error_handling:raise"),
+    (r"\bException\b", "error_handling:Exception"),
+    (r"\bError\b", "error_handling:Error"),
+    (r"\bResult\b.*\bOk\b|\bErr\b", "error_handling:Result"),
+]
+_IMPORT_PATTERNS: list[tuple[str, str]] = [
+    (r"\bfrom\s+\S+\s+import\b", "imports:from_import"),
+    (r"\bimport\s+\S+\b", "imports:import"),
+]
+_ASYNC_PATTERNS: list[tuple[str, str]] = [
+    (r"\basync\s+def\b", "async:async_def"),
+    (r"\bawait\b", "async:await"),
+]
+_TYPE_PATTERNS: list[tuple[str, str]] = [
+    (r"\b:\s*(str|int|float|bool|list|dict|set|tuple)\b", "types:builtin_hint"),
+    (r"\bOptional\b", "types:Optional"),
+    (r"\bUnion\b", "types:Union"),
+    (r"\bTypeVar\b", "types:TypeVar"),
+    (r"\bProtocol\b", "types:Protocol"),
+]
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    """A single match between a decision and a diff hunk."""
+    decision_text: str
+    diff_file: str
+    diff_line: int
+    matched_keywords: list[str]
+    overlap_score: float
+    hunk_snippet: str
+    is_addition: bool = True
+
+
+def extract_keywords(text: str) -> set[str]:
+    """Extract meaningful keywords from text. Same stopword pattern as decision_tree.py."""
+    words = re.findall(r"[a-z][a-z0-9+#_]{2,}", text.lower())
+    return {w for w in words if w not in _STOPWORDS}
+
+
+def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
+    """Parse a unified diff into structured hunks.
+
+    Returns list of {file, line_number, content, is_addition, is_deletion}.
+    Only parse added lines (+) and context lines, skip file headers.
+    """
+    hunks: list[dict[str, Any]] = []
+    current_file = ""
+    current_line = 0
+
+    for raw_line in diff_text.splitlines():
+        # Skip file headers
+        if _DIFF_FILE_RE.match(raw_line):
+            continue
+
+        # Detect hunk header — extract starting line number
+        hunk_match = _DIFF_HUNK_RE.match(raw_line)
+        if hunk_match:
+            current_line = int(hunk_match.group(1))
+            continue
+
+        # Skip "---" line that has no match (standalone removal header)
+        if raw_line.startswith("---"):
+            continue
+
+        # Process content lines
+        if raw_line.startswith("+") and not raw_line.startswith("+++"):
+            hunks.append({
+                "file": current_file,
+                "line_number": current_line,
+                "content": raw_line[1:],
+                "is_addition": True,
+                "is_deletion": False,
+            })
+            current_line += 1
+        elif raw_line.startswith("-") and not raw_line.startswith("---"):
+            # Deletions tracked but content excluded from keyword matching
+            hunks.append({
+                "file": current_file,
+                "line_number": current_line,
+                "content": raw_line[1:],
+                "is_addition": False,
+                "is_deletion": True,
+            })
+            # Don't increment line — deleted lines have no new line number
+        else:
+            # Context line (space-prefixed or blank)
+            content = raw_line[1:] if raw_line.startswith(" ") else raw_line
+            # Track file from first context line after ---/+++ headers
+            if not current_file and content.strip():
+                pass  # file set by ---/+++ or first hunk
+            hunks.append({
+                "file": current_file,
+                "line_number": current_line,
+                "content": content,
+                "is_addition": False,
+                "is_deletion": False,
+            })
+            current_line += 1
+
+    return hunks
+
+
+def match_decision_to_diff(
+    decision_text: str, diff_hunks: list[dict[str, Any]]
+) -> list[MatchResult]:
+    """Compare a decision's keywords against diff hunks.
+
+    For each hunk, compute keyword overlap. Return matches where overlap > 0.2.
+    Each MatchResult includes the hunk snippet and overlap score.
+    """
+    decision_kw = extract_keywords(decision_text)
+    if not decision_kw:
+        return []
+
+    matches: list[MatchResult] = []
+    for hunk in diff_hunks:
+        hunk_kw = extract_keywords(hunk.get("content", ""))
+        if not hunk_kw:
+            continue
+
+        # Jaccard overlap
+        intersection = decision_kw & hunk_kw
+        union = decision_kw | hunk_kw
+        overlap = len(intersection) / len(union) if union else 0.0
+
+        if overlap > 0.2:
+            matches.append(MatchResult(
+                decision_text=decision_text,
+                diff_file=hunk.get("file", ""),
+                diff_line=hunk.get("line_number", 0),
+                matched_keywords=sorted(intersection),
+                overlap_score=round(overlap, 4),
+                hunk_snippet=hunk.get("content", "").strip(),
+                is_addition=hunk.get("is_addition", True),
+            ))
+
+    return matches
+
+
+def score_ghost_severity(
+    match: MatchResult, decision_confidence: float
+) -> float:
+    """Score how severe this ghost decision is (0.0 to 1.0).
+
+    severity = overlap_score * decision_confidence * severity_multiplier
+    where severity_multiplier:
+      - 1.0 if hunk is an addition (new code contradicts decision)
+      - 0.5 if hunk is a deletion (removing code that followed decision)
+    """
+    severity_multiplier = 1.0 if match.is_addition else 0.5
+    clamped_confidence = max(0.0, min(1.0, decision_confidence))
+    raw = match.overlap_score * clamped_confidence * severity_multiplier
+    return round(max(0.0, min(1.0, raw)), 4)
+
+
+def extract_decision_topics(decision_text: str) -> set[str]:
+    """Extract coding-convention topics from decision text.
+
+    Detects patterns like: snake_case, camelCase, PascalCase,
+    error handling (try/except, raise, Exception), imports (from X import Y),
+    type hints, async/await, etc.
+    Returns a set of topic tags.
+    """
+    topics: set[str] = set()
+    all_patterns = (
+        _CASE_PATTERNS
+        + _ERROR_PATTERNS
+        + _IMPORT_PATTERNS
+        + _ASYNC_PATTERNS
+        + _TYPE_PATTERNS
+    )
+    for pattern, tag in all_patterns:
+        if re.search(pattern, decision_text):
+            topics.add(tag)
+    return topics

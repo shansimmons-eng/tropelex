@@ -30,7 +30,7 @@ if _env_path.exists():
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tropelex")
 
-app = FastAPI(title="Tropelex API", version="1.2.0")
+app = FastAPI(title="Tropelex API", version="1.3.0")
 
 # CORS — localhost only
 app.add_middleware(
@@ -97,6 +97,9 @@ from core.graph_router import graph_router                # noqa: E402
 from core.search_router import search_router              # noqa: E402
 from core.analytics_router import analytics_router        # noqa: E402
 from core.tropebook.alert_router import alert_router      # noqa: E402
+from core.ghost.router import ghost_router                  # noqa: E402
+from core.explain.router import explain_router              # noqa: E402
+from core.handoff.router import handoff_router              # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -113,6 +116,9 @@ app.include_router(graph_router)
 app.include_router(search_router)
 app.include_router(analytics_router)
 app.include_router(alert_router)
+app.include_router(ghost_router)
+app.include_router(explain_router)
+app.include_router(handoff_router)
 
 
 # --- Request body models ---
