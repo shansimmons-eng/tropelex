@@ -3054,10 +3054,10 @@ async function selectProject(name) {
         const details = document.getElementById('project-details');
         details.innerHTML = `
             <div class="grid grid-cols-2 gap-4 mb-4">
-                <div><span class="text-outline text-sm">Tech Stack</span><p class="font-mono text-sm mt-1">${(data.tech_stack || []).join(', ') || 'None'}</p></div>
-                <div><span class="text-outline text-sm">Last Updated</span><p class="font-mono text-sm mt-1">${data.last_updated || 'Never'}</p></div>
+                <div><span class="text-outline text-sm">Tech Stack</span><p class="font-mono text-sm mt-1">${escapeHtml((data.tech_stack || []).join(', ') || 'None')}</p></div>
+                <div><span class="text-outline text-sm">Last Updated</span><p class="font-mono text-sm mt-1">${escapeHtml(data.last_updated || 'Never')}</p></div>
             </div>
-            <p class="text-sm">${data.description || 'No description'}</p>
+            <p class="text-sm">${escapeHtml(data.description || 'No description')}</p>
         `;
         renderDecisions(data.decisions || []);
         renderSessions(data.session_history || []);

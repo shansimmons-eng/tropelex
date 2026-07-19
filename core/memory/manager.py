@@ -92,35 +92,51 @@ class MemoryManager:
             logger.error("Failed to save %s: %s", memory_file, exc)
             raise
 
+    def _modify_project_memory(self, project_name: str, mutator) -> dict[str, Any]:
+        """Atomic read-modify-write under a single write lock.
+
+        The mutator receives the memory dict and should modify it in place.
+        Returns the modified memory.
+        """
+        memory_file = self._safe_path(project_name)
+        with _write_lock(memory_file) as fh:
+            fh.seek(0)
+            try:
+                memory = json.load(fh)
+            except (json.JSONDecodeError, ValueError):
+                memory = self._create_empty_project_memory(project_name)
+            mutator(memory)
+            memory["last_updated"] = _now()
+            fh.seek(0)
+            fh.truncate()
+            json.dump(memory, fh, indent=2)
+        return memory
+
     def update_project_memory(self, project_name: str, key: str, value: Any) -> None:
-        memory = self.get_project_memory(project_name)
-        memory[key] = value
-        memory["last_updated"] = _now()
-        self.save_project_memory(project_name, memory)
+        def _mutate(m):
+            m[key] = value
+        self._modify_project_memory(project_name, _mutate)
 
     def append_to_history(self, project_name: str, entry: dict[str, Any]) -> None:
-        memory = self.get_project_memory(project_name)
-        memory.setdefault("session_history", []).append({"timestamp": _now(), **entry})
-        memory["last_updated"] = _now()
-        self.save_project_memory(project_name, memory)
+        def _mutate(m):
+            m.setdefault("session_history", []).append({"timestamp": _now(), **entry})
+        self._modify_project_memory(project_name, _mutate)
 
     def add_decision(self, project_name: str, decision: str, context: str) -> None:
-        memory = self.get_project_memory(project_name)
-        memory.setdefault("decisions", []).append(
-            {"timestamp": _now(), "decision": decision, "context": context}
-        )
-        memory["last_updated"] = _now()
-        self.save_project_memory(project_name, memory)
+        def _mutate(m):
+            m.setdefault("decisions", []).append(
+                {"timestamp": _now(), "decision": decision, "context": context}
+            )
+        self._modify_project_memory(project_name, _mutate)
 
     def get_preference(self, project_name: str, key: str, default: Any = None) -> Any:
         memory = self.get_project_memory(project_name)
         return memory.get("preferences", {}).get(key, default)
 
     def set_preference(self, project_name: str, key: str, value: Any) -> None:
-        memory = self.get_project_memory(project_name)
-        memory.setdefault("preferences", {})[key] = value
-        memory["last_updated"] = _now()
-        self.save_project_memory(project_name, memory)
+        def _mutate(m):
+            m.setdefault("preferences", {})[key] = value
+        self._modify_project_memory(project_name, _mutate)
 
     def get_context_for_project(self, project_name: str) -> str:
         memory = self.get_project_memory(project_name)

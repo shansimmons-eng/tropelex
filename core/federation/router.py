@@ -89,7 +89,7 @@ def _save_shared_stats(project_hash: str, stats: dict[str, Any]) -> None:
 
 
 class FederationShareRequest(BaseModel):
-    opt_in: bool = Field(True, description="Whether to opt in to federation")
+    opt_in: bool = Field(False, description="Whether to opt in to federation")
 
 
 # --- Endpoints ---

@@ -11,6 +11,7 @@ Mount into the main app:
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -375,10 +376,17 @@ def _resolve_repo_path(event_data: dict[str, Any]) -> str | None:
     2. TROPELEX_REPOS_DIR + repo_name (common base directory)
     3. WEBHOOK_REPOS_DIR + repo_name
     4. None (no local path)
+
+    Repo names are sanitised to prevent path traversal.
     """
     repo_name = event_data["repo_name"]
+    # Sanitise: only allow alphanumeric, hyphens, underscores, slashes (owner/repo)
+    safe_name = re.sub(r"[^a-zA-Z0-9_\-/]", "", repo_name)
+    if not safe_name:
+        return None
+
     # Sanitise for env var lookup: owner/repo → OWNER_REPO
-    env_key = "TROPELEX_REPO_" + repo_name.upper().replace("/", "_").replace("-", "_")
+    env_key = "TROPELEX_REPO_" + safe_name.upper().replace("/", "_").replace("-", "_")
     env_path = os.environ.get(env_key)
     if env_path and Path(env_path).is_dir():
         return env_path
@@ -386,8 +394,10 @@ def _resolve_repo_path(event_data: dict[str, Any]) -> str | None:
     # Check common repos directory
     repos_dir = os.environ.get("TROPELEX_REPOS_DIR") or os.environ.get("WEBHOOK_REPOS_DIR")
     if repos_dir:
-        candidate = Path(repos_dir) / repo_name
-        if candidate.is_dir():
+        base = Path(repos_dir).resolve()
+        candidate = (base / safe_name).resolve()
+        # Verify resolved path is still under base (prevent traversal)
+        if candidate.is_dir() and str(candidate).startswith(str(base)):
             return str(candidate)
 
     return None

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Tropelex Pre-Commit Hook
+# Checks staged diff against active decisions for ghost violations.
+#
+# Install:
+#   cp core/ghost/pre-commit ~/.git/hooks/pre-commit
+#   chmod +x ~/.git/hooks/pre-commit
+#
+# Requires: curl, a running Tropelex server at localhost:8766
+
+set -euo pipefail
+
+TROPELEX_URL="${TROPELEX_URL:-http://localhost:8766}"
+PROJECT="${1:-$(basename "$(git rev-parse --show-toplevel)")}"
+
+# Get staged diff
+DIFF=$(git diff --cached --diff-algorithm=minimal)
+
+if [ -z "$DIFF" ]; then
+    exit 0
+fi
+
+# POST diff to preventive ghost check endpoint
+RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST "${TROPELEX_URL}/api/memory/${PROJECT}/ghost/check-diff" \
+    -H "Content-Type: application/json" \
+    -d "{\"diff_text\": $(echo "$DIFF" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}" \
+    2>/dev/null || echo -e "\n000")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | head -n -1)
+
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "[tropelex] Ghost check unavailable (server not running or project not found)"
+    exit 0
+fi
+
+# Check for high-severity warnings
+HIGH_COUNT=$(echo "$BODY" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+warnings = data.get('warnings', [])
+high = [w for w in warnings if w.get('severity') == 'high']
+print(len(high))
+" 2>/dev/null || echo "0")
+
+if [ "$HIGH_COUNT" -gt 0 ]; then
+    echo ""
+    echo "⚠️  Tropelex Ghost Check: $HIGH_COUNT high-severity warning(s) detected!"
+    echo ""
+    echo "$BODY" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for w in data.get('warnings', []):
+    if w.get('severity') == 'high':
+        print(f\"  ❌ [{w.get('decision_id', '?')}] {w.get('decision_text', '')[:80]}\")
+        print(f\"     {w.get('recommendation', '')}\")
+        print()
+" 2>/dev/null
+    echo "Commit blocked. Fix violations or use --no-verify to bypass."
+    exit 1
+fi
+
+# Show info for medium/low warnings
+MEDIUM_COUNT=$(echo "$BODY" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+warnings = data.get('warnings', [])
+medium = [w for w in warnings if w.get('severity') == 'medium']
+print(len(medium))
+" 2>/dev/null || echo "0")
+
+if [ "$MEDIUM_COUNT" -gt 0 ]; then
+    echo "ℹ️  Tropelex: $MEDIUM_COUNT medium-severity warning(s) — review recommended"
+fi
+
+exit 0

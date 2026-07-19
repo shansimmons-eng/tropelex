@@ -121,7 +121,9 @@ def corroborate_decision(
     """Orchestrate rationale corroboration for a single decision.
 
     Loads memory, extracts rationale, searches web, scores findings,
-    and builds a CorroborationReport. All IO isolated to this function.
+    and builds a CorroborationReport. Writes confidence adjustment
+    back into the decision's confidence score in memory.
+    All IO isolated to this function.
     """
     try:
         memory = memory_manager.get_project_memory(project)
@@ -157,7 +159,7 @@ def corroborate_decision(
 
     scored = score_corroboration(rationale, _to_scorer_findings(results))
 
-    return Ok(value=CorroborationReport(
+    report = CorroborationReport(
         decision_id=decision_id,
         rationale=rationale,
         research_findings=_to_report_findings(results, rationale),
@@ -165,4 +167,38 @@ def corroborate_decision(
         confidence_adjustment=scored.confidence_adjustment,
         evidence_urls=tuple(scored.evidence_urls),
         checked_at=datetime.now(timezone.utc).isoformat(),
-    ))
+    )
+
+    # Write confidence adjustment back into the decision
+    _write_confidence_back(memory_manager, project, dec_result.value, report)
+
+    return Ok(value=report)
+
+
+def _write_confidence_back(
+    memory_manager: MemoryManager,
+    project: str,
+    decision: dict,
+    report: CorroborationReport,
+) -> None:
+    """Write corroboration results into the decision's confidence field.
+
+    Updates the decision in memory with:
+    - corroboration_status: supported/contradicted/unverifiable
+    - corroboration_adjustment: the confidence delta
+    - corroboration_checked_at: timestamp of the check
+    """
+    def _mutate(memory):
+        decisions = memory.get("decisions", [])
+        for d in decisions:
+            if d.get("decision") == decision.get("decision"):
+                confidence = d.setdefault("confidence", {})
+                confidence["corroboration_status"] = report.status.value
+                confidence["corroboration_adjustment"] = report.confidence_adjustment
+                confidence["corroboration_checked_at"] = report.checked_at
+                # Apply the adjustment to the base score
+                base = confidence.get("score", 0.5)
+                confidence["score"] = max(0.0, min(1.0, base + report.confidence_adjustment))
+                break
+
+    memory_manager._modify_project_memory(project, _mutate)

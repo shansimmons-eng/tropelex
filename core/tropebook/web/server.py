@@ -7,6 +7,7 @@ import logging
 import os
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,27 @@ if _env_path.exists():
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tropelex")
 
-app = FastAPI(title="Tropelex API", version="1.3.0")
+# --- Background scheduler ---
+_scheduler = None
+
+
+@asynccontextmanager
+async def lifespan(app_instance):
+    """Start background scheduler on startup, stop on shutdown."""
+    global _scheduler
+    from core.scheduler import BackgroundScheduler
+    # Compute BASE_DIR at call time (module-level BASE_DIR is set later)
+    _base = Path(__file__).parent.parent.parent.parent
+    _scheduler = BackgroundScheduler(base_dir=_base)
+    await _scheduler.start()
+    logger.info("Tropelex started with background scheduler")
+    yield
+    if _scheduler:
+        await _scheduler.stop()
+    logger.info("Tropelex shutdown complete")
+
+
+app = FastAPI(title="Tropelex API", version="1.3.0", lifespan=lifespan)
 
 # CORS — localhost only
 app.add_middleware(
