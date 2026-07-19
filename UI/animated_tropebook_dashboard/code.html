@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link rel="icon" type="image/png" href="/images/tlez.png" />
 <title>Tropelex - Persistent Memory for AI Agents</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -457,8 +458,7 @@ tailwind.config = {
 <aside id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-accent-lavender text-xl">psychology</span>
-            <span class="font-mono text-sm font-bold text-accent-lavender tracking-tight">TROPELEX</span>
+            <img src="/images/tlez.png" alt="Tropelex" class="h-8 w-auto" />
         </div>
     </div>
     <div class="sidebar-nav">
@@ -505,6 +505,15 @@ tailwind.config = {
                 <button class="nav-item" data-section="explain">
                     <span class="material-symbols-outlined">chat</span> Why Do We...?
                 </button>
+                <button class="nav-item" data-section="preventive">
+                    <span class="material-symbols-outlined">shield</span> Pre-Write Guard
+                </button>
+                <button class="nav-item" data-section="friction">
+                    <span class="material-symbols-outlined">psychology</span> Friction Mining
+                </button>
+                <button class="nav-item" data-section="corroborate">
+                    <span class="material-symbols-outlined">fact_check</span> Rationale Check
+                </button>
             </div>
         </div>
         <!-- Tools -->
@@ -526,6 +535,39 @@ tailwind.config = {
                 <button class="nav-item" data-section="handoff">
                     <span class="material-symbols-outlined">swap_horiz</span> Agent Handoff
                 </button>
+                <button class="nav-item" data-section="compaction">
+                    <span class="material-symbols-outlined">compress</span> Memory Compaction
+                </button>
+                <button class="nav-item" data-section="prefetch">
+                    <span class="material-symbols-outlined">auto_awesome</span> Context Prefetch
+                </button>
+                <button class="nav-item" data-section="costs">
+                    <span class="material-symbols-outlined">payments</span> Cost Ledger
+                </button>
+                <button class="nav-item" data-section="prbot">
+                    <span class="material-symbols-outlined">pull_request</span> PR Bot
+                </button>
+                <button class="nav-item" data-section="narrative">
+                    <span class="material-symbols-outlined">auto_stories</span> Narrative
+                </button>
+                <button class="nav-item" data-section="market">
+                    <span class="material-symbols-outlined">trending_up</span> Decision Market
+                </button>
+                <button class="nav-item" data-section="slack">
+                    <span class="material-symbols-outlined">chat</span> Slack Capture
+                </button>
+                <button class="nav-item" data-section="timetravel">
+                    <span class="material-symbols-outlined">history</span> Time Travel
+                </button>
+                <button class="nav-item" data-section="contradictions">
+                    <span class="material-symbols-outlined">compare</span> Contradictions
+                </button>
+                <button class="nav-item" data-section="personas">
+                    <span class="material-symbols-outlined">person</span> Personas
+                </button>
+                <button class="nav-item" data-section="federation">
+                    <span class="material-symbols-outlined">public</span> Federation
+                </button>
             </div>
         </div>
         <!-- System -->
@@ -535,6 +577,9 @@ tailwind.config = {
                 <span class="material-symbols-outlined chevron">chevron_right</span>
             </div>
             <div class="accordion-body">
+                <button class="nav-item" data-section="onboarding">
+                    <span class="material-symbols-outlined">rocket_launch</span> Getting Started
+                </button>
                 <button class="nav-item" data-section="settings">
                     <span class="material-symbols-outlined">settings</span> Settings
                 </button>
@@ -542,6 +587,28 @@ tailwind.config = {
         </div>
     </div>
     <div class="sidebar-footer">
+        <!-- Mock Login -->
+        <div id="login-section" class="mb-3 pb-3 border-b border-glass-border">
+            <div id="logged-out" class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-outline text-sm">person</span>
+                <span class="font-mono text-xs text-outline">Not signed in</span>
+                <button onclick="document.getElementById('logged-out').classList.add('hidden');document.getElementById('logged-in').classList.remove('hidden');" class="ml-auto px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Sign In</button>
+            </div>
+            <div id="logged-in" class="hidden">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-accent-lavender/30 flex items-center justify-center">
+                        <span class="font-mono text-[10px] text-accent-lavender">A</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-mono text-xs text-on-surface truncate">Admin</div>
+                        <div class="font-mono text-[10px] text-outline truncate">admin@tropelex.local</div>
+                    </div>
+                    <button onclick="document.getElementById('logged-in').classList.add('hidden');document.getElementById('logged-out').classList.remove('hidden');" class="text-outline hover:text-accent-lavender transition-colors" title="Sign Out">
+                        <span class="material-symbols-outlined text-sm">logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-accent-lime status-pulse"></span>
             <span class="font-mono text-xs text-accent-lime" id="engine-status">ONLINE</span>
@@ -556,6 +623,8 @@ tailwind.config = {
             <button class="md:hidden text-accent-lavender" id="mobile-menu-btn" onclick="toggleSidebar()">
                 <span class="material-symbols-outlined">menu</span>
             </button>
+            <img src="/images/tlez.png" alt="Tropelex" class="h-6 w-auto hidden md:block" />
+            <span class="text-outline mx-1 hidden md:block">·</span>
             <span class="font-mono text-xs text-outline uppercase tracking-wider" id="current-section-label">Tropebook</span>
         </div>
         <div class="flex items-center gap-3">
@@ -1634,6 +1703,364 @@ tailwind.config = {
             </div>
         </div>
     </section>
+
+    <!-- Onboarding / Setup Suggestions -->
+    <section id="section-onboarding" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">rocket_launch</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Getting Started</h2>
+        </div>
+        <p class="text-outline mb-6">Complete these steps to get the most out of Tropelex.</p>
+        <div class="space-y-3" id="onboarding-checklist">
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="project">
+                <span class="material-symbols-outlined text-accent-lavender">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">Create your first project</div>
+                    <div class="font-mono text-xs text-outline">Projects organize decisions, sessions, and patterns</div>
+                </div>
+                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Go</button>
+            </div>
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="decision">
+                <span class="material-symbols-outlined text-accent-sky">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">Record your first decision</div>
+                    <div class="font-mono text-xs text-outline">Decisions are the foundation of project memory</div>
+                </div>
+                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
+            </div>
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="apikeys">
+                <span class="material-symbols-outlined text-accent-periwinkle">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">Configure API keys</div>
+                    <div class="font-mono text-xs text-outline">Brave Search, OpenAI embeddings (optional for web research)</div>
+                </div>
+                <button onclick="switchSection('settings')" class="px-3 py-1 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Go</button>
+            </div>
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="feeds">
+                <span class="material-symbols-outlined text-accent-lime">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">Set up research feeds</div>
+                    <div class="font-mono text-xs text-outline">Auto-research topics relevant to your project</div>
+                </div>
+                <button onclick="switchSection('feeds')" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Go</button>
+            </div>
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="session">
+                <span class="material-symbols-outlined text-accent-sky">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">End your first session</div>
+                    <div class="font-mono text-xs text-outline">Session summaries help Tropelex learn your patterns</div>
+                </div>
+                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
+            </div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-accent-lavender text-sm">menu_book</span>
+                <span class="font-mono text-xs text-accent-lavender uppercase">Documentation</span>
+            </div>
+            <p class="text-sm text-outline mb-3">Learn how to use Tropelex effectively.</p>
+            <a href="/guide" class="font-mono text-sm text-accent-periwinkle hover:text-accent-lavender transition-colors">Read the Docs →</a>
+        </div>
+    </section>
+
+    <!-- Preventive Ghost Check -->
+    <section id="section-preventive" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Pre-Write Guard</h2>
+        </div>
+        <p class="text-outline mb-6">Check a proposed diff against active decisions before writing code.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="preventive-diff" rows="6" placeholder="Paste a unified diff here to check against decisions..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-check-ghost" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Check for Ghosts</button>
+        </div>
+        <div id="preventive-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="preventive-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">shield</span>
+            <p class="text-outline text-sm">No warnings yet. Paste a diff above to check for ghost decisions.</p>
+            <a href="/guide#pre-write-guard" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Friction Mining -->
+    <section id="section-friction" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">psychology</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Friction Mining</h2>
+        </div>
+        <p class="text-outline mb-6">Detect frustration signals in session transcripts — implicit low-confidence zones.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="friction-transcript" rows="6" placeholder="Paste a session transcript here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
+        </div>
+        <div id="friction-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="friction-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">psychology</span>
+            <p class="text-outline text-sm">No friction data yet. Paste a transcript above to scan for frustration signals.</p>
+            <a href="/guide#friction-mining" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Rationale Corroboration -->
+    <section id="section-corroborate" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">fact_check</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Rationale Check</h2>
+        </div>
+        <p class="text-outline mb-6">Fact-check decision rationale against the live web using research infrastructure.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex gap-3 mb-4">
+                <input type="text" id="corroborate-decision-id" placeholder="Decision ID (e.g., d1)" class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lime focus:outline-none"/>
+                <button id="btn-corroborate" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Check Rationale</button>
+            </div>
+        </div>
+        <div id="corroborate-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="corroborate-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">fact_check</span>
+            <p class="text-outline text-sm">No corroboration data yet. Enter a decision ID to check its rationale.</p>
+            <a href="/guide#rationale-check" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Memory Compaction -->
+    <section id="section-compaction" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">compress</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Memory Compaction</h2>
+        </div>
+        <p class="text-outline mb-6">Collapse superseded decision chains into epoch summaries to keep memory lean.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Compaction Status</span>
+                <button id="btn-compact" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
+            </div>
+            <div id="compaction-status" class="text-sm text-outline">Select a project to view compaction status.</div>
+        </div>
+        <div id="compaction-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="compaction-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">compress</span>
+            <p class="text-outline text-sm">No compaction data yet. Select a project and run compaction to see results.</p>
+            <a href="/guide#compaction" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Context Prefetch -->
+    <section id="section-prefetch" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">auto_awesome</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Context Prefetch</h2>
+        </div>
+        <p class="text-outline mb-6">Predict the ideal minimal context bundle for a task, sized to a token budget.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="space-y-3">
+                <input type="text" id="prefetch-task" placeholder="Describe your task (e.g., 'fix auth bug in login flow')" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                <div class="flex gap-3">
+                    <input type="number" id="prefetch-budget" value="4000" min="500" max="50000" class="w-32 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none"/>
+                    <span class="font-mono text-xs text-outline self-center">token budget</span>
+                    <button id="btn-prefetch" class="ml-auto px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Assemble Bundle</button>
+                </div>
+            </div>
+        </div>
+        <div id="prefetch-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prefetch-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_awesome</span>
+            <p class="text-outline text-sm">No prefetch data yet. Describe a task above to assemble a context bundle.</p>
+            <a href="/guide#prefetch" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Cost Ledger -->
+    <section id="section-costs" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">payments</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Cost Ledger</h2>
+        </div>
+        <p class="text-outline mb-6">Track actual dollars and tokens spent per decision for ROI scoring.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Cost Report</span>
+                <button id="btn-cost-report" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Generate Report</button>
+            </div>
+            <div id="cost-report-data" class="text-sm text-outline">Select a project to view cost data.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="costs-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">payments</span>
+            <p class="text-outline text-sm">No cost data yet. Cost events are recorded as agents make decisions.</p>
+            <a href="/guide#cost-ledger" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- PR Bot -->
+    <section id="section-prbot" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">pull_request</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">PR Bot</h2>
+        </div>
+        <p class="text-outline mb-6">Generate PR comments with relevant decision context and ghost warnings.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="prbot-diff" rows="6" placeholder="Paste a PR diff here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+            <div class="flex gap-3">
+                <input type="text" id="prbot-title" placeholder="PR title (optional)" class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none"/>
+                <button id="btn-prbot" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Generate Comment</button>
+            </div>
+        </div>
+        <div id="prbot-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prbot-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">pull_request</span>
+            <p class="text-outline text-sm">No PR comment generated yet. Paste a diff above to generate a comment.</p>
+            <a href="/guide#pr-bot" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Narrative Mode -->
+    <section id="section-narrative" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">auto_stories</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Narrative Mode</h2>
+        </div>
+        <p class="text-outline mb-6">Generate readable prose from the decision graph for non-technical audiences.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex gap-3">
+                <select id="narrative-audience" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer">
+                    <option value="new_hire">New Hire</option>
+                    <option value="investor">Investor</option>
+                    <option value="pm">Product Manager</option>
+                </select>
+                <button id="btn-narrative" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Generate Story</button>
+            </div>
+        </div>
+        <div id="narrative-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="narrative-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_stories</span>
+            <p class="text-outline text-sm">No narrative generated yet. Select an audience and generate a project story.</p>
+            <a href="/guide#narrative" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Decision Market -->
+    <section id="section-market" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">trending_up</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Decision Market</h2>
+        </div>
+        <p class="text-outline mb-6">Place confidence bets on decisions and track calibration over time.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Leaderboard</span>
+                <button id="btn-market-leaderboard" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Refresh</button>
+            </div>
+            <div id="market-leaderboard" class="text-sm text-outline">No bets placed yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="market-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">trending_up</span>
+            <p class="text-outline text-sm">No market data yet. Place confidence bets on decisions to track calibration.</p>
+            <a href="/guide#decision-market" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Slack Capture -->
+    <section id="section-slack" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">chat</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Slack Capture</h2>
+        </div>
+        <p class="text-outline mb-6">Capture decisions from chat messages and extract implicit decisions from threads.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="slack-messages" rows="6" placeholder="Paste chat messages here (one per line)..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-slack-extract" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Extract Decisions</button>
+        </div>
+        <div id="slack-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="slack-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">chat</span>
+            <p class="text-outline text-sm">No chat data yet. Paste messages above to extract implicit decisions.</p>
+            <a href="/guide#slack-capture" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Time Travel -->
+    <section id="section-timetravel" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">history</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Time Travel</h2>
+        </div>
+        <p class="text-outline mb-6">Check out project memory as of any past date — forensic tool for postmortems.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex gap-3">
+                <input type="date" id="timetravel-date" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none"/>
+                <button id="btn-timetravel" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Travel to Date</button>
+            </div>
+        </div>
+        <div id="timetravel-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="timetravel-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">history</span>
+            <p class="text-outline text-sm">No time travel data yet. Select a date to view memory as of that point.</p>
+            <a href="/guide#time-travel" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Contradictions -->
+    <section id="section-contradictions" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">compare</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Contradictions</h2>
+        </div>
+        <p class="text-outline mb-6">Scan for unresolved contradictions between active decisions.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Contradiction Scan</span>
+                <button id="btn-contradictions" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Now</button>
+            </div>
+            <div id="contradictions-data" class="text-sm text-outline">Select a project to scan for contradictions.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="contradictions-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">compare</span>
+            <p class="text-outline text-sm">No contradiction data yet. Select a project and scan for contradictions.</p>
+            <a href="/guide#contradictions" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Personas -->
+    <section id="section-personas" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">person</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Personas</h2>
+        </div>
+        <p class="text-outline mb-6">Synthesize readable persona summaries from agent proficiency tracking.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Agent Personas</span>
+                <button id="btn-personas" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
+            </div>
+            <div id="personas-data" class="text-sm text-outline">Select a project to view agent personas.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="personas-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">person</span>
+            <p class="text-outline text-sm">No persona data yet. Agent personas are built from session outcomes over time.</p>
+            <a href="/guide#personas" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Federation -->
+    <section id="section-federation" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">public</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Federation</h2>
+        </div>
+        <p class="text-outline mb-6">Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Aggregate Benchmarks</span>
+                <button id="btn-federation" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Load Benchmarks</button>
+            </div>
+            <div id="federation-data" class="text-sm text-outline">No federated data available yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="federation-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">public</span>
+            <p class="text-outline text-sm">No federation data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
+            <a href="/guide#federation" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
 </main>
 
 <!-- Bottom Navigation (Mobile Only) -->
@@ -1680,31 +2107,72 @@ tailwind.config = {
             </button>
         </div>
         <form id="add-form" class="space-y-4">
-            <div>
-                <label class="block text-sm text-outline mb-2">Title</label>
-                <input type="text" id="form-title" required
-                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+            <!-- Citation fields (default) -->
+            <div id="citation-fields">
+                <div>
+                    <label class="block text-sm text-outline mb-2">Title</label>
+                    <input type="text" id="form-title" required
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">URL</label>
+                    <input type="url" id="form-url"
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">Summary</label>
+                    <textarea id="form-summary" rows="3"
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">Tags (comma separated)</label>
+                    <input type="text" id="form-tags" placeholder="ai, research, python"
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm text-outline mb-2">URL</label>
-                <input type="url" id="form-url" required
-                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
-            </div>
-            <div>
-                <label class="block text-sm text-outline mb-2">Summary</label>
-                <textarea id="form-summary" rows="3"
-                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none resize-none"></textarea>
-            </div>
-            <div>
-                <label class="block text-sm text-outline mb-2">Tags (comma separated)</label>
-                <input type="text" id="form-tags" placeholder="ai, research, python"
-                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+            <!-- Feed fields (hidden by default) -->
+            <div id="feed-fields" class="hidden">
+                <div>
+                    <label class="block text-sm text-outline mb-2">Feed Name</label>
+                    <input type="text" id="feed-name" required
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">Search Query</label>
+                    <input type="text" id="feed-query" required placeholder="e.g., FastAPI best practices 2026"
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">Description (optional)</label>
+                    <textarea id="feed-description" rows="2" placeholder="What this feed tracks..."
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Interval</label>
+                        <select id="feed-interval" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none cursor-pointer">
+                            <option value="daily">Daily</option>
+                            <option value="weekly" selected>Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Max Results</label>
+                        <input type="number" id="feed-max-results" value="20" min="1" max="100"
+                            class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-outline mb-2">Tags (comma separated)</label>
+                    <input type="text" id="feed-tags" placeholder="ai, research, monitoring"
+                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                </div>
             </div>
             <div class="flex justify-end gap-3 mt-6">
                 <button type="button" id="cancel-add" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-outline hover:bg-surface-raised transition-all cursor-pointer">
                     Cancel
                 </button>
-                <button type="submit" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-accent-lavender hover:bg-surface-high transition-all hover:glow cursor-pointer">
+                <button type="submit" id="submit-add" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-accent-lavender hover:bg-surface-high transition-all hover:glow cursor-pointer">
                     Add Citation
                 </button>
             </div>
@@ -2117,9 +2585,29 @@ selectProject = async function(name) {
 };
 
 // Modal
-function openModal() {
-    document.getElementById('add-modal').classList.remove('hidden');
-    document.getElementById('add-modal').classList.add('flex');
+function openModal(mode = 'citation') {
+    const modal = document.getElementById('add-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const form = document.getElementById('add-form');
+    form.dataset.mode = mode;
+    
+    const citationFields = document.getElementById('citation-fields');
+    const feedFields = document.getElementById('feed-fields');
+    const title = modal.querySelector('h3');
+    const submitBtn = document.getElementById('submit-add');
+    
+    if (mode === 'feed') {
+        citationFields.classList.add('hidden');
+        feedFields.classList.remove('hidden');
+        title.textContent = 'Create Research Feed';
+        submitBtn.textContent = 'Create Feed';
+    } else {
+        citationFields.classList.remove('hidden');
+        feedFields.classList.add('hidden');
+        title.textContent = 'Add Citation';
+        submitBtn.textContent = 'Add Citation';
+    }
 }
 function closeModal() {
     document.getElementById('add-modal').classList.add('hidden');
@@ -2458,14 +2946,21 @@ document.getElementById('btn-test-openai').addEventListener('click', async () =>
     statusEl.className = 'mt-2 font-mono text-xs text-outline';
     statusEl.textContent = 'Testing...';
     statusEl.classList.remove('hidden');
-    // Quick test via server proxy
-    const res = await api('/compress', 'POST', { prompt: 'hello world' });
-    if (res && !res.error) {
-        statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
-        statusEl.textContent = '✓ Key working — save settings to apply';
-    } else {
+    try {
+        // First, push the key to the server so it's in os.environ
+        await api('/settings/apikey', 'POST', { key: 'OPENAI_API_KEY', value: key });
+        // Then test via compress endpoint
+        const res = await api('/compress', 'POST', { prompt: 'hello world' });
+        if (res && !res.error) {
+            statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
+            statusEl.textContent = '✓ Key working — ' + (res.backend || 'openai');
+        } else {
+            statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+            statusEl.textContent = '✗ ' + (res?.error || 'Test failed');
+        }
+    } catch(e) {
         statusEl.className = 'mt-2 font-mono text-xs text-red-400';
-        statusEl.textContent = '✗ ' + (res?.error || 'Test failed');
+        statusEl.textContent = '✗ Connection error: ' + e.message;
     }
 });
 
@@ -2539,7 +3034,9 @@ document.getElementById('global-project-select').addEventListener('change', asyn
 
 async function selectProject(name) {
     state.currentProject = name;
+    localStorage.setItem('tropelex-project', name || '');
     updateGlobalProjectSelector();  // Sync global selector
+    updateProjectPrompt();
     
     // Update all section project indicators
     const indicator = name || 'No project';
@@ -4228,12 +4725,7 @@ async function loadFeedRuns(feedId) {
 
 // Create Feed Modal
 document.getElementById('btn-create-feed')?.addEventListener('click', () => {
-    const modal = document.getElementById('add-modal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    modal.querySelector('h3').textContent = 'Create Research Feed';
-    const form = modal.querySelector('form');
-    if (form) form.dataset.mode = 'feed';
+    openModal('feed');
 });
 
 document.getElementById('btn-tick-feeds')?.addEventListener('click', async () => {

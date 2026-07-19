@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tropelex Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+    body { background: #010515; color: #dce2fa; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+    h1 { color: #a580fa; font-family: 'JetBrains Mono', monospace; font-size: 1.75rem; margin-bottom: 0.5rem; }
+    h2 { color: #80d5fa; font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid rgba(165,128,250,0.15); padding-bottom: 0.5rem; }
+    h3 { color: #98fa80; font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin-top: 1.5rem; }
+    p, li { color: #958e9e; line-height: 1.7; font-size: 0.9rem; }
+    code { background: rgba(20,27,45,0.8); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #80d5fa; }
+    pre { background: rgba(20,27,45,0.8); padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid rgba(165,128,250,0.12); }
+    pre code { padding: 0; background: none; }
+    a { color: #8098fa; text-decoration: none; }
+    a:hover { color: #a580fa; text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 2rem; color: #a580fa; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
+    .section { margin-bottom: 3rem; }
+    ul { padding-left: 1.5rem; }
+    li { margin-bottom: 0.4rem; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; margin-left: 0.5rem; }
+    .badge-new { background: rgba(152,250,128,0.15); color: #98fa80; }
+    .badge-phase { background: rgba(128,152,250,0.15); color: #8098fa; }
+</style>
+</head>
+<body>
+<div class="container">
+    <a href="/" class="back">← Back to Dashboard</a>
+    <h1>Tropelex Documentation</h1>
+    <p>Persistent memory system for AI agents. Store decisions, track patterns, and maintain project context across sessions.</p>
+
+    <div class="section" id="getting-started">
+        <h2>Getting Started</h2>
+        <h3>1. Create a Project</h3>
+        <p>Projects are the top-level container for all memory. Go to <strong>Memory</strong> in the sidebar and click <strong>New Project</strong>.</p>
+        
+        <h3>2. Record Decisions</h3>
+        <p>Decisions are the foundation. Click <strong>+ Add Decision</strong> in the Memory section. Each decision has:</p>
+        <ul>
+            <li><strong>Decision text</strong> — what you decided (e.g., "Using Python + FastAPI for backend")</li>
+            <li><strong>Context</strong> — why you decided it (optional but recommended)</li>
+        </ul>
+
+        <h3>3. End Sessions</h3>
+        <p>When you finish a work session, click <strong>+ End Session</strong> to summarize what you did. This helps Tropelex learn your patterns.</p>
+
+        <h3>4. Configure API Keys (Optional)</h3>
+        <p>For web research features, set these environment variables:</p>
+        <ul>
+            <li><code>BRAVE_API_KEY</code> — for Brave Search (free tier available)</li>
+            <li><code>OPENAI_API_KEY</code> — for embeddings (optional)</li>
+        </ul>
+    </div>
+
+    <div class="section" id="features">
+        <h2>Features</h2>
+
+        <h3 id="tropebook">Tropebook</h3>
+        <p>Research knowledge base. Add citations, search locally or on the web, and build a knowledge graph.</p>
+
+        <h3 id="memory">Memory</h3>
+        <p>View and manage project memory — decisions, sessions, preferences, and patterns.</p>
+
+        <h3 id="patterns">Patterns</h3>
+        <p>Auto-detected patterns from your usage. Tropelex learns what categories you work in, what days you're most active, and more.</p>
+
+        <h3 id="graph">Knowledge Graph</h3>
+        <p>Visual D3 force-directed graph of decisions and their relationships (supersedes, caused_by, related_to).</p>
+
+        <h3 id="health">Health Dashboard</h3>
+        <p>Project health score based on decision confidence, session coverage, and pattern detection accuracy.</p>
+
+        <h3 id="impact">Impact Analysis</h3>
+        <p>See which decisions have the most downstream impact and track reversal rates.</p>
+
+        <h3 id="ghost-decisions">Ghost Decisions</h3>
+        <p>Detect when code silently drifts from documented decisions. Compares decision keywords against git diffs.</p>
+
+        <h3 id="pre-write-guard">Pre-Write Guard <span class="badge badge-new">NEW</span></h3>
+        <p>Check a proposed diff against active decisions <em>before</em> writing code. Prevention is better than detection.</p>
+
+        <h3 id="explain">"Why Do We...?" Chat</h3>
+        <p>Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers.</p>
+
+        <h3 id="handoff">Agent Handoff</h3>
+        <p>Generate role-aware context bundles when one agent hands off to another. Token-budget-aware, role-specific.</p>
+
+        <h3 id="friction-mining">Friction Mining <span class="badge badge-new">NEW</span></h3>
+        <p>Detect frustration signals in session transcripts — rephrasing patterns, retry loops, escalation markers. No explicit logging needed.</p>
+
+        <h3 id="rationale-check">Rationale Check <span class="badge badge-new">NEW</span></h3>
+        <p>Fact-check decision rationale against the live web. If your rationale is "chose Postgres for JSON support," Tropelex checks if that's still true.</p>
+
+        <h3 id="compaction">Memory Compaction <span class="badge badge-new">NEW</span></h3>
+        <p>Collapse superseded decision chains into epoch summaries. Keeps memory lean as projects age.</p>
+
+        <h3 id="prefetch">Context Prefetch <span class="badge badge-new">NEW</span></h3>
+        <p>Predict the ideal minimal context bundle for a task, sized to a token budget, prioritized by impact score.</p>
+
+        <h3 id="cost-ledger">Cost Ledger <span class="badge badge-new">NEW</span></h3>
+        <p>Track actual dollars and tokens spent per decision. ROI scoring with real denominators.</p>
+
+        <h3 id="pr-bot">PR Bot <span class="badge badge-new">NEW</span></h3>
+        <p>Generate PR comments with relevant decision context and ghost warnings. Distribution channel for insights.</p>
+
+        <h3 id="narrative">Narrative Mode <span class="badge badge-new">NEW</span></h3>
+        <p>Generate readable prose from the decision graph. Audience presets: new hire, investor, product manager.</p>
+
+        <h3 id="decision-market">Decision Market <span class="badge badge-new">NEW</span></h3>
+        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty.</p>
+
+        <h3 id="slack-capture">Slack Capture <span class="badge badge-new">NEW</span></h3>
+        <p>Capture decisions from chat messages and extract implicit decisions from threads.</p>
+
+        <h3 id="time-travel">Time Travel <span class="badge badge-new">NEW</span></h3>
+        <p>Check out project memory as of any past date. Forensic tool for postmortems.</p>
+
+        <h3 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h3>
+        <p>Scan for unresolved contradictions between active decisions. "Use REST" and "use GraphQL" both active? Tropelex catches it.</p>
+
+        <h3 id="personas">Personas <span class="badge badge-new">NEW</span></h3>
+        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows."</p>
+
+        <h3 id="federation">Federation <span class="badge badge-new">NEW</span></h3>
+        <p>Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs. "Projects using FastAPI+Postgres have a 12% reversal rate."</p>
+    </div>
+
+    <div class="section" id="api">
+        <h2>API Reference</h2>
+        <p>All features expose REST API endpoints. The server runs at <code>http://localhost:8766</code>.</p>
+        <p>See <a href="/openapi.json">/openapi.json</a> for the full OpenAPI specification with all 152 endpoints.</p>
+    </div>
+
+    <div class="section" id="architecture">
+        <h2>Architecture</h2>
+        <p>Tropelex is built with:</p>
+        <ul>
+            <li><strong>FastAPI</strong> — REST API server</li>
+            <li><strong>JSON files</strong> — storage with file-level locking (fcntl.flock)</li>
+            <li><strong>D3.js</strong> — knowledge graph visualization</li>
+            <li><strong>Pure functions</strong> — all business logic is side-effect free</li>
+            <li><strong>Result type</strong> — explicit error handling (Ok/Err)</li>
+        </ul>
+    </div>
+</div>
+</body>
+</html>

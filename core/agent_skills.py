@@ -44,13 +44,23 @@ class AgentSkillGraph:
     def _load(self, project_name: str) -> dict:
         f = self._skills_file(project_name)
         if f.exists():
-            with open(f) as fh:
-                return json.load(fh)
+            try:
+                with open(f) as fh:
+                    return json.load(fh)
+            except json.JSONDecodeError as exc:
+                logger.error("Corrupt skills file %s: %s", f, exc)
+                return {"project": project_name, "skills": {}, "sessions": [], "created": _now()}
+            except OSError as exc:
+                logger.error("Failed to read skills file %s: %s", f, exc)
+                return {"project": project_name, "skills": {}, "sessions": [], "created": _now()}
         return {"project": project_name, "skills": {}, "sessions": [], "created": _now()}
 
     def _save(self, project_name: str, data: dict) -> None:
-        with open(self._skills_file(project_name), "w") as f:
-            json.dump(data, f, indent=2)
+        try:
+            with open(self._skills_file(project_name), "w") as f:
+                json.dump(data, f, indent=2)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save skills for %s: %s", project_name, exc)
 
     def record_session_outcome(
         self,
@@ -187,13 +197,23 @@ class PromptGenealogy:
     def _load(self, project_name: str) -> dict:
         f = self._file(project_name)
         if f.exists():
-            with open(f) as fh:
-                return json.load(fh)
+            try:
+                with open(f) as fh:
+                    return json.load(fh)
+            except json.JSONDecodeError as exc:
+                logger.error("Corrupt genealogy file %s: %s", f, exc)
+                return {"project": project_name, "prompts": [], "strategy_scores": {}, "created": _now()}
+            except OSError as exc:
+                logger.error("Failed to read genealogy file %s: %s", f, exc)
+                return {"project": project_name, "prompts": [], "strategy_scores": {}, "created": _now()}
         return {"project": project_name, "prompts": [], "strategy_scores": {}, "created": _now()}
 
     def _save(self, project_name: str, data: dict) -> None:
-        with open(self._file(project_name), "w") as f:
-            json.dump(data, f, indent=2)
+        try:
+            with open(self._file(project_name), "w") as f:
+                json.dump(data, f, indent=2)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save genealogy for %s: %s", project_name, exc)
 
     def record_compression(
         self,
@@ -245,6 +265,7 @@ class PromptGenealogy:
         """
         data = self._load(project_name)
 
+        found = False
         for p in data["prompts"]:
             if p["id"] == prompt_id:
                 p["outcome"] = outcome
@@ -255,7 +276,12 @@ class PromptGenealogy:
                 })
                 scores["total"] += 1
                 scores[outcome] = scores.get(outcome, 0) + 1
+                found = True
                 break
+
+        if not found:
+            logger.warning("Prompt %r not found for project %s — outcome not recorded", prompt_id, project_name)
+            return
 
         self._save(project_name, data)
 

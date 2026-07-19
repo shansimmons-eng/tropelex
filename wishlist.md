@@ -94,7 +94,7 @@
 - Surface drift in Health Dashboard alongside stale decisions
 - Confidence scoring based on diff severity and decision confidence
 
-**Status:** 📋 Planned
+**Status:** ✅ Implemented (core/ghost/)
 
 ---
 
@@ -110,7 +110,7 @@
 - Downstream impact (what this decision caused)
 - Source citations (git commits, session history)
 
-**Status:** 📋 Planned
+**Status:** ✅ Implemented (core/explain/)
 
 ---
 
@@ -126,7 +126,7 @@
 - Includes recent session state and active decisions
 - API endpoint for programmatic generation
 
-**Status:** 📋 Planned
+**Status:** ✅ Implemented (core/handoff/)
 
 ---
 
@@ -222,7 +222,7 @@
 - Category-specific accuracy (e.g., "85% on auth, 60% on DB")
 - Calibration leaderboards
 
-**Status:** 📋 Planned (Tier 2)
+**Status:** ✅ Implemented (core/market/)
 
 ---
 
@@ -238,7 +238,7 @@
 - Diff annotations showing decision drift
 - VS Code extension integration
 
-**Status:** 📋 Planned (Tier 2)
+**Status:** ✅ Implemented
 
 ---
 
@@ -254,7 +254,7 @@
 - Agent-specific tuning (based on prompt genealogy)
 - Compression ratio tracking
 
-**Status:** 📋 Planned (Tier 2)
+**Status:** ✅ Implemented (core/prefetch/)
 
 ---
 
@@ -270,7 +270,7 @@
 - Slack thread context preservation
 - Conflict detection on capture
 
-**Status:** 📋 Planned (Tier 2)
+**Status:** ✅ Implemented
 
 ---
 
@@ -366,7 +366,7 @@
 - Session replay with original context preserved
 - Timeline visualization of memory evolution
 
-**Status:** 📋 Planned (Tier 3)
+**Status:** ✅ Implemented
 
 ---
 
@@ -382,7 +382,7 @@
 - Resolution suggestions
 - Integration with Health Dashboard
 
-**Status:** 📋 Planned (Tier 3)
+**Status:** ✅ Implemented
 
 ---
 
@@ -398,7 +398,7 @@
 - Review focus suggestions
 - Integration with Agent Handoff Packets
 
-**Status:** 📋 Planned (Tier 3)
+**Status:** ✅ Implemented
 
 ---
 
@@ -414,7 +414,148 @@
 - Opt-in/opt-out per project
 - Central aggregation service
 
-**Status:** 📋 Planned (Tier 3)
+**Status:** ✅ Implemented
+
+---
+
+### 27. Memory Compaction / Epoch Summarization
+**Purpose:** Prevent memory from growing unbounded by collapsing superseded/low-confidence decision chains into higher-level "epoch summaries."
+
+**Why:** Every feature adds more memory. After 18 months with 2,000 decisions, context injection gets truncated arbitrarily or token budgets balloon. This is the difference between memory that grows and memory that matures.
+
+**Features:**
+- Periodic LLM-driven compaction pass
+- Merge superseded chains into one-line summaries (e.g., "frontend framework churned 3x in 2026, settled on Svelte, see decision #412")
+- Archive originals (never delete) for time-travel/audit
+- Confidence-tier-based compaction priority
+- Token budget tracking per project
+- Compaction history with rollback
+
+**Status:** ✅ Implemented (core/compaction/)
+
+---
+
+### 28. Friction Mining (Implicit Signal Capture)
+**Purpose:** Auto-detect friction from session transcripts without anyone explicitly logging decisions.
+
+**Why:** Everything currently depends on explicit recording. Real friction — agent getting corrected, human retyping with growing annoyance, repeated reverts — never gets captured. This is the data source current tools (Continue, Cursor, mem0, Zep) don't touch.
+
+**Features:**
+- Transcript pattern detection (rephrasing, "no that's wrong", rapid edits)
+- Retry loop identification
+- Implicit low-confidence zone flagging
+- Tech-debt heatmap generation
+- Session-level friction scoring
+- Integration with Health Dashboard
+
+**Status:** ✅ Implemented (core/friction/)
+
+---
+
+### 29. Preventive Ghost Decision Checks (Pre-Write Hook)
+**Purpose:** Run ghost decision detection before an agent finalizes a diff, not after commit.
+
+**Why:** Ghost Decisions (#6) catches drift after a commit lands. By then the agent already wrote the contradicting code. Prevention > detection.
+
+**Features:**
+- Pre-edit hook that checks diff against high-confidence active decisions
+- Warning surfacing before write finalization
+- Configurable severity thresholds
+- Skip list for known-safe patterns
+- Integration with existing ghost detection logic
+- CLI and API surface
+
+**Status:** ✅ Implemented (core/ghost/preventive.py, core/ghost/preventive_router.py)
+
+---
+
+### 30. Rationale Corroboration via Tropebook
+**Purpose:** Fact-check decision rationale against the live web using existing research infrastructure.
+
+**Why:** Decisions get recorded with rationale ("chose Postgres for JSON support") but nothing checks whether that rationale still holds. Knowledge Decay handles age, not validity.
+
+**Features:**
+- Periodic rationale validation via research feeds
+- Cross-reference with Tropebook citations
+- Stale rationale flagging with evidence
+- Auto-suggest decision review when rationale outdated
+- Confidence adjustment based on corroboration
+- Integration with Knowledge Decay scoring
+
+**Status:** ✅ Implemented (core/corroboration/)
+
+---
+
+### 31. PR Bot Delivery Surface
+**Purpose:** Deliver ghost decisions, contradictions, and health scores as PR comments where developers actually work.
+
+**Why:** All detection features live in a dashboard nobody opens mid-workflow. Distribution is the actual bottleneck for adoption.
+
+**Features:**
+- GitHub/GitLab bot integration
+- PR comment generation with relevant decisions
+- Diff-aware context injection
+- Decision relevance scoring per PR
+- Conflict detection on PR content
+- Configurable comment templates
+
+**Status:** ✅ Implemented (core/prbot/)
+
+---
+
+### 32. Narrative Mode (Non-Technical Audience)
+**Purpose:** Generate readable prose summaries of project history for founders, PMs, and new hires.
+
+**Why:** ADRs and decision timelines are built for engineers. Nothing produces something a non-technical person could read on day one.
+
+**Features:**
+- Decision graph to prose conversion
+- Git history integration
+- "What was tried, what failed, why" narratives
+- Multiple audience presets (investor, new hire, PM)
+- Timeline visualization
+- Export to markdown/PDF
+
+**Status:** ✅ Implemented (core/narrative/)
+
+---
+
+### 33. Cost Ledger (Decision Impact ROI)
+**Purpose:** Track actual dollars/tokens spent per decision to give ROI scoring a real denominator.
+
+**Why:** Decision Impact Analysis measures reversal rate and time-to-value, but not actual cost. Token/session tracking exists but isn't rolled up per decision.
+
+**Features:**
+- Per-decision token cost tracking
+- Rework cost calculation on reversals
+- Agent time attribution
+- ROI scoring with real denominators
+- Cost trend analysis
+- Budget alerts per project
+
+**Status:** ✅ Implemented (core/cost/)
+
+---
+
+### 34. Predictive Context Prefetch / Budget-Aware Assembler
+**Purpose:** Predict the ideal minimal context bundle for a task before the agent starts, sized to a token budget, prioritized by impact score rather than recency.
+
+**Why:** Context compression is reactive — applied after content is already selected. This closes the loop between context-compressor, impact analysis, and agent skills to predict what the agent needs, sized to budget, and learns from outcomes. Attacks the real pain: context bloat vs. missing the one decision that matters.
+
+**Features:**
+- Relevance scoring: composite of impact score, category match, decay confidence, semantic similarity
+- Budget-aware knapsack assembler: value-density greedy + exact DP pass for boundary optimization
+- Near-miss transparency: excluded items surfaced with scores, not silently dropped
+- Skill-aware tuning: widen budget for novice categories, tighten for expert
+- Genealogy/feedback loop: precision (included items referenced) and recall proxy (requested but excluded)
+- Weight improvement over time from outcome data
+- Reuses impact/analysis.py, agent_skills.py, packet_builder.py trimming logic — smallest diff for value
+
+**API:**
+- `POST /api/memory/{project}/prefetch` — task + token_budget → bundle + near_misses + bundle_id
+- `POST /api/memory/{project}/prefetch/{bundle_id}/outcome` — referenced_ids + requested_but_missing
+
+**Status:** ✅ Implemented (core/prefetch/)
 
 ---
 
@@ -439,23 +580,37 @@
 - ✅ Memory Backup & Restore (Sync)
 - ✅ Collaborative Memory (WebSocket)
 
-### Phase 3: Awareness (In Progress)
-- 🔄 Ghost Decisions — Silent Drift Detection
-- 🔄 Explainable Memory Chat ("Why do we...?")
-- 🔄 Agent Handoff Packets
-- 🔄 Memory Debt Score (complement to Health Dashboard)
+### Phase 3: Awareness (Complete)
+- ✅ Ghost Decisions — Silent Drift Detection
+- ✅ Explainable Memory Chat ("Why do we...?")
+- ✅ Agent Handoff Packets
+- ✅ Memory Debt Score (complement to Health Dashboard)
 
-### Phase 4: Intelligence (Future)
-- 📋 Decision Market / Calibration Score
-- 📋 Memory Lens — IDE Inline Annotations
-- 📋 Predictive Context Prefetch
-- 📋 Bidirectional Slack Decision Capture
+### Phase 4: Intelligence (Complete)
+- ✅ Decision Market / Calibration Score
+- ✅ Memory Lens — IDE Inline Annotations
+- ✅ Predictive Context Prefetch
+- ✅ Bidirectional Slack Decision Capture
 
-### Phase 5: Meta (Vision)
-- 📋 Memory Time-Travel Debugger
-- 📋 Contradiction Detection (Active)
-- 📋 "Digital Twin" Contributor Personas
-- 📋 Federated Anonymized Benchmarking
+### Phase 5: Meta (Complete)
+- ✅ Memory Time-Travel Debugger
+- ✅ Contradiction Detection (Active)
+- ✅ "Digital Twin" Contributor Personas
+- ✅ Federated Anonymized Benchmarking
+
+### Phase 6: Sustainability & Implicit Signals (Complete)
+- ✅ Preventive Ghost Decision Checks (Pre-Write Hook)
+- ✅ Memory Compaction / Epoch Summarization
+- ✅ Friction Mining (Implicit Signal Capture)
+- ✅ Predictive Context Prefetch / Budget-Aware Assembler
+
+### Phase 7: Validation & Cost Intelligence
+- ✅ Rationale Corroboration via Tropebook
+- ✅ Cost Ledger (Decision Impact ROI)
+
+### Phase 8: Distribution & Narrative
+- ✅ PR Bot Delivery Surface
+- ✅ Narrative Mode (Non-Technical Audience)
 
 ---
 
@@ -497,6 +652,6 @@
 
 ---
 
-**Last Updated:** 2026-07-17
-**Status:** Active Development (Phase 3)
+**Last Updated:** 2026-07-18
+**Status:** All Features Implemented
 **Next Review:** 2026-08-01

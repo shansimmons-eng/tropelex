@@ -4,11 +4,28 @@ Supports Brave Search API and free alternatives.
 """
 from __future__ import annotations
 
+import logging
 import re
+import socket
 import time
 from dataclasses import dataclass, field
+from ipaddress import ip_address, ip_network
+from urllib.parse import urlparse
 
 import requests
+
+logger = logging.getLogger("tropelex.research")
+
+# SSRF protection: block private/reserved IP ranges
+_PRIVATE_NETWORKS = [
+    ip_network("10.0.0.0/8"),
+    ip_network("172.16.0.0/12"),
+    ip_network("192.168.0.0/16"),
+    ip_network("127.0.0.0/8"),
+    ip_network("169.254.0.0/16"),
+    ip_network("::1/128"),
+    ip_network("fc00::/7"),
+]
 
 try:
     from duckduckgo_search import DDGS  # noqa: F401
@@ -72,7 +89,7 @@ class BraveSearch:
                 ))
             return results
         except Exception as e:
-            print(f"Brave API error: {e}")
+            logger.warning("Brave API error: %s", e)
             return self._free_search_fallback(query, num_results)
 
     def _free_search_fallback(self, query: str, num_results: int) -> list[SearchResult]:
@@ -97,7 +114,36 @@ class WebScraper:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent})
 
+    @staticmethod
+    def _is_safe_url(url: str) -> bool:
+        """Validate URL scheme and ensure target is not a private/reserved IP."""
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return False
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+            # Block localhost aliases
+            if hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+                return False
+            # Resolve hostname and check against private ranges
+            try:
+                resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC)
+                for family, _, _, _, sockaddr in resolved:
+                    ip = ip_address(sockaddr[0])
+                    if any(ip in net for net in _PRIVATE_NETWORKS):
+                        return False
+            except (socket.gaierror, ValueError):
+                return False
+            return True
+        except Exception:
+            return False
+
     def scrape(self, url: str, extract_links: bool = True) -> ScrapedContent | None:
+        if not self._is_safe_url(url):
+            logger.warning("Blocked unsafe URL: %s", url)
+            return None
         try:
             resp = self.session.get(url, timeout=15)
             resp.raise_for_status()
@@ -120,7 +166,7 @@ class WebScraper:
                 links=links
             )
         except Exception as e:
-            print(f"Scraping error for {url}: {e}")
+            logger.warning("Scraping error for %s: %s", url, e)
             return None
 
     def _extract_title(self, html: str) -> str:
@@ -157,7 +203,7 @@ class ResearchTool:
 
         if add_to_tropebook and self.tropebook and scrape:
             for result in results:
-                content = self.scraper.scrape(result.url, extract_links=True)
+                content = self.scraper.scrape(result.url, extract_links=False)
                 if content:
                     entities = self._extract_entities(content.content)
                     tags = self._extract_tags(content.content, query)
@@ -170,15 +216,6 @@ class ResearchTool:
                         entities=entities,
                         source_type="brave_search" if result.source == "brave" else "web"
                     )
-                    if content.links:
-                        for link in content.links[:5]:
-                            scraped_link = self.scraper.scrape(link)
-                            link_title = scraped_link.title if scraped_link else link
-                            self.tropebook.add(
-                                title=link_title,
-                                url=link,
-                                source="scraped"
-                            )
 
         return results
 

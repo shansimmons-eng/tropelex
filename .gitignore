@@ -17,4 +17,4 @@ htmlcov/
 memory/tropebook/*.json
 memory/*.json
 !memory/tropebook/.gitkeep
-!memory/.gitkeep
+!memory/.gitkeep.tmp/

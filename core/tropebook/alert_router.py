@@ -9,6 +9,7 @@ Mount into the main app:
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -46,9 +47,24 @@ def _load_config() -> dict[str, Any]:
     return {}
 
 
+def _atomic_write(path: Path, data: str) -> None:
+    """Write data atomically via temp file + replace."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def _save_config(config: dict[str, Any]) -> None:
     ALERTS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ALERTS_CONFIG_PATH.write_text(json.dumps(config, indent=2))
+    _atomic_write(ALERTS_CONFIG_PATH, json.dumps(config, indent=2))
 
 
 @alert_router.get("/config")

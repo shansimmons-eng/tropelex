@@ -1,19 +1,55 @@
 """
 Tropelex Memory Manager
 Handles reading/writing project knowledge files and session memory.
+
+File-level locking (fcntl.flock) prevents concurrent corruption when
+multiple agents write to the same project memory simultaneously.
 """
 
+import fcntl
 import json
+import logging
 import re
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("tropelex.memory")
 
 _SAFE_NAME = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+@contextmanager
+def _read_lock(path: Path):
+    """Acquire a shared (read) lock on a file."""
+    fh = path.open("r")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_SH)
+        yield fh
+    finally:
+        fcntl.flock(fh, fcntl.LOCK_UN)
+        fh.close()
+
+
+@contextmanager
+def _write_lock(path: Path):
+    """Acquire an exclusive (write) lock on a file.
+
+    Creates the file if it doesn't exist so the lock can be acquired.
+    """
+    fh = path.open("a+")  # create if missing, position at end
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        fh.seek(0)
+        yield fh
+    finally:
+        fcntl.flock(fh, fcntl.LOCK_UN)
+        fh.close()
 
 
 class MemoryManager:
@@ -26,7 +62,6 @@ class MemoryManager:
 
     def _safe_path(self, project_name: str) -> Path:
         """Resolve path and guard against directory traversal."""
-        # Strip any path components, keep only the filename stem
         name = Path(project_name).name
         if not name or not _SAFE_NAME.match(name):
             raise ValueError(f"Invalid project name: {project_name!r}")
@@ -35,14 +70,27 @@ class MemoryManager:
     def get_project_memory(self, project_name: str) -> dict[str, Any]:
         memory_file = self._safe_path(project_name)
         if memory_file.exists():
-            with open(memory_file) as f:
-                return json.load(f)
+            try:
+                with _read_lock(memory_file) as fh:
+                    return json.load(fh)
+            except json.JSONDecodeError as exc:
+                logger.error("Corrupt memory file %s: %s", memory_file, exc)
+                raise
+            except OSError as exc:
+                logger.error("Failed to read %s: %s", memory_file, exc)
+                raise
         return self._create_empty_project_memory(project_name)
 
     def save_project_memory(self, project_name: str, memory: dict[str, Any]) -> None:
         memory_file = self._safe_path(project_name)
-        with open(memory_file, "w") as f:
-            json.dump(memory, f, indent=2)
+        try:
+            with _write_lock(memory_file) as fh:
+                fh.seek(0)
+                fh.truncate()
+                json.dump(memory, fh, indent=2)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save %s: %s", memory_file, exc)
+            raise
 
     def update_project_memory(self, project_name: str, key: str, value: Any) -> None:
         memory = self.get_project_memory(project_name)
@@ -71,7 +119,7 @@ class MemoryManager:
     def set_preference(self, project_name: str, key: str, value: Any) -> None:
         memory = self.get_project_memory(project_name)
         memory.setdefault("preferences", {})[key] = value
-        memory["last_updated"] = _now()  # was missing before
+        memory["last_updated"] = _now()
         self.save_project_memory(project_name, memory)
 
     def get_context_for_project(self, project_name: str) -> str:

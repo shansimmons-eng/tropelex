@@ -1,0 +1,147 @@
+"""
+Friction Mining — FastAPI router.
+
+Implicit signal detection from session transcripts.
+Mount into the main app:
+    from core.friction.router import friction_router
+    app.include_router(friction_router)
+"""
+
+import json
+import logging
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from core.friction.miner import (
+    FrictionZone,
+    Ok,
+    Err,
+    compute_friction_score,
+    detect_friction_signals,
+    group_signals_by_zone,
+)
+
+logger = logging.getLogger("tropelex.friction")
+
+friction_router = APIRouter(prefix="/api/memory", tags=["friction"])
+
+_CORE_DIR = Path(__file__).parent.parent
+BASE_DIR = _CORE_DIR.parent
+
+
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
+
+class FrictionScanRequest(BaseModel):
+    """Body for the friction/scan endpoint."""
+
+    transcript: str = Field(..., min_length=1, max_length=50000, description="Session transcript text")
+
+
+def _load_memory(project: str) -> dict[str, Any]:
+    """Load a project's memory JSON, or raise 404."""
+    path = BASE_DIR / "memory" / f"{project}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+    import json
+    return json.loads(path.read_text())
+
+
+def _zone_to_dict(zone: FrictionZone) -> dict[str, Any]:
+    """Convert a FrictionZone to a plain dict for JSON serialisation."""
+    return {
+        "start_line": zone.start_line,
+        "end_line": zone.end_line,
+        "zone_severity": zone.zone_severity,
+        "description": zone.description,
+        "signal_count": len(zone.signals),
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/memory/{project}/friction/scan
+# ---------------------------------------------------------------------------
+
+@friction_router.post("/{project}/friction/scan")
+async def friction_scan(project: str, body: FrictionScanRequest) -> dict[str, Any]:
+    """Scan a session transcript for implicit friction signals.
+
+    Detects rephrasing, retries, rapid edits, and escalation markers,
+    then groups them into friction zones with an aggregate score.
+
+    Returns 404 if project not found, 422 for invalid input, 500 on errors.
+    """
+    # Validate project exists
+    try:
+        _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("friction-scan load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    # Run friction detection (returns Result)
+    result = detect_friction_signals(body.transcript)
+    if isinstance(result, Err):
+        if result.code == "TYPE_ERROR":
+            raise HTTPException(status_code=422, detail=result.error)
+        logger.error("friction detection failed: %s (%s)", result.error, result.code)
+        raise HTTPException(status_code=500, detail=result.error)
+
+    signals = result.value
+    friction_score = compute_friction_score(signals)
+    zones = group_signals_by_zone(signals)
+
+    # Severity distribution
+    severity_distribution: dict[str, int] = {}
+    for sig in signals:
+        severity_distribution[sig.severity] = severity_distribution.get(sig.severity, 0) + 1
+
+    return {
+        "signals": [
+            {
+                "type": s.type,
+                "severity": s.severity,
+                "line_number": s.line_number,
+                "text_snippet": s.text_snippet,
+                "recommendation": s.recommendation,
+            }
+            for s in signals
+        ],
+        "friction_score": friction_score,
+        "zones": [_zone_to_dict(z) for z in zones],
+        "total_signals": len(signals),
+        "severity_distribution": severity_distribution,
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/memory/{project}/friction/summary
+# ---------------------------------------------------------------------------
+
+@friction_router.get("/{project}/friction/summary")
+async def friction_summary(project: str) -> dict[str, Any]:
+    """Return historical friction summary for a project.
+
+    Reads stored friction history from memory if present.
+    Returns 404 if project not found.
+    """
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("friction-summary load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    friction_history: list[dict[str, Any]] = memory.get("friction_history", [])
+
+    return {
+        "project": project,
+        "total_scans": len(friction_history),
+        "history": friction_history,
+    }

@@ -4,6 +4,7 @@ Persists and queries OpenAI text-embedding-3-small vectors.
 Uses cosine similarity for semantic search — no external vector DB needed.
 """
 
+import fcntl
 import json
 import logging
 import math
@@ -45,7 +46,16 @@ class EmbeddingStore:
                 self._store = {}
 
     def _save(self):
-        self.path.write_text(json.dumps(self._store, separators=(",", ":")))
+        """Write store to disk with exclusive lock for concurrent safety."""
+        fd = None
+        try:
+            fd = open(self.path, "w")
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            fd.write(json.dumps(self._store, separators=(",", ":")))
+        finally:
+            if fd is not None:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                fd.close()
 
     def has(self, key: str) -> bool:
         return key in self._store

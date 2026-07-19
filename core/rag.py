@@ -7,6 +7,7 @@ Cross-Pollination: Surface solutions from similar projects.
 Instead of injecting full context, retrieve relevant snippets when queried.
 """
 
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -178,7 +179,12 @@ class CrossPollinator:
             if other_name == project_name:
                 continue
 
-            other = self.memory.get_project_memory(other_name)
+            try:
+                other = self.memory.get_project_memory(other_name)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping project %s (load failed): %s", other_name, exc)
+                continue
+
             other_tech = set(t.lower() for t in other.get("tech_stack", []))
 
             # Tech overlap score
@@ -283,7 +289,11 @@ def auto_detect_similar_projects(
     for other_name in memory_manager.list_projects():
         if other_name == project_name:
             continue
-        other = memory_manager.get_project_memory(other_name)
+        try:
+            other = memory_manager.get_project_memory(other_name)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Skipping project %s (load failed): %s", other_name, exc)
+            continue
         other_tech = {t.lower() for t in other.get("tech_stack", [])}
         shared = current_tech & other_tech
         if len(shared) >= min_overlap:
@@ -314,7 +324,11 @@ def generate_auto_suggestions(
     suggestions: list[dict[str, Any]] = []
 
     for sim in similar:
-        other = memory_manager.get_project_memory(sim["project"])
+        try:
+            other = memory_manager.get_project_memory(sim["project"])
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Skipping project %s (load failed): %s", sim["project"], exc)
+            continue
         for d in other.get("decisions", []):
             decision_text = d.get("decision", "")
             decision_topics = set(re.findall(r"[a-z][a-z0-9]+", decision_text.lower()))

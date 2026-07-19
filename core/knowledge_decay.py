@@ -6,9 +6,12 @@ Confidence = f(recency, frequency, contradictions, source_reliability)
 Decay = exponential based on age, boosted by re-references
 """
 
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger("tropelex.knowledge_decay")
 
 
 def _now() -> datetime:
@@ -20,12 +23,10 @@ def _parse_timestamp(ts: str) -> datetime | None:
     if not ts:
         return None
     try:
-        # Handle various formats
         ts = ts.replace("Z", "+00:00")
-        if "+" not in ts and ts.endswith("00:00"):
-            pass
         return datetime.fromisoformat(ts)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as exc:
+        logger.warning("Failed to parse timestamp %r: %s", ts, exc)
         return None
 
 

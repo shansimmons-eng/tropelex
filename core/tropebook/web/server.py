@@ -85,6 +85,13 @@ try:
 except Exception as exc:
     logger.warning("Static files not mounted: %s", exc)
 
+try:
+    app.mount(
+        "/images", StaticFiles(directory=str(BASE_DIR / "images")), name="images"
+    )
+except Exception as exc:
+    logger.warning("Images not mounted: %s", exc)
+
 # --- Mount quick-wins routers ---
 from core.webhooks.router import webhook_router       # noqa: E402
 from core.sync.router import sync_router               # noqa: E402
@@ -100,6 +107,21 @@ from core.tropebook.alert_router import alert_router      # noqa: E402
 from core.ghost.router import ghost_router                  # noqa: E402
 from core.explain.router import explain_router              # noqa: E402
 from core.handoff.router import handoff_router              # noqa: E402
+from core.ghost.preventive_router import preventive_router  # noqa: E402
+from core.compaction.router import compaction_router        # noqa: E402
+from core.corroboration.router import corroboration_router  # noqa: E402
+from core.cost.router import cost_router                    # noqa: E402
+from core.friction.router import friction_router            # noqa: E402
+from core.prefetch.router import prefetch_router            # noqa: E402
+from core.prbot.router import prbot_router                  # noqa: E402
+from core.narrative.router import narrative_router          # noqa: E402
+from core.lens.router import lens_router                    # noqa: E402
+from core.market.router import market_router                # noqa: E402
+from core.slack.router import slack_router                  # noqa: E402
+from core.timetravel.router import timetravel_router        # noqa: E402
+from core.contradictions.router import contradiction_router  # noqa: E402
+from core.personas.router import persona_router            # noqa: E402
+from core.federation.router import federation_router        # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -119,6 +141,21 @@ app.include_router(alert_router)
 app.include_router(ghost_router)
 app.include_router(explain_router)
 app.include_router(handoff_router)
+app.include_router(preventive_router)
+app.include_router(compaction_router)
+app.include_router(corroboration_router)
+app.include_router(cost_router)
+app.include_router(friction_router)
+app.include_router(prefetch_router)
+app.include_router(prbot_router)
+app.include_router(narrative_router)
+app.include_router(lens_router)
+app.include_router(market_router)
+app.include_router(slack_router)
+app.include_router(timetravel_router)
+app.include_router(contradiction_router)
+app.include_router(persona_router)
+app.include_router(federation_router)
 
 
 # --- Request body models ---
@@ -214,6 +251,21 @@ async def root():
             "Expires": "0",
         },
     )
+
+
+@app.get("/guide")
+async def docs():
+    from fastapi.responses import HTMLResponse
+
+    docs_path = SCRIPT_DIR / "static" / "docs.html"
+    if not docs_path.exists():
+        return HTMLResponse(
+            content="<h1>Tropelex Docs</h1><p>Documentation not found.</p>",
+            status_code=404,
+        )
+    with open(docs_path, encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(content=content)
 
 
 @app.get("/hijacker")

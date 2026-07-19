@@ -100,7 +100,13 @@ def _run(cmd: list[str], cwd: str, timeout: int = 10) -> str | None:
             cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout
         )
         return result.stdout.strip() if result.returncode == 0 else None
-    except Exception as e:
+    except FileNotFoundError:
+        logger.debug("Command not found: %s", cmd[0])
+        return None
+    except subprocess.TimeoutExpired:
+        logger.debug("Command timed out: %s", " ".join(cmd))
+        return None
+    except OSError as e:
         logger.debug("Git command failed: %s — %s", " ".join(cmd), e)
         return None
 
@@ -491,8 +497,10 @@ def detect_tech_stack(repo_path: str) -> list[str]:
                 found.add("TypeScript")
             if "next" in all_deps:
                 found.add("Next.js")
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.warning("Corrupt package.json: %s", exc)
+        except OSError as exc:
+            logger.warning("Failed to read package.json: %s", exc)
     return sorted(found)
 
 

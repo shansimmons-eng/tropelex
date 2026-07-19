@@ -118,7 +118,7 @@ class PatternLearner:
         # Track key insights
         insights = session_data.get("key_insights", [])
         if insights:
-            project_memory["session_history"].append(
+            project_memory.setdefault("session_history", []).append(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "type": "session_summary",
@@ -138,7 +138,7 @@ class PatternLearner:
 
     def _increment_pattern(self, project_memory: dict, pattern_key: str) -> None:
         """Increment a pattern counter."""
-        patterns = project_memory["patterns"]
+        patterns = project_memory.setdefault("patterns", [])
         pattern_names = [p["name"] for p in patterns]
 
         if pattern_key in pattern_names:

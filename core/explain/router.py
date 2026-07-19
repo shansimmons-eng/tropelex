@@ -6,6 +6,7 @@ Mount into the main app:
     app.include_router(explain_router)
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any

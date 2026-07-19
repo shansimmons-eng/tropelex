@@ -7,9 +7,12 @@ Allows querying "what changed?" and rolling back bad state.
 import copy
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("tropelex.session_replay")
 
 
 def _now() -> str:
@@ -188,8 +191,12 @@ class SessionReplay:
 
         # Save to disk
         session_file = self._project_dir(project_name) / f"{session_id}.json"
-        with open(session_file, "w") as f:
-            json.dump(record, f, indent=2, default=str)
+        try:
+            with open(session_file, "w") as f:
+                json.dump(record, f, indent=2, default=str)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save session %s: %s", session_file, exc)
+            raise
 
         # Also maintain an index
         self._update_index(project_name, record)
@@ -205,8 +212,15 @@ class SessionReplay:
         index_file = self._project_dir(project_name) / "index.json"
         index = []
         if index_file.exists():
-            with open(index_file) as f:
-                index = json.load(f)
+            try:
+                with open(index_file) as f:
+                    index = json.load(f)
+            except json.JSONDecodeError as exc:
+                logger.warning("Corrupt session index %s, resetting: %s", index_file, exc)
+                index = []
+            except OSError as exc:
+                logger.warning("Failed to read session index %s: %s", index_file, exc)
+                index = []
 
         index.append({
             "session_id": record["session_id"],
@@ -220,8 +234,11 @@ class SessionReplay:
         if len(index) > 100:
             index = index[-100:]
 
-        with open(index_file, "w") as f:
-            json.dump(index, f, indent=2)
+        try:
+            with open(index_file, "w") as f:
+                json.dump(index, f, indent=2)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save session index %s: %s", index_file, exc)
 
     def get_sessions(
         self, project_name: str, limit: int = 20
@@ -230,8 +247,12 @@ class SessionReplay:
         index_file = self._project_dir(project_name) / "index.json"
         if not index_file.exists():
             return []
-        with open(index_file) as f:
-            index = json.load(f)
+        try:
+            with open(index_file) as f:
+                index = json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read session index for %s: %s", project_name, exc)
+            return []
         return list(reversed(index[-limit:]))
 
     def get_session(self, project_name: str, session_id: str) -> dict[str, Any] | None:
@@ -239,8 +260,12 @@ class SessionReplay:
         session_file = self._project_dir(project_name) / f"{session_id}.json"
         if not session_file.exists():
             return None
-        with open(session_file) as f:
-            return json.load(f)
+        try:
+            with open(session_file) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read session %s: %s", session_file, exc)
+            return None
 
     def get_session_changes(
         self, project_name: str, session_id: str
