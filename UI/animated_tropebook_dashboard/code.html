@@ -75,7 +75,7 @@ tailwind.config = {
     }
 
     /* ── Nav ── */
-    .nav-item { transition: color 0.2s ease; position: relative; cursor: pointer; }
+    .nav-item { transition: color 0.2s ease; position: relative; cursor: pointer; color: #e8e8f0; font-size: 0.9rem; letter-spacing: 0.02em; }
     .nav-item.active { color: #a580fa; }
     .nav-item.active::after {
         content: '';
@@ -88,6 +88,15 @@ tailwind.config = {
     }
     @keyframes slideIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .nav-item:hover:not(.active) { color: #80d5fa; }
+
+    /* ── Select dropdown arrows ── */
+    select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a5a5c0' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        padding-right: 2rem !important;
+    }
 
     /* ── Sidebar ── */
     .sidebar {
@@ -458,7 +467,7 @@ tailwind.config = {
 <aside id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <div class="flex items-center gap-2">
-            <img src="/images/tlez.png" alt="Tropelex" class="h-8 w-auto" />
+            <img src="/images/tlez.png" alt="Tropelex" class="h-14 w-auto" />
         </div>
     </div>
     <div class="sidebar-nav">
@@ -623,7 +632,7 @@ tailwind.config = {
             <button class="md:hidden text-accent-lavender" id="mobile-menu-btn" onclick="toggleSidebar()">
                 <span class="material-symbols-outlined">menu</span>
             </button>
-            <img src="/images/tlez.png" alt="Tropelex" class="h-6 w-auto hidden md:block" />
+            <img src="/images/tlez.png" alt="Tropelex" class="h-10 w-auto hidden md:block" />
             <span class="text-outline mx-1 hidden md:block">·</span>
             <span class="font-mono text-xs text-outline uppercase tracking-wider" id="current-section-label">Tropebook</span>
         </div>
@@ -635,6 +644,10 @@ tailwind.config = {
                 <span class="material-symbols-outlined text-sm">add</span>
                 <span class="hidden sm:inline">New</span>
             </button>
+            <a href="/guide" target="_blank" class="px-2 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all flex items-center gap-1" title="Help & Guide">
+                <span class="material-symbols-outlined text-sm">help</span>
+                <span class="hidden sm:inline">Help</span>
+            </a>
         </div>
     </div>
 </header>
@@ -1662,6 +1675,33 @@ tailwind.config = {
                                     class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
                                 <p class="text-xs text-outline mt-2">Enhances web research in Tropebook. Falls back to DuckDuckGo (free) if not set.</p>
                             </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Exa API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <input type="password" id="setting-exa-key" placeholder="Enter Exa API key for semantic search..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <p class="text-xs text-outline mt-2">Semantic web search. Falls back to Brave/DuckDuckGo if not set.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Serper API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <input type="password" id="setting-serper-key" placeholder="Enter Serper API key for Google search..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <p class="text-xs text-outline mt-2">Google search results. Falls back to Brave/DuckDuckGo if not set.</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-surface border border-glass-border">
+                                <label class="block text-sm text-outline mb-2">Custom OpenAI-Compatible Provider <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <input type="url" id="setting-custom-host" placeholder="https://api.example.com/v1"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                    <input type="text" id="setting-custom-model" placeholder="model-name"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                    <input type="password" id="setting-custom-key" placeholder="API key"
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                </div>
+                                <p class="text-xs text-outline mt-2">Use any OpenAI-compatible API (Ollama, vLLM, LiteLLM, etc.). Leave empty to use OpenAI.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1699,6 +1739,23 @@ tailwind.config = {
                             Reset
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Account Export / Import -->
+            <div class="glass-panel rounded-xl p-6 mt-6">
+                <h3 class="font-semibold mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm text-accent-sky">cloud_download</span>
+                    Account Backup
+                </h3>
+                <p class="text-sm text-outline mb-4">Export or import all memory, citations, and research feeds. API keys are excluded from exports.</p>
+                <div class="flex gap-3">
+                    <button id="btn-account-export" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">download</span> Export All
+                    </button>
+                    <button id="btn-account-import" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">upload</span> Import
+                    </button>
                 </div>
             </div>
         </div>
@@ -2859,12 +2916,13 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
     const form = e.target;
     if (form.dataset.mode === 'feed') {
         const feed = {
-            name: document.getElementById('form-title').value,
-            query: document.getElementById('form-url').value,
-            description: document.getElementById('form-summary').value,
-            tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
-            interval: 'weekly',
+            name: document.getElementById('feed-name').value,
+            query: document.getElementById('feed-query').value,
+            description: document.getElementById('feed-description').value,
+            tags: document.getElementById('feed-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+            interval: document.getElementById('feed-interval').value,
             sources: ['web'],
+            max_results_per_run: parseInt(document.getElementById('feed-max-results').value) || 20,
         };
         const res = await api('/research-feeds', 'POST', feed);
         if (res) {
@@ -2899,22 +2957,38 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
         theme: document.getElementById('setting-theme').value,
         animations: document.getElementById('setting-animations').value,
         session_limit: parseInt(document.getElementById('setting-session-limit').value),
-        // brave_api_key intentionally NOT saved to localStorage
     };
     localStorage.setItem('tropelex-settings', JSON.stringify(settings));
 
-    // If an OpenAI key was entered, write it to .env via the server
-    if (openaiKey && openaiKey.startsWith('sk-')) {
-        const res = await api('/settings/apikey', 'POST', { key: 'OPENAI_API_KEY', value: openaiKey });
-        if (res && res.saved) {
-            showToast('Settings saved — restart server to apply API key');
-            document.getElementById('setting-openai-key').value = '';
-        } else {
-            showToast('Settings saved (API key not persisted — set OPENAI_API_KEY in .env manually)');
+    // Persist API keys to .env via the server
+    const keyMap = [
+        ['setting-openai-key', 'OPENAI_API_KEY', v => v.startsWith('sk-')],
+        ['setting-brave-key', 'BRAVE_SEARCH_API_KEY', v => v.length > 10],
+        ['setting-exa-key', 'EXA_API_KEY', v => v.length > 10],
+        ['setting-serper-key', 'SERPER_API_KEY', v => v.length > 10],
+    ];
+    let anyKeySaved = false;
+    for (const [elId, envKey, validate] of keyMap) {
+        const val = document.getElementById(elId).value.trim();
+        if (val && validate(val)) {
+            await api('/settings/apikey', 'POST', { key: envKey, value: val });
+            document.getElementById(elId).value = '';
+            anyKeySaved = true;
         }
-    } else {
-        showToast('Settings saved');
     }
+    // Custom LLM provider
+    const customHost = document.getElementById('setting-custom-host').value.trim();
+    const customModel = document.getElementById('setting-custom-model').value.trim();
+    const customKey = document.getElementById('setting-custom-key').value.trim();
+    if (customHost) await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_HOST', value: customHost });
+    if (customModel) await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_MODEL', value: customModel });
+    if (customKey) {
+        await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_API_KEY', value: customKey });
+        document.getElementById('setting-custom-key').value = '';
+    }
+    if (customHost || customModel || customKey) anyKeySaved = true;
+
+    showToast(anyKeySaved ? 'Settings & API keys saved — restart server to apply new keys' : 'Settings saved');
 });
 
 // Test OpenAI key
@@ -2978,6 +3052,45 @@ document.getElementById('btn-reset-memory').addEventListener('click', async () =
         loadProjects();
         showToast('Memory reset');
     }
+});
+
+// Account export
+document.getElementById('btn-account-export')?.addEventListener('click', async () => {
+    const data = await api('/account/export');
+    if (data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tropelex-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Account exported');
+    }
+});
+
+// Account import
+document.getElementById('btn-account-import')?.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const data = JSON.parse(await file.text());
+            const res = await api('/account/import', 'POST', { data, source_type: 'account-import' });
+            if (res) {
+                showToast(`Imported: ${res.imported?.projects || 0} projects, ${res.imported?.citations || 0} citations, ${res.imported?.feeds || 0} feeds`);
+                loadProjects();
+                loadCitations();
+                loadFeeds();
+            }
+        } catch (err) {
+            showToast(`Import error: ${err.message}`);
+        }
+    };
+    input.click();
 });
 
 // Load projects
@@ -4832,6 +4945,32 @@ async function init() {
     // Poll health every 30s
     setInterval(checkHealth, 30000);
 }
+
+// ── Compaction button ──
+document.getElementById('btn-compact')?.addEventListener('click', async () => {
+    const project = state.currentProject;
+    if (!project) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-compact');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    const results = document.getElementById('compaction-results');
+    const status = document.getElementById('compaction-status');
+    const empty = document.getElementById('compaction-empty');
+    try {
+        const data = await api(`/memory/${encodeURIComponent(project)}/compact`, 'POST');
+        if (data) {
+            results.classList.remove('hidden');
+            empty?.classList.add('hidden');
+            status.textContent = `Last run: ${new Date().toLocaleString()} — archived ${data.decisions_archived || 0} decisions into ${data.epochs_created || 0} epochs`;
+            results.innerHTML = `<pre class="font-mono text-xs text-outline whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            showToast(`Compaction complete: ${data.epochs_created} epochs, ${data.decisions_archived} archived`);
+        }
+    } catch (e) {
+        showToast(`Compaction error: ${e.message}`);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Run Compaction';
+});
 
 init();
 </script>

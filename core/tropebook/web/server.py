@@ -3,6 +3,7 @@ Tropelex Web API - FastAPI server for Tropelex web interface
 Linux-native, portable — no hardcoded paths.
 """
 
+import json
 import logging
 import os
 import time
@@ -505,6 +506,89 @@ async def export_all():
         raise HTTPException(500, f"Export failed: {e}")
 
 
+@app.get("/api/account/export")
+async def account_export():
+    """Export everything: memory, tropebook, feeds, settings (no secrets)."""
+    try:
+        mm = get_memory_manager()
+        tb = get_tropebook()
+        fm = _get_feed_manager()
+        # Memory: all projects
+        projects = {}
+        for f in mm.memory_dir.glob("*.json"):
+            projects[f.stem] = json.loads(f.read_text())
+        # Tropebook
+        tropebook = tb.export_json()
+        # Feeds
+        feeds = [feed.to_dict() for feed in fm.list_feeds()]
+        # Settings (exclude secrets)
+        settings = {}
+        env_path = BASE_DIR / ".env"
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    if k not in ("OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
+                                 "EXA_API_KEY", "SERPER_API_KEY", "CUSTOM_LLM_API_KEY"):
+                        settings[k] = v.strip()
+        return {
+            "version": "1.0",
+            "projects": projects,
+            "tropebook": tropebook,
+            "feeds": feeds,
+            "settings": settings,
+        }
+    except Exception as e:
+        logger.error("account_export failed: %s", e)
+        raise HTTPException(500, f"Account export failed: {e}")
+
+
+@app.post("/api/account/import")
+async def account_import(req: ImportRequest):
+    """Import a full account export (memory + tropebook + feeds)."""
+    try:
+        data = req.data
+        imported_counts = {"projects": 0, "citations": 0, "feeds": 0}
+        # Import projects
+        for name, proj_data in (data.get("projects") or {}).items():
+            mm = get_memory_manager()
+            proj_file = mm.memory_dir / f"{name}.json"
+            proj_file.write_text(json.dumps(proj_data, indent=2))
+            imported_counts["projects"] += 1
+        # Import tropebook citations
+        tb = get_tropebook()
+        for citation in (data.get("tropebook", {}).get("citations") or []):
+            if isinstance(citation, dict) and citation.get("url"):
+                tb.add(
+                    title=citation.get("title", ""),
+                    url=citation["url"],
+                    summary=citation.get("summary", ""),
+                    tags=citation.get("tags", []),
+                    source_type=citation.get("source_type", "imported"),
+                )
+                imported_counts["citations"] += 1
+        # Import feeds
+        fm = _get_feed_manager()
+        for feed_data in (data.get("feeds") or []):
+            try:
+                fm.create(
+                    name=feed_data.get("name", "Imported Feed"),
+                    query=feed_data.get("query", ""),
+                    description=feed_data.get("description", ""),
+                    interval=feed_data.get("interval", "weekly"),
+                    sources=feed_data.get("sources", ["web"]),
+                    tags=feed_data.get("tags", []),
+                )
+                imported_counts["feeds"] += 1
+            except Exception:
+                pass  # Skip duplicates
+        return {"imported": imported_counts}
+    except Exception as e:
+        logger.error("account_import failed: %s", e)
+        raise HTTPException(500, f"Account import failed: {e}")
+
+
 @app.post("/api/link")
 async def link_citations(req: LinkRequest):
     """Create a relationship between two citations."""
@@ -866,7 +950,11 @@ class ApiKeyRequest(BaseModel):
 async def save_api_key(req: ApiKeyRequest):
     """Write an API key to the .env file (localhost only)."""
     # Only allow known safe key names
-    ALLOWED_KEYS = {"OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY"}
+    ALLOWED_KEYS = {
+        "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
+        "EXA_API_KEY", "SERPER_API_KEY",
+        "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
+    }
     if req.key not in ALLOWED_KEYS:
         raise HTTPException(status_code=400, detail=f"Key '{req.key}' not allowed")
 
