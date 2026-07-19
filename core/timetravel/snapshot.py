@@ -117,17 +117,14 @@ def diff_snapshots(
 
     Compares decisions and session counts, producing a human-readable summary.
     """
-    dec_a = set(snap_a.memory.get("decisions", []))
-    dec_b = set(snap_b.memory.get("decisions", []))
-
     # Decisions may be dicts or strings — normalize to comparable keys
     def _decision_key(d: Any) -> str:
         if isinstance(d, dict):
             return str(d.get("id", d.get("decision", id(d))))
         return str(d)
 
-    keys_a = {_decision_key(d) for d in dec_a}
-    keys_b = {_decision_key(d) for d in dec_b}
+    keys_a = {_decision_key(d) for d in snap_a.memory.get("decisions", [])}
+    keys_b = {_decision_key(d) for d in snap_b.memory.get("decisions", [])}
 
     added = sorted(keys_b - keys_a)
     removed = sorted(keys_a - keys_b)
