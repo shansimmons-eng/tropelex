@@ -2168,7 +2168,7 @@ tailwind.config = {
             <div id="citation-fields">
                 <div>
                     <label class="block text-sm text-outline mb-2">Title</label>
-                    <input type="text" id="form-title" required
+                    <input type="text" id="form-title"
                         class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
                 </div>
                 <div>
@@ -2915,9 +2915,12 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     if (form.dataset.mode === 'feed') {
+        const name = document.getElementById('feed-name').value.trim();
+        const query = document.getElementById('feed-query').value.trim();
+        if (!name || !query) { showToast('Feed name and query are required'); return; }
         const feed = {
-            name: document.getElementById('feed-name').value,
-            query: document.getElementById('feed-query').value,
+            name,
+            query,
             description: document.getElementById('feed-description').value,
             tags: document.getElementById('feed-tags').value.split(',').map(t => t.trim()).filter(Boolean),
             interval: document.getElementById('feed-interval').value,
@@ -2932,9 +2935,12 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
             showToast('Feed created');
         }
     } else {
+        const title = document.getElementById('form-title').value.trim();
+        const url = document.getElementById('form-url').value.trim();
+        if (!title || !url) { showToast('Title and URL are required'); return; }
         const citation = {
-            title: document.getElementById('form-title').value,
-            url: document.getElementById('form-url').value,
+            title,
+            url,
             summary: document.getElementById('form-summary').value,
             tags: document.getElementById('form-tags').value.split(',').map(t => t.trim()).filter(Boolean),
             source_type: 'manual'
