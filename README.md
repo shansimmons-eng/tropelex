@@ -26,6 +26,26 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 | **Cross-Pollination** | Surface solutions from similar projects with matching tech stacks |
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
+| **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
+| **Ghost Decisions** | Silent drift detection — code contradicts decisions without anyone saying so |
+| **Explainable Memory** | Conversational "why do we...?" with full causal chain |
+| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows |
+| **Decision Market** | Confidence bets, calibration tracking, leaderboard |
+| **Memory Lens** | IDE inline annotations — GitLens but for decisions |
+| **Slack Capture** | Bidirectional Slack integration for decision logging |
+| **Time-Travel Debugger** | Memory snapshots as of any past date |
+| **Contradiction Detection** | Actively scan for unresolved conflicting decisions |
+| **Digital Twin Personas** | Synthesize readable persona summaries from agent proficiency |
+| **Federated Benchmarking** | Opt-in, privacy-preserving cross-install statistics |
+| **Memory Compaction** | Epoch summarization to prevent unbounded memory growth |
+| **Friction Mining** | Implicit signal detection from conversation transcripts |
+| **Preventive Ghost Checks** | Pre-write hook that checks diff against active decisions |
+| **Rationale Corroboration** | Fact-check decision rationale against the live web |
+| **PR Bot** | Deliver ghost decisions, contradictions as PR comments |
+| **Narrative Mode** | Readable prose summaries for non-technical audiences |
+| **Cost Ledger** | Per-decision token cost tracking and ROI scoring |
+| **Predictive Prefetch** | Budget-aware context assembly prioritized by impact score |
+| **Background Scheduler** | Automatic periodic tasks — feeds, ghost scans, stale checks |
 
 ---
 
@@ -472,7 +492,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ## Status
 
-**v2.1.0** — Security hardening + error handling + Research Feeds + 262 tests.
+**v3.0.0** — Full feature set + comprehensive test suite + security hardening.
 
 ### Core Features
 - Memory, compression, pattern learning, research KB all working
@@ -488,17 +508,41 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - Agent skills: track proficiency per work category
 - Prompt genealogy: learn which compression strategies produce best outcomes
 - **Research Feeds**: scheduled monitoring with auto-ingest to citations
+- **Ghost Decisions**: silent drift detection — code contradicts decisions
+- **Explainable Memory**: conversational "why do we...?" with causal chains
+- **Agent Handoff Packets**: role-aware context bundles for multi-agent workflows
+- **Decision Market**: confidence bets, calibration tracking, leaderboard
+- **Memory Lens**: IDE inline annotations — GitLens but for decisions
+- **Slack Capture**: bidirectional Slack integration for decision logging
+- **Time-Travel Debugger**: memory snapshots as of any past date
+- **Contradiction Detection**: actively scan for unresolved conflicting decisions
+- **Digital Twin Personas**: synthesize readable persona summaries from agent proficiency
+- **Federated Benchmarking**: opt-in, privacy-preserving cross-install statistics
+- **Memory Compaction**: epoch summarization to prevent unbounded memory growth
+- **Friction Mining**: implicit signal detection from conversation transcripts
+- **Preventive Ghost Checks**: pre-write hook that checks diff against active decisions
+- **Rationale Corroboration**: fact-check decision rationale against the live web
+- **PR Bot**: deliver ghost decisions, contradictions as PR comments
+- **Narrative Mode**: readable prose summaries for non-technical audiences
+- **Cost Ledger**: per-decision token cost tracking and ROI scoring
+- **Predictive Prefetch**: budget-aware context assembly prioritized by impact score
+- **Background Scheduler**: automatic periodic tasks — feeds, ghost scans, stale checks
 
 ### Security & Reliability
 - **Rate limiting**: 30 req/min global + 5 feed runs/min on sensitive endpoints
 - **Input sanitization**: All query parameters trimmed and length-limited
-- **Error handling**: Try/except on all 30+ server endpoints, research_feeds.py, feed_cli.py, scheduler.py
+- **Error handling**: Try/except on all endpoints, research_feeds.py, feed_cli.py, scheduler.py
 - **Debug endpoint hardened**: API key previews removed, only boolean presence flags
 - **Path traversal protection**: Feed IDs validated against special characters
 - **XSS protection**: `escapeHtml()` on all user-facing data in UI
+- **SSRF protection**: URL scheme validation, private IP blocking in web scraper
+- **File locking**: `fcntl.flock` on embeddings, federation, alert storage
+- **Atomic memory writes**: Race condition prevention in MemoryManager
+- **Background scheduler**: Automatic periodic tasks with error recovery
 
 ### Quality Metrics
-- 262 tests passing
+- **1246 tests passing** (up from 262)
+- 7 previously untested subsystems now have full coverage (3,093 lines)
 - AI compression via OpenAI (`gpt-4o-mini`)
 - CORS locked to localhost
 - In-memory rate limiting (no external dependencies)

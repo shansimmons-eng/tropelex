@@ -48,11 +48,12 @@
   "created": "ISO timestamp",
   "last_updated": "ISO timestamp",
   "description": "string",
-  "decisions": [{"timestamp": "", "decision": "", "context": ""}],
+  "decisions": [{"timestamp": "", "decision": "", "context": "", "confidence": {"score": 0.8, "corroboration_status": "supported"}}],
   "session_history": [{"date": "", "summary": ""}],
   "preferences": {"key": "value"},
   "patterns": [{"name": "category:name", "count": 0, "first_seen": "", "last_seen": ""}],
-  "tech_stack": ["React", "TypeScript"]
+  "tech_stack": ["React", "TypeScript"],
+  "friction_history": [{"timestamp": "", "score": 0.3, "signal_count": 5}]
 }
 ```
 
@@ -61,6 +62,11 @@
 - `record_decision(project, decision, context)` → Log a decision
 - `inject_preferences(project, prefs)` → Update preferences
 - `summarize_session(project, summary)` → Log session end
+- `_modify_project_memory(project, mutate_fn)` → Atomic read-modify-write with file locking
+
+**Security Features:**
+- File locking via `fcntl.flock` for concurrent write protection
+- Atomic memory operations to prevent race conditions
 
 ### 2. Context Compressor (`core/context-compressor/compressor.py`)
 
@@ -268,14 +274,47 @@ Primary integration for OpenCode agent.
 
 ```python
 adapter = TropelexAdapter()
-context = adapter.get_context_for_project("my-project")
+context = adapter.get_context_for_project("my-project")  # Uses handoff packets
 adapter.record_decision("my-project", "Used X", "Because Y")
 adapter.inject_preferences("my-project", {"ui": "mobile-first"})
-adapter.summarize_session("my-project", session_summary)
+adapter.summarize_session("my-project", session_summary)  # Also runs friction mining
 ```
+
+**Features:**
+- Role-aware context bundles via `build_handoff_packet()`
+- Cross-project knowledge briefing via `get_cross_project_briefing()`
+- Automatic friction mining on session end
+- Importlib fix for hyphenated module names
 
 #### Tropebook Adapter (`tropebook_adapter.py`)
 Tropelex integration with Tropebook research capabilities.
+
+### 14. Background Scheduler (`core/scheduler.py`)
+
+**Purpose:** Automatic periodic tasks with error recovery.
+
+**Tasks:**
+- Research feeds: hourly
+- Ghost decision scans: every 6 hours
+- Stale decision checks: every 12 hours
+- Slack alerts on feed errors
+
+**Integration:** Runs as asyncio task in FastAPI lifespan.
+
+### 15. Security Features
+
+**SSRF Protection** (`core/tropebook/research.py`):
+- URL scheme validation (http/https only)
+- Private IP blocking (RFC 1918, loopback, link-local)
+- Bounded scrape depth to prevent cascading requests
+
+**File Locking** (`core/embeddings.py`, `core/federation/router.py`, `core/tropebook/alert_router.py`):
+- `fcntl.flock` for concurrent write protection
+- Atomic memory writes via `_modify_project_memory()`
+
+**Path Traversal Protection** (`core/webhooks/router.py`):
+- Regex sanitization of repo names
+- Resolved path validation under base directory
 
 ## Data Flow
 
@@ -423,7 +462,7 @@ Tropelex/
 │   └── prompt-compressor.html
 ├── memory/                   # Persistent storage (gitignored)
 ├── plugins/                  # Skill loaders
-├── tests/                    # 495 tests
+├── tests/                    # 1246 tests
 ├── requirements.txt
 ├── README.md
 ├── AGENTS.md                 # Agent guidance
@@ -464,6 +503,10 @@ See `wishlist.md` for detailed roadmap including:
 - [x] **VS Code extension** — TypeScript extension with TreeView, Webview panel, and commands
 - [x] **Multi-user support** — JWT auth (HS256), User model with RBAC roles, FastAPI auth middleware
 - [x] **Real-time collaboration** — WebSocket /ws/{room_id} with room-based broadcasting and heartbeat
+- [x] **Background scheduler** — Automatic periodic tasks (feeds, ghost scans, stale checks)
+- [x] **SSRF protection** — URL scheme validation, private IP blocking in web scraper
+- [x] **File locking** — fcntl.flock on embeddings, federation, alert storage
+- [x] **Atomic memory writes** — Race condition prevention in MemoryManager
 
 ## UI
 ### Pallette
