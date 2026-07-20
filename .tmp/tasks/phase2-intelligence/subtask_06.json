@@ -1,0 +1,27 @@
+{
+  "id": "phase2-intelligence-06",
+  "seq": "06",
+  "title": "Create Cross-Project Learning Automation router",
+  "status": "pending",
+  "depends_on": ["05"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/webhooks/router.py",
+    "core/tropebook/web/server.py",
+    "core/rag.py"
+  ],
+  "acceptance_criteria": [
+    "FastAPI APIRouter with GET /api/memory/{project}/auto-suggestions endpoint",
+    "Router follows existing pattern: APIRouter(prefix='/api/memory', tags=['intelligence'])",
+    "Endpoint calls generate_auto_suggestions from core/rag.py",
+    "Returns JSON with suggestions array, each having relevance_score and source_project",
+    "Handles missing project gracefully with 404"
+  ],
+  "deliverables": [
+    "core/rag_router.py"
+  ]
+}

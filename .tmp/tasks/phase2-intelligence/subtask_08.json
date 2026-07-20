@@ -1,0 +1,24 @@
+{
+  "id": "phase2-intelligence-08",
+  "seq": "08",
+  "title": "Mount RAG router in server.py",
+  "status": "pending",
+  "depends_on": ["06"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/rag_router.py"
+  ],
+  "acceptance_criteria": [
+    "Import rag_router from core.rag_router in server.py",
+    "Add app.include_router(rag_router) alongside existing routers",
+    "All existing tests still pass (no import errors)"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py (modified)"
+  ]
+}

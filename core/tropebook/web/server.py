@@ -65,13 +65,16 @@ app.add_middleware(
 # --- Rate limiting (in-memory, per-IP) ---
 _rate_limits: dict[str, list[float]] = {}
 RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX = 30     # requests per window
+RATE_LIMIT_MAX = 120    # requests per window (generous for SPA dashboards)
 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    """Simple in-memory rate limiter: 30 requests per 60s per IP."""
+    """Rate limiter: 120 requests per 60s. Skipped for localhost/127.0.0.1."""
     client_ip = request.client.host if request.client else "unknown"
+    # Skip rate limiting for localhost — this is a local dev dashboard
+    if client_ip in ("127.0.0.1", "::1", "unknown"):
+        return await call_next(request)
     now = time.time()
     # Clean old entries
     if client_ip in _rate_limits:
@@ -82,7 +85,7 @@ async def rate_limit_middleware(request: Request, call_next):
     if len(_rate_limits[client_ip]) >= RATE_LIMIT_MAX:
         return JSONResponse(
             status_code=429,
-            content={"error": "Rate limit exceeded. Try again later."},
+            content={"detail": "Rate limit exceeded. Try again later."},
         )
     _rate_limits[client_ip].append(now)
     return await call_next(request)
@@ -2106,6 +2109,25 @@ async def create_feed(req: FeedCreateRequest):
     return feed.to_dict()
 
 
+# ── Literal routes BEFORE parameterized /{feed_id} routes ──
+
+@app.get("/api/research-feeds/stats")
+async def feed_stats():
+    """Aggregate stats: total feeds, active, total runs, total citations, by interval."""
+    return _get_feed_manager().stats()
+
+
+@app.post("/api/research-feeds/tick")
+async def tick_feeds():
+    """Run all feeds whose next_run is in the past. Returns results of each run."""
+    _check_feed_rate_limit()
+    scheduler = _get_feed_scheduler()
+    runs = scheduler.tick()
+    return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
+
+
+# ── Parameterized /{feed_id} routes ──
+
 @app.get("/api/research-feeds/{feed_id}")
 async def get_feed(feed_id: str):
     """Get a single feed's configuration and metadata."""
@@ -2170,21 +2192,6 @@ async def get_feed_runs(feed_id: str, limit: int = Query(20, ge=1, le=100)):
     fm = _get_feed_manager()
     runs = fm.get_runs(feed_id=feed_id, limit=limit)
     return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
-
-
-@app.post("/api/research-feeds/tick")
-async def tick_feeds():
-    """Run all feeds whose next_run is in the past. Returns results of each run."""
-    _check_feed_rate_limit()
-    scheduler = _get_feed_scheduler()
-    runs = scheduler.tick()
-    return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
-
-
-@app.get("/api/research-feeds/stats")
-async def feed_stats():
-    """Aggregate stats: total feeds, active, total runs, total citations, by interval."""
-    return _get_feed_manager().stats()
 
 
 @app.get("/api/research-feeds/{feed_id}/citations")

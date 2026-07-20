@@ -1,0 +1,23 @@
+{
+  "id": "quick-wins-23",
+  "seq": "23",
+  "title": "Create WebSocket connection manager",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Track connected clients per room",
+    "Pure function: create_room(room_id) -> Room",
+    "Add/remove client from room",
+    "Heartbeat/ping every 30 seconds",
+    "Detect and clean up dead connections"
+  ],
+  "deliverables": [
+    "core/collaboration/connection_manager.py"
+  ]
+}

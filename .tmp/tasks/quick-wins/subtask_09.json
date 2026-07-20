@@ -1,0 +1,24 @@
+{
+  "id": "quick-wins-09",
+  "seq": "09",
+  "title": "Create plugin loader and manifest parser",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/plugins/__init__.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Discovers plugins in plugins/ directory via plugin.json manifest",
+    "Validates manifest schema (name, version, hooks, entry_point)",
+    "Pure function: discover_plugins(plugins_dir) -> list[PluginManifest]",
+    "Handles malformed manifests gracefully (skip + log warning)"
+  ],
+  "deliverables": [
+    "core/plugins/loader.py"
+  ]
+}

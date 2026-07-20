@@ -1,0 +1,25 @@
+{
+  "id": "quick-wins-11",
+  "seq": "11",
+  "title": "Create example plugin (git-auto-sync)",
+  "status": "pending",
+  "depends_on": ["09", "10"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/git_integration.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Plugin manifest (plugin.json) declares hooks and metadata",
+    "Plugin registers before_save and after_save hooks",
+    "Plugin triggers git auto-sync on memory changes",
+    "Plugin loads via plugin loader from subtask 09"
+  ],
+  "deliverables": [
+    "plugins/git-auto-sync/plugin.json",
+    "plugins/git-auto-sync/__init__.py"
+  ]
+}

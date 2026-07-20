@@ -1,0 +1,31 @@
+{
+  "id": "phase6-sustainability-18",
+  "seq": "18",
+  "title": "Update UI navigation, wishlist.md, and run full test suite",
+  "status": "completed",
+  "depends_on": [
+    "17"
+  ],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py"
+  ],
+  "acceptance_criteria": [
+    "UI navigation updated with entries for: Ghost Check, Compaction, Friction Mining, Prefetch",
+    "wishlist.md updated: Phase 6 features marked as implemented",
+    "Full test suite runs: pytest from project root, all 664+ tests pass",
+    "No regressions in existing features",
+    "New test files included in test discovery",
+    "No import errors across the entire codebase"
+  ],
+  "deliverables": [
+    "UI navigation update (if HTML-based)",
+    "wishlist.md (updated)",
+    "All test files verified passing"
+  ]
+}

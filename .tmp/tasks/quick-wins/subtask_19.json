@@ -1,0 +1,26 @@
+{
+  "id": "quick-wins-19",
+  "seq": "19",
+  "title": "Create per-user memory isolation",
+  "status": "pending",
+  "depends_on": ["17", "18"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/memory/manager.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Memory paths scoped to user_id directory",
+    "Pure function: get_user_memory_path(user_id, project) -> Path",
+    "Users can only access their own memory",
+    "Admin users can access all memory",
+    "Backward compatible: default user for existing data"
+  ],
+  "deliverables": [
+    "core/auth/memory_isolation.py"
+  ]
+}

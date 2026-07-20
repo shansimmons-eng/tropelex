@@ -1,0 +1,26 @@
+{
+  "id": "quick-wins-04",
+  "seq": "04",
+  "title": "Create webhook tests",
+  "status": "pending",
+  "depends_on": ["01", "02", "03"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/tests/test_memory_manager.py"
+  ],
+  "suggested_agent": "TestEngineer",
+  "acceptance_criteria": [
+    "Tests cover HMAC verification for GitHub and GitLab formats",
+    "Tests cover idempotency key tracking and expiry",
+    "Tests cover endpoint: valid, invalid signature, duplicate",
+    "All webhook tests pass",
+    "Coverage >90% for core/webhooks/ module"
+  ],
+  "deliverables": [
+    "tests/test_webhooks.py"
+  ]
+}

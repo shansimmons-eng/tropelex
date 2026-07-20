@@ -1,0 +1,30 @@
+{
+  "id": "phase7-validation-12",
+  "seq": "12",
+  "title": "Final validation — run all tests, verify exit criteria, regression check",
+  "status": "pending",
+  "depends_on": ["05", "09", "10", "11"],
+  "parallel": false,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "core/corroboration/",
+    "core/cost/",
+    "core/tropebook/web/server.py",
+    "wishlist.md"
+  ],
+  "acceptance_criteria": [
+    "All new corroboration tests pass (scorer, orchestrator, router)",
+    "All new cost tests pass (ledger, tracker, router)",
+    "Existing 890 tests still pass (no regressions)",
+    "Both routers verified mounted in server.py (import check)",
+    "Code-quality.md compliance spot-checked: no bare except, Result type used, domain exceptions at IO boundaries",
+    "wishlist.md updated and accurate"
+  ],
+  "deliverables": [
+    "Test run output confirming all tests pass"
+  ]
+}

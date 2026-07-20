@@ -1,0 +1,26 @@
+{
+  "id": "quick-wins-06",
+  "seq": "06",
+  "title": "Create sync import service",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/memory/manager.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Imports memory from compressed or plain JSON",
+    "Validates import schema before writing",
+    "Merges with existing memory or overwrites based on flag",
+    "Pure function: import_memory_data(data, base_path, overwrite=False) -> dict",
+    "Guards against directory traversal in import data"
+  ],
+  "deliverables": [
+    "core/sync/importer.py"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "phase2-intelligence-12",
+  "seq": "12",
+  "title": "Mount Feed Intelligence router in server.py",
+  "status": "pending",
+  "depends_on": ["10"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/tropebook/feed_intelligence_router.py"
+  ],
+  "acceptance_criteria": [
+    "Import feed_intelligence_router from core.tropebook.feed_intelligence_router in server.py",
+    "Add app.include_router(feed_intelligence_router) alongside existing routers",
+    "All existing tests still pass (no import errors)"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py (modified)"
+  ]
+}

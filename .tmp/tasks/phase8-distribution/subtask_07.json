@@ -1,0 +1,31 @@
+{
+  "id": "phase8-distribution-07",
+  "seq": "07",
+  "title": "Create narrative story builder from decision graph",
+  "status": "completed",
+  "depends_on": ["06"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/decision_tree.py",
+    "core/knowledge_decay.py",
+    "core/impact/analysis.py",
+    "core/memory/manager.py"
+  ],
+  "acceptance_criteria": [
+    "build_narrative pure function implemented",
+    "Uses DecisionTree.timeline() for chronological ordering",
+    "Uses DecisionTree.get_chains() for decision chains",
+    "Uses score_decision for confidence tiers",
+    "Audience-specific prose generation (investor, new_hire, pm)",
+    "Returns NarrativeReport with title, sections, summary",
+    "Function is pure: no I/O, no side effects",
+    "Function length <50 lines"
+  ],
+  "deliverables": [
+    "core/narrative/story_builder.py"
+  ]
+}

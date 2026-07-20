@@ -1,0 +1,29 @@
+{
+  "id": "phase3-awareness-09",
+  "seq": "09",
+  "title": "Ghost Decisions tests — >90% coverage on pattern_matcher + detector",
+  "status": "pending",
+  "depends_on": ["02"],
+  "parallel": true,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/ghost/pattern_matcher.py",
+    "/home/retroporter/Tropelex/core/ghost/detector.py",
+    "/home/retroporter/Tropelex/core/ghost/router.py"
+  ],
+  "acceptance_criteria": [
+    "tests/test_ghost.py exists with AAA pattern (Arrange/Act/Assert)",
+    "Tests cover: keyword extraction, diff matching, severity scoring, detector orchestration, empty inputs",
+    "Router endpoint tested with httpx AsyncClient or TestClient",
+    ">90% line coverage on pattern_matcher.py and detector.py",
+    ">100% coverage on public API (all exported functions tested)",
+    "All tests pass independently"
+  ],
+  "deliverables": [
+    "tests/test_ghost.py"
+  ]
+}

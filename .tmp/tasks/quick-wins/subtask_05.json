@@ -1,0 +1,24 @@
+{
+  "id": "quick-wins-05",
+  "seq": "05",
+  "title": "Create sync export service",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/memory/manager.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Exports all memory files as compressed JSON (gzip)",
+    "Includes metadata: export timestamp, version, project count",
+    "Pure function: export_memory_data(base_path) -> bytes",
+    "Handles empty memory directory gracefully"
+  ],
+  "deliverables": [
+    "core/sync/exporter.py"
+  ]
+}

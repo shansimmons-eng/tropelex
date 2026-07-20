@@ -1,0 +1,30 @@
+{
+  "id": "quick-wins-07",
+  "seq": "07",
+  "title": "Create sync API endpoints",
+  "status": "pending",
+  "depends_on": ["05", "06"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    {
+      "path": "/home/retroporter/.config/opencode/context/development/principles/api-design.md",
+      "lines": "1-50",
+      "reason": "REST API design patterns"
+    }
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/tropebook/web/server.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "GET /api/sync/export returns compressed memory data",
+    "POST /api/sync/import accepts JSON body and imports",
+    "GET /api/sync/status returns last sync timestamps",
+    "Endpoints integrate with export/import services",
+    "Rate limiting applied via existing middleware"
+  ],
+  "deliverables": [
+    "core/sync/handler.py"
+  ]
+}

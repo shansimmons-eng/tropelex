@@ -1,0 +1,30 @@
+{
+  "id": "phase7-validation-10",
+  "seq": "10",
+  "title": "Mount routers in server.py + add UI navigation entries",
+  "status": "completed",
+  "depends_on": ["04", "08"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/corroboration/router.py",
+    "core/cost/router.py"
+  ],
+  "acceptance_criteria": [
+    "Import corroboration_router from core.corroboration.router",
+    "Import cost_router from core.cost.router",
+    "app.include_router(corroboration_router) added after existing router mounts",
+    "app.include_router(cost_router) added after existing router mounts",
+    "Import ordering follows existing pattern (alphabetical by module path)",
+    "UI HTML file updated with navigation entries for Corroboration and Cost Ledger sections",
+    "No duplicate imports or router mounts"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py (modified)",
+    "UI/animated_tropebook_dashboard/code.html (modified)"
+  ]
+}

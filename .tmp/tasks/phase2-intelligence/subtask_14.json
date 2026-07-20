@@ -1,0 +1,26 @@
+{
+  "id": "phase2-intelligence-14",
+  "seq": "14",
+  "title": "Create Decision Impact Analysis router",
+  "status": "pending",
+  "depends_on": ["13"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/impact/analysis.py"
+  ],
+  "acceptance_criteria": [
+    "FastAPI APIRouter with GET /api/memory/{project}/impact endpoint",
+    "Router follows existing pattern: APIRouter(prefix='/api/memory', tags=['intelligence'])",
+    "Endpoint calls compute_impact_analysis from core/impact/analysis.py",
+    "Returns JSON with linked_commits, reversals, impact_score fields",
+    "Handles missing project gracefully with 404"
+  ],
+  "deliverables": [
+    "core/impact/router.py"
+  ]
+}

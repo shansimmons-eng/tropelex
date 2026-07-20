@@ -1,0 +1,27 @@
+{
+  "id": "quick-wins-18",
+  "seq": "18",
+  "title": "Create user model and role system",
+  "status": "pending",
+  "depends_on": ["17"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/memory/manager.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "User model with fields: id, username, email, role, created_at",
+    "Roles enum: admin, user, viewer",
+    "Pure function: create_user(username, email, role) -> User",
+    "User storage as JSON files in memory/users/",
+    "Role hierarchy: admin > user > viewer"
+  ],
+  "deliverables": [
+    "core/auth/user_model.py",
+    "core/auth/user_store.py"
+  ]
+}

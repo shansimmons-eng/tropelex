@@ -1,0 +1,31 @@
+{
+  "id": "phase9-10-remaining-05",
+  "seq": "05",
+  "title": "Memory Lens: Create annotator models and mapping functions",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:00:00Z",
+  "completed_at": "2026-07-18T00:05:00Z",
+  "completion_summary": "Created core/lens/__init__.py with LensError/ValidationError exceptions, Ok/Err/Result type, and frozen Annotation/LensRequest/ScanResult dataclasses",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/decision_tree.py",
+    "core/rag.py"
+  ],
+  "acceptance_criteria": [
+    "Pydantic models for Annotation, LensQuery defined",
+    "Pure function: map_code_to_decisions maps file+line to relevant decisions",
+    "Pure function: detect_drift finds decision-code misalignment",
+    "Pure function: format_annotation creates inline annotation data",
+    "All functions return Result type"
+  ],
+  "deliverables": [
+    "core/lens/__init__.py",
+    "core/lens/annotator.py"
+  ]
+}

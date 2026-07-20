@@ -1,0 +1,32 @@
+{
+  "id": "phase6-sustainability-06",
+  "seq": "06",
+  "title": "Create compaction router — FastAPI endpoints for compact + status",
+  "status": "completed",
+  "depends_on": ["04", "05"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/compaction/epoch.py",
+    "core/compaction/compactor.py",
+    "core/ghost/router.py",
+    "core/tropebook/web/server.py"
+  ],
+  "acceptance_criteria": [
+    "POST /api/memory/{project}/compact — triggers compaction pass, returns report",
+    "GET /api/memory/{project}/compact/status — returns compaction status from memory",
+    "Router prefix: /api/memory, tag: compaction",
+    "Pydantic validation on project name",
+    "Loads memory, runs epoch identification + compaction, saves result",
+    "Translates domain errors to HTTP (404 NOT_FOUND, 422 VALIDATION_ERROR)",
+    "CompactionError raised at IO boundary when save fails",
+    "No silent failures — all error paths logged and returned",
+    "Router exportable as `compaction_router`"
+  ],
+  "deliverables": [
+    "core/compaction/router.py"
+  ]
+}

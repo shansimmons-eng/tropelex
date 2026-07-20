@@ -1,0 +1,29 @@
+{
+  "id": "phase9-10-remaining-03",
+  "seq": "03",
+  "title": "Decision Market: Create router with API endpoints",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:01:00Z",
+  "completed_at": "2026-07-18T00:02:00Z",
+  "depends_on": ["02"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/memory/manager.py"
+  ],
+  "acceptance_criteria": [
+    "POST /api/memory/{project}/market/bet accepts BetRequest, returns bet record",
+    "GET /api/memory/{project}/market/calibration returns calibration scores",
+    "GET /api/memory/{project}/market/leaderboard returns ranked leaderboard",
+    "Pydantic request/response models at API boundary",
+    "Domain errors mapped to HTTP status codes (404, 422, 500)"
+  ],
+  "deliverables": [
+    "core/market/router.py"
+  ]
+}

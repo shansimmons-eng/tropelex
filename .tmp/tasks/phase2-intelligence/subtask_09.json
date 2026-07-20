@@ -1,0 +1,25 @@
+{
+  "id": "phase2-intelligence-09",
+  "seq": "09",
+  "title": "Create Research Feed Intelligence service",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/research_feeds.py"
+  ],
+  "acceptance_criteria": [
+    "Pure function: detect_trends(feed_runs: list[dict]) -> dict with trending_topics, velocity, peak_periods",
+    "Pure function: flag_anomalies(feed_runs: list[dict]) -> list[dict] with anomaly_type, severity, description",
+    "Pure function: compute_feed_intelligence(feed_manager, feed_id) -> dict combining trends + anomalies",
+    "Uses existing FeedRun data structures from research_feeds.py",
+    "All functions < 50 lines, no side effects"
+  ],
+  "deliverables": [
+    "core/tropebook/feed_intelligence.py"
+  ]
+}

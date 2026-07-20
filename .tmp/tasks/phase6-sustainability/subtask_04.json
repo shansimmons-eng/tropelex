@@ -1,0 +1,31 @@
+{
+  "id": "phase6-sustainability-04",
+  "seq": "04",
+  "title": "Create epoch.py — epoch identification and superseded chain detection",
+  "status": "completed",
+  "completed_at": "2026-07-18T00:00:00Z",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/decision_tree.py",
+    "core/knowledge_decay.py",
+    "core/memory/manager.py"
+  ],
+  "acceptance_criteria": [
+    "find_superseded_chains(decisions) → list[list[dict]]: groups decisions linked by supersedes/reverts relationships",
+    "Uses DecisionTree.from_decisions() to detect relationship edges",
+    "identify_compactable_groups(chains) → list[dict]: groups with >1 decision where confidence is stale",
+    "Uses knowledge_decay.score_decision for confidence checks",
+    "compute_epoch_input(group) → dict with merged_text, original_ids, confidence_tier",
+    "Empty decisions list → empty result, not error",
+    "All functions are pure: no I/O, no side effects",
+    "All functions <50 lines"
+  ],
+  "deliverables": [
+    "core/compaction/epoch.py"
+  ]
+}

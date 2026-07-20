@@ -1,0 +1,30 @@
+{
+  "id": "phase6-sustainability-08",
+  "seq": "08",
+  "title": "Create miner.py — friction signal detection from transcripts",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/health/dashboard.py",
+    "core/knowledge_decay.py"
+  ],
+  "acceptance_criteria": [
+    "detect_rephrasing(transcript) → list[dict]: finds repeated phrases within edit distance",
+    "detect_rapid_edits(transcript) → list[dict]: finds clusters of edits within short window",
+    "detect_retries(transcript) → list[dict]: finds retry patterns (user restating same request)",
+    "compute_friction_score(signals) → dict with overall score 0.0-1.0 and signal_breakdown",
+    "extract_friction_signals(transcript) → Result[list[dict], Err]: orchestrator combining all detectors",
+    "Empty transcript → Ok([]) not error",
+    "Very short transcript (<10 words) → Ok([]) gracefully",
+    "All functions pure: no I/O, same input = same output",
+    "All functions <50 lines"
+  ],
+  "deliverables": [
+    "core/friction/miner.py"
+  ]
+}

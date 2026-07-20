@@ -1,0 +1,30 @@
+{
+  "id": "phase9-10-remaining-22",
+  "seq": "22",
+  "title": "Federation: Create router with federation endpoints",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T21:00:00Z",
+  "completed_at": "2026-07-18T21:10:00Z",
+  "completion_summary": "Created anonymizer.py with anonymize_project, hash_project_name, extract_structural_stats — all pure, Result type, <50 lines each",
+  "depends_on": ["21"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/tropebook/research.py"
+  ],
+  "acceptance_criteria": [
+    "POST /api/memory/{project}/federation/share accepts share request, returns confirmation",
+    "GET /api/federation/benchmarks returns aggregate benchmarks",
+    "Pydantic request/response models at API boundary",
+    "Domain errors mapped to HTTP status codes",
+    "Opt-in/opt-out mechanism works"
+  ],
+  "deliverables": [
+    "core/federation/router.py"
+  ]
+}

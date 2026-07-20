@@ -1,0 +1,34 @@
+{
+  "id": "phase9-10-remaining-19",
+  "seq": "19",
+  "title": "Personas: Write comprehensive tests",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T12:00:00Z",
+  "completed_at": "2026-07-18T12:15:00Z",
+  "completion_summary": "Created core/personas/persona_builder.py with pure functions: build_persona, identify_strengths, identify_weaknesses, generate_summary_text, suggest_review_focus — all <50 lines, Result type",
+  "depends_on": ["18"],
+  "parallel": true,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md",
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/personas/persona_builder.py",
+    "core/personas/router.py"
+  ],
+  "acceptance_criteria": [
+    "Tests for persona synthesis from skill data",
+    "Tests for strengths/weaknesses computation",
+    "Tests for persona summary formatting",
+    "Tests for API endpoints (success + error paths)",
+    "Tests for edge cases (no skills, unknown agent)",
+    "All tests pass"
+  ],
+  "deliverables": [
+    "core/personas/tests/__init__.py",
+    "core/personas/tests/test_persona_builder.py",
+    "core/personas/tests/test_router.py"
+  ]
+}

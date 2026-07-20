@@ -1,0 +1,30 @@
+{
+  "id": "quick-wins-24",
+  "seq": "24",
+  "title": "Create WebSocket server endpoint",
+  "status": "pending",
+  "depends_on": ["23"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    {
+      "path": "/home/retroporter/.config/opencode/context/development/principles/api-design.md",
+      "lines": "1-50",
+      "reason": "API design patterns"
+    }
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/tropebook/web/server.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "WebSocket endpoint at /ws/{room_id}",
+    "Accepts connection and registers with ConnectionManager",
+    "Handles incoming messages (memory updates)",
+    "Broadcasts updates to all room clients",
+    "Graceful disconnect handling"
+  ],
+  "deliverables": [
+    "core/collaboration/websocket_handler.py"
+  ]
+}

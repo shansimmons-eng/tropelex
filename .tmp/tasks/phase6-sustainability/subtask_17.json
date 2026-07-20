@@ -1,0 +1,36 @@
+{
+  "id": "phase6-sustainability-17",
+  "seq": "17",
+  "title": "Mount all 4 routers in server.py and verify app starts",
+  "status": "completed",
+  "depends_on": [
+    "02",
+    "06",
+    "09",
+    "15"
+  ],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/ghost/preventive_router.py",
+    "core/compaction/router.py",
+    "core/friction/router.py",
+    "core/prefetch/router.py"
+  ],
+  "acceptance_criteria": [
+    "Import and include_router for preventive_router, compaction_router, friction_router, prefetch_router",
+    "Imports placed in the # --- Mount quick-wins routers --- section",
+    "app.include_router() calls placed after existing router mounts",
+    "No import errors when server.py is loaded",
+    "App starts without exceptions (test with import check)",
+    "Router ordering: new routers mounted after existing ones, before parameterized routes",
+    "No duplicate route paths (check prefix/tag don't collide)"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py (modified)"
+  ]
+}

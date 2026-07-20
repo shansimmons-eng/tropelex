@@ -1,0 +1,33 @@
+{
+  "id": "phase6-sustainability-10",
+  "seq": "10",
+  "title": "Tests for friction mining (miner + router)",
+  "status": "completed",
+  "depends_on": ["08", "09"],
+  "parallel": false,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "core/friction/miner.py",
+    "core/friction/router.py"
+  ],
+  "acceptance_criteria": [
+    "AAA pattern in every test",
+    "test_detect_rephrasing_empty: empty transcript → []",
+    "test_detect_rephrasing_with_repetition: transcript with repeated phrases → signals found",
+    "test_detect_rapid_edits_cluster: transcript with rapid successive edits → signals found",
+    "test_detect_retries_pattern: transcript with user restating request → retry signal",
+    "test_compute_friction_score_range: score is between 0.0 and 1.0",
+    "test_extract_friction_signals_ok: valid transcript → Ok with signals list",
+    "test_extract_friction_signals_empty: empty → Ok([])",
+    "test_router_scan_200: valid request → 200 with signals",
+    "test_router_scan_404: missing project → 404",
+    "All tests pass, >90% business logic coverage"
+  ],
+  "deliverables": [
+    "tests/test_friction.py"
+  ]
+}

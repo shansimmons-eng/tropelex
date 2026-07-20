@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-07-15T00:00:00Z",
+  "libraries": {
+    "vscode-extension": {
+      "files": [
+        {
+          "filename": "extension-structure.md",
+          "topic": "package.json, extension.ts, activation lifecycle",
+          "fetched": "2026-07-15T00:00:00Z",
+          "source": "Context7 + Official Docs"
+        },
+        {
+          "filename": "webview-panels.md",
+          "topic": "Webview panels, message passing, local resource loading",
+          "fetched": "2026-07-15T00:00:00Z",
+          "source": "Context7 + Official Docs"
+        },
+        {
+          "filename": "workspace-file-reading.md",
+          "topic": "Reading workspace files, file watchers, glob patterns",
+          "fetched": "2026-07-15T00:00:00Z",
+          "source": "Context7 + Official Docs"
+        },
+        {
+          "filename": "treeview-providers.md",
+          "topic": "TreeDataProvider, sidebar views, view containers",
+          "fetched": "2026-07-15T00:00:00Z",
+          "source": "Context7 + Official Docs"
+        },
+        {
+          "filename": "commands-activation-events.md",
+          "topic": "Commands, activation events, keybindings, configuration, complete package.json",
+          "fetched": "2026-07-15T00:00:00Z",
+          "source": "Context7 + Official Docs"
+        }
+      ]
+    }
+  }
+}

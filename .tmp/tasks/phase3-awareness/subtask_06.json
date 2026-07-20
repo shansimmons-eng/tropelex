@@ -1,0 +1,32 @@
+{
+  "id": "phase3-awareness-06",
+  "seq": "06",
+  "title": "Handoff Packet Builder — role-aware context slicing with token budget",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/rag.py",
+    "/home/retroporter/Tropelex/core/agent_skills.py",
+    "/home/retroporter/Tropelex/core/knowledge_decay.py",
+    "/home/retroporter/Tropelex/core/decision_tree.py"
+  ],
+  "acceptance_criteria": [
+    "core/handoff/__init__.py and core/handoff/packet_builder.py exist",
+    "ROLE_PROFILES dict defines context slices per role (e.g., TestEngineer, CoderAgent, Architect)",
+    "build_handoff_packet(project, role, memory, token_budget=4000) → HandoffPacket",
+    "HandoffPacket includes: role, context_slices (decisions, sessions, skills), token_count, active_decisions, recent_sessions",
+    "Token-budget-aware: trims lower-priority slices to fit budget",
+    "Pure functions only — no I/O",
+    "Each function <50 lines"
+  ],
+  "deliverables": [
+    "core/handoff/__init__.py",
+    "core/handoff/packet_builder.py"
+  ]
+}

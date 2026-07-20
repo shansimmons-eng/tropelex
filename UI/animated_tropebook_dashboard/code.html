@@ -2863,8 +2863,11 @@ document.getElementById('add-modal').addEventListener('click', (e) => {
 
 // API calls
 async function api(endpoint, method = 'GET', body = null) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
-    if (body) opts.body = JSON.stringify(body);
+    const opts = { method, headers: {} };
+    if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+    }
     try {
         const res = await fetch(`/api${endpoint}`, opts);
         const data = await res.json();
@@ -2937,14 +2940,14 @@ function renderCitations() {
     document.getElementById('results-count').textContent = `${filtered.length} citations`;
     
     grid.innerHTML = filtered.map((c, idx) => `
-        <article class="glass-panel rounded-xl p-5 hover:glow transition-all cursor-pointer group" data-id="${c.id || c.url || idx}">
+        <article class="glass-panel rounded-xl p-5 hover:glow transition-all cursor-pointer group" data-id="${c.id || ''}">
             <div class="flex items-start justify-between mb-3">
                 <span class="text-xs font-mono text-outline">${c.source_type?.toUpperCase() || 'MANUAL'}</span>
                 <div class="flex gap-2">
-                    <button class="bookmark-btn text-outline hover:text-accent-lavender transition-colors cursor-pointer" data-id="${c.id || c.url || idx}">
+                    <button class="bookmark-btn text-outline hover:text-accent-lavender transition-colors cursor-pointer" data-id="${c.id || ''}">
                         <span class="material-symbols-outlined text-lg">bookmark_border</span>
                     </button>
-                    <button class="delete-btn text-outline hover:text-red-400 transition-colors cursor-pointer" data-id="${c.id || c.url || idx}">
+                    <button class="delete-btn text-outline hover:text-red-400 transition-colors cursor-pointer" data-id="${c.id || ''}">
                         <span class="material-symbols-outlined text-lg">delete</span>
                     </button>
                 </div>
@@ -2964,19 +2967,34 @@ function renderCitations() {
     grid.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
+            e.preventDefault();
             const cid = btn.dataset.id;
             console.log('Delete clicked, cid:', cid);
-            if (!cid) {
-                showToast('Error: no citation ID');
+            if (!cid || cid.startsWith('http')) {
+                showToast('Error: no valid citation ID');
                 return;
             }
             if (confirm('Delete this citation?')) {
-                const res = await api(`/citations/${cid}`, 'DELETE');
-                if (res && res.deleted) { 
-                    loadCitations(); 
-                    showToast('Citation deleted'); 
-                } else if (res && res.detail) {
-                    showToast('Error: ' + res.detail);
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                try {
+                    const res = await api(`/citations/${cid}`, 'DELETE');
+                    if (res && res.deleted) { 
+                        await loadCitations(); 
+                        showToast('Citation deleted'); 
+                    } else if (res && res.detail) {
+                        showToast('Error: ' + res.detail);
+                    } else {
+                        showToast('Delete may have failed — refreshing...');
+                        await loadCitations();
+                    }
+                } catch (err) {
+                    console.error('Delete error:', err);
+                    showToast('Delete failed: ' + err.message);
+                    await loadCitations();
+                } finally {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
                 }
             }
         });
@@ -5215,22 +5233,19 @@ document.getElementById('btn-feed-intel')?.addEventListener('click', async () =>
 
 // ── Dashboard ──
 async function loadDashboard() {
-    const data = await api('/memory');
-    if (data) {
-        const projects = data.projects || [];
-        document.getElementById('dash-projects').textContent = projects.length;
-        let totalDecisions = 0;
-        for (const p of projects) {
-            const name = p.name || p;
-            const proj = await api(`/memory/${encodeURIComponent(name)}`);
-            if (proj) totalDecisions += (proj.decisions || []).length;
-        }
-        document.getElementById('dash-decisions').textContent = totalDecisions;
+    // Reuse already-loaded data instead of re-fetching
+    const projects = state.projects || [];
+    document.getElementById('dash-projects').textContent = projects.length;
+    let totalDecisions = 0;
+    for (const p of projects) {
+        const name = p.name || p;
+        const proj = await api(`/memory/${encodeURIComponent(name)}`);
+        if (proj) totalDecisions += (proj.decisions || []).length;
     }
-    const cData = await api('/search?q=');
-    if (cData) document.getElementById('dash-citations').textContent = cData.total || cData.results?.length || 0;
-    const fData = await api('/research-feeds');
-    if (fData) document.getElementById('dash-feeds').textContent = fData.count || fData.feeds?.length || 0;
+    document.getElementById('dash-decisions').textContent = totalDecisions;
+    // Use citation count from already-loaded state
+    document.getElementById('dash-citations').textContent = state.citations.length;
+    document.getElementById('dash-feeds').textContent = (feedsState.feeds || []).length;
     updateOnboarding();
 }
 

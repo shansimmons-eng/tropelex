@@ -1,0 +1,25 @@
+{
+  "id": "quick-wins-25",
+  "seq": "25",
+  "title": "Create memory change broadcast system",
+  "status": "pending",
+  "depends_on": ["23", "24"],
+  "parallel": false,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/memory/manager.py"
+  ],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Detects memory file changes (via save hooks or polling)",
+    "Broadcasts change events to relevant room clients",
+    "Includes change metadata (project, field, timestamp)",
+    "Pure function: create_change_event(project, change_type, data) -> dict",
+    "Integrates with ConnectionManager for targeted broadcast"
+  ],
+  "deliverables": [
+    "core/collaboration/broadcaster.py"
+  ]
+}

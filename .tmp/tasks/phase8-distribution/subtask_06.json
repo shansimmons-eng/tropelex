@@ -1,0 +1,27 @@
+{
+  "id": "phase8-distribution-06",
+  "seq": "06",
+  "title": "Create Narrative error types and Pydantic models",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/ghost/preventive.py"
+  ],
+  "acceptance_criteria": [
+    "NarrativeError exception class defined with error code",
+    "ValidationError exception class defined",
+    "NarrativeRequest Pydantic model with audience field (investor|new_hire|pm)",
+    "NarrativeReport Pydantic model with title, sections, summary, audience, word_count",
+    "Audience enum validation",
+    "All models have proper type annotations"
+  ],
+  "deliverables": [
+    "core/narrative/__init__.py",
+    "core/narrative/models.py"
+  ]
+}

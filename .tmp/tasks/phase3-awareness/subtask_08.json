@@ -1,0 +1,24 @@
+{
+  "id": "phase3-awareness-08",
+  "seq": "08",
+  "title": "Mount all three routers in server.py + add import lines",
+  "status": "pending",
+  "depends_on": ["03", "05", "07"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/tropebook/web/server.py"
+  ],
+  "acceptance_criteria": [
+    "server.py imports ghost_router, explain_router, handoff_router",
+    "app.include_router() called for all three new routers",
+    "Existing router mounts unchanged (no regressions)",
+    "Import order follows existing pattern (core.* imports grouped together)"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py (modified)"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "phase9-10-remaining-01",
+  "seq": "01",
+  "title": "Decision Market: Create bettor models and data structures",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:00:00Z",
+  "completed_at": "2026-07-18T00:05:00Z",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/knowledge_decay.py",
+    "core/decision_tree.py"
+  ],
+  "acceptance_criteria": [
+    "Pydantic models for Bet, BettorProfile, MarketOutcome defined",
+    "Frozen dataclasses for immutable bet records",
+    "All models have field validators",
+    "Models are under 50 lines each"
+  ],
+  "deliverables": [
+    "core/market/__init__.py",
+    "core/market/models.py"
+  ]
+}

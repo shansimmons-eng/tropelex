@@ -1,0 +1,28 @@
+{
+  "id": "phase2-intelligence-15",
+  "seq": "15",
+  "title": "Create Decision Impact Analysis tests",
+  "status": "pending",
+  "depends_on": ["13", "14"],
+  "parallel": false,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md",
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/impact/analysis.py",
+    "core/impact/router.py"
+  ],
+  "acceptance_criteria": [
+    "Tests for link_decisions_to_commits with matching and non-matching commits",
+    "Tests for track_reversals with reverts and supersedes relationships",
+    "Tests for compute_impact_analysis with mocked memory_manager",
+    "Tests for router endpoint with mocked dependencies",
+    "Test empty decisions returns zero impact",
+    "Coverage > 90%"
+  ],
+  "deliverables": [
+    "tests/test_decision_impact.py"
+  ]
+}

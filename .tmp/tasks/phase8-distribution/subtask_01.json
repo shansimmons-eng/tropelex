@@ -1,0 +1,27 @@
+{
+  "id": "phase8-distribution-01",
+  "seq": "01",
+  "title": "Create PRBot error types and Pydantic models",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/ghost/preventive.py"
+  ],
+  "acceptance_criteria": [
+    "PRBotError exception class defined with error code",
+    "ValidationError exception class defined",
+    "PRCommentRequest Pydantic model with diff, pr_title, pr_body fields",
+    "PRCommentResponse Pydantic model with body, decisions_mentioned, ghost_warnings, relevance_score",
+    "All models have proper type annotations",
+    "No bare except clauses"
+  ],
+  "deliverables": [
+    "core/prbot/__init__.py",
+    "core/prbot/models.py"
+  ]
+}

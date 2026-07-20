@@ -1,0 +1,29 @@
+{
+  "id": "phase9-10-remaining-06",
+  "seq": "06",
+  "title": "Memory Lens: Create router with annotation endpoints",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:00:00Z",
+  "completed_at": "2026-07-18T00:05:00Z",
+  "completion_summary": "Implemented lens router with annotate and scan endpoints, Pydantic models, error mapping, mounted in server.py",
+  "depends_on": ["05"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/memory/manager.py"
+  ],
+  "acceptance_criteria": [
+    "POST /api/memory/{project}/lens/annotate accepts file_path + line_number, returns annotations",
+    "GET /api/memory/{project}/lens/scan/{file_path} returns all annotations for file",
+    "Pydantic request/response models at API boundary",
+    "Domain errors mapped to HTTP status codes"
+  ],
+  "deliverables": [
+    "core/lens/router.py"
+  ]
+}

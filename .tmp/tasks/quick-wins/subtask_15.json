@@ -1,0 +1,24 @@
+{
+  "id": "quick-wins-15",
+  "seq": "15",
+  "title": "Create VS Code Webview panel",
+  "status": "pending",
+  "depends_on": ["13"],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "Webview panel displays formatted memory JSON",
+    "Syntax highlighting for JSON content",
+    "Search/filter capability within memory viewer",
+    "Webview updates when memory files change",
+    "Disposable panel with proper cleanup"
+  ],
+  "deliverables": [
+    "vscode-tropelex/src/memoryViewer.ts",
+    "vscode-tropelex/src/memoryViewer.html"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "phase2-intelligence-13",
+  "seq": "13",
+  "title": "Create Decision Impact Analysis service",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/decision_tree.py",
+    "core/git_integration.py",
+    "core/knowledge_decay.py"
+  ],
+  "acceptance_criteria": [
+    "Pure function: link_decisions_to_commits(decisions, commits) -> list[dict] with decision_id, commit_sha, match_score",
+    "Pure function: track_reversals(decision_tree) -> list[dict] with original_id, reversal_id, reversal_type",
+    "Pure function: compute_impact_analysis(memory_manager, project_name) -> dict with linked_commits, reversals, impact_score",
+    "Uses existing DecisionTree relationships (reverts, supersedes)",
+    "All functions < 50 lines, no side effects"
+  ],
+  "deliverables": [
+    "core/impact/analysis.py"
+  ]
+}

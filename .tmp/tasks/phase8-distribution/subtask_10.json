@@ -1,0 +1,28 @@
+{
+  "id": "phase8-distribution-10",
+  "seq": "10",
+  "title": "Mount PR bot and narrative routers in server.py",
+  "status": "completed",
+  "depends_on": ["04", "08"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/prbot/router.py",
+    "core/narrative/router.py"
+  ],
+  "acceptance_criteria": [
+    "PR bot router mounted via app.include_router",
+    "Narrative router mounted via app.include_router",
+    "Routers imported at top of server.py",
+    "No circular imports",
+    "Server starts without errors",
+    "Endpoints accessible at /api/memory/{project}/pr-comment and /api/memory/{project}/narrative"
+  ],
+  "deliverables": [
+    "core/tropebook/web/server.py"
+  ]
+}

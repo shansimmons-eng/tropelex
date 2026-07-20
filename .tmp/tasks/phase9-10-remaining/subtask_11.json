@@ -1,0 +1,30 @@
+{
+  "id": "phase9-10-remaining-11",
+  "seq": "11",
+  "title": "Time-Travel: Create snapshot models and reconstruction functions",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:00:00Z",
+  "completed_at": "2026-07-18T00:05:00Z",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/session_replay.py",
+    "core/memory/manager.py"
+  ],
+  "acceptance_criteria": [
+    "Pydantic models for TimeTravelQuery, MemorySnapshot defined",
+    "Pure function: reconstruct_memory_at_date rebuilds state from snapshots",
+    "Pure function: diff_memories computes delta between two dates",
+    "Pure function: find_nearest_snapshot locates closest snapshot to target date",
+    "All functions return Result type"
+  ],
+  "deliverables": [
+    "core/timetravel/__init__.py",
+    "core/timetravel/snapshot.py"
+  ]
+}

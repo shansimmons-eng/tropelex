@@ -1,0 +1,30 @@
+{
+  "id": "phase6-sustainability-12",
+  "seq": "12",
+  "title": "Create assembler.py — knapsack budget-aware context bundling",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/handoff/packet_builder.py"
+  ],
+  "acceptance_criteria": [
+    "assemble_bundle(scored_items, token_budget) → Result[tuple[list, list], Err]: returns (bundle, near_misses)",
+    "Uses greedy knapsack: sort by relevance desc, add while under budget",
+    "near_misses = items that didn't fit but had relevance > threshold (0.3)",
+    "_estimate_tokens(text) → int: reuse packet_builder pattern (len//4)",
+    "_item_fits(item, remaining_budget) → bool: token estimate check",
+    "build_prefetch_response(bundle, near_misses, bundle_id) → dict: formatted API response",
+    "Empty items list → Ok(([], []))",
+    "Zero budget → Ok(([], []))",
+    "All functions pure: no I/O",
+    "All functions <50 lines"
+  ],
+  "deliverables": [
+    "core/prefetch/assembler.py"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "phase3-awareness-10",
+  "seq": "10",
+  "title": "Explainable Memory tests — >90% coverage on explainer + router",
+  "status": "pending",
+  "depends_on": ["05"],
+  "parallel": true,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md",
+    "/home/retroporter/.config/opencode/context/core/standards/test-coverage.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/explain/explainer.py",
+    "/home/retroporter/Tropelex/core/explain/router.py"
+  ],
+  "acceptance_criteria": [
+    "tests/test_explain.py exists with AAA pattern",
+    "Tests cover: causal chain building, provenance extraction, supersession detection, impact tracing, empty memory edge case",
+    "Router endpoint tested with TestClient",
+    ">90% line coverage on explainer.py",
+    ">100% coverage on public API",
+    "All tests pass independently"
+  ],
+  "deliverables": [
+    "tests/test_explain.py"
+  ]
+}

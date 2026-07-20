@@ -1,0 +1,26 @@
+{
+  "id": "quick-wins-13",
+  "seq": "13",
+  "title": "Create VS Code extension project structure",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [],
+  "suggested_agent": "CoderAgent",
+  "acceptance_criteria": [
+    "package.json with correct activation events",
+    "tsconfig.json with strict TypeScript settings",
+    "Extension entry point (extension.ts) with activate/deactivate",
+    ".vscodeignore for clean packaging",
+    "README.md for extension"
+  ],
+  "deliverables": [
+    "vscode-tropelex/package.json",
+    "vscode-tropelex/tsconfig.json",
+    "vscode-tropelex/src/extension.ts",
+    "vscode-tropelex/.vscodeignore"
+  ]
+}

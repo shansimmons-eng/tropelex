@@ -1,0 +1,26 @@
+{
+  "id": "phase3-awareness-05",
+  "seq": "05",
+  "title": "Explain Router — FastAPI router mounting POST /api/memory/{project}/explain",
+  "status": "pending",
+  "depends_on": ["04"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "/home/retroporter/Tropelex/core/health/router.py",
+    "/home/retroporter/Tropelex/core/explain/explainer.py"
+  ],
+  "acceptance_criteria": [
+    "core/explain/router.py exports explain_router = APIRouter(prefix='/api/memory', tags=['explain'])",
+    "POST /{project}/explain accepts {question: str} body, calls explain_why()",
+    "Returns 404 for unknown projects, 500 with logged error on failure",
+    "Pydantic request model with field length validation",
+    "Router is importable and mountable via app.include_router(explain_router)"
+  ],
+  "deliverables": [
+    "core/explain/router.py"
+  ]
+}

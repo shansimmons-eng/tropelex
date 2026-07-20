@@ -1,0 +1,28 @@
+{
+  "id": "phase9-10-remaining-12",
+  "seq": "12",
+  "title": "Time-Travel: Create router with time-travel endpoints",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-07-18T00:00:00Z",
+  "completed_at": "2026-07-18T01:00:00Z",
+  "depends_on": ["11"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/home/retroporter/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "core/tropebook/web/server.py",
+    "core/session_replay.py"
+  ],
+  "acceptance_criteria": [
+    "GET /api/memory/{project}/timetravel/{date} returns memory state as of date",
+    "POST /api/memory/{project}/timetravel/diff accepts two dates, returns diff",
+    "Pydantic request/response models at API boundary",
+    "Domain errors mapped to HTTP status codes (404 for no snapshot, 422 for bad date)"
+  ],
+  "deliverables": [
+    "core/timetravel/router.py"
+  ]
+}
