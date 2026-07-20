@@ -255,6 +255,52 @@ tailwind.config = {
         }
     }
 
+    /* ── Terminal-header gradient (from UI2) ── */
+    .terminal-header {
+        background: linear-gradient(90deg, rgba(165, 128, 250, 0.08) 0%, transparent 100%);
+        border-bottom: 1px solid rgba(165, 128, 250, 0.08);
+    }
+
+    /* ── IDE-style status footer (from UI2) ── */
+    .status-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        height: 28px;
+        background: rgba(12, 19, 36, 0.95);
+        border-top: 1px solid rgba(165, 128, 250, 0.1);
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #958e9e;
+        gap: 16px;
+    }
+    @media (min-width: 768px) {
+        .status-footer { left: 240px; }
+    }
+    .status-footer .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #98fa80;
+        animation: statusPulse 2.5s ease-in-out infinite;
+    }
+    .status-footer .status-dot.error { background: #ffb4ab; }
+    .status-footer .divider {
+        width: 1px;
+        height: 14px;
+        background: rgba(165, 128, 250, 0.15);
+    }
+
+    /* ── Mouse-reactive panel glow (from UI2) ── */
+    .glass-panel.glow-reactive {
+        transition: box-shadow 0.15s ease;
+    }
+
     /* Animated border for buttons */
     button.cursor-pointer:not(:disabled) {
         position: relative;
@@ -479,19 +525,19 @@ tailwind.config = {
             </div>
             <div class="accordion-body">
                 <button class="nav-item active" data-section="dashboard">
-                    <span class="material-symbols-outlined">dashboard</span> Dashboard
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard
                 </button>
                 <button class="nav-item" data-section="tropebook">
-                    <span class="material-symbols-outlined">library_books</span> Tropebook
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M12 8v-1"/><path d="M12 13v-1"/><path d="M10 10h-1"/><path d="M15 10h-1"/></svg> Tropebook
                 </button>
                 <button class="nav-item" data-section="memory">
-                    <span class="material-symbols-outlined">memory</span> Memory
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><circle cx="12" cy="10" r="3"/><path d="M12 7v-1"/><path d="M12 14v-1"/><path d="M9 10h-1"/><path d="M16 10h-1"/></svg> Memory
                 </button>
                 <button class="nav-item" data-section="patterns">
-                    <span class="material-symbols-outlined">hub</span> Patterns
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l3-4 3 2 4-6"/><circle cx="7" cy="16" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg> Patterns
                 </button>
                 <button class="nav-item" data-section="graph">
-                    <span class="material-symbols-outlined">schema</span> Graph
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg> Graph
                 </button>
             </div>
         </div>
@@ -503,28 +549,28 @@ tailwind.config = {
             </div>
             <div class="accordion-body">
                 <button class="nav-item" data-section="insights">
-                    <span class="material-symbols-outlined">insights</span> Insights
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg> Insights
                 </button>
                 <button class="nav-item" data-section="health">
-                    <span class="material-symbols-outlined">monitor_heart</span> Health
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Health
                 </button>
                 <button class="nav-item" data-section="impact">
-                    <span class="material-symbols-outlined">impact_hub</span> Impact
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"/><path d="M6 8L2 12L6 16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Impact
                 </button>
                 <button class="nav-item" data-section="ghost">
-                    <span class="material-symbols-outlined">visibility_off</span> Ghost Decisions
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg> Ghost Decisions
                 </button>
                 <button class="nav-item" data-section="explain">
-                    <span class="material-symbols-outlined">chat</span> Why Do We...?
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M18 9h-6"/><path d="M18 13h-4"/><circle cx="8" cy="9" r="2"/></svg> Why Do We...?
                 </button>
                 <button class="nav-item" data-section="preventive">
-                    <span class="material-symbols-outlined">shield</span> Pre-Write Guard
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="2"/></svg> Pre-Write Guard
                 </button>
                 <button class="nav-item" data-section="friction">
-                    <span class="material-symbols-outlined">psychology</span> Friction Mining
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/></svg> Friction Mining
                 </button>
                 <button class="nav-item" data-section="corroborate">
-                    <span class="material-symbols-outlined">fact_check</span> Rationale Check
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2" ry="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> Rationale Check
                 </button>
             </div>
         </div>
@@ -536,49 +582,49 @@ tailwind.config = {
             </div>
             <div class="accordion-body">
                 <button class="nav-item" data-section="pipeline">
-                    <span class="material-symbols-outlined">science</span> Prompt Lab
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/><circle cx="18" cy="6" r="2"/></svg> Prompt Lab
                 </button>
                 <button class="nav-item" data-section="git">
-                    <span class="material-symbols-outlined">commit</span> Git
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v7c0 1.1.9 2 2 2h7"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg> Git
                 </button>
                 <button class="nav-item" data-section="feeds">
-                    <span class="material-symbols-outlined">rss_feed</span> Feeds
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="12" cy="8" r="1"/></svg> Feeds
                 </button>
                 <button class="nav-item" data-section="handoff">
-                    <span class="material-symbols-outlined">swap_horiz</span> Agent Handoff
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Agent Handoff
                 </button>
                 <button class="nav-item" data-section="compaction">
-                    <span class="material-symbols-outlined">compress</span> Memory Compaction
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Memory Compaction
                 </button>
                 <button class="nav-item" data-section="prefetch">
-                    <span class="material-symbols-outlined">auto_awesome</span> Context Prefetch
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/></svg> Context Prefetch
                 </button>
                 <button class="nav-item" data-section="costs">
-                    <span class="material-symbols-outlined">payments</span> Cost Ledger
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="14.5" r="2.5"/><path d="M6 14.5h.01"/><path d="M18 14.5h.01"/></svg> Cost Ledger
                 </button>
                 <button class="nav-item" data-section="prbot">
-                    <span class="material-symbols-outlined">pull_request</span> PR Bot
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg> PR Bot
                 </button>
                 <button class="nav-item" data-section="narrative">
-                    <span class="material-symbols-outlined">auto_stories</span> Narrative
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Narrative
                 </button>
                 <button class="nav-item" data-section="market">
-                    <span class="material-symbols-outlined">trending_up</span> Decision Market
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 16v5h-5"/><path d="M3 16v5h5"/><circle cx="12" cy="12" r="2"/><path d="M12 8v-1"/><path d="M12 17v-1"/><path d="M8 12h-1"/><path d="M17 12h-1"/></svg> Decision Market
                 </button>
                 <button class="nav-item" data-section="slack">
-                    <span class="material-symbols-outlined">chat</span> Slack Capture
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="15" r="2"/></svg> Slack Capture
                 </button>
                 <button class="nav-item" data-section="timetravel">
-                    <span class="material-symbols-outlined">history</span> Time Travel
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7-7-7"/><path d="M5 19l7-7-7-7"/></svg> Time Travel
                 </button>
                 <button class="nav-item" data-section="contradictions">
-                    <span class="material-symbols-outlined">compare</span> Contradictions
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6"/><path d="M10 10l5 5"/><path d="M15 10l-5 5"/></svg> Contradictions
                 </button>
                 <button class="nav-item" data-section="personas">
-                    <span class="material-symbols-outlined">person</span> Personas
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Personas
                 </button>
                 <button class="nav-item" data-section="federation">
-                    <span class="material-symbols-outlined">public</span> Federation
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Federation
                 </button>
             </div>
         </div>
@@ -692,19 +738,19 @@ tailwind.config = {
         </div>
         <!-- Metric Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="glass-panel rounded-xl p-5">
+            <div class="glass-panel rounded-xl p-5 terminal-header">
                 <div class="font-mono text-3xl text-accent-lavender mb-1" id="dash-citations">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Total Citations</div>
             </div>
-            <div class="glass-panel rounded-xl p-5">
+            <div class="glass-panel rounded-xl p-5 terminal-header">
                 <div class="font-mono text-3xl text-accent-sky mb-1" id="dash-projects">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Projects</div>
             </div>
-            <div class="glass-panel rounded-xl p-5">
+            <div class="glass-panel rounded-xl p-5 terminal-header">
                 <div class="font-mono text-3xl text-accent-periwinkle mb-1" id="dash-decisions">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Decisions</div>
             </div>
-            <div class="glass-panel rounded-xl p-5">
+            <div class="glass-panel rounded-xl p-5 terminal-header">
                 <div class="font-mono text-3xl text-accent-lime mb-1" id="dash-feeds">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Active Feeds</div>
             </div>
@@ -1762,29 +1808,47 @@ tailwind.config = {
                                         Test
                                     </button>
                                 </div>
-                                <p class="text-xs text-outline mt-2">Used for AI-powered prompt compression. Key is stored in your <code class="text-accent-sky">.env</code> file — never sent to any third party except OpenAI.</p>
                                 <div id="openai-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Used for AI-powered prompt compression. Key is stored in your <code class="text-accent-sky">.env</code> file — never sent to any third party except OpenAI.</p>
                             </div>
                             <div>
                                 <label class="block text-sm text-outline mb-2">Brave Search API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
-                                <input type="password" id="setting-brave-key" placeholder="Enter Brave API key for enhanced search..."
-                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
-                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
-                                <p class="text-xs text-outline mt-2">Enhances web research in Tropebook. Falls back to DuckDuckGo (free) if not set.</p>
+                                <div class="relative">
+                                    <input type="password" id="setting-brave-key" placeholder="Enter Brave API key for enhanced search..."
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none pr-24"/>
+                                    <button type="button" id="btn-test-brave" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test
+                                    </button>
+                                </div>
+                                <div id="brave-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Enhances web research in Tropebook. Falls back to DuckDuckGo (free) if not set.</p>
                             </div>
                             <div>
                                 <label class="block text-sm text-outline mb-2">Exa API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
-                                <input type="password" id="setting-exa-key" placeholder="Enter Exa API key for semantic search..."
-                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
-                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
-                                <p class="text-xs text-outline mt-2">Semantic web search. Falls back to Brave/DuckDuckGo if not set.</p>
+                                <div class="relative">
+                                    <input type="password" id="setting-exa-key" placeholder="Enter Exa API key for semantic search..."
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none pr-24"/>
+                                    <button type="button" id="btn-test-exa" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test
+                                    </button>
+                                </div>
+                                <div id="exa-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Semantic web search. Falls back to Brave/DuckDuckGo if not set.</p>
                             </div>
                             <div>
                                 <label class="block text-sm text-outline mb-2">Serper API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
-                                <input type="password" id="setting-serper-key" placeholder="Enter Serper API key for Google search..."
-                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
-                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
-                                <p class="text-xs text-outline mt-2">Google search results. Falls back to Brave/DuckDuckGo if not set.</p>
+                                <div class="relative">
+                                    <input type="password" id="setting-serper-key" placeholder="Enter Serper API key for Google search..."
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none pr-24"/>
+                                    <button type="button" id="btn-test-serper" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test
+                                    </button>
+                                </div>
+                                <div id="serper-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Google search results. Falls back to Brave/DuckDuckGo if not set.</p>
                             </div>
                             <div class="p-3 rounded-lg bg-surface border border-glass-border">
                                 <label class="block text-sm text-outline mb-2">Custom OpenAI-Compatible Provider <span class="text-outline font-mono text-xs">(optional)</span></label>
@@ -1797,7 +1861,13 @@ tailwind.config = {
                                         autocomplete="new-password" data-1p-ignore data-lpignore="true"
                                         class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
                                 </div>
-                                <p class="text-xs text-outline mt-2">Use any OpenAI-compatible API (Ollama, vLLM, LiteLLM, etc.). Leave empty to use OpenAI.</p>
+                                <div class="mt-2 flex items-center gap-3">
+                                    <button type="button" id="btn-test-custom" class="px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test Custom Provider
+                                    </button>
+                                    <div id="custom-key-status" class="hidden font-mono text-xs"></div>
+                                </div>
+                                <p class="text-xs text-outline mt-1">Use any OpenAI-compatible API (Ollama, vLLM, LiteLLM, etc.). Leave empty to use OpenAI.</p>
                             </div>
                         </div>
                     </div>
@@ -2818,6 +2888,7 @@ async function loadCitations() {
         state.citations = data.citations || [];
         renderCitations();
         updateStats();
+        updateFooterCitations();
     }
 }
 
@@ -3087,7 +3158,11 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
         const val = document.getElementById(elId).value.trim();
         if (val && validate(val)) {
             await api('/settings/apikey', 'POST', { key: envKey, value: val });
+            // Don't clear — show masked status instead
+            const masked = val.slice(0, 6) + '*'.repeat(Math.max(0, val.length - 10)) + val.slice(-4);
+            document.getElementById(elId).placeholder = masked;
             document.getElementById(elId).value = '';
+            document.getElementById(elId).classList.add('border-accent-lime/40');
             anyKeySaved = true;
         }
     }
@@ -3099,58 +3174,96 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     if (customModel) await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_MODEL', value: customModel });
     if (customKey) {
         await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_API_KEY', value: customKey });
+        const masked = customKey.slice(0, 6) + '*'.repeat(Math.max(0, customKey.length - 10)) + customKey.slice(-4);
+        document.getElementById('setting-custom-key').placeholder = masked;
         document.getElementById('setting-custom-key').value = '';
+        document.getElementById('setting-custom-key').classList.add('border-accent-lime/40');
     }
     if (customHost || customModel || customKey) anyKeySaved = true;
 
-    showToast(anyKeySaved ? 'Settings & API keys saved — restart server to apply new keys' : 'Settings saved');
+    // Refresh status indicators
+    loadKeyStatus();
+    showToast(anyKeySaved ? 'Settings & API keys saved' : 'Settings saved');
 });
+
+// Generic key test helper
+async function testKey(btnEl, statusEl, envKey, value) {
+    btnEl.textContent = 'Testing...';
+    statusEl.className = 'mt-2 font-mono text-xs text-outline';
+    statusEl.textContent = 'Testing...';
+    statusEl.classList.remove('hidden');
+    try {
+        // If a new key was typed, save it first
+        if (value) await api('/settings/apikey', 'POST', { key: envKey, value });
+        const res = await api('/test-key', 'POST', { key: envKey, value: value || os_env_placeholder });
+        if (res?.ok) {
+            statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
+            statusEl.textContent = '✓ ' + res.message;
+        } else {
+            statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+            statusEl.textContent = '✗ ' + (res?.message || 'Test failed');
+        }
+    } catch(e) {
+        statusEl.className = 'mt-2 font-mono text-xs text-red-400';
+        statusEl.textContent = '✗ Connection error: ' + e.message;
+    }
+    btnEl.textContent = 'Test';
+}
+// Sentinel value to tell server "test whatever is in os.environ"
+const os_env_placeholder = '__USE_SERVER_ENV__';
 
 // Test OpenAI key
 document.getElementById('btn-test-openai').addEventListener('click', async () => {
     const btn = document.getElementById('btn-test-openai');
     const statusEl = document.getElementById('openai-key-status');
     const key = document.getElementById('setting-openai-key').value.trim();
-    if (!key) {
-        // Test whatever key the server currently has
-        btn.textContent = 'Testing...';
-        const res = await api('/compress', 'POST', { prompt: 'test' });
-        if (res && !res.error) {
-            statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
-            statusEl.textContent = '✓ Server OpenAI key is working';
-        } else {
-            statusEl.className = 'mt-2 font-mono text-xs text-red-400';
-            statusEl.textContent = '✗ ' + (res?.error || 'No key configured');
-        }
-        statusEl.classList.remove('hidden');
-        btn.textContent = 'Test';
-        return;
-    }
-    if (!key.startsWith('sk-')) {
+    if (key && !key.startsWith('sk-')) {
         statusEl.className = 'mt-2 font-mono text-xs text-red-400';
         statusEl.textContent = '✗ Key must start with sk-';
         statusEl.classList.remove('hidden');
         return;
     }
-    statusEl.className = 'mt-2 font-mono text-xs text-outline';
-    statusEl.textContent = 'Testing...';
-    statusEl.classList.remove('hidden');
-    try {
-        // First, push the key to the server so it's in os.environ
-        await api('/settings/apikey', 'POST', { key: 'OPENAI_API_KEY', value: key });
-        // Then test via compress endpoint
-        const res = await api('/compress', 'POST', { prompt: 'hello world' });
-        if (res && !res.error) {
-            statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
-            statusEl.textContent = '✓ Key working — ' + (res.backend || 'openai');
-        } else {
-            statusEl.className = 'mt-2 font-mono text-xs text-red-400';
-            statusEl.textContent = '✗ ' + (res?.error || 'Test failed');
-        }
-    } catch(e) {
-        statusEl.className = 'mt-2 font-mono text-xs text-red-400';
-        statusEl.textContent = '✗ Connection error: ' + e.message;
-    }
+    await testKey(btn, statusEl, 'OPENAI_API_KEY', key);
+});
+
+// Test Brave key
+document.getElementById('btn-test-brave').addEventListener('click', async () => {
+    await testKey(
+        document.getElementById('btn-test-brave'),
+        document.getElementById('brave-key-status'),
+        'BRAVE_SEARCH_API_KEY',
+        document.getElementById('setting-brave-key').value.trim()
+    );
+});
+
+// Test Exa key
+document.getElementById('btn-test-exa').addEventListener('click', async () => {
+    await testKey(
+        document.getElementById('btn-test-exa'),
+        document.getElementById('exa-key-status'),
+        'EXA_API_KEY',
+        document.getElementById('setting-exa-key').value.trim()
+    );
+});
+
+// Test Serper key
+document.getElementById('btn-test-serper').addEventListener('click', async () => {
+    await testKey(
+        document.getElementById('btn-test-serper'),
+        document.getElementById('serper-key-status'),
+        'SERPER_API_KEY',
+        document.getElementById('setting-serper-key').value.trim()
+    );
+});
+
+// Test Custom provider key
+document.getElementById('btn-test-custom').addEventListener('click', async () => {
+    await testKey(
+        document.getElementById('btn-test-custom'),
+        document.getElementById('custom-key-status'),
+        'CUSTOM_LLM_API_KEY',
+        document.getElementById('setting-custom-key').value.trim()
+    );
 });
 
 document.getElementById('btn-clear-tropebook').addEventListener('click', async () => {
@@ -3265,6 +3378,7 @@ async function selectProject(name) {
     localStorage.setItem('tropelex-project', name || '');
     updateGlobalProjectSelector();  // Sync global selector
     updateProjectPrompt();
+    updateFooterProject();
     
     // Update all section project indicators
     const indicator = name || 'No project';
@@ -3785,9 +3899,11 @@ document.getElementById('btn-clear-context').addEventListener('click', () => {
 
 // Health check — update status indicator
 async function checkHealth() {
+    const t0 = performance.now();
     try {
         const res = await fetch('/api/health');
         const ok = res.ok;
+        const latency = Math.round(performance.now() - t0);
         const el = document.getElementById('engine-status');
         if (ok) {
             el.textContent = 'ONLINE';
@@ -3798,27 +3914,84 @@ async function checkHealth() {
             el.classList.add('text-red-400');
             el.classList.remove('text-accent-lime');
         }
+        // Update status footer
+        const dot = document.getElementById('footer-status-dot');
+        const statusText = document.getElementById('footer-status-text');
+        const latencyEl = document.getElementById('footer-latency');
+        if (dot) { dot.className = ok ? 'status-dot' : 'status-dot error'; }
+        if (statusText) { statusText.textContent = ok ? 'System Online' : 'System Error'; }
+        if (latencyEl) { latencyEl.textContent = latency + 'ms'; }
     } catch {
         const el = document.getElementById('engine-status');
         el.textContent = 'OFFLINE';
         el.classList.add('text-red-400');
         el.classList.remove('text-accent-lime');
+        const dot = document.getElementById('footer-status-dot');
+        const statusText = document.getElementById('footer-status-text');
+        if (dot) { dot.className = 'status-dot error'; }
+        if (statusText) { statusText.textContent = 'Offline'; }
     }
+}
+
+function updateFooterProject() {
+    const el = document.getElementById('footer-project');
+    if (el) { el.textContent = state.currentProject || 'No project'; }
+}
+function updateFooterCitations() {
+    const el = document.getElementById('footer-citations');
+    if (el) { el.textContent = (state.citations?.length || 0) + ' citations'; }
 }
 
 // Settings — load on startup
 function loadSettings() {
     const saved = localStorage.getItem('tropelex-settings');
-    if (!saved) return;
+    if (saved) {
+        try {
+            const s = JSON.parse(saved);
+            if (s.max_tokens)          document.getElementById('setting-max-tokens').value = s.max_tokens;
+            if (s.compression_level)   document.getElementById('setting-compression-level').value = s.compression_level;
+            if (s.theme)               document.getElementById('setting-theme').value = s.theme;
+            if (s.animations)          document.getElementById('setting-animations').value = s.animations;
+            if (s.session_limit)       document.getElementById('setting-session-limit').value = s.session_limit;
+        } catch(e) { console.warn('Could not load settings', e); }
+    }
+    // Load key status from server
+    loadKeyStatus();
+}
+
+async function loadKeyStatus() {
     try {
-        const s = JSON.parse(saved);
-        if (s.max_tokens)          document.getElementById('setting-max-tokens').value = s.max_tokens;
-        if (s.compression_level)   document.getElementById('setting-compression-level').value = s.compression_level;
-        if (s.theme)               document.getElementById('setting-theme').value = s.theme;
-        if (s.animations)          document.getElementById('setting-animations').value = s.animations;
-        if (s.session_limit)       document.getElementById('setting-session-limit').value = s.session_limit;
-        // Note: brave_api_key intentionally NOT restored to DOM for security
-    } catch(e) { console.warn('Could not load settings', e); }
+        const data = await api('/settings');
+        if (!data || !data.keys) return;
+        const keys = data.keys;
+        const indicators = {
+            'OPENAI_API_KEY':     { input: 'setting-openai-key', status: 'openai-key-status' },
+            'BRAVE_SEARCH_API_KEY': { input: 'setting-brave-key', status: 'brave-key-status' },
+            'EXA_API_KEY':        { input: 'setting-exa-key', status: 'exa-key-status' },
+            'SERPER_API_KEY':     { input: 'setting-serper-key', status: 'serper-key-status' },
+            'CUSTOM_LLM_HOST':    { input: 'setting-custom-host', status: null },
+            'CUSTOM_LLM_MODEL':   { input: 'setting-custom-model', status: null },
+            'CUSTOM_LLM_API_KEY': { input: 'setting-custom-key', status: 'custom-key-status' },
+        };
+        for (const [envKey, info] of Object.entries(indicators)) {
+            const k = keys[envKey];
+            if (!k) continue;
+            const inputEl = document.getElementById(info.input);
+            if (k.configured && inputEl) {
+                // Show masked value as placeholder, keep input empty for security
+                inputEl.placeholder = k.masked || k.value || '••••••••';
+                inputEl.classList.add('border-accent-lime/40');
+            }
+            if (info.status && k.configured) {
+                const statusEl = document.getElementById(info.status);
+                if (statusEl) {
+                    statusEl.className = 'mt-2 font-mono text-xs text-accent-lime';
+                    statusEl.textContent = '✓ Stored (' + (k.masked || 'configured') + ')';
+                    statusEl.classList.remove('hidden');
+                }
+            }
+        }
+    } catch(e) { console.warn('Could not load key status', e); }
 }
 
 // Import button - supports JSON, CSV, TXT
@@ -5234,5 +5407,19 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
 
 init();
 </script>
+
+<!-- IDE-style Status Footer (from UI2) -->
+<footer class="status-footer" id="status-footer">
+    <div class="status-dot" id="footer-status-dot"></div>
+    <span id="footer-status-text">Connecting...</span>
+    <div class="divider"></div>
+    <span id="footer-project" class="text-outline">No project</span>
+    <div class="divider"></div>
+    <span id="footer-citations" class="text-outline">0 citations</span>
+    <div class="flex-1"></div>
+    <span class="text-accent-lavender/60">Tropelex v1.1.0</span>
+    <div class="divider"></div>
+    <span id="footer-latency" class="text-outline">—</span>
+</footer>
 </body>
 </html>

@@ -228,11 +228,12 @@ class Tropebook:
                 relationship,
             )
 
-    def search(self, query: str, limit: int = 20) -> list[Citation]:
+    def search(self, query: str, limit: int = 20) -> list[tuple[str, "Citation"]]:
+        """Search citations by query. Returns list of (cid, Citation) tuples."""
         # Split query into words for better matching
         query_words = [w.lower() for w in query.split() if len(w) > 2]
         results = []
-        for cite in self.citations.values():
+        for cid, cite in self.citations.items():
             score = 0
             title_lower = cite.title.lower()
             summary_lower = cite.summary.lower()
@@ -247,9 +248,9 @@ class Tropebook:
                     score += 3
 
             if score > 0:
-                results.append((score, cite))
+                results.append((score, cid, cite))
         results.sort(key=lambda x: x[0], reverse=True)
-        return [r[1] for r in results[:limit]]
+        return [(cid, cite) for _, cid, cite in results[:limit]]
 
     def get_related(self, cid: str, depth: int = 1) -> dict[str, Any]:
         if cid not in self.graph.nodes:

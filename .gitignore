@@ -18,3 +18,4 @@ memory/tropebook/*.json
 memory/*.json
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
+UI/UI2/

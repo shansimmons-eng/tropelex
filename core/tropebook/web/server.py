@@ -436,7 +436,7 @@ async def delete_citation(cid: str):
 
 @app.get("/api/search")
 async def search_citations(
-    q: str = Query(..., min_length=1, max_length=200), limit: int = Query(20, le=100)
+    q: str = Query(..., min_length=1, max_length=200), limit: int = Query(20, le=500)
 ):
     """Search citations by query."""
     try:
@@ -444,7 +444,7 @@ async def search_citations(
         # Sanitize query
         q = q.strip()[:200]
         results = tb.search(q, limit)
-        return {"results": [r.to_dict() for r in results], "count": len(results)}
+        return {"results": [c.to_dict(id=cid) for cid, c in results], "count": len(results)}
     except Exception as e:
         logger.error("search_citations failed: %s", e)
         raise HTTPException(500, f"Search failed: {e}")
@@ -982,6 +982,111 @@ async def save_api_key(req: ApiKeyRequest):
         "saved": True,
         "note": "Key applied immediately; also written to .env for persistence",
     }
+
+
+def _mask_key(value: str) -> str:
+    """Mask an API key for display: show first 6 and last 4 chars, cap asterisks at 12."""
+    if not value or len(value) < 12:
+        return "***" if value else ""
+    stars = min(len(value) - 10, 12)
+    return f"{value[:6]}{'*' * stars}{value[-4:]}"
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Return current key status (masked) and non-secret settings."""
+    settings_keys = [
+        "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "EXA_API_KEY",
+        "SERPER_API_KEY", "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
+    ]
+    keys = {}
+    for k in settings_keys:
+        val = os.environ.get(k, "")
+        if k.endswith("_KEY") or k.endswith("_API_KEY"):
+            keys[k] = {"configured": bool(val), "masked": _mask_key(val)}
+        else:
+            keys[k] = {"configured": bool(val), "value": val}
+    return {"keys": keys}
+
+
+@app.post("/api/test-key")
+async def test_api_key(req: ApiKeyRequest):
+    """Test if an API key works by making a lightweight call to the provider."""
+    import httpx
+
+    # If sentinel value, test whatever key the server already has in os.environ
+    key = req.value.strip() if req.value.strip() != "__USE_SERVER_ENV__" else ""
+    if not key:
+        key = os.environ.get(req.key, "")
+    if not key:
+        raise HTTPException(400, f"No key configured for {req.key}")
+
+    try:
+        if req.key == "OPENAI_API_KEY":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "OpenAI key is valid"}
+                return {"ok": False, "message": f"OpenAI returned {resp.status_code}"}
+
+        elif req.key == "BRAVE_SEARCH_API_KEY":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    headers={"X-Subscription-Token": key, "Accept": "application/json"},
+                    params={"q": "test", "count": 1},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "Brave Search key is valid"}
+                return {"ok": False, "message": f"Brave returned {resp.status_code}"}
+
+        elif req.key == "EXA_API_KEY":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    "https://api.exa.ai/search",
+                    headers={"x-api-key": key, "Content-Type": "application/json"},
+                    json={"query": "test", "numResults": 1},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "Exa key is valid"}
+                return {"ok": False, "message": f"Exa returned {resp.status_code}"}
+
+        elif req.key == "SERPER_API_KEY":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    "https://google.serper.dev/search",
+                    headers={"X-API-KEY": key, "Content-Type": "application/json"},
+                    json={"q": "test"},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "Serper key is valid"}
+                return {"ok": False, "message": f"Serper returned {resp.status_code}"}
+
+        elif req.key == "CUSTOM_LLM_API_KEY":
+            host = os.environ.get("CUSTOM_LLM_HOST", "")
+            if not host:
+                return {"ok": False, "message": "No custom host configured yet"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{host.rstrip('/')}/v1/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "Custom provider key is valid"}
+                return {"ok": False, "message": f"Custom provider returned {resp.status_code}"}
+
+        else:
+            raise HTTPException(400, f"Cannot test key type: {req.key}")
+
+    except httpx.TimeoutException:
+        return {"ok": False, "message": "Connection timed out"}
+    except httpx.ConnectError:
+        return {"ok": False, "message": "Could not connect to provider"}
+    except Exception as e:
+        return {"ok": False, "message": f"Test failed: {e}"}
 
 
 # ============================

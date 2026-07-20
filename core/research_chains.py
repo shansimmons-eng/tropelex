@@ -289,7 +289,7 @@ class ResearchChainManager:
                         "summary": getattr(r, "summary", "")[:200],
                         "source": "tropebook",
                     }
-                    for r in results
+                    for cid, r in results
                 ]
         except Exception as e:
             logger.debug("Tropebook search failed: %s", e)

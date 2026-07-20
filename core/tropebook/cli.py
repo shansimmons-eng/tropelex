@@ -76,8 +76,9 @@ def handle_search(args):
     tb = get_tropebook()
     if tb:
         results = tb.search(query)
-        for r in results:
-            print(f"[{r.url}] {r.title}")
+        for cid, r in results:
+            print(f"[{cid}] {r.title}")
+            print(f"  {r.url}")
             if r.summary:
                 print(f"  {r.summary[:100]}...")
 

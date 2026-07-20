@@ -65,7 +65,8 @@ class TestSearch:
         tb.add("JavaScript Guide", "https://developer.mozilla.org")
         results = tb.search("python")
         assert len(results) == 1
-        assert results[0].title == "Python Documentation"
+        cid, cite = results[0]
+        assert cite.title == "Python Documentation"
 
     def test_search_by_summary(self, tb):
         tb.add("FastAPI", "https://fastapi.tiangolo.com", summary="Modern Python web framework")
