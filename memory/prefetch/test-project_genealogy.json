@@ -239,6 +239,30 @@
       "precision": 0.0,
       "recall_proxy": 0.0,
       "timestamp": "2026-07-20T06:27:26.140859+00:00"
+    },
+    {
+      "bundle_id": "4498c83db3b842ca",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-07-20T06:35:31.939738+00:00"
+    },
+    {
+      "bundle_id": "1f0b0373902e429a",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-07-20T06:39:55.412919+00:00"
     }
   ],
   "stats": {},
