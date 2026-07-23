@@ -1221,12 +1221,12 @@ async def git_sync(req: GitSyncRequest):
 
 
 @app.get("/api/git/summary")
-async def git_summary(repo_path: str = Query(..., max_length=500)):
-    """Get basic repo summary."""
+async def git_summary(repo_path: str = Query("", max_length=500)):
+    """Get basic repo summary. Defaults to project root if no path given."""
     try:
         from core.git_integration import get_repo_summary
 
-        repo_path = repo_path.strip()[:500]
+        repo_path = repo_path.strip()[:500] or str(BASE_DIR)
         return get_repo_summary(repo_path)
     except Exception as e:
         logger.error("git_summary failed: %s", e)

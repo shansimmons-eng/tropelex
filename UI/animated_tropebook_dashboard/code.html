@@ -6006,15 +6006,14 @@ async function loadDashboardStatusCards() {
         try {
             const gitData = await api(`/git/summary`);
             if (gitData) {
-                const commits = gitData.recent_commits?.slice(0, 3) || [];
-                const repo = gitData.repo_name || 'Unknown';
+                const commits = (gitData.commits || gitData.recent_commits || []).slice(0, 3);
                 const branch = gitData.branch || 'main';
-                const commitCount = gitData.total_commits || 0;
+                const stack = (gitData.stack || []).join(', ') || 'N/A';
                 gitEl.innerHTML = `
                     <div class="text-xs space-y-1">
-                        <div class="text-accent-periwinkle font-mono">${escapeHtml(repo)} · <span class="text-outline">${escapeHtml(branch)}</span></div>
-                        <div class="text-outline">${commitCount} commits</div>
-                        ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || commits[0]?.message || '')}</div>` : ''}
+                        <div class="text-accent-periwinkle font-mono">${escapeHtml(branch)}</div>
+                        <div class="text-outline">Stack: ${escapeHtml(stack)}</div>
+                        ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || '')}</div>` : ''}
                     </div>`;
             }
         } catch { gitEl.textContent = 'N/A'; }

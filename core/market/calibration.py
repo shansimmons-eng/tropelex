@@ -114,25 +114,32 @@ def compute_calibration(bets: list[dict], agent: str) -> Result[CalibrationScore
 
 
 def compute_leaderboard(bets: list[dict]) -> Result[list[LeaderboardEntry]]:
-    """Rank all agents by accuracy over their resolved bets."""
+    """Rank all agents by accuracy over their bets.
+
+    Shows all agents who have placed bets. Accuracy is computed only
+    from resolved bets; agents with only pending bets show accuracy=0.
+    """
     agents: dict[str, list[dict]] = defaultdict(list)
     for b in bets:
-        if b.get("resolved"):
-            agents[b["agent_name"]].append(b)
+        agents[b["agent_name"]].append(b)
 
     if not agents:
         return Ok(value=[])
 
     entries: list[LeaderboardEntry] = []
     for agent, agent_bets in agents.items():
-        correct = sum(1 for b in agent_bets if b.get("outcome") == "correct")
-        total = len(agent_bets)
-        accuracy = round(correct / total, 3) if total else 0.0
+        resolved = [b for b in agent_bets if b.get("resolved")]
+        if resolved:
+            correct = sum(1 for b in resolved if b.get("outcome") == "correct")
+            total = len(resolved)
+            accuracy = round(correct / total, 3) if total else 0.0
+        else:
+            accuracy = 0.0
         categories = sorted({b.get("category", "uncategorized") for b in agent_bets})
         entries.append(LeaderboardEntry(
             agent_name=agent,
             accuracy=accuracy,
-            total_bets=total,
+            total_bets=len(agent_bets),
             categories=categories,
         ))
 
