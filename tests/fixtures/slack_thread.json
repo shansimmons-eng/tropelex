@@ -1,0 +1,22 @@
+{
+  "channel": "#tropelex-dev",
+  "messages": [
+    "alice: we need to decide on a storage format for the knowledge graph — json files or sqlite?",
+    "bob: i've been using json files in memory/ and it's fine for small projects but gets slow with 1000+ entries",
+    "charlie: let's go with sqlite for the new research feeds module. we can keep json for backward compat",
+    "alice: ok, switching to sqlite for the feed persistence layer then. i'll draft the schema",
+    "bob: we also need to pick a web framework for the api server",
+    "charlie: fastapi is already in the deps and it works. we're using it, right?",
+    "alice: confirmed, sticking with fastapi. no reason to change now",
+    "bob: what about the background scheduler for auto-running feeds?",
+    "charlie: we settled on apscheduler with a manual tick endpoint as fallback",
+    "bob: approved. let me wire that into the feed manager",
+    "alice: tldr: sqlite for feeds, fastapi stays, apscheduler for background ticks",
+    "bob: one more thing — the last30days engine integration. the engine does multi-source research but takes 60-180s per query",
+    "charlie: decision: we keep it synchronous. the ui shows a loading state, 3min timeout on the endpoint. no async polling for now",
+    "alice: agreed. going with synchronous, document the expected latency. the feed scheduler already handles the timeout",
+    "bob: and for the research_provider field on feeds?",
+    "charlie: we decided web_search as default, deep_research as opt-in. the model change is already merged",
+    "alice: confirmed. i updated the feed create/update endpoints to accept research_provider with regex validation"
+  ]
+}

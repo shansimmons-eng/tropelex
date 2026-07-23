@@ -613,13 +613,41 @@
 - ✅ Narrative Mode (Non-Technical Audience)
 
 ### Phase 9: Testing & Infrastructure (Complete)
-- ✅ 1246 tests passing (up from 262)
+- ✅ 1292 tests passing (up from 262)
 - ✅ 7 previously untested subsystems now have full coverage (3,093 lines)
 - ✅ Background scheduler for automatic periodic tasks
 - ✅ SSRF protection, file locking, atomic memory writes
 - ✅ Corroboration results writing back to decision confidence scores
 - ✅ Friction mining wired to session-end processing
 - ✅ Session-start context using handoff packets + cross-project briefing
+- ✅ Friction Mining UI fix — "Scan for Friction" button now works (was missing JS handler)
+
+### Phase 10: Deep Research & Emacs Integration (Complete)
+- ✅ Deep Research (last30days engine) — multi-source research with LLM synthesis
+- ✅ Deep Research feed provider (`research_provider: "deep_research"`)
+- ✅ Deep Research UI section + Settings panel for source keys
+- ✅ Deep Research synthesis driver (pipeline + LLM + HTML in one pass)
+- ✅ Emacs integration package (`emacs/tropelex-capture.el`)
+- ✅ Feed intelligence 404 fix (was using wrong storage path)
+- ✅ Slack capture / market router fix (`load_project_memory` → `get_project_memory`)
+- ✅ BRAVE_SEARCH_API_KEY → BRAVE_API_KEY bridge for engine subprocess
+- ✅ Security: masking AUTH_TOKEN, CT0, BSKY_APP_PASSWORD in settings API
+- ✅ Unsaved settings prompt (beforeunload + nav guard)
+- ✅ Project selection persistence fix (localStorage restore on init)
+
+### Phase 11: Dashboard Overhaul & Emacs Magit/LSP (Complete)
+- ✅ Dashboard: Git Status, Key Decisions, Impact cards with colored header bars
+- ✅ Dashboard: Emacs added to Getting Started checklist
+- ✅ Dashboard: Section state persistence (inputs + results saved across navigations)
+- ✅ Dashboard: Logo animation (tl.png + pulsing dot)
+- ✅ Dashboard: Favicon change (TL1.ico)
+- ✅ Dashboard: "Power Up with Emacs" button linking to help docs
+- ✅ Emacs: Magit integration — auto-capture decisions from git commits
+- ✅ Emacs: LSP context — captures include function name/type from eglot/lsp-mode/treesit
+- ✅ Emacs: Code context in decision captures (function name, class, type)
+- ✅ 17 router `_load_memory` fixes — all routers now use MemoryManager
+- ✅ Run Pipeline button fix (missing element ID)
+- ✅ 46 new tests (test_deep_research.py, test_router_fixes.py, test_last30days_runner.py)
 
 ---
 
@@ -662,6 +690,6 @@
 
 ---
 
-**Last Updated:** 2026-07-19
-**Status:** All Features Implemented + Comprehensive Test Suite
+**Last Updated:** 2026-07-21
+**Status:** All Features Implemented + Deep Research + Emacs Magit/LSP + Dashboard Overhaul
 **Next Review:** 2026-08-15

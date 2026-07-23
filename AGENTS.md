@@ -147,6 +147,25 @@ Do not skip Tropelex updates because:
 - "I'll remember it" — you won't, but Tropelex will
 - "It's too much overhead" — one function call at session end is not overhead
 
+## Testing Mandate
+
+**Every new feature, bug fix, or API endpoint MUST have tests before it is considered done.**
+
+Rules:
+1. **New endpoint** → add tests in `tests/` using `TestClient` + `monkeypatch` (see `tests/test_compaction.py` for pattern)
+2. **New model field** → add roundtrip, validation, and default tests
+3. **Bug fix** → add a regression test that fails without the fix
+4. **New file/module** → create a corresponding `tests/test_<module>.py`
+5. **No feature is complete until `pytest tests/ -x -q` passes with the new tests included**
+
+Exception: last30days engine tests must be mocked (use `@pytest.mark.last30days` marker) to avoid consuming API tokens. Run `pytest -m last30days` explicitly when needed.
+
+Do not skip tests because:
+- "It's just a small change" — small changes break things too
+- "I'll add tests later" — you won't
+- "The existing tests cover it" — they don't cover the new code
+- "It's hard to test" — mock the hard parts, test the logic
+
 ## Tropebook (`core/tropebook/`)
 
 Research knowledge base for storing links, summaries, and relationships.
@@ -188,6 +207,72 @@ Run the web server:
 python -m core.tropebook.web.server
 # Opens at http://localhost:8766
 ```
+
+## Deep Research (`core/last30days/`)
+
+Multi-source research engine that searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief.
+
+### Components
+- `last30days.py` — The main research engine (60+ source modules in `lib/`)
+- `synthesize_run.py` — Pipeline + LLM synthesis + HTML render in one pass
+- `runner.py` — Subprocess wrapper (bridges BRAVE_SEARCH_API_KEY → BRAVE_API_KEY)
+
+### Usage
+
+**Ad-hoc research via API:**
+```bash
+curl -X POST http://localhost:8766/api/last30days/query \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"LLM agent architectures","emit":"html"}'
+```
+
+**As a feed provider:**
+```bash
+# Create a deep research feed
+curl -X POST http://localhost:8766/api/research-feeds \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"AI Trends","query":"local LLM agents","interval":"weekly","research_provider":"deep_research"}'
+```
+
+**Via the UI:** Navigate to Deep Research section or select "Deep Research" as provider when creating a feed.
+
+### Latency
+Deep research takes 1–3 minutes per query (multi-source parallel search + LLM synthesis). This is expected. The UI shows a loading state during the request.
+
+### Key Configuration
+See `API_KEYS.md` for source keys. The engine degrades gracefully — missing sources are skipped. Free sources (HackerNews, GitHub, Polymarket, YouTube) work without any keys.
+
+## Emacs Integration (`emacs/tropelex-capture.el`)
+
+Capture decisions, friction signals, and git commits directly from Emacs.
+
+### Setup
+```elisp
+(add-to-list 'load-path "~/Tropelex/emacs")
+(require 'tropelex-capture)
+(tropelex-capture-mode 1)
+```
+
+### Commands
+- `C-c t c` — Capture a decision (auto-detects file, project, mode, code context)
+- `C-c t r` — Capture region as decision context
+- `C-c t f` — Scan buffer for friction signals
+- `C-c t g` — Capture current HEAD commit as a decision
+- `C-c t s` — Check server status
+- `C-c t p` — Set project name
+
+### Automatic Capture
+- **Compilation errors** → auto-scan for friction when compilation fails
+- **Rapid saves** → 5+ saves in 5 seconds triggers a friction signal
+- **Git commits via Magit** → auto-capture decisions from commit messages (50+ chars)
+
+### Code Context (LSP / treesit / which-function)
+- Captures include current function name and type when available
+- Uses eglot or lsp-mode for symbol info, falls back to treesit/which-function
+- Set `tropelex-include-code-context` to nil to disable
+
+### Project Detection
+Auto-detects from: projectile → vc-root-dir → directory name fallback.
 
 ## Integration with OpenCode
 

@@ -27,6 +27,7 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
 | **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
+| **Deep Research** | Multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis |
 | **Ghost Decisions** | Silent drift detection — code contradicts decisions without anyone saying so |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
 | **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows |
@@ -46,6 +47,7 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 | **Cost Ledger** | Per-decision token cost tracking and ROI scoring |
 | **Predictive Prefetch** | Budget-aware context assembly prioritized by impact score |
 | **Background Scheduler** | Automatic periodic tasks — feeds, ghost scans, stale checks |
+| **Emacs Integration** | Capture decisions and friction signals directly from Emacs — compilation errors, rapid saves, manual decisions |
 
 ---
 
@@ -55,6 +57,8 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 - `uv` (recommended) or `pip`
 - OpenAI API key (for AI compression — optional, dictionary fallback available)
 - Brave Search API key (optional — falls back to DuckDuckGo free)
+- xAI API key (optional — enables X/Twitter search + LLM planner for Deep Research)
+- ScrapeCreators API key (optional — unlocks Reddit without rate limits, TikTok, Instagram, Threads, Pinterest)
 
 ---
 
@@ -158,7 +162,14 @@ Repository integration and deep analysis:
 - **Deep Sync** — parse diffs, detect rationale, dependency changes, revert chains, structural patterns
 
 ### Settings
-Configure compression behavior, session limits, and API keys. Keys entered here are written directly to your `.env` file.
+Configure compression behavior, session limits, and API keys. Keys entered here are written directly to your `.env` file. Includes a **Deep Research Sources** panel for configuring xAI, ScrapeCreators, Bluesky, and other keys that expand deep research coverage.
+
+### Deep Research
+Multi-source research powered by the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns.
+
+- **Run a query** — paste a topic, click Run, get a full research report (1–3 min)
+- **Create a deep research feed** — select "Deep Research" as the provider when creating a feed
+- **Configure sources** — add keys in Settings → Deep Research Sources for best coverage
 
 ---
 
@@ -264,17 +275,23 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/research-feeds` | List all feeds |
-| POST | `/api/research-feeds` | Create a new feed |
+| POST | `/api/research-feeds` | Create a new feed (accepts `research_provider`: `web_search` or `deep_research`) |
+| GET | `/api/research-feeds/stats` | Get feed statistics |
+| POST | `/api/research-feeds/tick` | Run all due feeds (rate limited) |
 | GET | `/api/research-feeds/{id}` | Get feed details |
-| PATCH | `/api/research-feeds/{id}` | Update a feed |
+| PUT | `/api/research-feeds/{id}` | Update a feed |
 | DELETE | `/api/research-feeds/{id}` | Delete a feed |
 | POST | `/api/research-feeds/{id}/run` | Run a feed now |
 | GET | `/api/research-feeds/{id}/runs` | Get run history |
 | GET | `/api/research-feeds/{id}/markdown` | Get feed output as markdown |
-| DELETE | `/api/research-feeds/{id}/markdown` | Delete feed markdown |
-| GET | `/api/research-feeds/stats` | Get feed statistics |
-| POST | `/api/run` | Run all due feeds (rate limited) |
-| POST | `/api/tick` | Check scheduler tick (rate limited) |
+| GET | `/api/research-feeds/{id}/intelligence` | Get feed trend detection and anomaly report |
+| GET | `/api/research-feeds/{id}/citations` | Get feed citations |
+
+### Deep Research (last30days)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/last30days/query` | Run a deep research query — returns HTML output + citations (1–3 min) |
 
 ---
 
@@ -390,6 +407,49 @@ adapter.summarize_session("my-project", "Built the compression pipeline and UI")
 
 ---
 
+## Emacs Integration
+
+The `emacs/tropelex-capture.el` package captures decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in `json.el` and `url.el`.
+
+### Setup
+
+```elisp
+(add-to-list 'load-path "~/Tropelex/emacs")
+(require 'tropelex-capture)
+(tropelex-capture-mode 1)  ; global mode — enables all hooks
+```
+
+### Commands
+
+| Keybinding | Command | Description |
+|---|---|---|
+| `C-c t c` | `tropelex-capture-decision` | Capture a decision with auto-detected context (file, project, mode, code context) |
+| `C-c t r` | `tropelex-capture-region` | Capture selected region as decision context (code snippet, log output) |
+| `C-c t f` | `tropelex-friction-scan` | Scan current buffer for friction signals |
+| `C-c t g` | `tropelex-capture-commit` | Capture current HEAD commit as a decision |
+| `C-c t s` | `tropelex-status` | Check server connectivity and current project |
+| `C-c t p` | `tropelex-set-project` | Override project name for the session |
+
+### Automatic Capture (when mode is on)
+
+- **Compilation errors** → when compilation exits abnormally, the output is auto-scanned for friction. If the friction score exceeds 30%, you get a minibuffer alert.
+- **Rapid saves** → 5+ file saves within 5 seconds triggers a friction signal ("rapid iteration detected"). Catches when you're thrashing.
+- **Git commits via Magit** → after every magit commit, the message (50+ chars) is auto-captured as a Tropelex decision with diffstat context.
+
+### Code Context (LSP / treesit / which-function)
+
+Captures automatically include the current function name and type when available:
+- Uses **eglot** or **lsp-mode** for symbol info (hover)
+- Falls back to **treesit** (Emacs 29+) for syntax tree traversal
+- Falls back to **which-function-mode** as last resort
+- Set `tropelex-include-code-context` to `nil` to disable
+
+### Project Detection
+
+Auto-detects from: projectile → `vc-root-dir` → directory name fallback. Override with `C-c t p`.
+
+---
+
 ## Project Structure
 
 ```
@@ -414,15 +474,26 @@ Tropelex/
 │   ├── embeddings.py        # Vector embeddings for semantic search
 │   ├── research_pipeline.py # Auto-research, staleness, dedup
 │   ├── llm.py               # LLM backend (OpenAI/Ollama)
+│   ├── friction/            # Friction mining — implicit signal detection
+│   │   ├── miner.py         # Signal detection, scoring, zone grouping
+│   │   └── router.py        # POST /api/memory/{project}/friction/scan
+│   ├── last30days/          # Deep research engine (last30days integration)
+│   │   ├── last30days.py    # Multi-source research engine (60+ source modules)
+│   │   ├── synthesize_run.py # Pipeline + LLM synthesis + HTML render in one pass
+│   │   ├── runner.py        # Subprocess wrapper for the engine
+│   │   └── lib/             # Engine internals (sources, rendering, planning)
 │   └── tropebook/           # Research knowledge base
 │       ├── tropebook.py     # Core KB + graph
 │       ├── research.py      # Web search (Brave/DuckDuckGo)
 │       ├── research_feeds.py # Scheduled feed monitoring
 │       ├── scheduler.py     # FeedScheduler (run/tick/search)
 │       ├── deep_research.py # Google Deep Research importer
+│       ├── feed_intelligence.py # Feed trend detection
 │       ├── cli.py           # CLI
 │       └── web/
 │           └── server.py    # FastAPI server (80+ endpoints, rate limiting)
+├── emacs/                   # Emacs integration
+│   └── tropelex-capture.el  # Decision capture, friction scanning, rapid-save tracking
 ├── adapters/
 │   └── opencode.py          # OpenCode integration
 ├── scripts/
@@ -430,7 +501,7 @@ Tropelex/
 │   ├── git_sync.py          # CLI for git sync
 │   └── feed_cli.py          # Feed management CLI
 ├── UI/
-│   ├── animated_tropebook_dashboard/code.html  # Main dashboard (7 tabs)
+│   ├── animated_tropebook_dashboard/code.html  # Main dashboard (8 tabs + Deep Research)
 │   └── prompt-compressor.html                  # Standalone compressor tool
 ├── memory/                  # Runtime storage (gitignored)
 │   ├── tropebook/           # Citation/graph storage
@@ -492,11 +563,11 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ## Status
 
-**v3.0.0** — Full feature set + comprehensive test suite + security hardening.
+**v3.2.0** — Dashboard overhaul + Emacs Magit/LSP integration + 17 router fixes + section persistence.
 
 ### Core Features
 - Memory, compression, pattern learning, research KB all working
-- Web UI with 7 tabs: Tropebook, Memory, Patterns, Prompt Lab, **Insights**, **Git**, Settings
+- Web UI with 8 sections: Tropebook, Memory, Patterns, Prompt Lab, **Insights**, **Git**, **Deep Research**, Settings
 - Git-aware memory: auto-extract decisions from commits with deep diff analysis
 - Decision trees: graph of decision evolution with causal chains
 - Living ADRs: auto-generate Architecture Decision Records (Nygard/MADR/Tropelex formats)
@@ -507,7 +578,9 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - Cross-pollination: surface solutions from similar projects
 - Agent skills: track proficiency per work category
 - Prompt genealogy: learn which compression strategies produce best outcomes
-- **Research Feeds**: scheduled monitoring with auto-ingest to citations
+- **Research Feeds**: scheduled monitoring with auto-ingest to citations (web_search + deep_research providers)
+- **Deep Research**: multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis into narrative briefs
+- **Emacs Integration**: capture decisions, friction signals, and git commits from Emacs — with Magit hooks, LSP context, compilation auto-scan, rapid-save tracking
 - **Ghost Decisions**: silent drift detection — code contradicts decisions
 - **Explainable Memory**: conversational "why do we...?" with causal chains
 - **Agent Handoff Packets**: role-aware context bundles for multi-agent workflows
@@ -519,7 +592,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Digital Twin Personas**: synthesize readable persona summaries from agent proficiency
 - **Federated Benchmarking**: opt-in, privacy-preserving cross-install statistics
 - **Memory Compaction**: epoch summarization to prevent unbounded memory growth
-- **Friction Mining**: implicit signal detection from conversation transcripts
+- **Friction Mining**: implicit signal detection from conversation transcripts (fixed UI button, auto-scan from Emacs)
 - **Preventive Ghost Checks**: pre-write hook that checks diff against active decisions
 - **Rationale Corroboration**: fact-check decision rationale against the live web
 - **PR Bot**: deliver ghost decisions, contradictions as PR comments
@@ -541,7 +614,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Background scheduler**: Automatic periodic tasks with error recovery
 
 ### Quality Metrics
-- **1246 tests passing** (up from 262)
+- **1292 tests passing** (up from 262)
 - 7 previously untested subsystems now have full coverage (3,093 lines)
 - AI compression via OpenAI (`gpt-4o-mini`)
 - CORS locked to localhost

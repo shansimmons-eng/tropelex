@@ -6,29 +6,26 @@ Mount into the main app:
     app.include_router(impact_router)
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from core.impact.analysis import compute_impact_analysis
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.impact")
 
 impact_router = APIRouter(prefix="/api/memory", tags=["impact"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    """Load a project's memory JSON, or raise 404."""
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    """Load a project's memory, or raise 404."""
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 @impact_router.get("/{project}/impact")

@@ -1,6 +1,6 @@
 [project]
 name = "tropelex"
-version = "1.1.0"
+version = "1.2.0"
 description = "Persistent memory and learning system for AI agents"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -50,3 +50,6 @@ known-first-party = ["core", "adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "last30days: tests that touch the last30days engine (may consume API tokens)",
+]

@@ -84,10 +84,10 @@ class LeaderboardResponse(BaseModel):
 
 def _load_memory(project: str) -> dict[str, Any]:
     """Load a project's memory JSON, or raise 404."""
-    try:
-        return _mm.load_project_memory(project)
-    except FileNotFoundError:
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+    try:
+        return _mm.get_project_memory(project)
     except Exception as exc:
         logger.error("market load failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))

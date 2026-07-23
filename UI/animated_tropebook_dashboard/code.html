@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="icon" type="image/png" href="/images/tlez.png" />
+<link rel="icon" type="image/x-icon" href="/images/TL1.ico" />
 <title>Tropelex - Persistent Memory for AI Agents</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -39,24 +39,16 @@ tailwind.config = {
     /* ── Background ── */
     body {
         background: #010515;
-        background-image:
-            radial-gradient(ellipse 80% 60% at 20% 10%, rgba(128, 80, 200, 0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 60% 80% at 80% 90%, rgba(80, 120, 250, 0.10) 0%, transparent 60%),
-            linear-gradient(160deg, #010515 0%, #0c1324 60%, #070e1f 100%);
-        background-attachment: fixed;
     }
 
-    /* ── Animated background grid ── */
-    body::before {
-        content: '';
+    /* ── WebGL shader canvas (fixed background) ── */
+    #bg-shader {
         position: fixed;
         inset: 0;
-        background-image:
-            linear-gradient(rgba(165, 128, 250, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(165, 128, 250, 0.03) 1px, transparent 1px);
-        background-size: 64px 64px;
-        pointer-events: none;
+        width: 100%;
+        height: 100%;
         z-index: 0;
+        pointer-events: none;
     }
 
     main, header, nav { position: relative; z-index: 1; }
@@ -172,6 +164,27 @@ tailwind.config = {
     @keyframes statusPulse {
         0%, 100% { opacity: 1;   box-shadow: 0 0 0 0   rgba(152, 250, 128, 0.7); }
         50%      { opacity: 0.8; box-shadow: 0 0 0 10px rgba(152, 250, 128, 0); }
+    }
+
+    /* ── Logo O-dot pulse ── */
+    .logo-wrap {
+        position: relative; display: inline-block; line-height: 0;
+    }
+    .logo-wrap::after {
+        content: '';
+        position: absolute;
+        left: 27.6%;  top: 49%;
+        width: 5%;  padding-bottom: 5%;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: #98fa80;
+        box-shadow: 0 0 3px 3px rgba(152, 250, 128, 0.9);
+        animation: logoPulse 2.5s ease-in-out infinite;
+        pointer-events: none;
+    }
+    @keyframes logoPulse {
+        0%, 100% { box-shadow: 0 0 3px 3px rgba(152, 250, 128, 0.9); }
+        50%      { box-shadow: 0 0 5px 10px rgba(152, 250, 128, 0.6); }
     }
 
     /* ── Fade in ── */
@@ -506,6 +519,104 @@ tailwind.config = {
 </head>
 <body class="font-sans text-on-surface min-h-screen flex flex-col">
 
+<!-- WebGL animated background -->
+<canvas id="bg-shader"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('bg-shader');
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+varying vec2 v_texCoord;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+vec2 random2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+void main() {
+    vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+    vec3 color = vec3(0.047, 0.075, 0.141);
+    vec2 st = uv * 3.0;
+    vec2 i_st = floor(st);
+    vec2 f_st = fract(st);
+    float m_dist = 1.0;
+    for (int y= -1; y <= 1; y++) {
+        for (int x= -1; x <= 1; x++) {
+            vec2 neighbor = vec2(float(x), float(y));
+            vec2 point = random2(i_st + neighbor);
+            point = 0.5 + 0.5 * sin(u_time * 0.5 + 6.2831 * point);
+            vec2 diff = neighbor + point - f_st;
+            float dist = length(diff);
+            m_dist = min(m_dist, dist);
+            if (dist < 0.8) {
+                float line = smoothstep(0.8, 0.0, dist) * 0.15;
+                color += vec3(0.647, 0.502, 0.98) * line * (0.5 + 0.5 * sin(u_time + point.x * 10.0));
+            }
+        }
+    }
+    color += vec3(0.647, 0.502, 0.98) * (1.0 - smoothstep(0.0, 0.05, m_dist)) * 0.5;
+    float vignette = 1.0 - length(uv) * 0.5;
+    color *= vignette;
+    gl_FragColor = vec4(color, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+
 <!-- Sidebar Overlay (mobile) -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
@@ -513,7 +624,7 @@ tailwind.config = {
 <aside id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <div class="flex items-center gap-2">
-            <img src="/images/tlez.png" alt="Tropelex" class="h-14 w-auto" />
+            <span class="logo-wrap"><img src="/images/tl.png" alt="Tropelex" class="h-14 w-auto" /></span>
         </div>
     </div>
     <div class="sidebar-nav">
@@ -589,6 +700,9 @@ tailwind.config = {
                 </button>
                 <button class="nav-item" data-section="feeds">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="12" cy="8" r="1"/></svg> Feeds
+                </button>
+                <button class="nav-item" data-section="deepresearch">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Deep Research
                 </button>
                 <button class="nav-item" data-section="handoff">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Agent Handoff
@@ -681,7 +795,7 @@ tailwind.config = {
             <button class="md:hidden text-accent-lavender" id="mobile-menu-btn" onclick="toggleSidebar()">
                 <span class="material-symbols-outlined">menu</span>
             </button>
-            <img src="/images/tlez.png" alt="Tropelex" class="h-10 w-auto hidden md:block" />
+            <span class="logo-wrap"><img src="/images/tl.png" alt="Tropelex" class="h-10 w-auto hidden md:block" /></span>
             <span class="text-outline mx-1 hidden md:block">·</span>
             <span class="font-mono text-xs text-outline uppercase tracking-wider" id="current-section-label">Tropebook</span>
         </div>
@@ -779,6 +893,11 @@ tailwind.config = {
                     <span class="font-mono text-xs text-on-surface flex-1">Set up research feeds</span>
                     <button onclick="switchSection('feeds')" class="px-2 py-1 rounded bg-accent-lime/20 text-accent-lime font-mono text-[10px] hover:bg-accent-lime/30 transition-all cursor-pointer">Go</button>
                 </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="emacs">
+                    <span class="material-symbols-outlined text-accent-lime text-sm">radio_button_unchecked</span>
+                    <span class="font-mono text-xs text-on-surface flex-1">Power up with Emacs</span>
+                    <a href="/guide#emacs-integration" class="px-2 py-1 rounded bg-accent-lime/20 text-accent-lime font-mono text-[10px] hover:bg-accent-lime/30 transition-all cursor-pointer">Go</a>
+                </div>
                 <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="session">
                     <span class="material-symbols-outlined text-accent-sky text-sm">radio_button_unchecked</span>
                     <span class="font-mono text-xs text-on-surface flex-1">End your first session</span>
@@ -797,29 +916,77 @@ tailwind.config = {
             <button onclick="switchSection('settings')" class="px-4 py-2 rounded-lg glass-panel text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/10 transition-all cursor-pointer flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm">settings</span> View Settings
             </button>
+            <a href="/guide#emacs-integration" class="px-4 py-2 rounded-lg bg-accent-lime/10 text-accent-lime font-mono text-sm hover:bg-accent-lime/20 transition-all cursor-pointer flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">terminal</span> Power Up with Emacs
+            </a>
         </div>
         <!-- Status Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="glass-panel rounded-xl p-5">
-                <div class="flex items-center gap-2 mb-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
                     <span class="material-symbols-outlined text-accent-lime text-sm">monitor_heart</span>
-                    <span class="font-mono text-xs text-outline uppercase tracking-wider">Health Score</span>
+                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Health Score</span>
                 </div>
-                <div id="dash-health" class="font-mono text-sm text-outline">Select a project</div>
+                <div class="p-4">
+                    <div id="dash-health" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
             </div>
-            <div class="glass-panel rounded-xl p-5">
-                <div class="flex items-center gap-2 mb-3">
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-red-500/15 flex items-center gap-2">
                     <span class="material-symbols-outlined text-red-400 text-sm">warning</span>
-                    <span class="font-mono text-xs text-outline uppercase tracking-wider">Friction Alerts</span>
+                    <span class="font-mono text-xs text-red-400 uppercase tracking-wider">Friction Alerts</span>
                 </div>
-                <div id="dash-friction" class="font-mono text-sm text-outline">Select a project</div>
+                <div class="p-4">
+                    <div id="dash-friction" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
             </div>
-            <div class="glass-panel rounded-xl p-5">
-                <div class="flex items-center gap-2 mb-3">
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
                     <span class="material-symbols-outlined text-accent-sky text-sm">trending_up</span>
-                    <span class="font-mono text-xs text-outline uppercase tracking-wider">Market Activity</span>
+                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Market Activity</span>
                 </div>
-                <div id="dash-market" class="font-mono text-sm text-outline">Select a project</div>
+                <div class="p-4">
+                    <div id="dash-market" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lavender text-sm">insights</span>
+                    <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Insights</span>
+                </div>
+                <div class="p-4">
+                    <div id="dash-insights" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+        </div>
+        <!-- Second row: Git, Decisions, Impact -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-periwinkle/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-periwinkle text-sm">commit</span>
+                    <span class="font-mono text-xs text-accent-periwinkle uppercase tracking-wider">Git Status</span>
+                </div>
+                <div class="p-4">
+                    <div id="dash-git" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lavender text-sm">history</span>
+                    <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Key Decisions</span>
+                </div>
+                <div class="p-4">
+                    <div id="dash-decisions-list" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lime text-sm">rocket_launch</span>
+                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Impact</span>
+                </div>
+                <div class="p-4">
+                    <div id="dash-impact" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
             </div>
         </div>
     </section>
@@ -1712,6 +1879,38 @@ tailwind.config = {
         </div>
     </section>
 
+    <!-- Deep Research -->
+    <section id="section-deepresearch" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">travel_explore</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Deep Research</h2>
+        </div>
+        <p class="text-outline mb-6">Multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HackerNews, Polymarket & web grounding in one report.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="deepresearch-query" rows="3" placeholder="e.g., What are people saying about local LLM agents?" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="btn-run-deepresearch" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Deep Research</button>
+                <span class="text-xs text-outline">Takes 1–3 minutes — searches many sources in parallel. Runs synchronously.</span>
+            </div>
+        </div>
+        <div id="deepresearch-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="deepresearch-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">travel_explore</span>
+            <p class="text-outline text-sm">No research yet. Enter a query above to run a deep multi-source scan.</p>
+            <p class="text-outline text-xs mt-2">Configure source keys in Settings → Deep Research Sources for best coverage.</p>
+        </div>
+        <!-- Research History -->
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">history</span>
+                Research History
+            </h3>
+            <div id="deepresearch-history" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-sm text-outline">No runs yet.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Settings Section -->
     <section id="section-settings" class="section max-w-4xl mx-auto px-6 pt-16 pb-8 fade-in">
         <div class="space-y-6">
@@ -1871,6 +2070,79 @@ tailwind.config = {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Deep Research Sources (last30days engine) -->
+                    <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-accent-sky">travel_explore</span>
+                            Deep Research Sources
+                            <span class="text-outline font-mono text-xs font-normal">(last30days engine)</span>
+                        </h3>
+                        <p class="text-xs text-outline mb-4">Optional keys that expand deep-research coverage. Missing sources are skipped gracefully — the engine works with whatever is configured.</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Gemini API Key <span class="text-outline font-mono text-xs">(engine planning + reranking — used by the metasearch)</span></label>
+                                <input type="password" id="setting-gemini-key" placeholder="AIza..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <div id="gemini-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Get a key at <span class="text-accent-sky">aistudio.google.com</span>. Powers the query planner and result reranker. Uses Gemini Flash Lite by default.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">xAI API Key <span class="text-outline font-mono text-xs">(X/Twitter search + LLM planner)</span></label>
+                                <div class="relative">
+                                    <input type="password" id="setting-xai-key" placeholder="xai-..."
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none pr-24"/>
+                                    <button type="button" id="btn-test-xai" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded text-xs font-mono text-accent-sky hover:text-accent-lavender transition-colors">
+                                        Test
+                                    </button>
+                                </div>
+                                <div id="xai-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Get a key at <span class="text-accent-sky">api.x.ai</span>. Enables X search without browser cookies.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">ScrapeCreators API Key <span class="text-outline font-mono text-xs">(Reddit without 403s, TikTok, Instagram, Threads, Pinterest)</span></label>
+                                <input type="password" id="setting-scrapecreators-key" placeholder="scrt-..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <div id="scrapecreators-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">One key unlocks five sources. 10,000 free calls at <span class="text-accent-sky">scrapecreators.com</span>.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Bluesky <span class="text-outline font-mono text-xs">(handle + app password)</span></label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input type="text" id="setting-bsky-handle" placeholder="you.bsky.social"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                    <input type="password" id="setting-bsky-password" placeholder="App password"
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                </div>
+                                <div id="bsky-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">Create an app password at bsky.app → Settings → App Passwords.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">X Cookies <span class="text-outline font-mono text-xs">(auth_token + ct0 — alternative to xAI key)</span></label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input type="password" id="setting-x-auth-token" placeholder="auth_token"
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                    <input type="password" id="setting-x-ct0" placeholder="ct0"
+                                        autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                        class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                                </div>
+                                <div id="xcookies-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                                <p class="text-xs text-outline mt-1">From x.com DevTools → Application → Cookies. Only needed if not using xAI.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-outline mb-2">Parallel AI API Key <span class="text-outline font-mono text-xs">(LLM-optimized web results)</span></label>
+                                <input type="password" id="setting-parallel-key" placeholder="..."
+                                    autocomplete="new-password" data-1p-ignore data-lpignore="true"
+                                    class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+                                <div id="parallel-key-status" class="hidden mt-2 font-mono text-xs"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Save Button -->
@@ -1935,7 +2207,7 @@ tailwind.config = {
             <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Getting Started</h2>
         </div>
         <p class="text-outline mb-6">Complete these steps to get the most out of Tropelex.</p>
-        <div class="space-y-3" id="onboarding-checklist">
+        <div class="space-y-3" id="onboarding-checklist-full">
             <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="project">
                 <span class="material-symbols-outlined text-accent-lavender">radio_button_unchecked</span>
                 <div class="flex-1">
@@ -1967,6 +2239,14 @@ tailwind.config = {
                     <div class="font-mono text-xs text-outline">Auto-research topics relevant to your project</div>
                 </div>
                 <button onclick="switchSection('feeds')" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Go</button>
+            </div>
+            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="emacs">
+                <span class="material-symbols-outlined text-accent-lime">radio_button_unchecked</span>
+                <div class="flex-1">
+                    <div class="font-mono text-sm text-on-surface">Power up with Emacs</div>
+                    <div class="font-mono text-xs text-outline">Capture decisions and friction signals directly from Emacs</div>
+                </div>
+                <a href="/guide#emacs-integration" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Go</a>
             </div>
             <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="session">
                 <span class="material-symbols-outlined text-accent-sky">radio_button_unchecked</span>
@@ -2399,6 +2679,14 @@ tailwind.config = {
                     </div>
                 </div>
                 <div>
+                    <label class="block text-sm text-outline mb-2">Provider</label>
+                    <select id="feed-provider" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none cursor-pointer">
+                        <option value="web_search" selected>Web Search — fast (Brave/Exa)</option>
+                        <option value="deep_research">Deep Research — multi-source, 1–3 min</option>
+                    </select>
+                    <p class="text-xs text-outline mt-1">Deep Research scans Reddit, X, YouTube, GitHub, HN & more via the last30days engine. Configure source keys in Settings.</p>
+                </div>
+                <div>
                     <label class="block text-sm text-outline mb-2">Tags (comma separated)</label>
                     <input type="text" id="feed-tags" placeholder="ai, research, monitoring"
                         class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
@@ -2431,6 +2719,10 @@ const state = {
     patterns: []
 };
 
+// Unsaved-settings guard — set by input events inside #section-settings,
+// cleared on save. Checked by switchSection and beforeunload.
+let settingsDirty = false;
+
 // Toast helper
 function showToast(message, duration = 3000) {
     // Remove existing toasts
@@ -2446,7 +2738,110 @@ function showToast(message, duration = 3000) {
 }
 
 // Navigation
+// ── Section State Persistence ───────────────────────────────────────────
+// Saves/restores user input and results across section navigations.
+// Keys: section-{sectionId}-inputs (JSON), section-{sectionId}-results (JSON)
+
+const _PERSIST_RESULT_IDS = [
+    'git-summary-output', 'git-sync-output',
+    'friction-results', 'deepresearch-results',
+    'slack-results', 'narrative-results',
+    'compaction-results', 'handoff-results',
+    'ghost-results', 'contradictions-results',
+    'explain-results', 'market-leaderboard',
+    'prefetch-results',
+];
+
+function saveSectionState(sectionId) {
+    const el = document.getElementById(`section-${sectionId}`);
+    if (!el) return;
+    const inputs = {};
+    el.querySelectorAll('input, textarea, select').forEach(inp => {
+        if (!inp.id) return;
+        if (inp.type === 'checkbox') {
+            inputs[inp.id] = inp.checked;
+        } else {
+            inputs[inp.id] = inp.value;
+        }
+    });
+    try { localStorage.setItem(`section-${sectionId}-inputs`, JSON.stringify(inputs)); } catch {}
+}
+
+function restoreSectionState(sectionId) {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(`section-${sectionId}-inputs`)); } catch { return; }
+    if (!saved) return;
+    const el = document.getElementById(`section-${sectionId}`);
+    if (!el) return;
+    for (const [id, val] of Object.entries(saved)) {
+        const inp = document.getElementById(id);
+        if (!inp) continue;
+        if (inp.type === 'checkbox') {
+            inp.checked = !!val;
+        } else {
+            inp.value = val;
+        }
+    }
+}
+
+function saveSectionResults(sectionId) {
+    const results = {};
+    for (const id of _PERSIST_RESULT_IDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        // Only save results that belong to this section
+        const parent = el.closest('.section');
+        if (parent && parent.id === `section-${sectionId}`) {
+            results[id] = el.innerHTML;
+        }
+    }
+    if (Object.keys(results).length) {
+        try { localStorage.setItem(`section-${sectionId}-results`, JSON.stringify(results)); } catch {}
+    }
+}
+
+function restoreSectionResults(sectionId) {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(`section-${sectionId}-results`)); } catch { return; }
+    if (!saved) return;
+    for (const [id, html] of Object.entries(saved)) {
+        const el = document.getElementById(id);
+        if (el && html) {
+            el.innerHTML = html;
+            // Unhide result containers
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            }
+        }
+    }
+}
+
+// Save inputs on change across all sections
+document.addEventListener('input', (e) => {
+    const section = e.target.closest('.section');
+    if (section && section.id) {
+        const sectionId = section.id.replace('section-', '');
+        saveSectionState(sectionId);
+    }
+});
+document.addEventListener('change', (e) => {
+    const section = e.target.closest('.section');
+    if (section && section.id) {
+        const sectionId = section.id.replace('section-', '');
+        saveSectionState(sectionId);
+    }
+});
+
 function switchSection(section) {
+    // Guard: warn when leaving settings with unsaved input
+    if (state.currentSection === 'settings' && section !== 'settings' && settingsDirty) {
+        if (!confirm('You have unsaved settings. Leave without saving?')) return;
+        settingsDirty = false; // user chose to discard
+    }
+    // Save current section's results before leaving
+    if (state.currentSection) {
+        saveSectionResults(state.currentSection);
+    }
     state.currentSection = section;
     
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2471,6 +2866,9 @@ function switchSection(section) {
     // Close mobile sidebar
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
+    // Restore persisted state for the section being entered
+    restoreSectionState(section);
+    restoreSectionResults(section);
 }
 
 function switchSectionWithGraph(section) {
@@ -2657,6 +3055,214 @@ async function loadGhostDecisions() {
 
 document.getElementById('btn-scan-ghost')?.addEventListener('click', loadGhostDecisions);
 document.getElementById('ghost-project-select')?.addEventListener('change', loadGhostDecisions);
+
+// ==================== FRICTION MINING ====================
+
+async function scanFriction() {
+    const transcript = document.getElementById('friction-transcript').value.trim();
+    if (!transcript) {
+        showToast('Paste a transcript first');
+        return;
+    }
+    const project = getCurrentProject();
+    if (!project) {
+        showToast('Select a project first');
+        return;
+    }
+    const btn = document.getElementById('btn-scan-friction');
+    const results = document.getElementById('friction-results');
+    const empty = document.getElementById('friction-empty');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Scanning...';
+    try {
+        const res = await fetch(`/api/memory/${encodeURIComponent(project)}/friction/scan`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({transcript})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || `HTTP ${res.status}`);
+        }
+        empty.classList.add('hidden');
+        results.classList.remove('hidden');
+
+        const score = data.friction_score ?? 0;
+        const scorePct = (score * 100).toFixed(0);
+        const scoreColor = score >= 0.6 ? 'text-red-400' : score >= 0.3 ? 'text-yellow-400' : 'text-accent-lime';
+        const sevIcons = {low: 'info', medium: 'warning', high: 'error'};
+
+        let html = `
+            <div class="glass-panel rounded-xl p-6 fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-accent-sky uppercase tracking-wider">Friction Report</h3>
+                    <span class="font-mono text-lg ${scoreColor}">${scorePct}%</span>
+                </div>
+                <p class="text-xs text-outline mb-4">${data.total_signals} signal(s) detected · ${data.zones?.length ?? 0} friction zone(s)</p>`;
+
+        if (data.signals?.length) {
+            html += `<div class="space-y-3 mb-4">` + data.signals.map(s => `
+                <div class="flex items-start gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
+                    <span class="material-symbols-outlined text-sm ${s.severity === 'high' ? 'text-red-400' : s.severity === 'medium' ? 'text-yellow-400' : 'text-outline'}">${sevIcons[s.severity] || 'info'}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-mono text-xs text-accent-periwinkle uppercase">${escapeHtml(s.type)}</span>
+                            <span class="font-mono text-xs text-outline">line ${s.line_number}</span>
+                        </div>
+                        <p class="text-xs text-on-surface mt-1 break-words">${escapeHtml(s.text_snippet)}</p>
+                        <p class="text-xs text-outline mt-1">${escapeHtml(s.recommendation)}</p>
+                    </div>
+                </div>
+            `).join('') + `</div>`;
+        } else {
+            html += `<p class="text-sm text-accent-lime flex items-center gap-2 mb-4"><span class="material-symbols-outlined text-sm">check_circle</span> No friction signals — smooth session.</p>`;
+        }
+
+        if (data.zones?.length) {
+            html += `<h4 class="font-mono text-xs text-outline uppercase tracking-wider mb-2">Friction Zones</h4><div class="space-y-2">` + data.zones.map(z => `
+                <div class="p-3 rounded-lg bg-surface border border-glass-border text-xs">
+                    <span class="text-on-surface">Lines ${z.start_line}–${z.end_line}</span>
+                    <span class="text-outline"> · ${z.signal_count} signal(s) · ${escapeHtml(String(z.zone_severity))} severity</span>
+                    ${z.description ? `<p class="text-outline mt-1">${escapeHtml(z.description)}</p>` : ''}
+                </div>
+            `).join('') + `</div>`;
+        }
+
+        html += `</div>`;
+        results.innerHTML = html;
+    } catch (e) {
+        results.classList.remove('hidden');
+        results.innerHTML = `<p class="error text-sm text-red-400 flex items-center gap-2"><span class="material-symbols-outlined text-sm">error</span> Scan failed: ${escapeHtml(e.message)}</p>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Scan for Friction';
+    }
+}
+
+document.getElementById('btn-scan-friction')?.addEventListener('click', scanFriction);
+
+// ==================== DEEP RESEARCH (last30days engine) ====================
+
+async function loadDeepResearchHistory() {
+    try {
+        const data = await api('/last30days/runs');
+        if (!data) return;
+        const el = document.getElementById('deepresearch-history');
+        if (!el) return;
+        if (!data.runs?.length) {
+            el.innerHTML = '<p class="text-sm text-outline">No runs yet.</p>';
+            return;
+        }
+        el.innerHTML = data.runs.map(r => {
+            const time = new Date(r.timestamp).toLocaleString();
+            return `
+                <div class="p-3 rounded-lg bg-surface-raised border border-glass-border cursor-pointer hover:border-accent-periwinkle/30 transition-all"
+                     onclick="loadDeepResearchRun('${r.id}')">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-sm text-on-surface truncate max-w-[70%]">${escapeHtml(r.query)}</span>
+                        <span class="font-mono text-xs text-outline">${r.citations_count} citations</span>
+                    </div>
+                    <div class="text-xs text-outline mt-1">${time}</div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.warn('Failed to load deep research history:', e);
+    }
+}
+
+async function loadDeepResearchRun(runId) {
+    const results = document.getElementById('deepresearch-results');
+    const empty = document.getElementById('deepresearch-empty');
+    try {
+        const data = await api(`/last30days/runs/${runId}`);
+        if (!data) return;
+        empty.classList.add('hidden');
+        results.classList.remove('hidden');
+        results.innerHTML = `
+            <div class="glass-panel rounded-xl p-6 fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-accent-periwinkle uppercase tracking-wider">Research Report</h3>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-xs text-outline">${data.citations_count} citation(s)</span>
+                        <span class="font-mono text-xs text-outline">${new Date(data.timestamp).toLocaleString()}</span>
+                    </div>
+                </div>
+                <iframe id="deepresearch-frame" sandbox="" class="w-full rounded-lg border border-glass-border bg-white" style="height: 520px;"></iframe>
+            </div>`;
+        const frame = document.getElementById('deepresearch-frame');
+        if (frame) frame.srcdoc = data.output || '<p style="font-family:monospace;padding:1rem;">No output returned.</p>';
+    } catch (e) {
+        results.classList.remove('hidden');
+        results.innerHTML = `<p class="error text-sm text-red-400 flex items-center gap-2"><span class="material-symbols-outlined text-sm">error</span> Failed to load run: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+async function runDeepResearch() {
+    const query = document.getElementById('deepresearch-query').value.trim();
+    if (!query) {
+        showToast('Enter a query first');
+        return;
+    }
+    const btn = document.getElementById('btn-run-deepresearch');
+    const results = document.getElementById('deepresearch-results');
+    const empty = document.getElementById('deepresearch-empty');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Researching (1–3 min)...';
+    try {
+        const res = await fetch('/api/last30days/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query, emit: 'html'})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || `HTTP ${res.status}`);
+        }
+        empty.classList.add('hidden');
+        results.classList.remove('hidden');
+        const citations = data.citations || [];
+        results.innerHTML = `
+            <div class="glass-panel rounded-xl p-6 fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-accent-periwinkle uppercase tracking-wider">Research Report</h3>
+                    <span class="font-mono text-xs text-outline">${data.citations_count ?? citations.length} citation(s)</span>
+                </div>
+                <iframe id="deepresearch-frame" sandbox="" class="w-full rounded-lg border border-glass-border bg-white" style="height: 520px;"></iframe>
+                ${citations.length ? `
+                <details class="mt-4">
+                    <summary class="font-mono text-xs text-outline cursor-pointer hover:text-accent-lavender">Citations (${citations.length})</summary>
+                    <div class="mt-2 space-y-1 max-h-64 overflow-y-auto">
+                        ${citations.map(c => `
+                            <div class="text-xs p-2 rounded bg-surface-raised border border-glass-border">
+                                <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener" class="text-accent-sky hover:text-accent-lavender break-all">${escapeHtml(c.title || c.url)}</a>
+                            </div>`).join('')}
+                    </div>
+                </details>` : ''}
+            </div>`;
+        const frame = document.getElementById('deepresearch-frame');
+        if (frame) frame.srcdoc = data.output || '<p style="font-family:monospace;padding:1rem;">No output returned.</p>';
+        // Refresh history
+        loadDeepResearchHistory();
+    } catch (e) {
+        results.classList.remove('hidden');
+        results.innerHTML = `<p class="error text-sm text-red-400 flex items-center gap-2"><span class="material-symbols-outlined text-sm">error</span> Research failed: ${escapeHtml(e.message)}</p>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Deep Research';
+    }
+}
+
+document.getElementById('btn-run-deepresearch')?.addEventListener('click', runDeepResearch);
+
+// Load deep research history when section is shown
+if (typeof switchSection === 'function') {
+    const _origSwitch = switchSection;
+    switchSection = function(section) {
+        _origSwitch(section);
+        if (section === 'deepresearch') loadDeepResearchHistory();
+    };
+}
 
 // ==================== PHASE 3: EXPLAINABLE MEMORY ====================
 
@@ -3124,6 +3730,7 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
             interval: document.getElementById('feed-interval').value,
             sources: ['web'],
             max_results_per_run: parseInt(document.getElementById('feed-max-results').value) || 20,
+            research_provider: document.getElementById('feed-provider')?.value || 'web_search',
         };
         const res = await api('/research-feeds', 'POST', feed);
         if (res) {
@@ -3153,6 +3760,21 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
 });
 
 // Settings
+// Track unsaved input anywhere in the settings section (text inputs, selects, textareas)
+document.getElementById('section-settings')?.addEventListener('input', () => { settingsDirty = true; });
+document.getElementById('section-settings')?.addEventListener('change', () => { settingsDirty = true; });
+// Warn on tab close / reload with unsaved settings
+window.addEventListener('beforeunload', (e) => {
+    if (settingsDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+    // Save current section results before unload
+    if (state.currentSection) {
+        saveSectionResults(state.currentSection);
+    }
+});
+
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
     const openaiKey = document.getElementById('setting-openai-key').value.trim();
     const settings = {
@@ -3170,6 +3792,15 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
         ['setting-brave-key', 'BRAVE_SEARCH_API_KEY', v => v.length > 10],
         ['setting-exa-key', 'EXA_API_KEY', v => v.length > 10],
         ['setting-serper-key', 'SERPER_API_KEY', v => v.length > 10],
+        // Deep research (last30days engine) sources
+        ['setting-xai-key', 'XAI_API_KEY', v => v.length > 10],
+        ['setting-gemini-key', 'GOOGLE_API_KEY', v => v.length > 10],
+        ['setting-scrapecreators-key', 'SCRAPECREATORS_API_KEY', v => v.length > 5],
+        ['setting-bsky-handle', 'BSKY_HANDLE', v => v.length > 0],
+        ['setting-bsky-password', 'BSKY_APP_PASSWORD', v => v.length > 5],
+        ['setting-x-auth-token', 'AUTH_TOKEN', v => v.length > 10],
+        ['setting-x-ct0', 'CT0', v => v.length > 10],
+        ['setting-parallel-key', 'PARALLEL_API_KEY', v => v.length > 5],
     ];
     let anyKeySaved = false;
     for (const [elId, envKey, validate] of keyMap) {
@@ -3177,7 +3808,7 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
         if (val && validate(val)) {
             await api('/settings/apikey', 'POST', { key: envKey, value: val });
             // Don't clear — show masked status instead
-            const masked = val.slice(0, 6) + '*'.repeat(Math.max(0, val.length - 10)) + val.slice(-4);
+            const masked = '*'.repeat(8 + Math.floor(Math.random() * 9));
             document.getElementById(elId).placeholder = masked;
             document.getElementById(elId).value = '';
             document.getElementById(elId).classList.add('border-accent-lime/40');
@@ -3192,7 +3823,7 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     if (customModel) await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_MODEL', value: customModel });
     if (customKey) {
         await api('/settings/apikey', 'POST', { key: 'CUSTOM_LLM_API_KEY', value: customKey });
-        const masked = customKey.slice(0, 6) + '*'.repeat(Math.max(0, customKey.length - 10)) + customKey.slice(-4);
+        const masked = '*'.repeat(8 + Math.floor(Math.random() * 9));
         document.getElementById('setting-custom-key').placeholder = masked;
         document.getElementById('setting-custom-key').value = '';
         document.getElementById('setting-custom-key').classList.add('border-accent-lime/40');
@@ -3200,6 +3831,8 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     if (customHost || customModel || customKey) anyKeySaved = true;
 
     // Refresh status indicators
+    settingsDirty = false;
+    applyAnimationSetting(document.getElementById('setting-animations').value);
     loadKeyStatus();
     showToast(anyKeySaved ? 'Settings & API keys saved' : 'Settings saved');
 });
@@ -3281,6 +3914,16 @@ document.getElementById('btn-test-custom').addEventListener('click', async () =>
         document.getElementById('custom-key-status'),
         'CUSTOM_LLM_API_KEY',
         document.getElementById('setting-custom-key').value.trim()
+    );
+});
+
+// Test xAI key (deep research)
+document.getElementById('btn-test-xai')?.addEventListener('click', async () => {
+    await testKey(
+        document.getElementById('btn-test-xai'),
+        document.getElementById('xai-key-status'),
+        'XAI_API_KEY',
+        document.getElementById('setting-xai-key').value.trim()
     );
 });
 
@@ -3395,7 +4038,6 @@ async function selectProject(name) {
     state.currentProject = name;
     localStorage.setItem('tropelex-project', name || '');
     updateGlobalProjectSelector();  // Sync global selector
-    updateProjectPrompt();
     updateFooterProject();
     
     // Update all section project indicators
@@ -3434,6 +4076,9 @@ async function selectProject(name) {
     // Pre-fill git project name
     const gitName = document.getElementById('git-project-name');
     if (gitName && !gitName.value) gitName.value = name;
+    // Refresh dashboard status cards and onboarding checklist
+    try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards failed:', e); }
+    try { await updateOnboarding(); } catch(e) { console.error('Onboarding failed:', e); }
 }
 
 function renderDecisions(decisions) {
@@ -3793,7 +4438,7 @@ async function runPipeline() {
     const useContext = document.getElementById('use-context').checked;
     const useStructure = document.getElementById('use-structure').checked;
     const useProjectContext = document.getElementById('use-project-context').checked;
-    const selectedProject = document.getElementById('pipeline-project').value;
+    const selectedProject = document.getElementById('pipeline-project')?.value || state.currentProject || '';
 
     const originalLength = input.length;
     let projectContext = '';
@@ -3961,6 +4606,16 @@ function updateFooterCitations() {
 }
 
 // Settings — load on startup
+function applyAnimationSetting(value) {
+    const canvas = document.getElementById('bg-shader');
+    if (!canvas) return;
+    if (value === 'none') {
+        canvas.style.display = 'none';
+    } else {
+        canvas.style.display = 'block';
+    }
+}
+
 function loadSettings() {
     const saved = localStorage.getItem('tropelex-settings');
     if (saved) {
@@ -3971,6 +4626,7 @@ function loadSettings() {
             if (s.theme)               document.getElementById('setting-theme').value = s.theme;
             if (s.animations)          document.getElementById('setting-animations').value = s.animations;
             if (s.session_limit)       document.getElementById('setting-session-limit').value = s.session_limit;
+            applyAnimationSetting(s.animations || 'full');
         } catch(e) { console.warn('Could not load settings', e); }
     }
     // Load key status from server
@@ -3990,6 +4646,14 @@ async function loadKeyStatus() {
             'CUSTOM_LLM_HOST':    { input: 'setting-custom-host', status: null },
             'CUSTOM_LLM_MODEL':   { input: 'setting-custom-model', status: null },
             'CUSTOM_LLM_API_KEY': { input: 'setting-custom-key', status: 'custom-key-status' },
+            'XAI_API_KEY':        { input: 'setting-xai-key', status: 'xai-key-status' },
+            'GOOGLE_API_KEY':     { input: 'setting-gemini-key', status: 'gemini-key-status' },
+            'SCRAPECREATORS_API_KEY': { input: 'setting-scrapecreators-key', status: 'scrapecreators-key-status' },
+            'BSKY_HANDLE':        { input: 'setting-bsky-handle', status: null },
+            'BSKY_APP_PASSWORD':  { input: 'setting-bsky-password', status: 'bsky-key-status' },
+            'AUTH_TOKEN':         { input: 'setting-x-auth-token', status: 'xcookies-key-status' },
+            'CT0':                { input: 'setting-x-ct0', status: null },
+            'PARALLEL_API_KEY':   { input: 'setting-parallel-key', status: 'parallel-key-status' },
         };
         for (const [envKey, info] of Object.entries(indicators)) {
             const k = keys[envKey];
@@ -5041,6 +5705,9 @@ function renderFeedList() {
         const isActive = f.id === feedsState.selectedFeedId;
         const statusColor = f.status === 'active' ? 'text-accent-lime' : f.status === 'paused' ? 'text-yellow-400' : 'text-red-400';
         const intervalLabel = {daily:'Daily', weekly:'Weekly', monthly:'Monthly', manual:'Manual'}[f.interval] || f.interval;
+        const providerBadge = f.research_provider === 'deep_research'
+            ? '<span class="text-xs px-1.5 py-0.5 rounded bg-accent-periwinkle/20 text-accent-periwinkle">deep</span>'
+            : '';
         return `
             <div class="p-3 rounded-lg cursor-pointer transition-all ${isActive ? 'bg-accent-lavender/15 border border-accent-lavender/30' : 'bg-surface-raised border border-transparent hover:border-glass-border'}"
                  onclick="selectFeed('${f.id}')">
@@ -5052,6 +5719,7 @@ function renderFeedList() {
                     <span class="text-xs text-outline">${intervalLabel}</span>
                     <span class="text-xs text-outline">|</span>
                     <span class="text-xs text-outline">${f.total_citations} citations</span>
+                    ${providerBadge}
                 </div>
             </div>
         `;
@@ -5080,6 +5748,10 @@ async function selectFeed(feedId) {
     const statusColor = data.status === 'active' ? 'text-accent-lime' : data.status === 'paused' ? 'text-yellow-400' : 'text-red-400';
     const sources = (data.sources || []).map(s => `<span class="text-xs px-2 py-0.5 rounded bg-accent-sky/20 text-accent-sky">${s}</span>`).join(' ');
     const tags = (data.tags || []).map(t => `<span class="text-xs px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender">${escapeHtml(t)}</span>`).join(' ');
+    const isDeep = data.research_provider === 'deep_research';
+    const providerBadge = isDeep
+        ? '<span class="text-xs px-2 py-0.5 rounded bg-accent-periwinkle/20 text-accent-periwinkle">deep research</span>'
+        : '<span class="text-xs px-2 py-0.5 rounded bg-surface-raised text-outline">web search</span>';
 
     const mdData = await api(`/research-feeds/${feedId}/markdown`);
     const md = mdData?.markdown || '';
@@ -5108,12 +5780,19 @@ async function selectFeed(feedId) {
             <div class="font-mono text-sm text-on-surface">${escapeHtml(data.query)}</div>
         </div>
         ${data.description ? `<div class="p-3 rounded bg-surface-raised mb-3"><div class="text-xs text-outline mb-1">Description</div><div class="text-sm text-outline">${escapeHtml(data.description)}</div></div>` : ''}
-        <div class="flex flex-wrap gap-1 mb-4">${sources} ${tags}</div>
+        <div class="flex flex-wrap gap-1 mb-4">${providerBadge} ${sources} ${tags}</div>
         <div class="p-4 rounded-lg bg-surface border border-glass-border">
-            <h4 class="font-mono text-xs uppercase text-accent-periwinkle mb-2">Markdown Output</h4>
-            <div class="prose prose-invert prose-sm max-w-none text-sm text-outline whitespace-pre-wrap max-h-96 overflow-y-auto">${md ? escapeHtml(md) : '<p class="text-outline">No output yet. Run the feed to generate results.</p>'}</div>
+            <h4 class="font-mono text-xs uppercase text-accent-periwinkle mb-2">${isDeep ? 'Research Output' : 'Markdown Output'}</h4>
+            ${isDeep
+                ? `<iframe id="feed-md-frame" sandbox="" class="w-full rounded-lg border border-glass-border bg-white" style="height: 384px;"></iframe>`
+                : `<div class="prose prose-invert prose-sm max-w-none text-sm text-outline whitespace-pre-wrap max-h-96 overflow-y-auto">${md ? escapeHtml(md) : '<p class="text-outline">No output yet. Run the feed to generate results.</p>'}</div>`}
         </div>
     `;
+
+    if (isDeep) {
+        const frame = document.getElementById('feed-md-frame');
+        if (frame) frame.srcdoc = md || '<p style="font-family:monospace;padding:1rem;">No output yet. Run the feed to generate results.</p>';
+    }
 
     loadFeedRuns(feedId);
 }
@@ -5151,7 +5830,7 @@ document.getElementById('btn-tick-feeds')?.addEventListener('click', async () =>
     const btn = document.getElementById('btn-tick-feeds');
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Running...';
-    const data = await api('/research-feeds/tick', { method: 'POST' });
+    const data = await api('/research-feeds/tick', 'POST');
     btn.disabled = false;
     btn.innerHTML = '<span class="material-symbols-outlined text-sm">play_arrow</span> Run Due';
     if (data) {
@@ -5166,7 +5845,7 @@ document.getElementById('btn-run-feed')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-run-feed');
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Running...';
-    const data = await api(`/research-feeds/${feedsState.selectedFeedId}/run`, { method: 'POST' });
+    const data = await api(`/research-feeds/${feedsState.selectedFeedId}/run`, 'POST');
     btn.disabled = false;
     btn.innerHTML = '<span class="material-symbols-outlined text-sm">play_arrow</span> Run Now';
     if (data) {
@@ -5179,7 +5858,7 @@ document.getElementById('btn-run-feed')?.addEventListener('click', async () => {
 document.getElementById('btn-delete-feed')?.addEventListener('click', async () => {
     if (!feedsState.selectedFeedId) return;
     if (!confirm('Delete this feed and its citation history?')) return;
-    const data = await api(`/research-feeds/${feedsState.selectedFeedId}`, { method: 'DELETE' });
+    const data = await api(`/research-feeds/${feedsState.selectedFeedId}`, 'DELETE');
     if (data) {
         feedsState.selectedFeedId = null;
         document.getElementById('feed-detail-actions').style.display = 'none';
@@ -5246,21 +5925,172 @@ async function loadDashboard() {
     // Use citation count from already-loaded state
     document.getElementById('dash-citations').textContent = state.citations.length;
     document.getElementById('dash-feeds').textContent = (feedsState.feeds || []).length;
-    updateOnboarding();
+    // Populate status cards for current project
+    try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards init failed:', e); }
+    try { await updateOnboarding(); } catch(e) { console.error('Onboarding init failed:', e); }
 }
 
-function updateOnboarding() {
-    const checks = { project: state.projects.length > 0, decision: false, apikeys: !!localStorage.getItem('tropelex-settings'), feeds: false, session: false };
-    if (state.currentProject) {
-        const proj = state.projects.find(p => (p.name || p) === state.currentProject);
-        if (proj && (proj.decisions || []).length > 0) checks.decision = true;
+async function loadDashboardStatusCards() {
+    const project = state.currentProject;
+    const healthEl = document.getElementById('dash-health');
+    const frictionEl = document.getElementById('dash-friction');
+    const marketEl = document.getElementById('dash-market');
+    const insightsEl = document.getElementById('dash-insights');
+    console.log('[Dashboard] loadDashboardStatusCards: project=', project);
+    if (!project) {
+        if (healthEl) healthEl.textContent = 'Select a project';
+        if (frictionEl) frictionEl.textContent = 'Select a project';
+        if (marketEl) marketEl.textContent = 'Select a project';
+        if (insightsEl) insightsEl.textContent = 'Select a project';
+        return;
     }
-    document.querySelectorAll('#onboarding-checklist [data-check]').forEach(el => {
+    // Health
+    try {
+        const conf = await api(`/memory/${encodeURIComponent(project)}/confidence`);
+        if (conf) {
+            const avg = conf.average_confidence ?? conf.average_score ?? conf.avg ?? 0;
+            const pct = Math.round(avg * 100);
+            const tier = pct >= 80 ? 'text-accent-lime' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+            healthEl.innerHTML = `<span class="${tier} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">avg confidence · ${conf.total ?? 0} decisions</span>`;
+        }
+    } catch { healthEl.textContent = 'N/A'; }
+    // Friction
+    try {
+        const frictionData = await api(`/memory/${encodeURIComponent(project)}/friction/summary`);
+        if (frictionData) {
+            const hist = frictionData.history || [];
+            const totalScans = frictionData.total_scans ?? hist.length;
+            if (totalScans > 0) {
+                const recent = hist.slice(-3);
+                const avgScore = recent.reduce((s, f) => s + (f.score || 0), 0) / (recent.length || 1);
+                const pct = Math.round(avgScore * 100);
+                const cls = pct >= 50 ? 'text-red-400' : pct >= 25 ? 'text-yellow-400' : 'text-accent-lime';
+                frictionEl.innerHTML = `<span class="${cls} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">friction · ${totalScans} scan${totalScans !== 1 ? 's' : ''}</span>`;
+            } else {
+                frictionEl.innerHTML = '<span class="text-accent-lime font-mono text-sm">No friction recorded</span>';
+            }
+        }
+    } catch { frictionEl.textContent = 'N/A'; }
+    // Market
+    try {
+        const bets = await api(`/memory/${encodeURIComponent(project)}/market/leaderboard`);
+        if (bets) {
+            const count = (bets.leaderboard || bets.bets || []).length;
+            if (count > 0) {
+                marketEl.innerHTML = `<span class="text-accent-sky font-mono text-lg">${count}</span> <span class="text-xs text-outline">active bet${count !== 1 ? 's' : ''}</span>`;
+            } else {
+                marketEl.innerHTML = '<span class="text-outline font-mono text-sm">No bets placed</span>';
+            }
+        }
+    } catch { marketEl.textContent = 'N/A'; }
+    // Insights
+    if (insightsEl) {
+        try {
+            const proj = await api(`/memory/${encodeURIComponent(project)}`);
+            if (proj) {
+                const decCount = (proj.decisions || []).length;
+                const sessCount = (proj.session_history || []).length;
+                const patCount = (proj.patterns || []).length;
+                const stack = (proj.tech_stack || []).join(', ') || 'None';
+                insightsEl.innerHTML = `
+                    <div class="text-xs space-y-1">
+                        <div><span class="text-accent-lavender">${decCount}</span> decisions · <span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
+                        <div class="text-outline truncate" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>
+                    </div>`;
+            }
+        } catch { insightsEl.textContent = 'N/A'; }
+    }
+    // Git Status
+    const gitEl = document.getElementById('dash-git');
+    if (gitEl) {
+        try {
+            const gitData = await api(`/git/summary`);
+            if (gitData) {
+                const commits = gitData.recent_commits?.slice(0, 3) || [];
+                const repo = gitData.repo_name || 'Unknown';
+                const branch = gitData.branch || 'main';
+                const commitCount = gitData.total_commits || 0;
+                gitEl.innerHTML = `
+                    <div class="text-xs space-y-1">
+                        <div class="text-accent-periwinkle font-mono">${escapeHtml(repo)} · <span class="text-outline">${escapeHtml(branch)}</span></div>
+                        <div class="text-outline">${commitCount} commits</div>
+                        ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || commits[0]?.message || '')}</div>` : ''}
+                    </div>`;
+            }
+        } catch { gitEl.textContent = 'N/A'; }
+    }
+    // Key Decisions
+    const decEl = document.getElementById('dash-decisions-list');
+    if (decEl) {
+        try {
+            const proj = await api(`/memory/${encodeURIComponent(project)}`);
+            if (proj) {
+                const decisions = (proj.decisions || []).slice(-3).reverse();
+                if (decisions.length) {
+                    decEl.innerHTML = decisions.map(d => `
+                        <div class="text-xs p-1.5 rounded bg-surface-raised mb-1 border-l-2 border-accent-lavender/50">
+                            <span class="text-on-surface">${escapeHtml((d.decision || '').slice(0, 60))}</span>
+                            <span class="text-outline ml-1">${d.timestamp?.slice(0, 10) || ''}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    decEl.innerHTML = '<span class="text-outline font-mono text-sm">No decisions recorded</span>';
+                }
+            }
+        } catch { decEl.textContent = 'N/A'; }
+    }
+    // Impact
+    const impactEl = document.getElementById('dash-impact');
+    if (impactEl) {
+        try {
+            const impactData = await api(`/memory/${encodeURIComponent(project)}/impact`);
+            if (impactData) {
+                const highImpact = (impactData.decisions || []).filter(d => (d.impact_score || 0) >= 0.7).length;
+                const total = (impactData.decisions || []).length;
+                const avgScore = impactData.average_impact || 0;
+                const pct = Math.round(avgScore * 100);
+                impactEl.innerHTML = `
+                    <div class="text-xs space-y-1">
+                        <div><span class="text-accent-lime font-mono text-lg">${highImpact}</span> <span class="text-outline">high-impact decisions</span></div>
+                        <div class="text-outline">${total} total · avg score ${pct}%</div>
+                    </div>`;
+            }
+        } catch { impactEl.textContent = 'N/A'; }
+    }
+}
+
+async function updateOnboarding() {
+    const checks = {
+        project: state.projects.length > 0,
+        decision: false,
+        apikeys: !!localStorage.getItem('tropelex-settings'),
+        feeds: (feedsState.feeds || []).length > 0,
+        emacs: !!localStorage.getItem('tropelex-emacs-done'),
+        session: false,
+    };
+    // Fetch current project data to check decisions and sessions
+    if (state.currentProject) {
+        try {
+            const proj = await api(`/memory/${encodeURIComponent(state.currentProject)}`);
+            if (proj) {
+                if ((proj.decisions || []).length > 0) checks.decision = true;
+                if ((proj.session_history || []).length > 0) checks.session = true;
+            }
+        } catch (e) {
+            console.warn('Failed to fetch project for onboarding check:', e);
+        }
+    }
+    console.log('[Dashboard] updateOnboarding:', checks);
+    // Update both onboarding checklists (dashboard compact + full section)
+    document.querySelectorAll('#onboarding-checklist [data-check], #onboarding-checklist-full [data-check]').forEach(el => {
         const key = el.dataset.check;
         const icon = el.querySelector('.material-symbols-outlined');
         if (checks[key]) {
             icon.textContent = 'check_circle';
             icon.className = 'material-symbols-outlined text-accent-lime';
+        } else {
+            icon.textContent = 'radio_button_unchecked';
+            icon.className = 'material-symbols-outlined text-outline';
         }
     });
 }
@@ -5316,7 +6146,7 @@ document.getElementById('btn-place-bet')?.addEventListener('click', async () => 
 // ── Slack Extract ──
 document.getElementById('btn-slack-extract')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
-    const messages = document.getElementById('slack-messages').value.trim();
+    const messages = document.getElementById('slack-messages').value.trim().split('\n').filter(l => l.trim());
     if (!messages) { showToast('Paste some messages first'); return; }
     const btn = document.getElementById('btn-slack-extract');
     btn.disabled = true; btn.textContent = 'Extracting...';
@@ -5381,6 +6211,7 @@ async function init() {
     await loadPatterns();
     await loadFeeds();
     await loadDashboard();
+    loadDeepResearchHistory();
     
     // Initialize all project indicators to "No project"
     document.getElementById('tropebook-project-indicator').textContent = 'No project';
@@ -5389,7 +6220,17 @@ async function init() {
     if (document.getElementById('pipeline-project-indicator')) {
         document.getElementById('pipeline-project-indicator').textContent = 'No project';
     }
-    
+
+    // Restore persisted project selection (validate it still exists server-side)
+    const savedProject = localStorage.getItem('tropelex-project');
+    if (savedProject) {
+        if (state.projects.some(p => (p.name || p) === savedProject)) {
+            await selectProject(savedProject);
+        } else {
+            localStorage.removeItem('tropelex-project'); // stale entry
+        }
+    }
+
     // Poll health every 30s
     setInterval(checkHealth, 30000);
 }
@@ -5420,7 +6261,6 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
     btn.textContent = 'Run Compaction';
 });
 
-init();
 </script>
 
 <!-- IDE-style Status Footer (from UI2) -->
@@ -5436,5 +6276,14 @@ init();
     <div class="divider"></div>
     <span id="footer-latency" class="text-outline">—</span>
 </footer>
+
+<script>
+// Run init once the full DOM is parsed
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+</script>
 </body>
 </html>

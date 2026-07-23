@@ -9,10 +9,8 @@ Mount into the main app:
     app.include_router(lens_router)
 """
 
-import json
 import logging
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -20,13 +18,13 @@ from pydantic import BaseModel, Field
 
 from core.lens import Annotation, Err
 from core.lens.annotator import map_code_to_decisions, scan_file_for_decisions
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.lens")
 
 lens_router = APIRouter(prefix="/api/memory", tags=["lens"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
 
 
 # ---------------------------------------------------------------------------
@@ -35,11 +33,10 @@ BASE_DIR = _CORE_DIR.parent
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    """Load project memory from disk, or raise HTTP 404."""
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    """Load project memory, or raise HTTP 404."""
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 def _enrich_annotations(

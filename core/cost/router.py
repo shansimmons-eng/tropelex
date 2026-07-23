@@ -6,7 +6,6 @@ Mount into the main app:
     app.include_router(cost_router)
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,13 +17,14 @@ from pydantic import BaseModel, Field
 from core.cost import CostEvent, CostError
 from core.cost.tracker import CostTracker
 from core.decision_tree import DecisionTree
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.cost")
 
 cost_router = APIRouter(prefix="/api/memory", tags=["cost"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
+BASE_DIR = Path(_mm.memory_dir).parent  # Kept for test compatibility; not used by _load_memory
 
 
 # ---------------------------------------------------------------------------
@@ -49,11 +49,10 @@ class CostEventRequest(BaseModel):
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    """Load a project's memory JSON, or raise 404."""
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    """Load a project's memory, or raise 404."""
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 def _build_tracker(memory: dict[str, Any]) -> CostTracker:

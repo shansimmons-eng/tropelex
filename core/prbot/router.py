@@ -46,10 +46,9 @@ class PRCommentRequestBody(BaseModel):
 
 
 def _require_project_exists(project: str) -> None:
-    """Raise 404 if project memory file doesn't exist."""
-    safe_name = Path(project).name
-    path = BASE_DIR / "memory" / f"{safe_name}.json"
-    if not path.exists():
+    """Raise 404 if project doesn't exist."""
+    mm = _get_memory_manager()
+    if project not in mm.list_projects():
         raise HTTPException(
             status_code=404,
             detail=f"Project '{project}' not found",

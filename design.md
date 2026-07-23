@@ -301,7 +301,52 @@ Tropelex integration with Tropebook research capabilities.
 
 **Integration:** Runs as asyncio task in FastAPI lifespan.
 
-### 15. Security Features
+### 15. Deep Research (`core/last30days/`)
+
+**Purpose:** Multi-source research engine that searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with inline source citations.
+
+**Architecture:**
+- The engine (`last30days.py`) runs as a subprocess with 60+ source modules in `lib/`
+- The synthesis driver (`synthesize_run.py`) runs the pipeline once in-process, then calls an OpenAI-compatible LLM to write the research brief following a strict "voice contract" (bold-lead paragraphs, `[source]` tags, KEY PATTERNS list)
+- The runner (`runner.py`) wraps both as subprocesses, bridges `BRAVE_SEARCH_API_KEY` → `BRAVE_API_KEY`, and returns HTML output
+- Feeds can use `research_provider: "deep_research"` to route through the engine instead of BraveSearch
+
+**LLM Provider Priority:** OpenAI → xAI → OpenRouter (auto-detected from env vars)
+
+**Source Availability:**
+| Source | Key Required | Notes |
+|---|---|---|
+| HackerNews | No | Algolia API (free) |
+| GitHub | No | Public API (free, rate-limited) |
+| Polymarket | No | Gamma API (free) |
+| YouTube | No | yt-dlp (free, must be installed) |
+| Reddit | Optional | Without key: keyless RSS (limited). With ScrapeCreators: full access |
+| X/Twitter | Optional | xAI API key, or browser cookies (AUTH_TOKEN + CT0) |
+| Bluesky | Yes | BSKY_HANDLE + BSKY_APP_PASSWORD |
+| TikTok/Instagram/Threads | Yes | SCRAPECREATORS_API_KEY |
+| Web grounding | Optional | BRAVE_API_KEY, EXA_API_KEY, SERPER_API_KEY, or PARALLEL_API_KEY |
+
+**Key Methods:**
+- `runner.run_query(query, emit="html")` → HTML report via synthesis driver
+- `runner.run_query_and_extract_citations(query)` → HTML + citation URL list
+- `POST /api/last30days/query` → ad-hoc deep research endpoint
+
+### 16. Emacs Integration (`emacs/tropelex-capture.el`)
+
+**Purpose:** Capture decisions and friction signals directly from Emacs.
+
+**Components:**
+- `tropelex-capture-decision` — interactive command, auto-detects file/project/mode context
+- `tropelex-capture-region` — capture selected code as decision context
+- `tropelex-friction-scan` — scan buffer for friction signals
+- `tropelex--track-save` — `after-save-hook` that detects rapid save patterns (5+ in 5 seconds)
+- `tropelex--compilation-finished` — `compilation-finish-functions` hook that auto-scans compilation output for friction
+
+**Project Detection:** projectile → `vc-root-dir` → directory name fallback
+
+**Dependencies:** None — uses only built-in `json.el` and `url.el` (synchronous HTTP to localhost)
+
+### 17. Security Features
 
 **SSRF Protection** (`core/tropebook/research.py`):
 - URL scheme validation (http/https only)
@@ -405,6 +450,14 @@ Tropelex/
 │   ├── embeddings.py        # Vector embeddings
 │   ├── research_pipeline.py # Auto-research pipeline
 │   ├── llm.py               # LLM backend abstraction
+│   ├── friction/            # Friction mining
+│   │   ├── miner.py         # Signal detection, scoring, zones
+│   │   └── router.py        # Friction scan API
+│   ├── last30days/          # Deep research engine
+│   │   ├── last30days.py    # Multi-source research engine
+│   │   ├── synthesize_run.py # Pipeline + LLM synthesis + HTML render
+│   │   ├── runner.py        # Subprocess wrapper
+│   │   └── lib/             # 60+ source modules, rendering, planning
 │   └── tropebook/            # Research knowledge base
 │       ├── __init__.py
 │       ├── tropebook.py       # Core KB + graph
@@ -412,11 +465,14 @@ Tropelex/
 │       ├── research_feeds.py # Scheduled feed monitoring
 │       ├── scheduler.py      # FeedScheduler (run/tick/search)
 │       ├── deep_research.py  # Import tools
+│       ├── feed_intelligence.py # Feed trend detection
 │       ├── cli.py            # CLI
 │       └── web/              # Web interface
 │           ├── server.py     # FastAPI (80+ endpoints, rate limiting)
 │           ├── static/
 │           └── templates/
+├── emacs/                   # Emacs integration
+│   └── tropelex-capture.el  # Decision capture, friction scanning
 ├── adapters/                 # Agent integrations
 │   ├── __init__.py
 │   └── opencode.py
@@ -424,45 +480,11 @@ Tropelex/
 │   ├── init_project.py
 │   ├── git_sync.py
 │   └── feed_cli.py           # Feed management CLI
-├── core/
-│   ├── webhooks/              # Git webhook auto-sync (Phase 1)
-│   │   ├── signature.py       # HMAC-SHA256 verification
-│   │   ├── idempotency.py     # Duplicate event prevention
-│   │   └── router.py          # POST /api/webhooks/git
-│   ├── sync/                  # Cross-device export/import (Phase 1)
-│   │   ├── exporter.py        # Gzip-compressed memory export
-│   │   ├── importer.py        # Import with schema validation
-│   │   └── router.py          # GET/POST /api/sync/*
-│   ├── plugins/               # Plugin system (Phase 2)
-│   │   ├── loader.py          # Manifest discovery + validation
-│   │   └── hooks.py           # HookRegistry (before/after hooks)
-│   ├── auth/                  # Multi-user auth (Phase 3)
-│   │   ├── jwt_service.py     # JWT HS256 generate/validate
-│   │   ├── models.py          # User model, Role enum, UserStore
-│   │   └── middleware.py       # FastAPI auth dependencies
-│   ├── collaboration/         # Real-time updates (Phase 3)
-│   │   ├── connection_manager.py  # Room-based WebSocket tracking
-│   │   ├── router.py          # WebSocket /ws/{room_id}
-│   │   └── broadcast.py       # Memory change notifications
-│   └── ...                    # (existing modules)
-├── plugins/
-│   ├── example/               # Example plugin
-│   │   ├── plugin.json
-│   │   └── plugin.py          # register(registry) entry point
-│   └── ...
-├── vscode-tropelex/           # VS Code extension (Phase 2)
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── extension.ts
-│       ├── memoryTreeProvider.ts
-│       └── memoryWebviewPanel.ts
 ├── UI/                        # Web interfaces
 │   ├── animated_tropebook_dashboard/code.html
 │   └── prompt-compressor.html
 ├── memory/                   # Persistent storage (gitignored)
-├── plugins/                  # Skill loaders
-├── tests/                    # 1246 tests
+├── tests/                    # 1292 tests
 ├── requirements.txt
 ├── README.md
 ├── AGENTS.md                 # Agent guidance

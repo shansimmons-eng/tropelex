@@ -62,11 +62,96 @@ The Brave free tier allows ~2,000 queries/month, which is more than enough for t
 
 ---
 
+## Deep Research Sources (last30days engine)
+
+**Optional — expands Deep Research coverage.**
+
+The Deep Research feature uses the last30days engine to search Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding. Some sources require API keys; others work without any. The engine degrades gracefully — missing sources are skipped.
+
+### xAI API Key
+
+Enables X/Twitter search and doubles as the LLM planner for the engine's query planning. Also used for the Deep Research synthesis step (writing the narrative brief).
+
+```bash
+# .env file
+XAI_API_KEY=xai-your-key-here
+```
+
+**Getting a key:**
+1. Go to https://console.x.ai/
+2. Create an API key
+3. Free tier includes generous credits
+
+### ScrapeCreators API Key
+
+One key unlocks five sources: Reddit (without 403 rate limits), TikTok, Instagram, Threads, and Pinterest. 10,000 free calls.
+
+```bash
+# .env file
+SCRAPECREATORS_API_KEY=scrt-your-key-here
+```
+
+**Getting a key:**
+1. Go to https://scrapecreators.com/
+2. Sign up for a free account (10,000 calls)
+3. Copy your API key
+
+### Bluesky
+
+Requires both a handle and an app password.
+
+```bash
+# .env file
+BSKY_HANDLE=your-handle.bsky.social
+BSKY_APP_PASSWORD=your-app-password
+```
+
+**Getting credentials:**
+1. Go to https://bsky.app/settings/app-passwords
+2. Create a new app password
+3. Copy both your handle and the password
+
+### X/Twitter Cookies (alternative to xAI)
+
+If you don't have an xAI key, you can use browser cookies from x.com instead.
+
+```bash
+# .env file
+AUTH_TOKEN=your-auth-token
+CT0=your-ct0-token
+```
+
+**Getting cookies:**
+1. Log into x.com in your browser
+2. Open DevTools → Application → Cookies
+3. Copy `auth_token` and `ct0` values
+
+### Parallel AI
+
+LLM-optimized web search results.
+
+```bash
+# .env file
+PARALLEL_API_KEY=your-parallel-key
+```
+
+### Free sources (no keys needed)
+
+These sources work without any configuration:
+- **HackerNews** — Algolia API (free)
+- **GitHub** — public API (free, rate-limited)
+- **Polymarket** — Gamma API (free)
+- **YouTube** — via yt-dlp (free, must be installed)
+- **Reddit** — keyless RSS tiers (limited, may return 403s)
+
+---
+
 ## Security
 
 - **Never commit `.env` to git** — it's in `.gitignore`
 - Keys written via the Settings UI go only to your local `.env` file
-- The server only accepts keys for explicitly whitelisted names (`OPENAI_API_KEY`, `BRAVE_SEARCH_API_KEY`, `ANTHROPIC_API_KEY`)
+- The server only accepts keys for explicitly whitelisted names: `OPENAI_API_KEY`, `BRAVE_SEARCH_API_KEY`, `ANTHROPIC_API_KEY`, `EXA_API_KEY`, `SERPER_API_KEY`, `XAI_API_KEY`, `SCRAPECREATORS_API_KEY`, `BSKY_HANDLE`, `BSKY_APP_PASSWORD`, `AUTH_TOKEN`, `CT0`, `PARALLEL_API_KEY`
+- All secret keys are masked in `GET /api/settings` responses
 - The server binds to `127.0.0.1` only — not accessible from other machines on your network
 - CORS is restricted to `localhost:8766`
 

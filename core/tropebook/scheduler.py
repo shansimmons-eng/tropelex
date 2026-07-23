@@ -66,7 +66,11 @@ class FeedScheduler:
             return []
 
     def run_feed(self, feed: ResearchFeed) -> FeedRun:
-        """Execute a single feed: search, deduplicate, ingest, render markdown."""
+        """Execute a single feed: search, deduplicate, ingest, render markdown.
+
+        For deep_research feeds, the run stores rich HTML output in the
+        feed's markdown file alongside ingested citations.
+        """
         start = time.time()
         run_id = f"run_{uuid.uuid4().hex[:12]}"
         now = datetime.now(timezone.utc).isoformat()
@@ -79,17 +83,34 @@ class FeedScheduler:
             citations_added = self._ingest_citations(deduped, feed, run_id, now)
             duration = round(time.time() - start, 2)
 
+            is_deep = feed.research_provider == "deep_research"
+
+            # Extract the rich HTML result (if any) before building results_dicts
+            deep_html = ""
+            filtered: list[SearchResult] = []
+            for r in deduped:
+                if r.source == "deep_research_html":
+                    deep_html = r.description  # Stored HTML preview
+                else:
+                    filtered.append(r)
+
             run = FeedRun(
                 id=run_id, feed_id=feed.id, timestamp=now, query=feed.query,
                 results_count=len(citations_added), citations_added=citations_added,
                 status="success", error=None, duration_seconds=duration,
-                source_breakdown=self._count_sources(deduped),
+                source_breakdown=self._count_sources(filtered),
             )
-            results_dicts = [
-                {"title": r.title, "url": r.url, "description": r.description, "source": r.source}
-                for r in deduped
-            ]
-            self.feeds.append_to_markdown(feed.id, run, results_dicts)
+
+            if is_deep and deep_html:
+                self._append_deep_research_markdown(feed.id, run, deep_html)
+            else:
+                results_dicts = [
+                    {"title": r.title, "url": r.url, "description": r.description,
+                     "source": r.source}
+                    for r in filtered
+                ]
+                self.feeds.append_to_markdown(feed.id, run, results_dicts)
+
             self.feeds.record_run(run)
             logger.info("Feed %s completed: %d new citations", feed.name, len(citations_added))
             return run
@@ -104,8 +125,42 @@ class FeedScheduler:
             self.feeds.record_run(run)
             return run
 
+    def _append_deep_research_markdown(
+        self, feed_id: str, run: FeedRun, html: str,
+    ) -> None:
+        """Append deep research HTML output directly to the feed's markdown."""
+        from pathlib import Path
+        fm = self.feeds
+        feed = fm.feeds.get(feed_id)
+        if not feed:
+            return
+        md_file = fm.feeds_dir / f"{feed_id}.md"
+        try:
+            if not md_file.exists():
+                md_file.write_text(fm._generate_feed_header(feed))
+
+            run_date = datetime.fromisoformat(run.timestamp).strftime("%Y-%m-%d")
+            section = (
+                f"\n\n## {run_date} — Deep Research\n\n"
+                f"**Citations collected:** {run.results_count}\n\n"
+                f"{html}\n\n---\n"
+            )
+            with open(md_file, "a") as f:
+                f.write(section)
+        except Exception as e:
+            logger.error("Failed to append deep research markdown for feed %s: %s",
+                         feed_id, e)
+
     def _search_feed(self, feed: ResearchFeed) -> list[SearchResult]:
-        """Run search with multi-term support (OR/| splitting)."""
+        """Run search with multi-term support (OR/| splitting).
+
+        When feed.research_provider == 'deep_research', delegates to the
+        last30days engine which produces rich multi-source HTML output.
+        Otherwise uses BraveSearch (default).
+        """
+        if feed.research_provider == "deep_research":
+            return self._deep_research_feed(feed)
+
         try:
             terms = self._split_query(feed.query)
             per_term = max(feed.max_results_per_run // max(len(terms), 1), 5)
@@ -132,6 +187,51 @@ class FeedScheduler:
             raise  # Re-raise to be caught by run_feed
         except Exception as e:
             logger.error("Search feed failed: %s", e)
+            return []
+
+    def _deep_research_feed(self, feed: ResearchFeed) -> list[SearchResult]:
+        """Run a feed using the last30days deep research engine.
+
+        Returns SearchResult items so the rest of the pipeline (dedup,
+        ingest, markdown) works the same way.
+        """
+        try:
+            from core.last30days.runner import run_query_and_extract_citations
+
+            logger.info("Deep researching: %s", feed.query)
+            html_output, citations = run_query_and_extract_citations(
+                feed.query, timeout=180,  # 3 minutes default for deep research
+            )
+
+            results: list[SearchResult] = []
+            for c in citations:
+                results.append(SearchResult(
+                    title=c.get("title", "Untitled"),
+                    url=c.get("url", ""),
+                    description="",
+                    source="deep_research",
+                ))
+
+            # Store the rich HTML as a synthetic result for markdown rendering
+            if html_output:
+                results.append(SearchResult(
+                    title=f"📊 Deep Research: {feed.name}",
+                    url="",
+                    description=html_output[:2000],
+                    source="deep_research_html",
+                ))
+
+            logger.info("Deep research found %d citations for '%s'", len(results), feed.query)
+            return results[:feed.max_results_per_run]
+
+        except ImportError as e:
+            logger.error("last30days runner not available: %s", e)
+            return []
+        except TimeoutError as e:
+            logger.error("Deep research timed out: %s", e)
+            return []
+        except Exception as e:
+            logger.error("Deep research failed: %s", e, exc_info=True)
             return []
 
     def _deduplicate(self, results: list[SearchResult], feed: ResearchFeed) -> list[SearchResult]:

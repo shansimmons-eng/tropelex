@@ -1,0 +1,170 @@
+diff --git a/core/tropebook/research_feeds.py b/core/tropebook/research_feeds.py
+index a1b2c3d..e4f5g6h 100644
+--- a/core/tropebook/research_feeds.py
++++ b/core/tropebook/research_feeds.py
+@@ -24,7 +24,7 @@
+ # Fields allowed to be mutated via update()
+ _UPDATABLE_FIELDS = frozenset({
+     "name", "query", "description", "interval", "sources",
+-    "tags", "max_results_per_run", "enabled", "status", "next_run",
++    "tags", "max_results_per_run", "enabled", "status", "next_run",
++    "research_provider",
+ })
+ 
+ # feed_id must be safe for use in file paths
+@@ -69,6 +69,7 @@
+ class ResearchFeed:
+     """A named, scheduled research query that accumulates citations."""
+     id: str
++    research_provider: str = "web_search"
+     name: str
+     query: str
+     description: str
+@@ -188,6 +189,7 @@
+         sources: list[str] | None = None,
+         tags: list[str] | None = None,
+         max_results_per_run: int = 20,
++        research_provider: str = "web_search",
+     ) -> ResearchFeed:
+         """Create a new feed. Raises ValueError on invalid interval."""
+         if interval not in {e.value for e in FeedInterval}:
+@@ -200,6 +202,7 @@
+             max_results_per_run=max_results_per_run,
+             status=FeedStatus.ACTIVE.value, total_runs=0,
+             total_citations=0, run_history=[],
++            research_provider=research_provider,
+         )
+         self.feeds[feed_id] = feed
+         self._dirty_feeds = True
+diff --git a/core/tropebook/scheduler.py b/core/tropebook/scheduler.py
+index x1y2z3w..p9q8r7s 100644
+--- a/core/tropebook/scheduler.py
++++ b/core/tropebook/scheduler.py
+@@ -21,6 +21,9 @@
+ class FeedScheduler:
+     """Executes feeds: search, dedup, ingest citations, append markdown."""
+ 
++    DEEP_RESEARCH_TIMEOUT = 180
++    """Default timeout in seconds for deep research engine calls."""
++
+     def __init__(
+         self,
+         feed_manager: ResearchFeedManager,
+@@ -107,6 +110,50 @@
+             logger.error("Search feed failed: %s", e)
+             return []
+ 
++    def _deep_research_feed(self, feed: ResearchFeed) -> list[SearchResult]:
++        """Run a feed using the last30days deep research engine.
++
++        Returns SearchResult items so the rest of the pipeline (dedup,
++        ingest, markdown) works the same way.
++        """
++        try:
++            from core.last30days.runner import run_query_and_extract_citations
++
++            logger.info("Deep researching: %s", feed.query)
++            html_output, citations = run_query_and_extract_citations(
++                feed.query, timeout=self.DEEP_RESEARCH_TIMEOUT,
++            )
++
++            results: list[SearchResult] = []
++            for c in citations:
++                results.append(SearchResult(
++                    title=c.get("title", "Untitled"),
++                    url=c.get("url", ""),
++                    description="",
++                    source="deep_research",
++                ))
++
++            if html_output:
++                results.append(SearchResult(
++                    title=f"📊 Deep Research: {feed.name}",
++                    url="",
++                    description=html_output[:2000],
++                    source="deep_research_html",
++                ))
++
++            logger.info("Deep research found %d citations", len(results))
++            return results[:feed.max_results_per_run]
++
++        except ImportError as e:
++            logger.error("last30days runner not available: %s", e)
++            return []
++        except TimeoutError as e:
++            logger.error("Deep research timed out: %s", e)
++            return []
++        except Exception as e:
++            logger.error("Deep research failed: %s", e, exc_info=True)
++            return []
++
+     def _deduplicate(self, results: list[SearchResult], feed: ResearchFeed) -> list[SearchResult]:
+         """Remove results whose URL already exists in the feed's citation set."""
+         try:
+diff --git a/core/tropebook/web/server.py b/core/tropebook/web/server.py
+index q1w2e3r..t5y6u7i 100644
+--- a/core/tropebook/web/server.py
++++ b/core/tropebook/web/server.py
+@@ -2065,12 +2065,14 @@
+ class FeedCreateRequest(BaseModel):
+     name: str = Field(..., min_length=1, max_length=200)
+     query: str = Field(..., min_length=1, max_length=500)
++    research_provider: str = Field("web_search", pattern=r"^(web_search|deep_research)$")
+     description: str = Field("", max_length=1000)
+     interval: str = Field("weekly")
+     sources: list[str] = Field(default_factory=lambda: ["web"])
+     tags: list[str] = Field(default_factory=list)
+     max_results_per_run: int = Field(20, ge=1, le=100)
+ 
++
+ class FeedUpdateRequest(BaseModel):
+     name: str | None = None
+     query: str | None = None
+@@ -2078,6 +2079,7 @@
+     tags: list[str] | None = None
+     max_results_per_run: int | None = None
+     enabled: bool | None = None
++    research_provider: str | None = None
+ 
+ 
+ @app.get("/api/research-feeds")
+@@ -2112,6 +2114,39 @@
+ 
+ 
+ # ── Literal routes BEFORE parameterized /{feed_id} routes ──
++# ── Last30Days Deep Research ───────────────────────────────────────────
++
++class Last30DaysRequest(BaseModel):
++    query: str = Field(..., min_length=1, max_length=500)
++    emit: str = Field("html", pattern=r"^(html|md|compact)$")
++    timeout: int | None = Field(None, ge=30, le=600)
++
++
++@app.post("/api/last30days/query")
++async def last30days_query(req: Last30DaysRequest):
++    """Run a deep research query via the last30days engine. Returns HTML output."""
++    try:
++        from core.last30days.runner import run_query, run_query_and_extract_citations
++
++        html, citations = run_query_and_extract_citations(
++            req.query, timeout=req.timeout, emit=req.emit,
++        )
++        return {
++            "query": req.query,
++            "output": html,
++            "citations": citations[:50],
++            "citations_count": len(citations),
++        }
++    except ImportError as e:
++        raise HTTPException(503, f"last30days engine not available: {e}")
++    except TimeoutError as e:
++        raise HTTPException(504, str(e))
++    except FileNotFoundError as e:
++        raise HTTPException(503, str(e))
++    except RuntimeError as e:
++        raise HTTPException(500, str(e))
++
++
+ 
+ @app.get("/api/research-feeds/stats")
+ async def feed_stats():

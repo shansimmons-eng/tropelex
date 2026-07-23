@@ -25,6 +25,7 @@ logger = logging.getLogger("tropelex.feeds")
 _UPDATABLE_FIELDS = frozenset({
     "name", "query", "description", "interval", "sources",
     "tags", "max_results_per_run", "enabled", "status", "next_run",
+    "research_provider",
 })
 
 # feed_id must be safe for use in file paths
@@ -87,6 +88,7 @@ class ResearchFeed:
     total_runs: int
     total_citations: int
     run_history: list[dict]
+    research_provider: str = "web_search"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -194,10 +196,13 @@ class ResearchFeedManager:
         sources: list[str] | None = None,
         tags: list[str] | None = None,
         max_results_per_run: int = 20,
+        research_provider: str = "web_search",
     ) -> ResearchFeed:
         """Create a new feed. Raises ValueError on invalid interval."""
         if interval not in {e.value for e in FeedInterval}:
             raise ValueError(f"Invalid interval: {interval!r}")
+        if research_provider not in ("web_search", "deep_research"):
+            raise ValueError(f"Invalid research_provider: {research_provider!r}")
         now = datetime.now(timezone.utc).isoformat()
         feed_id = uuid.uuid4().hex[:12]
         feed = ResearchFeed(
@@ -209,6 +214,7 @@ class ResearchFeedManager:
             max_results_per_run=max_results_per_run,
             status=FeedStatus.ACTIVE.value, total_runs=0,
             total_citations=0, run_history=[],
+            research_provider=research_provider,
         )
         self.feeds[feed_id] = feed
         self._dirty_feeds = True

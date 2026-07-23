@@ -4,29 +4,26 @@ Knowledge Graph API — serves decision graph data for D3 visualization.
 Provides nodes (decisions) and edges (relationships) from the DecisionTree.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
 from core.decision_tree import DecisionTree
 from core.knowledge_decay import score_decisions
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.graph")
 
 graph_router = APIRouter(prefix="/api/memory", tags=["graph"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 @graph_router.get("/{project}/graph")

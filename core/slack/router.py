@@ -55,10 +55,10 @@ async def slack_capture(
     body: SlackCaptureRequest,
 ) -> dict[str, Any]:
     """Capture a decision from a Slack message."""
-    try:
-        memory = _mm.load_project_memory(project)
-    except FileNotFoundError:
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+    try:
+        memory = _mm.get_project_memory(project)
     except Exception as exc:
         logger.error("Failed to load memory for %s: %s", project, exc)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -107,9 +107,7 @@ async def slack_extract(
     body: SlackExtractRequest,
 ) -> dict[str, Any]:
     """Extract implicit decisions from a thread of messages."""
-    try:
-        _mm.load_project_memory(project)  # verify project exists
-    except FileNotFoundError:
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
 
     result = extract_decisions_from_thread(body.messages)

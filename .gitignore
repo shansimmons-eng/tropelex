@@ -16,6 +16,10 @@ htmlcov/
 .vscode/
 memory/tropebook/*.json
 memory/*.json
+memory/deep_research/
+memory/embeddings/
+memory/prefetch/
+memory/research_feeds/
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
 UI/UI2/

@@ -29,14 +29,14 @@ from core.prefetch.genealogy import (
 )
 from core.prefetch.relevance import DEFAULT_WEIGHTS, compute_relevance_score
 from core.prefetch.tuner import Ok as TunerOk, tune_for_task
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.prefetch")
 
 prefetch_router = APIRouter(prefix="/api/memory", tags=["prefetch"])
 
-_CORE_DIR = Path(__file__).parent.parent
-_BASE_DIR = _CORE_DIR.parent
-_GENEALOGY_DIR = _BASE_DIR / "memory" / "prefetch"
+_mm = MemoryManager()
+_GENEALOGY_DIR = Path(_mm.memory_dir) / "prefetch"
 
 
 # ---------------------------------------------------------------------------
@@ -86,15 +86,10 @@ class PrefetchOutcomeRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _load_memory(project: str) -> dict[str, Any]:
-    """Load a project's memory JSON, or raise 404."""
-    path = _BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    """Load a project's memory, or raise 404."""
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.error("memory load failed for %s: %s", project, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to load memory: {exc}")
+    return _mm.get_project_memory(project)
 
 
 def _genealogy_path(project: str) -> Path:

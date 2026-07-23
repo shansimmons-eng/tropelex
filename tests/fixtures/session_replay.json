@@ -1,0 +1,159 @@
+{
+  "session_id": "sess_20260720_143022_a1b2c3d4",
+  "project": "tropelex",
+  "timestamp": "2026-07-20T14:30:22.123456+00:00",
+  "duration_seconds": 1847,
+  "snapshot_before": {
+    "project_name": "tropelex",
+    "created": "2026-05-18T10:15:00.000000+00:00",
+    "last_updated": "2026-07-19T22:10:00.000000+00:00",
+    "description": "Persistent memory system for AI agents",
+    "decisions": [
+      {
+        "timestamp": "2026-07-15T10:00:00.000000+00:00",
+        "decision": "Used Application Passwords for WP auth",
+        "context": "WP auth needed X-API-Key fallback",
+        "source": "manual"
+      },
+      {
+        "timestamp": "2026-07-18T14:22:00.000000+00:00",
+        "decision": "Fixed BRAVE_API_KEY env var name mismatch",
+        "context": "Scheduler used BRAVE_API_KEY but .env has BRAVE_SEARCH_API_KEY",
+        "source": "manual"
+      }
+    ],
+    "session_history": [
+      {
+        "timestamp": "2026-07-19T22:10:00.000000+00:00",
+        "summary": "Fixed feed scheduler BRAVE_API_KEY bug, added last30days integration",
+        "decisions_added": 2,
+        "patterns_updated": ["category:backend", "category:integration"]
+      }
+    ],
+    "preferences": {
+      "ui": "mobile-first",
+      "verbose": true,
+      "theme": "dark"
+    },
+    "patterns": [
+      {"name": "category:backend", "count": 12, "first_seen": "2026-05-20T00:00:00+00:00", "last_seen": "2026-07-19T22:10:00+00:00"},
+      {"name": "category:integration", "count": 8, "first_seen": "2026-06-01T00:00:00+00:00", "last_seen": "2026-07-19T22:10:00+00:00"},
+      {"name": "category:ui", "count": 5, "first_seen": "2026-05-25T00:00:00+00:00", "last_seen": "2026-07-18T10:00:00+00:00"}
+    ],
+    "tech_stack": ["Python", "FastAPI", "SQLite", "Three.js", "TypeScript"]
+  },
+  "snapshot_after": {
+    "project_name": "tropelex",
+    "created": "2026-05-18T10:15:00.000000+00:00",
+    "last_updated": "2026-07-20T14:30:22.123456+00:00",
+    "description": "Persistent memory system for AI agents with deep research feeds",
+    "decisions": [
+      {
+        "timestamp": "2026-07-15T10:00:00.000000+00:00",
+        "decision": "Used Application Passwords for WP auth",
+        "context": "WP auth needed X-API-Key fallback",
+        "source": "manual"
+      },
+      {
+        "timestamp": "2026-07-18T14:22:00.000000+00:00",
+        "decision": "Fixed BRAVE_API_KEY env var name mismatch",
+        "context": "Scheduler used BRAVE_API_KEY but .env has BRAVE_SEARCH_API_KEY",
+        "source": "manual"
+      },
+      {
+        "timestamp": "2026-07-20T14:15:00.000000+00:00",
+        "decision": "Added research_provider field to ResearchFeed model",
+        "context": "Feeds can now use 'web_search' (BraveSearch) or 'deep_research' (last30days engine)",
+        "source": "manual"
+      },
+      {
+        "timestamp": "2026-07-20T14:20:00.000000+00:00",
+        "decision": "Created POST /api/last30days/query endpoint for ad-hoc deep research",
+        "context": "UI needs to trigger deep research queries directly, not just via scheduled feeds",
+        "source": "manual"
+      },
+      {
+        "timestamp": "2026-07-20T14:25:00.000000+00:00",
+        "decision": "Fixed feed intelligence endpoint 404 by using ResearchFeedManager",
+        "context": "Intelligence router looked in memory/feeds/ but runs are in memory/research_feeds_runs.json",
+        "source": "manual"
+      }
+    ],
+    "session_history": [
+      {
+        "timestamp": "2026-07-19T22:10:00.000000+00:00",
+        "summary": "Fixed feed scheduler BRAVE_API_KEY bug, added last30days integration",
+        "decisions_added": 2,
+        "patterns_updated": ["category:backend", "category:integration"]
+      },
+      {
+        "timestamp": "2026-07-20T14:30:22.123456+00:00",
+        "summary": "Implemented deep research feed provider + last30days API endpoint + fixed intelligence 404",
+        "decisions_added": 3,
+        "patterns_updated": ["category:backend", "category:integration", "category:api"]
+      }
+    ],
+    "preferences": {
+      "ui": "mobile-first",
+      "verbose": true,
+      "theme": "dark"
+    },
+    "patterns": [
+      {"name": "category:backend", "count": 15, "first_seen": "2026-05-20T00:00:00+00:00", "last_seen": "2026-07-20T14:30:22+00:00"},
+      {"name": "category:integration", "count": 11, "first_seen": "2026-06-01T00:00:00+00:00", "last_seen": "2026-07-20T14:30:22+00:00"},
+      {"name": "category:ui", "count": 5, "first_seen": "2026-05-25T00:00:00+00:00", "last_seen": "2026-07-18T10:00:00+00:00"},
+      {"name": "category:api", "count": 3, "first_seen": "2026-07-20T14:20:00+00:00", "last_seen": "2026-07-20T14:30:22+00:00"}
+    ],
+    "tech_stack": ["Python", "FastAPI", "SQLite", "Three.js", "TypeScript", "last30days"]
+  },
+  "changes": [
+    {
+      "path": "description",
+      "type": "modified",
+      "before": "Persistent memory system for AI agents",
+      "after": "Persistent memory system for AI agents with deep research feeds"
+    },
+    {
+      "path": "decisions",
+      "type": "items_appended",
+      "count": 3,
+      "items": [
+        "Added research_provider field to ResearchFeed model",
+        "Created POST /api/last30days/query endpoint for ad-hoc deep research",
+        "Fixed feed intelligence endpoint 404 by using ResearchFeedManager"
+      ]
+    },
+    {
+      "path": "session_history",
+      "type": "items_appended",
+      "count": 1,
+      "items": [
+        "Implemented deep research feed provider + last30days API endpoint + fixed intelligence 404"
+      ]
+    },
+    {
+      "path": "patterns.category:backend.count",
+      "type": "modified",
+      "before": 12,
+      "after": 15
+    },
+    {
+      "path": "patterns.category:integration.count",
+      "type": "modified",
+      "before": 8,
+      "after": 11
+    },
+    {
+      "path": "patterns.category:api",
+      "type": "added",
+      "after": {"name": "category:api", "count": 3, "first_seen": "2026-07-20T14:20:00+00:00", "last_seen": "2026-07-20T14:30:22+00:00"}
+    },
+    {
+      "path": "tech_stack",
+      "type": "items_appended",
+      "count": 1,
+      "items": ["last30days"]
+    }
+  ],
+  "summary": "Session added deep research feed provider (last30days engine) with research_provider field on ResearchFeed model, created POST /api/last30days/query endpoint for ad-hoc queries, and fixed the feed intelligence 404 by switching to ResearchFeedManager for run data access. 3 new decisions captured, patterns updated, tech stack expanded."
+}

@@ -21,25 +21,20 @@ from core.federation import (
 )
 from core.federation.anonymizer import anonymize_project
 from core.federation.aggregator import aggregate_benchmarks, compare_to_aggregate
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.federation")
 
 federation_router = APIRouter(prefix="/api/memory", tags=["federation"])
 
-_CORE_DIR = Path(__file__).parent.parent
-_BASE_DIR = _CORE_DIR.parent
-_FEDERATION_DIR = _BASE_DIR / "memory" / "federation"
+_mm = MemoryManager()
+_FEDERATION_DIR = Path(_mm.memory_dir) / "federation"
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    path = _BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.error("Failed to load memory for %s: %s", project, exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+    return _mm.get_project_memory(project)
 
 
 def _ensure_federation_dir() -> Path:

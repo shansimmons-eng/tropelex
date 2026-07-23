@@ -6,6 +6,7 @@ Linux-native, portable — no hardcoded paths.
 import json
 import logging
 import os
+import re
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -305,7 +306,7 @@ async def hijacker():
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "1.1.0"}
+    return {"status": "ok", "version": "1.2.0"}
 
 
 @app.get("/api/debug/env")
@@ -945,7 +946,7 @@ async def compress_prompt(req: CompressRequest):
 
 
 class ApiKeyRequest(BaseModel):
-    key: str = Field(..., pattern=r"^[A-Z_]+$", max_length=64)
+    key: str = Field(..., pattern=r"^[A-Z0-9_]+$", max_length=64)
     value: str = Field(..., max_length=512)
 
 
@@ -957,6 +958,12 @@ async def save_api_key(req: ApiKeyRequest):
         "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
         "EXA_API_KEY", "SERPER_API_KEY",
         "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
+        # Deep research (last30days engine) sources
+        "XAI_API_KEY", "SCRAPECREATORS_API_KEY",
+        "BSKY_HANDLE", "BSKY_APP_PASSWORD",
+        "AUTH_TOKEN", "CT0", "PARALLEL_API_KEY",
+        # Gemini (last30days engine planning + reranking)
+        "GOOGLE_API_KEY", "GEMINI_API_KEY",
     }
     if req.key not in ALLOWED_KEYS:
         raise HTTPException(status_code=400, detail=f"Key '{req.key}' not allowed")
@@ -988,11 +995,11 @@ async def save_api_key(req: ApiKeyRequest):
 
 
 def _mask_key(value: str) -> str:
-    """Mask an API key for display: show first 6 and last 4 chars, cap asterisks at 12."""
-    if not value or len(value) < 12:
-        return "***" if value else ""
-    stars = min(len(value) - 10, 12)
-    return f"{value[:6]}{'*' * stars}{value[-4:]}"
+    """Mask an API key for display: random number of asterisks, no characters revealed."""
+    import random
+    if not value:
+        return ""
+    return "*" * random.randint(8, 16)
 
 
 @app.get("/api/settings")
@@ -1001,14 +1008,20 @@ async def get_settings():
     settings_keys = [
         "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "EXA_API_KEY",
         "SERPER_API_KEY", "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
+        "XAI_API_KEY", "SCRAPECREATORS_API_KEY",
+        "BSKY_HANDLE", "BSKY_APP_PASSWORD",
+        "AUTH_TOKEN", "CT0", "PARALLEL_API_KEY",
+        "GOOGLE_API_KEY", "GEMINI_API_KEY",
     ]
     keys = {}
+    # Non-secret values returned in the clear; everything else is masked.
+    NON_SECRET = {"CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "BSKY_HANDLE"}
     for k in settings_keys:
         val = os.environ.get(k, "")
-        if k.endswith("_KEY") or k.endswith("_API_KEY"):
-            keys[k] = {"configured": bool(val), "masked": _mask_key(val)}
-        else:
+        if k in NON_SECRET:
             keys[k] = {"configured": bool(val), "value": val}
+        else:
+            keys[k] = {"configured": bool(val), "masked": _mask_key(val)}
     return {"keys": keys}
 
 
@@ -1080,6 +1093,16 @@ async def test_api_key(req: ApiKeyRequest):
                 if resp.status_code == 200:
                     return {"ok": True, "message": "Custom provider key is valid"}
                 return {"ok": False, "message": f"Custom provider returned {resp.status_code}"}
+
+        elif req.key == "XAI_API_KEY":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.x.ai/v1/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                )
+                if resp.status_code == 200:
+                    return {"ok": True, "message": "xAI key is valid"}
+                return {"ok": False, "message": f"xAI returned {resp.status_code}"}
 
         else:
             raise HTTPException(400, f"Cannot test key type: {req.key}")
@@ -2047,7 +2070,7 @@ def _get_feed_scheduler():
 
         _feed_scheduler = FeedScheduler(
             feed_manager=_get_feed_manager(),
-            brave_api_key=os.environ.get("BRAVE_API_KEY"),
+            brave_api_key=os.environ.get("BRAVE_SEARCH_API_KEY"),
             storage_path=str(BASE_DIR / "memory" / "tropebook"),
         )
     return _feed_scheduler
@@ -2070,6 +2093,7 @@ class FeedCreateRequest(BaseModel):
     sources: list[str] = Field(default_factory=lambda: ["web"])
     tags: list[str] = Field(default_factory=list)
     max_results_per_run: int = Field(20, ge=1, le=100)
+    research_provider: str = Field("web_search", pattern=r"^(web_search|deep_research)$")
 
 
 class FeedUpdateRequest(BaseModel):
@@ -2081,6 +2105,7 @@ class FeedUpdateRequest(BaseModel):
     tags: list[str] | None = None
     max_results_per_run: int | None = None
     enabled: bool | None = None
+    research_provider: str | None = None
 
 
 @app.get("/api/research-feeds")
@@ -2103,10 +2128,151 @@ async def create_feed(req: FeedCreateRequest):
             name=req.name, query=req.query, description=req.description,
             interval=req.interval, sources=req.sources, tags=req.tags,
             max_results_per_run=req.max_results_per_run,
+            research_provider=req.research_provider,
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
     return feed.to_dict()
+
+
+# ── Last30Days Deep Research ───────────────────────────────────────────
+
+_DEEP_RESEARCH_DIR = BASE_DIR / "memory" / "deep_research"
+_DEEP_RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
+_DEEP_RESEARCH_INDEX = _DEEP_RESEARCH_DIR / "index.json"
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    """Write data to path atomically via temp file + replace."""
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _load_deep_research_index() -> list[dict]:
+    """Load the deep research runs index."""
+    if not _DEEP_RESEARCH_INDEX.exists():
+        return []
+    try:
+        return json.loads(_DEEP_RESEARCH_INDEX.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save_deep_research_index(runs: list[dict]) -> None:
+    """Atomically save the deep research runs index."""
+    _atomic_write(_DEEP_RESEARCH_INDEX, json.dumps(runs, indent=2))
+
+
+def _save_deep_research_run(query: str, html: str, citations: list[dict]) -> dict:
+    """Persist a deep research run. Returns the run metadata."""
+    import uuid
+    run_id = uuid.uuid4().hex[:12]
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Save HTML output
+    html_file = _DEEP_RESEARCH_DIR / f"{run_id}.html"
+    html_file.write_text(html, encoding="utf-8")
+
+    run = {
+        "id": run_id,
+        "timestamp": timestamp,
+        "query": query,
+        "citations_count": len(citations),
+        "html_file": f"{run_id}.html",
+    }
+
+    # Update index (prepend — newest first)
+    runs = _load_deep_research_index()
+    runs.insert(0, run)
+    # Keep last 50 runs
+    if len(runs) > 50:
+        # Clean up orphaned HTML files
+        keep_ids = {r["id"] for r in runs[:50]}
+        for old_run in runs[50:]:
+            old_file = _DEEP_RESEARCH_DIR / old_run["html_file"]
+            try:
+                old_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+        runs = runs[:50]
+    _save_deep_research_index(runs)
+
+    return run
+
+
+class Last30DaysRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    emit: str = Field("html", pattern=r"^(html|md|compact)$")
+    timeout: int | None = Field(None, ge=30, le=600)
+
+
+@app.post("/api/last30days/query")
+async def last30days_query(req: Last30DaysRequest):
+    """Run a deep research query via the last30days engine. Returns HTML output."""
+    try:
+        from core.last30days.runner import run_query, run_query_and_extract_citations
+
+        html, citations = run_query_and_extract_citations(
+            req.query, timeout=req.timeout, emit=req.emit,
+        )
+
+        # Persist the run
+        run = _save_deep_research_run(req.query, html, citations)
+
+        return {
+            "query": req.query,
+            "output": html,
+            "citations": citations[:50],
+            "citations_count": len(citations),
+            "run_id": run["id"],
+            "timestamp": run["timestamp"],
+        }
+    except ImportError as e:
+        raise HTTPException(503, f"last30days engine not available: {e}")
+    except TimeoutError as e:
+        raise HTTPException(504, str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(503, str(e))
+    except RuntimeError as e:
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/last30days/runs")
+async def list_deep_research_runs(limit: int = Query(50, ge=1, le=100)):
+    """List deep research runs (newest first)."""
+    runs = _load_deep_research_index()
+    return {"runs": runs[:limit], "count": len(runs)}
+
+
+@app.get("/api/last30days/runs/{run_id}")
+async def get_deep_research_run(run_id: str):
+    """Get a specific deep research run's HTML output."""
+    if not re.match(r"^[a-f0-9]{12}$", run_id):
+        raise HTTPException(400, "Invalid run ID format")
+    runs = _load_deep_research_index()
+    run = next((r for r in runs if r["id"] == run_id), None)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    html_file = _DEEP_RESEARCH_DIR / run["html_file"]
+    if not html_file.exists():
+        raise HTTPException(404, "Run output file not found")
+    return {
+        "id": run["id"],
+        "timestamp": run["timestamp"],
+        "query": run["query"],
+        "citations_count": run["citations_count"],
+        "output": html_file.read_text(encoding="utf-8"),
+    }
 
 
 # ── Literal routes BEFORE parameterized /{feed_id} routes ──

@@ -126,6 +126,44 @@
 
         <h3 id="federation">Federation <span class="badge badge-new">NEW</span></h3>
         <p>Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs. "Projects using FastAPI+Postgres have a 12% reversal rate."</p>
+
+        <h3 id="deep-research">Deep Research <span class="badge badge-new">NEW</span></h3>
+        <p>Multi-source research powered by the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns.</p>
+        <ul>
+            <li><strong>Ad-hoc queries</strong> — paste a topic in the Deep Research section, click Run, get a full report (1–3 min)</li>
+            <li><strong>Deep research feeds</strong> — select "Deep Research" as the provider when creating a feed for scheduled runs</li>
+            <li><strong>Research history</strong> — all runs are saved; click any previous run to view its output</li>
+            <li><strong>Source keys</strong> — configure xAI, ScrapeCreators, Bluesky, and more in Settings → Deep Research Sources</li>
+        </ul>
+        <p>Free sources (HackerNews, GitHub, Polymarket, YouTube) work without any keys. Additional sources unlock with API keys.</p>
+
+        <h3 id="emacs-integration">Emacs Integration <span class="badge badge-new">NEW</span></h3>
+        <p>Capture decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in Emacs libraries.</p>
+        <ul>
+            <li><code>C-c t c</code> — Capture a decision with auto-detected context (file, project, major mode, code context)</li>
+            <li><code>C-c t r</code> — Capture selected region as decision context (code snippet, log output)</li>
+            <li><code>C-c t f</code> — Scan current buffer for friction signals</li>
+            <li><code>C-c t g</code> — Capture current HEAD commit as a decision</li>
+            <li><code>C-c t s</code> — Check server connectivity and current project</li>
+            <li><code>C-c t p</code> — Override project name for the session</li>
+        </ul>
+        <p><strong>Automatic capture (when mode is on):</strong></p>
+        <ul>
+            <li><strong>Compilation errors</strong> — auto-scans compilation output for friction when a build fails. High friction (>30%) triggers a minibuffer alert.</li>
+            <li><strong>Rapid saves</strong> — 5+ file saves within 5 seconds triggers a friction signal ("rapid iteration detected").</li>
+            <li><strong>Git commits via Magit</strong> — after every magit commit, the message (50+ chars) is auto-captured as a Tropelex decision with diffstat context.</li>
+        </ul>
+        <p><strong>Code context (LSP / treesit / which-function):</strong></p>
+        <ul>
+            <li>Captures include current function name and type when available</li>
+            <li>Uses <strong>eglot</strong> or <strong>lsp-mode</strong> for symbol info, falls back to <strong>treesit</strong> (Emacs 29+) or <strong>which-function-mode</strong></li>
+            <li>Set <code>tropelex-include-code-context</code> to <code>nil</code> to disable</li>
+        </ul>
+        <p><strong>Setup:</strong></p>
+<pre><code>(add-to-list 'load-path "~/Tropelex/emacs")
+(require 'tropelex-capture)
+(tropelex-capture-mode 1)</code></pre>
+        <p>Project auto-detects from: projectile → <code>vc-root-dir</code> → directory name fallback. Override with <code>C-c t p</code>.</p>
     </div>
 
     <div class="section" id="api">

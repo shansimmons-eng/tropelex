@@ -4,42 +4,47 @@ Research Feed Intelligence — FastAPI router.
 Mount into the main app:
     from core.tropebook.feed_intelligence_router import feed_intel_router
     app.include_router(feed_intel_router)
+
+Uses ResearchFeedManager for consistent data access (same storage as
+the main feed CRUD endpoints).
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from core.tropebook.feed_intelligence import compute_feed_intelligence
+from core.tropebook.research_feeds import ResearchFeedManager
 
 logger = logging.getLogger("tropelex.feed_intel")
 
 feed_intel_router = APIRouter(prefix="/api/research-feeds", tags=["feed-intelligence"])
 
-_CORE_DIR = Path(__file__).parent.parent.parent
-BASE_DIR = _CORE_DIR.parent
-FEEDS_DIR = BASE_DIR / "memory" / "feeds"
 
-
-def _load_feed_runs(feed_id: str) -> list[dict[str, Any]]:
-    """Load run history for a feed from disk."""
-    runs_file = FEEDS_DIR / f"{feed_id}_runs.json"
-    if not runs_file.exists():
-        raise HTTPException(status_code=404, detail=f"Feed '{feed_id}' not found")
-    return json.loads(runs_file.read_text())
+def _get_fm() -> ResearchFeedManager:
+    """Return a shared ResearchFeedManager instance."""
+    from core.tropebook.web.server import BASE_DIR
+    return ResearchFeedManager(storage_path=str(BASE_DIR / "memory"))
 
 
 @feed_intel_router.get("/{feed_id}/intelligence")
 async def feed_intelligence(feed_id: str) -> dict[str, Any]:
-    """Return trend detection and anomaly report for a feed."""
+    """Return trend detection and anomaly report for a feed.
+
+    Builds intelligence from the feed's run history stored by
+    ResearchFeedManager. Returns a 404 if the feed doesn't exist.
+    """
+    fm = _get_fm()
+    feed = fm.get(feed_id)
+    if not feed:
+        raise HTTPException(status_code=404, detail=f"Feed '{feed_id}' not found")
+
     try:
-        runs = _load_feed_runs(feed_id)
+        runs = [r.to_dict() for r in fm.get_runs(feed_id=feed_id, limit=100)]
         return compute_feed_intelligence(runs)
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("feed intelligence failed: %s", exc)
+        logger.error("feed intelligence failed for %s: %s", feed_id, exc)
         raise HTTPException(status_code=500, detail=str(exc))

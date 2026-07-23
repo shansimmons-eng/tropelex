@@ -6,28 +6,25 @@ Mount into the main app:
     app.include_router(analytics_router)
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from core.analytics import compute_analytics
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.analytics")
 
 analytics_router = APIRouter(prefix="/api/memory", tags=["analytics"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 @analytics_router.get("/{project}/analytics")

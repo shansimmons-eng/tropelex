@@ -6,9 +6,7 @@ Mount into the main app:
     app.include_router(handoff_router)
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -20,22 +18,20 @@ from core.handoff.packet_builder import (
     build_handoff_packet,
     ROLE_PROFILES,
 )
+from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.handoff")
 
 handoff_router = APIRouter(prefix="/api/memory", tags=["handoff"])
 
-_CORE_DIR = Path(__file__).parent.parent
-BASE_DIR = _CORE_DIR.parent
+_mm = MemoryManager()
 
 
 def _load_memory(project: str) -> dict[str, Any]:
-    """Load a project's memory JSON, or raise 404."""
-    path = BASE_DIR / "memory" / f"{project}.json"
-    if not path.exists():
+    """Load a project's memory, or raise 404."""
+    if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-    import json
-    return json.loads(path.read_text())
+    return _mm.get_project_memory(project)
 
 
 class HandoffRequest(BaseModel):
