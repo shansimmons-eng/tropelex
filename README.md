@@ -38,6 +38,7 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Slack Capture** | Bidirectional Slack integration for decision logging |
 | **Time-Travel Debugger** | Memory snapshots as of any past date — forensic state auditing ([SAFETY.md](SAFETY.md#forensic-state-auditing)) |
 | **Contradiction Detection** | Actively scan for unresolved conflicting decisions — surfaces conflicting objectives before they cause harm ([SAFETY.md](SAFETY.md#conflicting-objective-surfacing)) |
+| **Doc Mining** | Scans every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims never captured in the decision graph — reuses the Contradiction Detection engine rather than a separate one |
 | **Digital Twin Personas** | Synthesize readable persona summaries from agent proficiency |
 | **Federated Benchmarking** | Opt-in, privacy-preserving cross-install statistics |
 | **Memory Compaction** | Epoch summarization to prevent unbounded memory growth |

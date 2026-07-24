@@ -149,6 +149,17 @@
         <h3 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h3>
         <p>Scan for unresolved contradictions between active decisions. "Use REST" and "use GraphQL" both active? Tropelex catches it.</p>
 
+        <h3 id="docmine">Doc Mining <span class="badge badge-new">NEW</span></h3>
+        <p>Scans every markdown file in the repo (excluding <code>node_modules</code>, venvs, <code>.git</code>, caches, and <code>memory/</code>) for three things, reusing the same matching engine as Contradictions rather than a separate one:</p>
+        <ul>
+            <li><strong>Doc vs. decision</strong> — a doc claims something that contradicts an active, recorded decision</li>
+            <li><strong>Doc vs. doc</strong> — two different markdown files contradict each other</li>
+            <li><strong>Uncaptured decisions</strong> — a decision-shaped statement ("we must...", "we use...") sitting in prose that never made it into the decision graph at all — candidates worth importing</li>
+        </ul>
+        <p>Findings are severity-ranked the same way Contradictions are (high/medium/low); the UI shows high+medium by default. Trigger a scan from the Doc Mining section, or directly:</p>
+        <pre><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{}'</code></pre>
+        <p>Pass <code>{"paths": ["README.md", "docs/"]}</code> to scan specific files/directories instead of the whole repo.</p>
+
         <h3 id="personas">Personas <span class="badge badge-new">NEW</span></h3>
         <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows."</p>
 

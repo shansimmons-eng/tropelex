@@ -6,7 +6,7 @@ Tropelex uses environment variables for API keys. Keys are never committed to th
 
 ## OpenAI API Key
 
-**Required for AI-powered prompt compression.**
+**Optional — enables AI-powered prompt compression.**
 
 The compression feature sends prompts to `gpt-4o-mini` to strip filler, fix typos, and rewrite prompts as concise imperatives. Without this key, compression falls back to dictionary-based rules only.
 

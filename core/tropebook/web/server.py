@@ -149,6 +149,7 @@ from core.contradictions.router import contradiction_router  # noqa: E402
 from core.personas.router import persona_router            # noqa: E402
 from core.federation.router import federation_router        # noqa: E402
 from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
+from core.docmine.router import docmine_router                     # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -184,6 +185,7 @@ app.include_router(contradiction_router)
 app.include_router(persona_router)
 app.include_router(federation_router)
 app.include_router(web_research_router)
+app.include_router(docmine_router)
 
 
 # --- Request body models ---

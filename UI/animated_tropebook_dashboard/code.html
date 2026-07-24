@@ -734,6 +734,9 @@ void main() {
                 <button class="nav-item" data-section="contradictions">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6"/><path d="M10 10l5 5"/><path d="M15 10l-5 5"/></svg> Contradictions
                 </button>
+                <button class="nav-item" data-section="docmine">
+                    <span class="material-symbols-outlined">difference</span> Doc Mining
+                </button>
                 <button class="nav-item" data-section="personas">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Personas
                 </button>
@@ -2588,6 +2591,28 @@ void main() {
             <span class="material-symbols-outlined text-4xl text-outline mb-3">compare</span>
             <p class="text-outline text-sm">No contradiction data yet. Select a project and scan for contradictions.</p>
             <a href="/guide#contradictions" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+    </section>
+
+    <!-- Doc Mining -->
+    <section id="section-docmine" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">difference</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Doc Mining</h2>
+        </div>
+        <p class="text-outline mb-6">Scan every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims that never made it into the decision graph.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Full Repo Scan</span>
+                <button id="btn-docmine-scan" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Markdown Files</button>
+            </div>
+            <div id="docmine-summary" class="text-sm text-outline">Select a project, then scan — this reads every .md file in the repo (excluding node_modules, venvs, and scratch dirs).</div>
+        </div>
+        <div id="docmine-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="docmine-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">difference</span>
+            <p class="text-outline text-sm">No scan yet. Click "Scan Markdown Files" to mine the repo's docs.</p>
+            <a href="/guide#docmine" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
         </div>
     </section>
 
@@ -6339,6 +6364,61 @@ document.getElementById('btn-run-hybrid')?.addEventListener('click', async () =>
                 </div>
             </details>`;
         showToast('Hybrid research complete');
+    }
+});
+
+// ── Doc Mining: Scan Markdown Files ──
+document.getElementById('btn-docmine-scan')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-docmine-scan');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Scanning...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/docmine/scan`, 'POST', {});
+    btn.disabled = false; btn.textContent = 'Scan Markdown Files';
+    if (data) {
+        document.getElementById('docmine-empty')?.classList.add('hidden');
+        document.getElementById('docmine-summary').innerHTML =
+            `${data.file_count} file(s) scanned · ${data.claims_extracted} claim(s) extracted · ${data.finding_count} finding(s) · ${data.uncaptured_count} uncaptured decision(s)`;
+
+        const results = document.getElementById('docmine-results');
+        results.classList.remove('hidden');
+        const sev = data.severity_distribution || {};
+        const sevBadge = (level, color) => `<span class="text-xs px-2 py-0.5 rounded-full bg-${color}/20 text-${color}">${level}: ${sev[level.toLowerCase()] || 0}</span>`;
+        let html = `<div class="flex items-center gap-2 mb-4 flex-wrap">
+            ${sevBadge('High', 'red-400').replace('bg-red-400/20 text-red-400', 'bg-red-500/20 text-red-400')}
+            ${sevBadge('Medium', 'accent-lavender')}
+            ${sevBadge('Low', 'accent-sky')}
+        </div>`;
+
+        const notable = (data.findings || []).filter(f => f.severity !== 'low').slice(0, 30);
+        if (notable.length) {
+            html += '<h4 class="font-mono text-xs uppercase text-accent-lavender mb-2">Findings (high + medium)</h4>';
+            html += notable.map(f => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${f.severity === 'high' ? 'border-red-400' : 'border-accent-lavender'}">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-accent-lavender/20 text-accent-lavender">${escapeHtml(f.kind)}</span>
+                    <span class="text-xs text-outline">${escapeHtml(f.contradiction_type)} · ${f.severity} · ${Math.round((f.similarity_score || 0) * 100)}%</span>
+                </div>
+                <p class="text-xs text-outline mb-1">${escapeHtml(f.claim_a_source)}</p>
+                <p class="text-sm mb-2">${escapeHtml(f.claim_a_text)}</p>
+                <p class="text-xs text-outline mb-1">vs ${escapeHtml(f.claim_b_source)}</p>
+                <p class="text-sm mb-2">${escapeHtml(f.claim_b_text)}</p>
+                <p class="text-xs text-accent-sky">${escapeHtml(f.resolution_suggestion || '')}</p>
+            </div>`).join('');
+        } else {
+            html += '<p class="text-sm text-outline mb-4">No high/medium-severity findings.</p>';
+        }
+
+        const uncaptured = (data.uncaptured_claims || []).slice(0, 20);
+        if (uncaptured.length) {
+            html += '<h4 class="font-mono text-xs uppercase text-accent-lime mb-2 mt-4">Uncaptured decisions in docs</h4>';
+            html += '<p class="text-xs text-outline mb-2">Decision-shaped statements in the docs with nothing matching in the decision graph — candidates to import.</p>';
+            html += uncaptured.map(c => `<div class="p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs">
+                <span class="text-accent-lime">${escapeHtml(c.source_file)}:${c.line_number}</span> — ${escapeHtml(c.text)}
+            </div>`).join('');
+        }
+
+        results.innerHTML = html;
+        showToast(`Doc mining complete: ${data.finding_count} finding(s), ${data.uncaptured_count} uncaptured`);
     }
 });
 
