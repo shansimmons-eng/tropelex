@@ -15,6 +15,7 @@ from typing import Any
 class SourceType(Enum):
     BRAVE_SEARCH = "brave_search"
     GOOGLE_DEEP_RESEARCH = "google_deep_research"
+    WEB_RESEARCHER_MCP = "web_researcher_mcp"
     MANUAL = "manual"
     SCRAPED = "scraped"
     IMPORTED = "imported"

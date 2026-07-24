@@ -137,7 +137,7 @@ tailwind.config = {
         max-height: 0; overflow: hidden;
         transition: max-height 0.3s ease;
     }
-    .accordion-group.open .accordion-body { max-height: 500px; }
+    .accordion-group.open .accordion-body { max-height: 1600px; }
     .accordion-body .nav-item {
         display: flex; align-items: center; gap: 0.5rem;
         padding: 0.45rem 1rem 0.45rem 1.25rem;
@@ -1486,7 +1486,7 @@ void main() {
                     <span class="material-symbols-outlined text-sm">history</span>
                     Session Replay
                 </h3>
-                <div id="session-list" class="space-y-2 max-h-64 overflow-y-auto">
+                <div id="insights-session-list" class="space-y-2 max-h-64 overflow-y-auto">
                     <p class="text-sm text-outline">Select a project to view session history.</p>
                 </div>
             </div>
@@ -1880,25 +1880,78 @@ void main() {
     </section>
 
     <!-- Deep Research -->
-    <section id="section-deepresearch" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
+    <section id="section-deepresearch" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
         <div class="flex items-center gap-3 mb-6">
             <span class="material-symbols-outlined text-accent-periwinkle text-2xl">travel_explore</span>
             <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Deep Research</h2>
         </div>
-        <p class="text-outline mb-6">Multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HackerNews, Polymarket & web grounding in one report.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <textarea id="deepresearch-query" rows="3" placeholder="e.g., What are people saying about local LLM agents?" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
-            <div class="flex items-center gap-3 flex-wrap">
-                <button id="btn-run-deepresearch" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Deep Research</button>
-                <span class="text-xs text-outline">Takes 1–3 minutes — searches many sources in parallel. Runs synchronously.</span>
+        <p class="text-outline mb-6">Two independent research engines, side by side — run either on its own, or run both and let the LLM merge them into one deduplicated report.</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <!-- Left column: last30days multi-source scan -->
+            <div>
+                <div class="glass-panel rounded-xl p-6">
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">travel_explore</span>
+                        Multi-Source Scan
+                    </h3>
+                    <p class="text-xs text-outline mb-4">Reddit, X, YouTube, GitHub, HackerNews, Polymarket & web grounding in one report, via the last30days engine.</p>
+                    <textarea id="deepresearch-query" rows="3" placeholder="e.g., What are people saying about local LLM agents?" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <button id="btn-run-deepresearch" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Multi-Source Scan</button>
+                        <span class="text-xs text-outline">1–3 minutes, synchronous.</span>
+                    </div>
+                </div>
+                <div id="deepresearch-results" class="mt-4 hidden"></div>
+                <div class="mt-4 glass-panel rounded-xl p-8 text-center" id="deepresearch-empty">
+                    <span class="material-symbols-outlined text-4xl text-outline mb-3">travel_explore</span>
+                    <p class="text-outline text-sm">No research yet. Enter a query above to run a deep multi-source scan.</p>
+                    <p class="text-outline text-xs mt-2">Configure source keys in Settings → Deep Research Sources for best coverage.</p>
+                </div>
+            </div>
+
+            <!-- Right column: web-researcher-mcp citation-grade research -->
+            <div>
+                <div class="glass-panel rounded-xl p-6">
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lime mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">verified</span>
+                        Citation-Grade Web Research
+                    </h3>
+                    <p class="text-xs text-outline mb-4">Iterative search → refine → search again, via web-researcher-mcp. Every citation is a real, verifiable URL — imported straight into your Tropebook.</p>
+                    <textarea id="webresearch-topic" rows="3" placeholder="e.g., Best practices for AI agent decision memory systems" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lime focus:outline-none resize-none mb-4"></textarea>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <select id="webresearch-steps" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-outline focus:outline-none">
+                            <option value="2">2 steps (fast)</option>
+                            <option value="3" selected>3 steps</option>
+                            <option value="4">4 steps</option>
+                        </select>
+                        <button id="btn-run-webresearch" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Run Web Research</button>
+                        <span class="text-xs text-outline">Synchronous.</span>
+                    </div>
+                </div>
+                <div id="webresearch-results" class="mt-4 hidden"></div>
+                <div class="mt-4 glass-panel rounded-xl p-8 text-center" id="webresearch-empty">
+                    <span class="material-symbols-outlined text-4xl text-outline mb-3">verified</span>
+                    <p class="text-outline text-sm">No web research yet. Enter a topic above and run it.</p>
+                </div>
             </div>
         </div>
-        <div id="deepresearch-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="deepresearch-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">travel_explore</span>
-            <p class="text-outline text-sm">No research yet. Enter a query above to run a deep multi-source scan.</p>
-            <p class="text-outline text-xs mt-2">Configure source keys in Settings → Deep Research Sources for best coverage.</p>
+
+        <!-- Hybrid: run both + LLM merge -->
+        <div class="mt-6 glass-panel rounded-xl p-6 border border-accent-sky/20">
+            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-sky mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">merge</span>
+                Hybrid — Run Both + AI Merge
+            </h3>
+            <p class="text-xs text-outline mb-4">Runs the multi-source scan and citation-grade research concurrently on the same query, then asks the LLM to deduplicate and merge them into one report. Slowest option — bounded by whichever engine takes longer.</p>
+            <textarea id="hybrid-query" rows="2" placeholder="e.g., State of open-source AI agent memory systems in 2026" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="btn-run-hybrid" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Run Hybrid</button>
+                <span class="text-xs text-outline">Up to a few minutes — both engines run at once.</span>
+            </div>
+            <div id="hybrid-results" class="mt-4 hidden"></div>
         </div>
+
         <!-- Research History -->
         <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
@@ -2509,7 +2562,7 @@ void main() {
         <div id="timetravel-results" class="mt-4 hidden"></div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="timetravel-empty">
             <span class="material-symbols-outlined text-4xl text-outline mb-3">history</span>
-            <p class="text-outline text-sm">No time travel data yet. Select a date to view memory as of that point.</p>
+            <p class="text-outline text-sm">No time travel data yet. Time Travel replays recorded sessions — click "+ End Session" in the Memory tab at least once, then pick a date after that.</p>
             <a href="/guide#time-travel" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
         </div>
     </section>
@@ -2548,6 +2601,22 @@ void main() {
                 <button id="btn-personas" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
             </div>
             <div id="personas-data" class="text-sm text-outline">Select a project to view agent personas.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Record Skill Outcome</h3>
+            <p class="text-xs text-outline mb-3">Personas are synthesized from these outcomes — nothing records them automatically yet, so seed one manually to get started.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="skill-categories" placeholder="Categories (comma-separated)"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <select id="skill-outcome" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none">
+                    <option value="success">Success</option>
+                    <option value="partial">Partial</option>
+                    <option value="failure">Failure</option>
+                </select>
+                <input type="text" id="skill-details" placeholder="Details (optional)"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <button id="btn-record-skill" class="px-3 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Record</button>
+            </div>
         </div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="personas-empty">
             <span class="material-symbols-outlined text-4xl text-outline mb-3">person</span>
@@ -3479,7 +3548,17 @@ async function api(endpoint, method = 'GET', body = null) {
         const data = await res.json();
         if (!res.ok) {
             console.error('API error:', res.status, data);
-            showToast(`API Error ${res.status}: ${data.detail || 'Unknown'}`);
+            // FastAPI/Pydantic validation errors return `detail` as an array of
+            // {loc, msg, ...} objects rather than a string — render those readably
+            // instead of dumping "[object Object]" into the toast.
+            let detailText = data.detail;
+            if (Array.isArray(detailText)) {
+                detailText = detailText.map(d => {
+                    const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : '';
+                    return field ? `${field}: ${d.msg}` : d.msg;
+                }).join('; ');
+            }
+            showToast(`API Error ${res.status}: ${detailText || 'Unknown'}`);
             return null;
         }
         return data;
@@ -5500,7 +5579,7 @@ document.getElementById('btn-generate-adrs').addEventListener('click', async () 
 async function loadSessions(project) {
     if (!project) return;
     const data = await api(`/memory/${project}/sessions?limit=10`);
-    const el = document.getElementById('session-list');
+    const el = document.getElementById('insights-session-list');
     if (!data || data.sessions.length === 0) {
         el.innerHTML = '<p class="text-sm text-outline">No sessions recorded yet.</p>';
         return;
@@ -6136,10 +6215,16 @@ document.getElementById('btn-place-bet')?.addEventListener('click', async () => 
     const agent_name = document.getElementById('bet-agent').value.trim();
     const confidence = parseFloat(document.getElementById('bet-confidence').value);
     if (!decision_id || !agent_name || isNaN(confidence)) { showToast('Fill all fields'); return; }
+    if (confidence < 0 || confidence > 1) { showToast('Confidence must be between 0 and 1 (e.g. 0.75, not 75)'); return; }
     const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/market/bet`, 'POST', {
         decision_id, agent_name, confidence, category: 'manual'
     });
-    if (data) { showToast('Bet placed'); document.getElementById('btn-market-leaderboard')?.click(); }
+    if (data) {
+        showToast('Bet placed');
+        document.getElementById('bet-decision-id').value = '';
+        document.getElementById('bet-agent').value = '';
+        document.getElementById('btn-market-leaderboard')?.click();
+    }
 });
 
 // ── Slack Extract ──
@@ -6198,6 +6283,255 @@ document.getElementById('btn-cost-report')?.addEventListener('click', async () =
             <div class="flex justify-between"><span class="text-outline">Rework Cost</span><span class="text-red-400 font-mono">$${(data.rework_cost_usd || 0).toFixed(4)}</span></div>
         </div>
         ${(data.events || []).length ? '<div class="mt-4"><h4 class="font-mono text-xs text-outline uppercase mb-2">Recent Events</h4>' + data.events.slice(0, 10).map(e => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1 text-xs"><span class="text-outline">${escapeHtml(e.decision_id || e.type || 'event')}</span><span class="text-accent-lime">$${(e.cost_usd || 0).toFixed(4)}</span></div>`).join('') + '</div>' : ''}`;
+    }
+});
+
+// ── Web Research (web-researcher-mcp): Run ──
+document.getElementById('btn-run-webresearch')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const topic = document.getElementById('webresearch-topic').value.trim();
+    const max_steps = parseInt(document.getElementById('webresearch-steps').value, 10);
+    if (!topic) { showToast('Enter a research topic first'); return; }
+    const btn = document.getElementById('btn-run-webresearch');
+    btn.disabled = true; btn.textContent = 'Researching...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/deep-research/web-research`, 'POST', { topic, max_steps });
+    btn.disabled = false; btn.textContent = 'Run Web Research';
+    if (data) {
+        document.getElementById('webresearch-empty')?.classList.add('hidden');
+        const results = document.getElementById('webresearch-results');
+        results.classList.remove('hidden');
+        results.innerHTML = `<p class="text-xs text-outline mb-3">${data.steps_run} step(s) run · ${data.sources_found} source(s) found · ${data.sources_imported} imported into Tropebook</p>
+            <div class="glass-panel rounded-lg p-3"><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
+        showToast(`Web research complete: ${data.sources_imported} sources imported`);
+    }
+});
+
+// ── Hybrid Deep Research: run both + LLM merge ──
+document.getElementById('btn-run-hybrid')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const query = document.getElementById('hybrid-query').value.trim();
+    if (!query) { showToast('Enter a query first'); return; }
+    const btn = document.getElementById('btn-run-hybrid');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Running both engines...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/deep-research/hybrid`, 'POST', { query });
+    btn.disabled = false; btn.textContent = 'Run Hybrid';
+    if (data) {
+        const results = document.getElementById('hybrid-results');
+        results.classList.remove('hidden');
+        const statusBadge = (ok, label) => `<span class="text-xs px-2 py-0.5 rounded-full ${ok ? 'bg-accent-lime/20 text-accent-lime' : 'bg-red-500/20 text-red-400'}">${label}: ${ok ? 'ok' : 'failed'}</span>`;
+        results.innerHTML = `
+            <div class="flex items-center gap-2 mb-3 flex-wrap">
+                ${statusBadge(data.last30days_ok, 'Multi-Source')}
+                ${statusBadge(data.web_research_ok, 'Citation-Grade')}
+                <span class="text-xs text-outline">${data.sources_imported} source(s) imported into Tropebook</span>
+            </div>
+            ${(!data.last30days_ok || !data.web_research_ok) ? `<p class="text-xs text-red-400 mb-3">${!data.last30days_ok ? 'Multi-source: ' + escapeHtml(data.last30days_error || '') : ''} ${!data.web_research_ok ? 'Citation-grade: ' + escapeHtml(data.web_research_error || '') : ''}</p>` : ''}
+            <div class="glass-panel rounded-lg p-4"><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.merged_report || 'No merged report generated.')}</pre></div>
+            <details class="mt-3">
+                <summary class="font-mono text-xs text-outline cursor-pointer hover:text-accent-sky">Show raw reports from each engine</summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                    <div class="glass-panel rounded-lg p-3"><p class="font-mono text-xs text-accent-periwinkle mb-2">Multi-Source</p><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.last30days_markdown || '(none)')}</pre></div>
+                    <div class="glass-panel rounded-lg p-3"><p class="font-mono text-xs text-accent-lime mb-2">Citation-Grade</p><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.web_research_markdown || '(none)')}</pre></div>
+                </div>
+            </details>`;
+        showToast('Hybrid research complete');
+    }
+});
+
+// ── Contradictions: Scan Now ──
+document.getElementById('btn-contradictions')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-contradictions');
+    btn.disabled = true; btn.textContent = 'Scanning...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/contradictions`);
+    btn.disabled = false; btn.textContent = 'Scan Now';
+    if (data) {
+        document.getElementById('contradictions-empty')?.classList.add('hidden');
+        const el = document.getElementById('contradictions-data');
+        const items = data.contradictions || [];
+        if (!items.length) {
+            el.innerHTML = `<p class="text-sm text-outline">No contradictions found across ${data.total_checked || 0} pairs checked.</p>`;
+            return;
+        }
+        el.innerHTML = `<p class="text-xs text-outline mb-3">${data.unresolved_count} unresolved out of ${data.total_checked} pairs checked. High: ${data.severity_distribution?.high || 0}, Medium: ${data.severity_distribution?.medium || 0}, Low: ${data.severity_distribution?.low || 0}</p>` +
+            items.slice(0, 20).map(c => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${c.severity === 'high' ? 'border-red-400' : c.severity === 'medium' ? 'border-yellow-400' : 'border-glass-border'}">
+                <div class="flex items-center gap-2 mb-1"><span class="text-xs px-2 py-0.5 rounded-full bg-accent-lavender/20 text-accent-lavender">${escapeHtml(c.contradiction_type)}</span><span class="text-xs text-outline">${escapeHtml(c.severity)} · ${Math.round((c.similarity_score || 0) * 100)}%</span></div>
+                <p class="text-sm mb-1">${escapeHtml(c.decision_a_text)}</p>
+                <p class="text-xs text-outline mb-1">vs</p>
+                <p class="text-sm mb-2">${escapeHtml(c.decision_b_text)}</p>
+                <p class="text-xs text-accent-sky">${escapeHtml(c.resolution_suggestion || '')}</p>
+            </div>`).join('');
+    }
+});
+
+// ── PR Bot: Generate Comment ──
+document.getElementById('btn-prbot')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const diff = document.getElementById('prbot-diff').value.trim();
+    const pr_title = document.getElementById('prbot-title').value.trim();
+    if (!diff) { showToast('Paste a diff first'); return; }
+    const btn = document.getElementById('btn-prbot');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/pr-comment`, 'POST', { diff, pr_title });
+    btn.disabled = false; btn.textContent = 'Generate Comment';
+    if (data) {
+        document.getElementById('prbot-empty')?.classList.add('hidden');
+        const results = document.getElementById('prbot-results');
+        results.classList.remove('hidden');
+        let html = `<p class="text-xs text-outline mb-3">${data.decision_count || 0} decisions referenced, ${data.warning_count || 0} ghost warnings, relevance ${Math.round((data.relevance_score || 0) * 100)}%</p>`;
+        html += `<pre class="font-mono text-xs text-outline whitespace-pre-wrap glass-panel rounded-lg p-3 mb-3">${escapeHtml(data.body || '')}</pre>`;
+        if ((data.ghost_warnings || []).length) {
+            html += '<h4 class="font-mono text-xs uppercase text-red-400 mb-2">Ghost Warnings</h4>' + data.ghost_warnings.map(w => `<div class="p-2 rounded bg-red-500/10 border border-red-400/20 mb-2 text-xs"><span class="text-red-400">${escapeHtml(w.severity)}</span> — ${escapeHtml(w.recommendation || '')}</div>`).join('');
+        }
+        results.innerHTML = html;
+    }
+});
+
+// ── Pre-Write Guard: Check for Ghosts ──
+document.getElementById('btn-check-ghost')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const diff = document.getElementById('preventive-diff').value.trim();
+    if (!diff) { showToast('Paste a diff first'); return; }
+    const btn = document.getElementById('btn-check-ghost');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/ghost-check`, 'POST', { diff });
+    btn.disabled = false; btn.textContent = 'Check for Ghosts';
+    if (data) {
+        document.getElementById('preventive-empty')?.classList.add('hidden');
+        const results = document.getElementById('preventive-results');
+        results.classList.remove('hidden');
+        const warnings = data.warnings || [];
+        let html = `<p class="text-xs text-outline mb-3">${data.total_warnings || 0} warning(s) — High: ${data.severity_distribution?.high || 0}, Medium: ${data.severity_distribution?.medium || 0}, Low: ${data.severity_distribution?.low || 0}</p>`;
+        html += warnings.length
+            ? warnings.map(w => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${w.severity === 'high' ? 'border-red-400' : 'border-yellow-400'}"><p class="text-sm">${escapeHtml(w.recommendation || w.message || JSON.stringify(w))}</p></div>`).join('')
+            : '<p class="text-sm text-outline">No warnings — this diff does not appear to conflict with active decisions.</p>';
+        results.innerHTML = html;
+    }
+});
+
+// ── Rationale Check: Corroborate ──
+document.getElementById('btn-corroborate')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const decision_id = document.getElementById('corroborate-decision-id').value.trim();
+    if (!decision_id) { showToast('Enter a decision ID first'); return; }
+    const btn = document.getElementById('btn-corroborate');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/corroborate`, 'POST', { decision_id, force_refresh: false });
+    btn.disabled = false; btn.textContent = 'Check Rationale';
+    if (data) {
+        document.getElementById('corroborate-empty')?.classList.add('hidden');
+        const results = document.getElementById('corroborate-results');
+        results.classList.remove('hidden');
+        let html = `<div class="flex items-center gap-2 mb-3"><span class="text-xs px-2 py-0.5 rounded-full bg-accent-lime/20 text-accent-lime">${escapeHtml(data.status)}</span><span class="text-xs text-outline">confidence adj: ${data.confidence_adjustment ?? '--'}</span></div>`;
+        html += (data.research_findings || []).length
+            ? data.research_findings.map(f => `<div class="glass-panel rounded-lg p-3 mb-2"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener" class="text-sm text-accent-sky hover:underline">${escapeHtml(f.title)}</a><p class="text-xs text-outline mt-1">${escapeHtml(f.description || '')}</p></div>`).join('')
+            : '<p class="text-sm text-outline">No supporting research findings.</p>';
+        results.innerHTML = html;
+    }
+});
+
+// ── Federation: Load Benchmarks ──
+document.getElementById('btn-federation')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-federation');
+    btn.disabled = true; btn.textContent = 'Loading...';
+    const data = await api('/memory/federation/benchmarks');
+    btn.disabled = false; btn.textContent = 'Load Benchmarks';
+    if (data) {
+        const el = document.getElementById('federation-data');
+        if (!data.aggregate) {
+            el.innerHTML = `<p class="text-sm text-outline">${escapeHtml(data.message || 'No federated data available yet.')}</p>`;
+            return;
+        }
+        document.getElementById('federation-empty')?.classList.add('hidden');
+        const agg = data.aggregate;
+        el.innerHTML = `<div class="space-y-2">
+            <div class="flex justify-between"><span class="text-outline">Federated Projects</span><span class="font-mono">${data.total_projects}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Avg Decision Count</span><span class="font-mono">${agg.decision_count}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Avg Reversal Rate</span><span class="font-mono">${((agg.reversal_rate || 0) * 100).toFixed(1)}%</span></div>
+            <div class="flex justify-between"><span class="text-outline">Avg Confidence</span><span class="font-mono">${((agg.avg_confidence || 0) * 100).toFixed(1)}%</span></div>
+        </div>`;
+    }
+});
+
+// ── Record Skill Outcome (seeds Personas) ──
+document.getElementById('btn-record-skill')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const categories = document.getElementById('skill-categories').value.split(',').map(c => c.trim()).filter(Boolean);
+    const outcome = document.getElementById('skill-outcome').value;
+    const details = document.getElementById('skill-details').value.trim();
+    if (!categories.length) { showToast('Enter at least one category'); return; }
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/agent-skills/record`, 'POST', {
+        session_type: 'manual', categories, outcome, details
+    });
+    if (data) {
+        showToast('Skill outcome recorded');
+        document.getElementById('skill-categories').value = '';
+        document.getElementById('skill-details').value = '';
+        document.getElementById('btn-personas')?.click();
+    }
+});
+
+// ── Context Prefetch: Assemble Bundle ──
+document.getElementById('btn-prefetch')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const task = document.getElementById('prefetch-task').value.trim();
+    const tokenBudget = parseInt(document.getElementById('prefetch-budget').value, 10);
+    if (!task) { showToast('Describe a task first'); return; }
+    const btn = document.getElementById('btn-prefetch');
+    btn.disabled = true; btn.textContent = 'Assembling...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/prefetch`, 'POST', { task, token_budget: tokenBudget });
+    btn.disabled = false; btn.textContent = 'Assemble Bundle';
+    if (data) {
+        document.getElementById('prefetch-empty')?.classList.add('hidden');
+        const results = document.getElementById('prefetch-results');
+        results.classList.remove('hidden');
+        const bundle = data.bundle || [];
+        let html = `<p class="text-xs text-outline mb-3">${data.item_count || 0} items, ${data.token_count || 0} tokens${data.tuning_info?.reasoning ? ' — ' + escapeHtml(data.tuning_info.reasoning) : ''}</p>`;
+        html += bundle.length
+            ? bundle.map(item => `<div class="glass-panel rounded-lg p-3 mb-2"><p class="text-sm">${escapeHtml(item.text || item.decision || JSON.stringify(item))}</p></div>`).join('')
+            : '<p class="text-sm text-outline">No items scored high enough for this budget.</p>';
+        results.innerHTML = html;
+    }
+});
+
+// ── Time Travel ──
+document.getElementById('btn-timetravel')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const date = document.getElementById('timetravel-date').value;
+    if (!date) { showToast('Pick a date first'); return; }
+    const btn = document.getElementById('btn-timetravel');
+    btn.disabled = true; btn.textContent = 'Traveling...';
+    let data = null, notFound = false;
+    try {
+        const res = await fetch(`/api/memory/${encodeURIComponent(state.currentProject)}/timetravel/${date}`);
+        if (res.status === 404) {
+            notFound = true;
+        } else if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(`Time Travel error ${res.status}: ${err.detail || 'Unknown'}`);
+        } else {
+            data = await res.json();
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`);
+    }
+    btn.disabled = false; btn.textContent = 'Travel to Date';
+    if (notFound) {
+        document.getElementById('timetravel-empty')?.classList.remove('hidden');
+        document.getElementById('timetravel-results')?.classList.add('hidden');
+        showToast('No session recorded before that date yet — click "+ End Session" in the Memory tab to start building history.');
+        return;
+    }
+    if (data) {
+        document.getElementById('timetravel-empty')?.classList.add('hidden');
+        const results = document.getElementById('timetravel-results');
+        results.classList.remove('hidden');
+        results.innerHTML = `<div class="space-y-2">
+            <div class="flex justify-between"><span class="text-outline">As of</span><span class="font-mono text-accent-sky">${escapeHtml(data.date || date)}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Decisions</span><span class="font-mono">${data.decision_count ?? 0}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Sessions</span><span class="font-mono">${data.session_count ?? 0}</span></div>
+        </div>`;
     }
 });
 

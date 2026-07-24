@@ -9,6 +9,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from core.tropebook.tropebook import SourceType
+
 
 @dataclass
 class DeepResearchSource:
@@ -92,7 +94,8 @@ class DeepResearchImporter:
         return sources
 
     def import_sources(self, sources: list[DeepResearchSource],
-                      add_relationships: bool = True) -> int:
+                      add_relationships: bool = True,
+                      source_type: SourceType = SourceType.GOOGLE_DEEP_RESEARCH) -> int:
         if not self.tropebook:
             return 0
 
@@ -107,7 +110,7 @@ class DeepResearchImporter:
                 summary=source.snippet,
                 tags=source.topics or [],
                 entities=source.entities or [],
-                source_type="google_deep_research"
+                source_type=source_type
             )
             count += 1
 

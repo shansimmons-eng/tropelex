@@ -148,6 +148,7 @@ from core.timetravel.router import timetravel_router        # noqa: E402
 from core.contradictions.router import contradiction_router  # noqa: E402
 from core.personas.router import persona_router            # noqa: E402
 from core.federation.router import federation_router        # noqa: E402
+from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -182,6 +183,7 @@ app.include_router(timetravel_router)
 app.include_router(contradiction_router)
 app.include_router(persona_router)
 app.include_router(federation_router)
+app.include_router(web_research_router)
 
 
 # --- Request body models ---
@@ -694,7 +696,9 @@ async def add_decision(project: str, data: DecisionCreate):
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
 
+    import uuid as _uuid
     decision_entry = {
+        "id": _uuid.uuid4().hex[:12],
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "decision": data.decision,
         "context": data.context,
@@ -1016,12 +1020,16 @@ async def get_settings():
     keys = {}
     # Non-secret values returned in the clear; everything else is masked.
     NON_SECRET = {"CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "BSKY_HANDLE"}
+    # Seed/placeholder sentinels that must never render as "configured" in the UI.
+    PLACEHOLDER_VALUES = {"test-value", "__USE_SERVER_ENV__", "changeme", "placeholder"}
     for k in settings_keys:
         val = os.environ.get(k, "")
+        is_placeholder = val.strip() in PLACEHOLDER_VALUES
+        configured = bool(val) and not is_placeholder
         if k in NON_SECRET:
-            keys[k] = {"configured": bool(val), "value": val}
+            keys[k] = {"configured": configured, "value": "" if is_placeholder else val}
         else:
-            keys[k] = {"configured": bool(val), "masked": _mask_key(val)}
+            keys[k] = {"configured": configured, "masked": "" if is_placeholder else _mask_key(val)}
     return {"keys": keys}
 
 

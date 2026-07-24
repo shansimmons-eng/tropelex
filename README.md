@@ -4,6 +4,8 @@
 
 Tropelex accumulates knowledge across projects — decisions, patterns, preferences, research — so sessions don't start from scratch. It grows smarter with use.
 
+The same mechanisms that make an agent's memory useful also make its behavior auditable: an immutable decision history an agent must cross-reference before acting, drift detection that catches code silently diverging from stated intent, and multi-agent handoff that carries rationale across agent boundaries instead of losing it. See [`SAFETY.md`](SAFETY.md) for how these properties apply to agent safety and alignment work.
+
 ---
 
 ## What it does
@@ -12,7 +14,7 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 |---|---|
 | **Memory Manager** | Stores project knowledge as JSON — decisions, preferences, session history |
 | **Pattern Learner** | Analyzes sessions to detect recurring themes and suggest next steps |
-| **Context Compressor** | Strips filler from prompts using AI (OpenAI) or dictionary-based rules |
+| **Context Compressor** | Strips filler from prompts using AI (OpenAI) or dictionary-based rules — also reduces the surface area untrusted payloads have to carry injected instructions ([SAFETY.md](SAFETY.md#prompt-injection--payload-defense)) |
 | **Tropebook** | Research knowledge base — store, search, link citations with a graph |
 | **Agent Pipeline** | 3-stage prompt prep: compress → context check → structure |
 | **Prompt Hijacker** | One-click AI compression for any prompt before sending to an AI |
@@ -20,27 +22,27 @@ Tropelex accumulates knowledge across projects — decisions, patterns, preferen
 | **Decision Trees** | Graph of decision evolution — tracks what caused what, reverts, relationships |
 | **Living ADRs** | Auto-generate Architecture Decision Records from memory data |
 | **Session Replay** | Structured memory diffs per session — what changed, rollback support |
-| **Knowledge Decay** | Time-based confidence scoring — decisions lose reliability over age |
+| **Knowledge Decay** | Time-based confidence scoring — decisions lose reliability over age, preventing stale policy from silently retaining full authority ([SAFETY.md](SAFETY.md#guardrail-ossification-prevention)) |
 | **Research Chains** | Multi-hop knowledge building — search → find gaps → search again → link |
 | **Memory RAG** | Semantic retrieval from project memory at query time |
 | **Cross-Pollination** | Surface solutions from similar projects with matching tech stacks |
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
 | **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
-| **Deep Research** | Multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis |
-| **Ghost Decisions** | Silent drift detection — code contradicts decisions without anyone saying so |
+| **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp — plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
+| **Ghost Decisions** | Silent objective-drift detection — code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
-| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows |
-| **Decision Market** | Confidence bets, calibration tracking, leaderboard |
+| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows — a working inter-agent coordination protocol ([SAFETY.md](SAFETY.md#inter-agent-coordination-protocol)) |
+| **Decision Market** | Confidence bets, calibration tracking, leaderboard — a live calibration and honest-signaling mechanism among cooperating agents ([SAFETY.md](SAFETY.md#calibration--honest-signaling-mechanism)) |
 | **Memory Lens** | IDE inline annotations — GitLens but for decisions |
 | **Slack Capture** | Bidirectional Slack integration for decision logging |
-| **Time-Travel Debugger** | Memory snapshots as of any past date |
-| **Contradiction Detection** | Actively scan for unresolved conflicting decisions |
+| **Time-Travel Debugger** | Memory snapshots as of any past date — forensic state auditing ([SAFETY.md](SAFETY.md#forensic-state-auditing)) |
+| **Contradiction Detection** | Actively scan for unresolved conflicting decisions — surfaces conflicting objectives before they cause harm ([SAFETY.md](SAFETY.md#conflicting-objective-surfacing)) |
 | **Digital Twin Personas** | Synthesize readable persona summaries from agent proficiency |
 | **Federated Benchmarking** | Opt-in, privacy-preserving cross-install statistics |
 | **Memory Compaction** | Epoch summarization to prevent unbounded memory growth |
-| **Friction Mining** | Implicit signal detection from conversation transcripts |
-| **Preventive Ghost Checks** | Pre-write hook that checks diff against active decisions |
+| **Friction Mining** | Implicit signal detection from conversation transcripts — a lightweight human-in-the-loop alignment elicitation channel ([SAFETY.md](SAFETY.md#human-in-the-loop-alignment-elicitation)) |
+| **Preventive Ghost Checks** | Pre-write hook that checks diff against active decisions — a pre-action policy compliance gate ([SAFETY.md](SAFETY.md#pre-action-policy-compliance-gate)) |
 | **Rationale Corroboration** | Fact-check decision rationale against the live web |
 | **PR Bot** | Deliver ghost decisions, contradictions as PR comments |
 | **Narrative Mode** | Readable prose summaries for non-technical audiences |
@@ -165,11 +167,13 @@ Repository integration and deep analysis:
 Configure compression behavior, session limits, and API keys. Keys entered here are written directly to your `.env` file. Includes a **Deep Research Sources** panel for configuring xAI, ScrapeCreators, Bluesky, and other keys that expand deep research coverage.
 
 ### Deep Research
-Multi-source research powered by the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns.
+Two independent research engines, laid out side by side so neither buries the other, plus a hybrid mode:
 
-- **Run a query** — paste a topic, click Run, get a full research report (1–3 min)
-- **Create a deep research feed** — select "Deep Research" as the provider when creating a feed
-- **Configure sources** — add keys in Settings → Deep Research Sources for best coverage
+- **Multi-Source Scan** — last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes, synchronous.
+- **Citation-Grade Web Research** — [web-researcher-mcp](https://github.com/zoharbabin/web-researcher-mcp) (spoken to directly over MCP's stdio protocol, no extra Python dependency). Runs a small loop of search → LLM-refined follow-up query → search again, and imports every real, verifiable source URL straight into the Tropebook citation library. Requires the `web-researcher-mcp` binary on `PATH`.
+- **Hybrid** — runs both engines concurrently on the same query, then asks the project's LLM backend to deduplicate and merge them into a single report. Degrades gracefully if one engine fails: the other's results (and any citations it found) are still returned and imported.
+
+Configure sources for the multi-source scan in Settings → Deep Research Sources. Citation-grade research prefers `BRAVE_SEARCH_API_KEY` when set (falls back to the free DuckDuckGo provider otherwise, which rate-limits more aggressively under repeated use).
 
 ---
 
@@ -292,6 +296,13 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/last30days/query` | Run a deep research query — returns HTML output + citations (1–3 min) |
+
+### Deep Research (web-researcher-mcp)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/memory/{project}/deep-research/web-research` | Citation-grade multi-step web research; imports results into the Tropebook |
+| POST | `/api/memory/{project}/deep-research/hybrid` | Runs last30days + web-researcher-mcp concurrently, LLM-merges the results |
 
 ---
 

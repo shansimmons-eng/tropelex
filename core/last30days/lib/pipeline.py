@@ -992,6 +992,12 @@ def _retrieve_stream(
         return items, {}
     if source == "bluesky":
         result = bluesky.search_bluesky(subquery.search_query, from_date, to_date, depth=depth, config=config)
+        if isinstance(result, dict) and result.get("error"):
+            # search_bluesky swallows auth/network failures into {"posts": [], "error": ...}
+            # instead of raising; re-raise here so the caller's existing exception
+            # handling records it into bundle.errors_by_source (matches every other
+            # source's failure path) instead of silently returning zero items.
+            raise RuntimeError(f"Bluesky search failed: {result['error']}")
         return bluesky.parse_bluesky_response(result), {}
     if source == "threads":
         result = threads.search_threads(

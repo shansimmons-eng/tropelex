@@ -136,21 +136,33 @@ def audit_wishlist(root: Path) -> list[dict]:
     code_modules = find_python_modules(root)
 
     # Look for features that have implementations but no ✅
-    # This is a heuristic — look for ### headings without ✅ that have matching code
+    # This is a heuristic — look for ### headings whose *section body* (up to
+    # the next heading) has no ✅ anywhere, that have matching code. The ✅
+    # marker lives on a "**Status:**" line inside the section, not on the
+    # heading line itself, so checking only `line` (not the section) produced
+    # false positives for every already-marked item.
     lines = wishlist.splitlines()
     for i, line in enumerate(lines):
-        if line.startswith("###") and "✅" not in line:
-            # Check if there's a core/ module that matches
-            heading = line.lstrip("#").strip().lower()
-            for mod in code_modules:
-                mod_name = Path(mod).stem.lower()
-                if mod_name in heading and mod_name not in ("__init__",):
-                    issues.append({
-                        "file": "wishlist.md",
-                        "type": "maybe_implemented",
-                        "detail": f"'{line.strip()}' may be implemented ({mod} exists). Consider marking ✅.",
-                    })
-                    break
+        if line.startswith("#"):
+            # Section body = lines until the next heading (any level) or EOF.
+            j = i + 1
+            while j < len(lines) and not lines[j].startswith("#"):
+                j += 1
+            section = "\n".join(lines[i:j])
+            if line.startswith("###") and "✅" not in section:
+                # Check if there's a core/ module that matches
+                heading = line.lstrip("#").strip().lower()
+                for mod in code_modules:
+                    mod_name = Path(mod).stem.lower()
+                    # Word-boundary match — a plain substring check flags things
+                    # like "Storage" matching module "rag" (sto-RAG-e).
+                    if mod_name not in ("__init__",) and re.search(rf"\b{re.escape(mod_name)}\b", heading):
+                        issues.append({
+                            "file": "wishlist.md",
+                            "type": "maybe_implemented",
+                            "detail": f"'{line.strip()}' may be implemented ({mod} exists). Consider marking ✅.",
+                        })
+                        break
 
     return issues
 

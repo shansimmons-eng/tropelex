@@ -30,7 +30,7 @@
 <div class="container">
     <a href="/" class="back">← Back to Dashboard</a>
     <h1>Tropelex Documentation</h1>
-    <p>Persistent memory system for AI agents. Store decisions, track patterns, and maintain project context across sessions.</p>
+    <p>Persistent memory system for AI agents. Store decisions, track patterns, and maintain project context across sessions. The same mechanisms double as auditable safety infrastructure — see <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for how.</p>
 
     <div class="section" id="getting-started">
         <h2>Getting Started</h2>
@@ -50,8 +50,8 @@
         <h3>4. Configure API Keys (Optional)</h3>
         <p>For web research features, set these environment variables:</p>
         <ul>
-            <li><code>BRAVE_API_KEY</code> — for Brave Search (free tier available)</li>
-            <li><code>OPENAI_API_KEY</code> — for embeddings (optional)</li>
+            <li><code>BRAVE_SEARCH_API_KEY</code> — for Brave Search (free tier available). Also used by citation-grade Deep Research when set, in preference to the free but more rate-limited DuckDuckGo default.</li>
+            <li><code>OPENAI_API_KEY</code> — for embeddings and LLM-backed features (query refinement, hybrid research merge, AI compression) — optional, dictionary/concatenation fallbacks exist</li>
         </ul>
     </div>
 
@@ -128,14 +128,18 @@
         <p>Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs. "Projects using FastAPI+Postgres have a 12% reversal rate."</p>
 
         <h3 id="deep-research">Deep Research <span class="badge badge-new">NEW</span></h3>
-        <p>Multi-source research powered by the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns.</p>
+        <p>Two independent research engines, side by side, plus a hybrid mode that merges them:</p>
         <ul>
-            <li><strong>Ad-hoc queries</strong> — paste a topic in the Deep Research section, click Run, get a full report (1–3 min)</li>
-            <li><strong>Deep research feeds</strong> — select "Deep Research" as the provider when creating a feed for scheduled runs</li>
-            <li><strong>Research history</strong> — all runs are saved; click any previous run to view its output</li>
-            <li><strong>Source keys</strong> — configure xAI, ScrapeCreators, Bluesky, and more in Settings → Deep Research Sources</li>
+            <li><strong>Multi-Source Scan</strong> — the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes.</li>
+            <li><strong>Citation-Grade Web Research</strong> — powered by <a href="https://github.com/zoharbabin/web-researcher-mcp">web-researcher-mcp</a>, spoken to directly over its MCP stdio protocol. Runs an iterative search → LLM-refined follow-up query → search again loop, and imports every real, verifiable source URL straight into the Tropebook citation library. Requires the <code>web-researcher-mcp</code> binary on <code>PATH</code> — free via the DuckDuckGo provider with no key, or point it at Brave with <code>BRAVE_SEARCH_API_KEY</code> for higher rate limits.</li>
+            <li><strong>Hybrid</strong> — runs both engines concurrently on the same query, then has the project's LLM backend deduplicate and merge them into one report. If one engine fails, the other's results (and citations) are still returned — the merge degrades gracefully rather than failing outright.</li>
         </ul>
-        <p>Free sources (HackerNews, GitHub, Polymarket, YouTube) work without any keys. Additional sources unlock with API keys.</p>
+        <ul>
+            <li><strong>Deep research feeds</strong> — select "Deep Research" as the provider when creating a feed for scheduled multi-source runs</li>
+            <li><strong>Research history</strong> — all multi-source runs are saved; click any previous run to view its output</li>
+            <li><strong>Source keys</strong> — configure xAI, ScrapeCreators, Bluesky, and more in Settings → Deep Research Sources for best multi-source coverage</li>
+        </ul>
+        <p>Free sources (HackerNews, GitHub, Polymarket, YouTube, DuckDuckGo) work without any keys. Additional sources and providers unlock with API keys.</p>
 
         <h3 id="emacs-integration">Emacs Integration <span class="badge badge-new">NEW</span></h3>
         <p>Capture decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in Emacs libraries.</p>
