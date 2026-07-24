@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tropelex": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "mcp_server/run.sh"
+      ],
+      "env": {}
+    }
+  }
+}

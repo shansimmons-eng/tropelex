@@ -461,6 +461,42 @@ Auto-detects from: projectile → `vc-root-dir` → directory name fallback. Ove
 
 ---
 
+## MCP Server
+
+Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent — Claude Code, Cursor, Claude Desktop — can read and write project memory directly, without a bespoke per-editor integration.
+
+Lives in [`mcp_server/`](mcp_server/), in its own venv kept separate from Tropelex's own system-Python server.
+
+### Setup
+
+```bash
+cd mcp_server
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+```
+
+### Register with Claude Code
+
+A project-scoped `.mcp.json` is committed at the repo root — anyone who clones Tropelex and opens it in Claude Code gets the `tropelex` MCP server automatically (it shells out to `mcp_server/run.sh`, which resolves its own venv relative to the repo, so no absolute paths are baked in). No manual registration needed.
+
+To register it in a different Claude Code project, or for another MCP client:
+
+```bash
+claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py
+```
+
+Requires the main Tropelex server running (`python3 -m core.tropebook.web.server`). Point at a non-default instance with `TROPELEX_URL`.
+
+### Tools
+
+`list_projects`, `get_project_memory`, `capture_decision`, `end_session`, `get_context_bundle` (predictive prefetch), `check_contradictions`, `check_diff_for_conflicts` (pre-write guard), `friction_scan`, `get_handoff_packet`, `explain_why`. Full detail in [`mcp_server/README.md`](mcp_server/README.md).
+
+## Terminal UI
+
+A Textual-based terminal dashboard for anyone who lives in tmux rather than an editor — project list, decision table, contradiction count, capture decisions without leaving the terminal. Lives in [`tui/`](tui/), own venv, same setup pattern as the MCP server. See [`tui/README.md`](tui/README.md) for keybindings and setup.
+
+---
+
 ## Project Structure
 
 ```

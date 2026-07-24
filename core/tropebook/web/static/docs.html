@@ -168,6 +168,12 @@
 (require 'tropelex-capture)
 (tropelex-capture-mode 1)</code></pre>
         <p>Project auto-detects from: projectile → <code>vc-root-dir</code> → directory name fallback. Override with <code>C-c t p</code>.</p>
+
+        <h3 id="mcp-server">MCP Server <span class="badge badge-new">NEW</span></h3>
+        <p>Everything above is also available as MCP tools — <code>list_projects</code>, <code>get_project_memory</code>, <code>capture_decision</code>, <code>end_session</code>, <code>get_context_bundle</code>, <code>check_contradictions</code>, <code>check_diff_for_conflicts</code>, <code>friction_scan</code>, <code>get_handoff_packet</code>, <code>explain_why</code> — so any MCP-capable agent (Claude Code, Cursor, Claude Desktop) can read and write project memory directly. Lives in <code>mcp_server/</code>, own venv, with a committed project-scoped <code>.mcp.json</code> so it's auto-registered for anyone who opens the repo in Claude Code. Setup and full tool list in <code>mcp_server/README.md</code>.</p>
+
+        <h3 id="tui">Terminal UI <span class="badge badge-new">NEW</span></h3>
+        <p>A Textual-based terminal dashboard in <code>tui/</code> — project list, decision table, contradiction count, and an <code>a</code>-to-add-decision modal, for anyone who lives in a terminal rather than an editor. Own venv; see <code>tui/README.md</code>.</p>
     </div>
 
     <div class="section" id="api">
