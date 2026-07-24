@@ -1,0 +1,6 @@
+# Tropelex TUI dependencies.
+#
+# Kept in a dedicated venv (tui/.venv), separate from Tropelex's own
+# system-Python server — see README.md in this directory for why.
+textual>=8.0.0
+httpx>=0.27.0
