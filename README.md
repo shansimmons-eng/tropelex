@@ -461,6 +461,48 @@ Auto-detects from: projectile → `vc-root-dir` → directory name fallback. Ove
 
 ---
 
+## OpenCode Integration
+
+Slash commands and a startup hook for using Tropelex from inside [OpenCode](https://opencode.ai). Defined in [`.opencode/`](.opencode/) — the plugin itself is [`plugins/tropelex.js`](plugins/tropelex.js).
+
+**Setup required** — OpenCode only loads plugins it's told about:
+
+```bash
+cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js
+```
+
+Then add `"tropelex"` to the `"plugin"` array in `~/.config/opencode/opencode.json` (and `opencode.jsonc`, if present). Restart OpenCode. If commands aren't showing in the command palette, this step is almost always why.
+
+| Command | What it does |
+|---|---|
+| `/tropelex-record-decision` | Record a decision — `/tropelex-record-decision Using PostgreSQL for database` |
+| `/tropelex-end-session` | Summarize the session and trigger pattern learning |
+| `/tropelex-show-context` | Print accumulated context for the current project |
+| `/tropelex-context` | Run raw queries against project memory, insights, and recent decisions |
+| `/tropelex-up` | Create/update a project's memory record |
+
+Project name auto-detects from the workspace folder name or git remote; override with `TROPELEX_PROJECT`. The startup hook also compresses prompts over a configurable length and injects project context automatically — see `plugins/tropelex.js`'s header for all env vars (`TROPELEX_URL`, `TROPELEX_COMPRESS_MIN`, `TROPELEX_INJECT_CONTEXT`).
+
+## CLI Reference
+
+A local command-line interface for the Tropebook citation library (`core/tropebook/cli.py`, installed as the `tropelex` command). Operates directly on local storage — doesn't require the server running.
+
+| Command | What it does |
+|---|---|
+| `tropelex add <title> <url> [summary]` | Add a citation |
+| `tropelex search <query>` | Search the knowledge base |
+| `tropelex list [tag]` | List all citations, or filter by tag |
+| `tropelex import <file>` | Import citations from a JSON or markdown file |
+| `tropelex stats` | Show knowledge base stats |
+| `tropelex link <url1> <url2> <rel>` | Add a relationship between two citations |
+
+```bash
+tropelex add "Python Docs" "https://docs.python.org" "Official Python docs"
+tropelex search "machine learning"
+```
+
+If `tropelex` isn't on `PATH`: `python -m core.tropebook.cli <command>`.
+
 ## MCP Server
 
 Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent — Claude Code, Cursor, Claude Desktop — can read and write project memory directly, without a bespoke per-editor integration.

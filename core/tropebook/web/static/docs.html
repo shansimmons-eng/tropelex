@@ -24,6 +24,15 @@
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; margin-left: 0.5rem; }
     .badge-new { background: rgba(152,250,128,0.15); color: #98fa80; }
     .badge-phase { background: rgba(128,152,250,0.15); color: #8098fa; }
+    .toc { background: rgba(20,27,45,0.6); border: 1px solid rgba(165,128,250,0.12); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.5rem 0 0.5rem; }
+    .toc-title { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #958e9e; margin-bottom: 0.6rem; }
+    .toc ul { column-count: 2; column-gap: 2rem; padding-left: 1.2rem; margin: 0; }
+    .toc li { margin-bottom: 0.3rem; font-size: 0.85rem; }
+    table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(165,128,250,0.1); vertical-align: top; }
+    th { color: #80d5fa; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .warn { border-left: 3px solid #fac880; background: rgba(250,200,128,0.08); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; }
+    .warn strong { color: #fac880; }
 </style>
 </head>
 <body>
@@ -32,11 +41,27 @@
     <h1>Tropelex Documentation</h1>
     <p>Persistent memory system for AI agents. Store decisions, track patterns, and maintain project context across sessions. The same mechanisms double as auditable safety infrastructure — see <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for how.</p>
 
+    <div class="toc">
+        <div class="toc-title">On this page</div>
+        <ul>
+            <li><a href="#getting-started">Getting Started</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#mcp-server">MCP Server</a></li>
+            <li><a href="#tui">Terminal UI</a></li>
+            <li><a href="#opencode">OpenCode Integration</a></li>
+            <li><a href="#cli">CLI Reference</a></li>
+            <li><a href="#emacs-integration">Emacs Integration</a></li>
+            <li><a href="#api">API Reference</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+    </div>
+
     <div class="section" id="getting-started">
         <h2>Getting Started</h2>
         <h3>1. Create a Project</h3>
         <p>Projects are the top-level container for all memory. Go to <strong>Memory</strong> in the sidebar and click <strong>New Project</strong>.</p>
-        
+
         <h3>2. Record Decisions</h3>
         <p>Decisions are the foundation. Click <strong>+ Add Decision</strong> in the Memory section. Each decision has:</p>
         <ul>
@@ -53,6 +78,9 @@
             <li><code>BRAVE_SEARCH_API_KEY</code> — for Brave Search (free tier available). Also used by citation-grade Deep Research when set, in preference to the free but more rate-limited DuckDuckGo default.</li>
             <li><code>OPENAI_API_KEY</code> — for embeddings and LLM-backed features (query refinement, hybrid research merge, AI compression) — optional, dictionary/concatenation fallbacks exist</li>
         </ul>
+
+        <h3>5. Pick your interface</h3>
+        <p>This page describes the web dashboard, but it's one of five ways in — pick whichever fits how you work: the <a href="#mcp-server">MCP Server</a> (any MCP-capable agent), the <a href="#tui">Terminal UI</a> (tmux-first), <a href="#opencode">OpenCode</a> slash commands, the <a href="#cli">CLI</a>, or <a href="#emacs-integration">Emacs</a>. All five talk to the same running server and the same project memory — nothing is interface-specific.</p>
     </div>
 
     <div class="section" id="features">
@@ -169,11 +197,100 @@
 (tropelex-capture-mode 1)</code></pre>
         <p>Project auto-detects from: projectile → <code>vc-root-dir</code> → directory name fallback. Override with <code>C-c t p</code>.</p>
 
-        <h3 id="mcp-server">MCP Server <span class="badge badge-new">NEW</span></h3>
-        <p>Everything above is also available as MCP tools — <code>list_projects</code>, <code>get_project_memory</code>, <code>capture_decision</code>, <code>end_session</code>, <code>get_context_bundle</code>, <code>check_contradictions</code>, <code>check_diff_for_conflicts</code>, <code>friction_scan</code>, <code>get_handoff_packet</code>, <code>explain_why</code> — so any MCP-capable agent (Claude Code, Cursor, Claude Desktop) can read and write project memory directly. Lives in <code>mcp_server/</code>, own venv, with a committed project-scoped <code>.mcp.json</code> so it's auto-registered for anyone who opens the repo in Claude Code. Setup and full tool list in <code>mcp_server/README.md</code>.</p>
+    </div>
 
-        <h3 id="tui">Terminal UI <span class="badge badge-new">NEW</span></h3>
-        <p>A Textual-based terminal dashboard in <code>tui/</code> — project list, decision table, contradiction count, and an <code>a</code>-to-add-decision modal, for anyone who lives in a terminal rather than an editor. Own venv; see <code>tui/README.md</code>.</p>
+    <div class="section" id="mcp-server">
+        <h2>MCP Server <span class="badge badge-new">NEW</span></h2>
+        <p>Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent — Claude Code, Cursor, Claude Desktop — can read and write project memory directly, without a bespoke per-editor integration. Lives in <code>mcp_server/</code>, in its own venv kept separate from Tropelex's own system-Python server.</p>
+
+        <h3>Setup</h3>
+        <pre><code>cd mcp_server
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
+
+        <h3>Registering it</h3>
+        <p>A project-scoped <code>.mcp.json</code> is committed at the repo root — anyone who clones Tropelex and opens it in Claude Code gets the <code>tropelex</code> MCP server automatically (it shells out to <code>mcp_server/run.sh</code>, which resolves its own venv relative to the repo, so no machine-specific absolute paths are baked in). No manual registration needed for Claude Code.</p>
+        <p>To register it elsewhere:</p>
+        <pre><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
+        <p>Requires the main Tropelex server running. Point at a non-default instance with the <code>TROPELEX_URL</code> environment variable.</p>
+
+        <h3>Tools</h3>
+        <table>
+            <tr><th>Tool</th><th>What it does</th></tr>
+            <tr><td><code>list_projects</code></td><td>List all Tropelex projects and basic stats for each.</td></tr>
+            <tr><td><code>get_project_memory</code></td><td>Load a project's full memory — decisions, sessions, preferences, patterns. Call this first when starting work on a project.</td></tr>
+            <tr><td><code>capture_decision</code></td><td>Record a new decision with optional context.</td></tr>
+            <tr><td><code>end_session</code></td><td>Record the current session as a snapshot, for Session Replay and Time Travel.</td></tr>
+            <tr><td><code>get_context_bundle</code></td><td>Predictive prefetch — assemble a budget-aware bundle of the most relevant past decisions for a task.</td></tr>
+            <tr><td><code>check_contradictions</code></td><td>Scan a project's decisions for unresolved contradictions.</td></tr>
+            <tr><td><code>check_diff_for_conflicts</code></td><td>Pre-write guard — check a proposed unified diff against active decisions before committing.</td></tr>
+            <tr><td><code>friction_scan</code></td><td>Scan a conversation transcript for rephrasing/escalation/retry signals.</td></tr>
+            <tr><td><code>get_handoff_packet</code></td><td>Generate a role-aware context bundle for handing work off to another agent.</td></tr>
+            <tr><td><code>explain_why</code></td><td>Ask a natural-language "why do we...?" question, get a causal-chain answer.</td></tr>
+        </table>
+        <p>This is a curated subset of Tropelex's 150+ REST endpoints. Add more by following the same pattern in <code>mcp_server/server.py</code>: a thin <code>@mcp.tool()</code> wrapper around the existing <code>_request()</code> helper.</p>
+    </div>
+
+    <div class="section" id="tui">
+        <h2>Terminal UI <span class="badge badge-new">NEW</span></h2>
+        <p>A Textual-based terminal dashboard in <code>tui/</code> for anyone who lives in tmux rather than an editor — browse projects, read decision history, capture new decisions, all over the same REST API every other interface uses. Own venv.</p>
+
+        <h3>Setup &amp; run</h3>
+        <pre><code>cd tui
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python app.py</code></pre>
+
+        <h3>Keybindings</h3>
+        <table>
+            <tr><th>Key</th><th>Action</th></tr>
+            <tr><td>↑ / ↓</td><td>Move between projects (sidebar) or decisions (table)</td></tr>
+            <tr><td>Enter</td><td>Select a project</td></tr>
+            <tr><td><code>a</code></td><td>Capture a new decision (modal — decision text + optional context)</td></tr>
+            <tr><td><code>r</code></td><td>Refresh the current view</td></tr>
+            <tr><td><code>q</code></td><td>Quit</td></tr>
+        </table>
+        <p>Shows the project sidebar (from <code>GET /api/memory</code>), a decision table for the selected project (most recent first, with confidence tier), and a status bar with decision count and unresolved contradiction count. First pass, not a full port of the dashboard — covers the core browse/capture loop.</p>
+    </div>
+
+    <div class="section" id="opencode">
+        <h2>OpenCode Integration <span class="badge badge-new">NEW</span></h2>
+        <p>Slash commands and a startup hook for using Tropelex from inside <a href="https://opencode.ai">OpenCode</a>. Defined in <code>.opencode/</code> in this repo.</p>
+
+        <div class="warn"><strong>Setup required —</strong> OpenCode only loads plugins it's told about. Copy the plugin and register it:
+        <pre><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
+        Then add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code> (and <code>opencode.jsonc</code>, if you have one — whichever OpenCode reads on your setup). Restart OpenCode to pick it up. If commands you expect aren't showing in the command palette, this is the first thing to check.</div>
+
+        <table>
+            <tr><th>Command</th><th>What it does</th></tr>
+            <tr><td><code>/tropelex-record-decision</code></td><td>Record a decision: <code>/tropelex-record-decision Using PostgreSQL for database</code></td></tr>
+            <tr><td><code>/tropelex-end-session</code></td><td>Summarize the session and trigger pattern learning: <code>/tropelex-end-session Built user auth with JWT</code></td></tr>
+            <tr><td><code>/tropelex-show-context</code></td><td>Print the accumulated context for the current project (decisions, sessions, patterns, tech stack) — same context that's auto-injected into new sessions</td></tr>
+            <tr><td><code>/tropelex-context</code></td><td>Run raw queries against project memory, insights, and recent decisions</td></tr>
+            <tr><td><code>/tropelex-up</code></td><td>Create/update a project's memory record (name, description, tech stack)</td></tr>
+        </table>
+
+        <p>Project name is auto-detected from the workspace folder name (or git remote, if the plugin's <code>detectProject()</code> finds one) — each workspace gets its own isolated memory. Override with the <code>TROPELEX_PROJECT</code> environment variable.</p>
+        <p>The startup hook (<code>plugins/tropelex.js</code>) also compresses prompts over a configurable length threshold and injects project context before every prompt automatically — see the file header for the full list of environment variables (<code>TROPELEX_URL</code>, <code>TROPELEX_COMPRESS_MIN</code>, <code>TROPELEX_INJECT_CONTEXT</code>).</p>
+    </div>
+
+    <div class="section" id="cli">
+        <h2>CLI Reference <span class="badge badge-new">NEW</span></h2>
+        <p>A local command-line interface for the Tropebook citation library — <code>core/tropebook/cli.py</code>, installed as the <code>tropelex</code> command (see <code>pyproject.toml</code>). Operates directly on local storage; doesn't require the server to be running.</p>
+        <table>
+            <tr><th>Command</th><th>What it does</th></tr>
+            <tr><td><code>tropelex add &lt;title&gt; &lt;url&gt; [summary]</code></td><td>Add a citation</td></tr>
+            <tr><td><code>tropelex search &lt;query&gt;</code></td><td>Search the knowledge base</td></tr>
+            <tr><td><code>tropelex list [tag]</code></td><td>List all citations, or filter by tag</td></tr>
+            <tr><td><code>tropelex import &lt;file&gt;</code></td><td>Import citations from a JSON or markdown file</td></tr>
+            <tr><td><code>tropelex stats</code></td><td>Show knowledge base stats</td></tr>
+            <tr><td><code>tropelex link &lt;url1&gt; &lt;url2&gt; &lt;rel&gt;</code></td><td>Add a relationship between two citations</td></tr>
+            <tr><td><code>tropelex help</code></td><td>Show usage</td></tr>
+        </table>
+        <pre><code>tropelex add "Python Docs" "https://docs.python.org" "Official Python docs"
+tropelex search "machine learning"
+tropelex import research_exports.json</code></pre>
+        <p>If the <code>tropelex</code> command isn't on <code>PATH</code>, run it as a module instead: <code>python -m core.tropebook.cli &lt;command&gt;</code>.</p>
     </div>
 
     <div class="section" id="api">
@@ -192,6 +309,33 @@
             <li><strong>Pure functions</strong> — all business logic is side-effect free</li>
             <li><strong>Result type</strong> — explicit error handling (Ok/Err)</li>
         </ul>
+    </div>
+
+    <div class="section" id="troubleshooting">
+        <h2>Troubleshooting</h2>
+
+        <h3>"Cannot reach Tropelex" / connection refused</h3>
+        <p>The server isn't running. Start it from the repo root:</p>
+        <pre><code>python3 -m core.tropebook.web.server</code></pre>
+        <p>Every interface (dashboard, MCP server, TUI, OpenCode plugin, Emacs package, CLI-for-server-backed-features) talks to <code>http://localhost:8766</code> by default. If you're running it elsewhere, set <code>TROPELEX_URL</code> for whichever client needs it.</p>
+
+        <h3>MCP server or TUI won't start / <code>ModuleNotFoundError</code></h3>
+        <p>Both live in their own venv, separate from Tropelex's own system Python — the venv wasn't created, or dependencies weren't installed into it. From the relevant directory:</p>
+        <pre><code>uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
+        <p>This project runs on a system Python that's <a href="https://peps.python.org/pep-0668/">externally managed</a> (Debian/Ubuntu-style) — plain <code>pip install</code> at the system level will refuse to run. That's exactly why the MCP server and TUI each get an isolated venv instead.</p>
+
+        <h3>OpenCode commands missing from the palette</h3>
+        <p>See the <a href="#opencode">OpenCode Integration</a> section above — the plugin has to be copied to <code>~/.config/opencode/plugins/</code> and registered in <code>opencode.json</code>'s <code>"plugin"</code> array. It isn't picked up automatically just by being in this repo.</p>
+
+        <h3>Settings show a key as "configured" that you never entered</h3>
+        <p>Check your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>) and any other <code>.env</code> files on the machine (e.g. <code>~/.config/last30days/.env</code>) for a stray <code>export</code> — environment variables set outside Tropelex's own <code>.env</code> still get picked up, since Settings reads from the process environment, not just the one file. This is usually a leftover from setting up a different tool, not a Tropelex bug.</p>
+
+        <h3>Deep Research citation-grade mode is rate-limited</h3>
+        <p>The free DuckDuckGo provider rate-limits aggressively under repeated use. Set <code>BRAVE_SEARCH_API_KEY</code> — Tropelex prefers Brave for web-researcher-mcp automatically when it's present.</p>
+
+        <h3>A feature shows "no data yet" and nothing happens when I try it</h3>
+        <p>Several features are empty by design until they're seeded — Decision Market needs a bet placed, Time Travel needs at least one recorded session (<strong>+ End Session</strong> in the Memory tab), Personas need a skill outcome recorded. This is normal for a fresh project, not a bug.</p>
     </div>
 </div>
 </body>
