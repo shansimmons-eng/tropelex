@@ -5,10 +5,17 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <link rel="icon" type="image/x-icon" href="/images/TL1.ico" />
 <title>Tropelex - Persistent Memory for AI Agents</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<!-- Preconnect before the stylesheet/script requests that need these origins —
+     cuts the DNS+TLS handshake off the critical path, which is most of what
+     causes the visible flash from fallback font to webfont on load. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://cdn.tailwindcss.com"/>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 tailwind.config = {
     darkMode: "class",
@@ -69,6 +76,33 @@ tailwind.config = {
     /* ── Dashboard cards ── */
     .dash-card-body { min-height: 108px; }
     .dash-metric-card { min-height: 130px; display: flex; flex-direction: column; justify-content: center; }
+
+    /* Card header bars: overflow-hidden on the parent doesn't reliably clip
+       these to the card's rounded-xl corners once backdrop-filter is in
+       play (creates its own stacking context) — round the header itself
+       instead of relying on clipping, which leaves a visible square-corner
+       sliver against the card's rounded border. */
+    .glass-panel.rounded-xl.overflow-hidden > div:first-child {
+        border-radius: 0.75rem 0.75rem 0 0;
+        position: relative;
+        overflow: hidden;
+        transition: filter 0.25s ease;
+    }
+    .glass-panel.rounded-xl.overflow-hidden > div:first-child::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -60%;
+        width: 45%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+        transition: left 0.7s ease;
+        pointer-events: none;
+    }
+    .glass-panel.rounded-xl.overflow-hidden:hover > div:first-child {
+        filter: brightness(1.25);
+    }
+    .glass-panel.rounded-xl.overflow-hidden:hover > div:first-child::after {
+        left: 130%;
+    }
 
     /* ── Nav ── */
     .nav-item { transition: color 0.2s ease; position: relative; cursor: pointer; color: #e8e8f0; font-size: 0.9rem; letter-spacing: 0.02em; }
@@ -394,7 +428,9 @@ tailwind.config = {
     input[type="password"],
     textarea,
     select {
-        background: rgba(20, 27, 45, 0.6) !important;
+        /* background-color (not the `background` shorthand) — shorthand
+           would reset select's chevron background-image (set above) to none */
+        background-color: rgba(20, 27, 45, 0.6) !important;
         border: 1px solid rgba(165, 128, 250, 0.2) !important;
         position: relative;
         transition: all 0.3s ease;
@@ -791,10 +827,6 @@ void main() {
         <button class="nav-item flex items-center gap-2 w-full mb-2 pb-2 border-b border-glass-border" data-section="settings" style="padding: 0.35rem 0;">
             <span class="material-symbols-outlined text-sm">settings</span> Settings
         </button>
-        <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-accent-lime status-pulse"></span>
-            <span class="font-mono text-xs text-accent-lime" id="engine-status">ONLINE</span>
-        </div>
     </div>
 </aside>
 
@@ -3647,7 +3679,6 @@ async function loadCitations() {
         state.citations = data.citations || [];
         renderCitations();
         updateStats();
-        updateFooterCitations();
     }
 }
 
@@ -4710,24 +4741,14 @@ document.getElementById('btn-clear-context').addEventListener('click', () => {
     document.getElementById('context-preview-wrapper').classList.add('hidden');
 });
 
-// Health check — update status indicator
+// Health check — update status footer (the sidebar used to have its own
+// redundant ONLINE indicator right above this same footer — removed)
 async function checkHealth() {
     const t0 = performance.now();
     try {
         const res = await fetch('/api/health');
         const ok = res.ok;
         const latency = Math.round(performance.now() - t0);
-        const el = document.getElementById('engine-status');
-        if (ok) {
-            el.textContent = 'ONLINE';
-            el.classList.remove('text-red-400');
-            el.classList.add('text-accent-lime');
-        } else {
-            el.textContent = 'ERROR';
-            el.classList.add('text-red-400');
-            el.classList.remove('text-accent-lime');
-        }
-        // Update status footer
         const dot = document.getElementById('footer-status-dot');
         const statusText = document.getElementById('footer-status-text');
         const latencyEl = document.getElementById('footer-latency');
@@ -4735,24 +4756,31 @@ async function checkHealth() {
         if (statusText) { statusText.textContent = ok ? 'System Online' : 'System Error'; }
         if (latencyEl) { latencyEl.textContent = latency + 'ms'; }
     } catch {
-        const el = document.getElementById('engine-status');
-        el.textContent = 'OFFLINE';
-        el.classList.add('text-red-400');
-        el.classList.remove('text-accent-lime');
         const dot = document.getElementById('footer-status-dot');
         const statusText = document.getElementById('footer-status-text');
         if (dot) { dot.className = 'status-dot error'; }
         if (statusText) { statusText.textContent = 'Offline'; }
     }
+    try { await updateFooterInterfaces(); } catch {}
 }
 
 function updateFooterProject() {
     const el = document.getElementById('footer-project');
     if (el) { el.textContent = state.currentProject || 'No project'; }
 }
-function updateFooterCitations() {
-    const el = document.getElementById('footer-citations');
-    if (el) { el.textContent = (state.citations?.length || 0) + ' citations'; }
+// Connected-interfaces count — how many of MCP/TUI/OpenCode/Emacs have
+// talked to this server recently (backed by the heartbeat added alongside
+// the dashboard's Interfaces card). Clicking jumps to that card for detail.
+async function updateFooterInterfaces() {
+    const el = document.getElementById('footer-interfaces');
+    if (!el) return;
+    const data = await api('/interfaces/status');
+    const entries = Object.entries(data?.interfaces || {});
+    const activeCount = entries.filter(([, info]) => info.seconds_ago !== null && info.seconds_ago < 300).length;
+    el.textContent = `${activeCount}/${entries.length} interfaces active`;
+    el.title = entries.map(([name, info]) =>
+        `${name}: ${info.seconds_ago === null ? 'never connected' : info.seconds_ago + 's ago'}`
+    ).join(', ');
 }
 
 // Settings — load on startup
@@ -6797,7 +6825,7 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
     <div class="divider"></div>
     <span id="footer-project" class="text-outline">No project</span>
     <div class="divider"></div>
-    <span id="footer-citations" class="text-outline">0 citations</span>
+    <span id="footer-interfaces" class="text-outline cursor-pointer hover:text-accent-sky transition-colors" onclick="switchSection('dashboard')" title="Click for detail">0/4 interfaces active</span>
     <div class="flex-1"></div>
     <span class="text-accent-lavender/60">Tropelex v1.1.0</span>
     <div class="divider"></div>
