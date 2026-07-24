@@ -91,6 +91,44 @@ async def rate_limit_middleware(request: Request, call_next):
     _rate_limits[client_ip].append(now)
     return await call_next(request)
 
+
+# --- Interface heartbeat (in-memory, no persistence needed) ---
+_interface_last_seen: dict[str, float] = {}
+KNOWN_INTERFACES = ["mcp", "tui", "opencode", "emacs"]
+
+
+@app.middleware("http")
+async def interface_heartbeat_middleware(request: Request, call_next):
+    """Record which client interfaces are actively talking to this server.
+
+    Each interface (MCP server, TUI, OpenCode plugin, Emacs package) sends
+    an X-Tropelex-Client header identifying itself. Purely observational —
+    doesn't gate anything, just powers the dashboard's Interfaces card.
+    """
+    client = request.headers.get("x-tropelex-client")
+    if client in KNOWN_INTERFACES:
+        _interface_last_seen[client] = time.time()
+    return await call_next(request)
+
+
+@app.get("/api/interfaces/status")
+async def get_interfaces_status():
+    """Last-seen timestamps for each known client interface."""
+    now = time.time()
+    return {
+        "interfaces": {
+            name: {
+                "last_seen": _interface_last_seen.get(name),
+                "seconds_ago": (
+                    round(now - _interface_last_seen[name])
+                    if name in _interface_last_seen else None
+                ),
+            }
+            for name in KNOWN_INTERFACES
+        }
+    }
+
+
 # --- Paths (fully computed, no hardcoding) ---
 SCRIPT_DIR = Path(__file__).parent
 WEB_DIR = SCRIPT_DIR.parent

@@ -35,7 +35,7 @@ async function detectProject() {
 async function tropelex(path, opts = {}) {
     try {
         const res = await fetch(`${TROPELEX_URL}${path}`, {
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "X-Tropelex-Client": "opencode" },
             ...opts,
         });
         if (!res.ok) return null;

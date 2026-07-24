@@ -33,7 +33,9 @@ async def _request(method: str, path: str, json: dict[str, Any] | None = None) -
     url = f"{TROPELEX_URL}{path}"
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.request(method, url, json=json)
+            resp = await client.request(
+                method, url, json=json, headers={"X-Tropelex-Client": "mcp"}
+            )
     except httpx.ConnectError as exc:
         raise RuntimeError(
             f"Could not reach the Tropelex server at {TROPELEX_URL}. "

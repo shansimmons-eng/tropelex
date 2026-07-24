@@ -117,7 +117,8 @@ ENDPOINT is the path after /api (e.g. \"/health\").
 BODY is a JSON-encodable alist, or nil.
 Returns the parsed JSON response, or signals an error."
   (let* ((url-request-method method)
-         (url-request-extra-headers '(("Content-Type" . "application/json")))
+         (url-request-extra-headers '(("Content-Type" . "application/json")
+                                       ("X-Tropelex-Client" . "emacs")))
          (url-request-data (when body (tropelex--json-encode body)))
          (url (concat tropelex-server-url "/api" endpoint))
          (buffer (condition-case err

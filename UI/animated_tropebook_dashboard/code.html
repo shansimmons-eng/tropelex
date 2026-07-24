@@ -66,6 +66,10 @@ tailwind.config = {
         box-shadow: 0 0 24px rgba(165, 128, 250, 0.06);
     }
 
+    /* ── Dashboard cards ── */
+    .dash-card-body { min-height: 108px; }
+    .dash-metric-card { min-height: 130px; display: flex; flex-direction: column; justify-content: center; }
+
     /* ── Nav ── */
     .nav-item { transition: color 0.2s ease; position: relative; cursor: pointer; color: #e8e8f0; font-size: 0.9rem; letter-spacing: 0.02em; }
     .nav-item.active { color: #a580fa; }
@@ -858,19 +862,19 @@ void main() {
         </div>
         <!-- Metric Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="glass-panel rounded-xl p-5 terminal-header">
+            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
                 <div class="font-mono text-3xl text-accent-lavender mb-1" id="dash-citations">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Total Citations</div>
             </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header">
+            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
                 <div class="font-mono text-3xl text-accent-sky mb-1" id="dash-projects">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Projects</div>
             </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header">
+            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
                 <div class="font-mono text-3xl text-accent-periwinkle mb-1" id="dash-decisions">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Decisions</div>
             </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header">
+            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
                 <div class="font-mono text-3xl text-accent-lime mb-1" id="dash-feeds">0</div>
                 <div class="font-mono text-xs text-outline uppercase tracking-wider">Active Feeds</div>
             </div>
@@ -931,9 +935,9 @@ void main() {
             <div class="glass-panel rounded-xl overflow-hidden">
                 <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
                     <span class="material-symbols-outlined text-accent-lime text-sm">monitor_heart</span>
-                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Health Score</span>
+                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Health &amp; Insights</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-health" class="font-mono text-sm text-outline">Select a project</div>
                 </div>
             </div>
@@ -942,7 +946,7 @@ void main() {
                     <span class="material-symbols-outlined text-red-400 text-sm">warning</span>
                     <span class="font-mono text-xs text-red-400 uppercase tracking-wider">Friction Alerts</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-friction" class="font-mono text-sm text-outline">Select a project</div>
                 </div>
             </div>
@@ -951,28 +955,31 @@ void main() {
                     <span class="material-symbols-outlined text-accent-sky text-sm">trending_up</span>
                     <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Market Activity</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-market" class="font-mono text-sm text-outline">Select a project</div>
                 </div>
             </div>
             <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-lavender text-sm">insights</span>
-                    <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Insights</span>
+                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-lavender text-sm">compare</span>
+                        <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Contradictions</span>
+                    </div>
+                    <button id="btn-dash-contradictions" class="px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan</button>
                 </div>
-                <div class="p-4">
-                    <div id="dash-insights" class="font-mono text-sm text-outline">Select a project</div>
+                <div class="p-4 dash-card-body">
+                    <div id="dash-contradictions" class="font-mono text-sm text-outline">Select a project, then Scan</div>
                 </div>
             </div>
         </div>
-        <!-- Second row: Git, Decisions, Impact -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <!-- Second row: Git, Decisions, Impact, Doc Mining -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
             <div class="glass-panel rounded-xl overflow-hidden">
                 <div class="px-4 py-2 bg-accent-periwinkle/15 flex items-center gap-2">
                     <span class="material-symbols-outlined text-accent-periwinkle text-sm">commit</span>
                     <span class="font-mono text-xs text-accent-periwinkle uppercase tracking-wider">Git Status</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-git" class="font-mono text-sm text-outline">Select a project</div>
                 </div>
             </div>
@@ -981,7 +988,7 @@ void main() {
                     <span class="material-symbols-outlined text-accent-lavender text-sm">history</span>
                     <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Key Decisions</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-decisions-list" class="font-mono text-sm text-outline">Select a project</div>
                 </div>
             </div>
@@ -990,8 +997,44 @@ void main() {
                     <span class="material-symbols-outlined text-accent-lime text-sm">rocket_launch</span>
                     <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Impact</span>
                 </div>
-                <div class="p-4">
+                <div class="p-4 dash-card-body">
                     <div id="dash-impact" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-lavender text-sm">difference</span>
+                        <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Doc Mining</span>
+                    </div>
+                    <button id="btn-dash-docmine" class="px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan</button>
+                </div>
+                <div class="p-4 dash-card-body">
+                    <div id="dash-docmine" class="font-mono text-sm text-outline">Select a project, then Scan (reads repo .md files)</div>
+                </div>
+            </div>
+        </div>
+        <!-- Third row: Interfaces, Quick Triggers -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-sky text-sm">hub</span>
+                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Interfaces</span>
+                </div>
+                <div class="p-4 dash-card-body">
+                    <div id="dash-interfaces" class="font-mono text-sm text-outline">Loading...</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lime text-sm">bolt</span>
+                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Quick Triggers</span>
+                </div>
+                <div class="p-4 dash-card-body flex flex-wrap gap-2 items-start content-start">
+                    <button id="btn-dash-personas" class="px-3 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
+                    <button id="btn-dash-federation" class="px-3 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Federation Benchmarks</button>
+                    <button id="btn-dash-compact" class="px-3 py-1.5 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
+                    <div id="dash-triggers-result" class="w-full font-mono text-xs text-outline mt-1"></div>
                 </div>
             </div>
         </div>
@@ -6035,6 +6078,7 @@ async function loadDashboard() {
     // Populate status cards for current project
     try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards init failed:', e); }
     try { await updateOnboarding(); } catch(e) { console.error('Onboarding init failed:', e); }
+    try { await loadDashInterfaces(); } catch(e) { console.error('Interfaces card init failed:', e); }
 }
 
 async function loadDashboardStatusCards() {
@@ -6042,24 +6086,35 @@ async function loadDashboardStatusCards() {
     const healthEl = document.getElementById('dash-health');
     const frictionEl = document.getElementById('dash-friction');
     const marketEl = document.getElementById('dash-market');
-    const insightsEl = document.getElementById('dash-insights');
     console.log('[Dashboard] loadDashboardStatusCards: project=', project);
     if (!project) {
         if (healthEl) healthEl.textContent = 'Select a project';
         if (frictionEl) frictionEl.textContent = 'Select a project';
         if (marketEl) marketEl.textContent = 'Select a project';
-        if (insightsEl) insightsEl.textContent = 'Select a project';
         return;
     }
-    // Health
+    // Health & Insights (merged — confidence score plus the session/pattern/
+    // stack detail that used to live in its own separate Insights card)
     try {
-        const conf = await api(`/memory/${encodeURIComponent(project)}/confidence`);
+        const [conf, proj] = await Promise.all([
+            api(`/memory/${encodeURIComponent(project)}/confidence`),
+            api(`/memory/${encodeURIComponent(project)}`),
+        ]);
+        let html = '';
         if (conf) {
             const avg = conf.average_confidence ?? conf.average_score ?? conf.avg ?? 0;
             const pct = Math.round(avg * 100);
             const tier = pct >= 80 ? 'text-accent-lime' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
-            healthEl.innerHTML = `<span class="${tier} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">avg confidence · ${conf.total ?? 0} decisions</span>`;
+            html += `<div><span class="${tier} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">avg confidence</span></div>`;
         }
+        if (proj) {
+            const sessCount = (proj.session_history || []).length;
+            const patCount = (proj.patterns || []).length;
+            const stack = (proj.tech_stack || []).join(', ') || 'None';
+            html += `<div class="text-xs mt-1"><span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
+                <div class="text-outline text-xs truncate mt-1" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>`;
+        }
+        healthEl.innerHTML = html || 'N/A';
     } catch { healthEl.textContent = 'N/A'; }
     // Friction
     try {
@@ -6090,23 +6145,6 @@ async function loadDashboardStatusCards() {
             }
         }
     } catch { marketEl.textContent = 'N/A'; }
-    // Insights
-    if (insightsEl) {
-        try {
-            const proj = await api(`/memory/${encodeURIComponent(project)}`);
-            if (proj) {
-                const decCount = (proj.decisions || []).length;
-                const sessCount = (proj.session_history || []).length;
-                const patCount = (proj.patterns || []).length;
-                const stack = (proj.tech_stack || []).join(', ') || 'None';
-                insightsEl.innerHTML = `
-                    <div class="text-xs space-y-1">
-                        <div><span class="text-accent-lavender">${decCount}</span> decisions · <span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
-                        <div class="text-outline truncate" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>
-                    </div>`;
-            }
-        } catch { insightsEl.textContent = 'N/A'; }
-    }
     // Git Status
     const gitEl = document.getElementById('dash-git');
     if (gitEl) {
@@ -6164,6 +6202,79 @@ async function loadDashboardStatusCards() {
         } catch { impactEl.textContent = 'N/A'; }
     }
 }
+
+// ── Interfaces card: live connection status ──
+async function loadDashInterfaces() {
+    const el = document.getElementById('dash-interfaces');
+    if (!el) return;
+    const data = await api('/interfaces/status');
+    const labels = { mcp: 'MCP Server', tui: 'Terminal UI', opencode: 'OpenCode', emacs: 'Emacs' };
+    el.innerHTML = `<div class="mb-1"><span class="text-accent-lime">●</span> <span class="text-xs">Web Dashboard — active (you're here)</span></div>` +
+        Object.entries(data?.interfaces || {}).map(([key, info]) => {
+            const seen = info.seconds_ago;
+            const active = seen !== null && seen < 300; // seen in the last 5 minutes
+            const dot = active ? 'text-accent-lime' : 'text-outline';
+            const label = seen === null ? 'never connected' : active ? `active ${seen}s ago` : `last seen ${Math.round(seen / 60)}m ago`;
+            return `<div class="mb-1"><span class="${dot}">●</span> <span class="text-xs">${escapeHtml(labels[key] || key)} — ${label}</span></div>`;
+        }).join('');
+}
+
+// ── Contradictions dashboard card: Scan ──
+document.getElementById('btn-dash-contradictions')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const el = document.getElementById('dash-contradictions');
+    el.textContent = 'Scanning...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/contradictions`);
+    if (data) {
+        const count = data.unresolved_count || 0;
+        const cls = count > 0 ? 'text-red-400' : 'text-accent-lime';
+        el.innerHTML = `<span class="${cls} font-mono text-lg">${count}</span> <span class="text-xs text-outline">unresolved of ${data.total_checked || 0} pairs checked</span>`;
+    } else {
+        el.textContent = 'N/A';
+    }
+});
+
+// ── Doc Mining dashboard card: Scan ──
+document.getElementById('btn-dash-docmine')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-dash-docmine');
+    const el = document.getElementById('dash-docmine');
+    btn.disabled = true; btn.textContent = '...';
+    el.textContent = 'Scanning repo markdown files...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/docmine/scan`, 'POST', {});
+    btn.disabled = false; btn.textContent = 'Scan';
+    if (data) {
+        const sev = data.severity_distribution || {};
+        el.innerHTML = `<div><span class="text-red-400 font-mono">${sev.high || 0}</span> high · <span class="text-accent-lavender font-mono">${sev.medium || 0}</span> medium · <span class="text-outline">${sev.low || 0} low</span></div>
+            <div class="text-xs text-outline mt-1">${data.file_count} files · ${data.uncaptured_count} uncaptured decisions</div>`;
+    } else {
+        el.textContent = 'N/A';
+    }
+});
+
+// ── Quick Triggers ──
+document.getElementById('btn-dash-personas')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const el = document.getElementById('dash-triggers-result');
+    el.textContent = 'Loading personas...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/personas`);
+    el.textContent = data ? `${(data.personas || data.agents || []).length} persona(s) loaded — see Personas tab for detail` : 'N/A';
+});
+document.getElementById('btn-dash-federation')?.addEventListener('click', async () => {
+    const el = document.getElementById('dash-triggers-result');
+    el.textContent = 'Loading federation benchmarks...';
+    const data = await api('/memory/federation/benchmarks');
+    el.textContent = data?.aggregate
+        ? `${data.total_projects} federated project(s) — avg reversal rate ${((data.aggregate.reversal_rate || 0) * 100).toFixed(1)}%`
+        : (data?.message || 'No federated data available yet');
+});
+document.getElementById('btn-dash-compact')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const el = document.getElementById('dash-triggers-result');
+    el.textContent = 'Running compaction...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/compact`, 'POST');
+    el.textContent = data ? `Archived ${data.decisions_archived || 0} decisions into ${data.epochs_created || 0} epochs` : 'N/A';
+});
 
 async function updateOnboarding() {
     const checks = {
