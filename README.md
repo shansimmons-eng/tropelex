@@ -51,6 +51,33 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Predictive Prefetch** | Budget-aware context assembly prioritized by impact score |
 | **Background Scheduler** | Automatic periodic tasks — feeds, ghost scans, stale checks |
 | **Emacs Integration** | Capture decisions and friction signals directly from Emacs — compilation errors, rapid saves, manual decisions |
+| **Safety Metadata** | Risk classification, reversibility tracking, affected systems, safety categories for every decision |
+| **Safety Dashboard** | Risk trend analysis, system exposure monitoring, safety score calculation |
+| **Decision Impact Analysis** | Dependency graphs, risk propagation, critical system identification |
+| **Safety Review Workflow** | Approval/rejection workflow with reviewer tracking and mitigation suggestions |
+| **Alignment Evaluation** | Scoring across interpretability, safety, fairness, robustness, governance |
+| **Governance Compliance** | Policy compliance checking against EU AI Act, NIST, ISO 42001 frameworks |
+| **Interpretability Reports** | Human-readable explanations of decision rationale and factors |
+| **Fairness Audit** | Bias detection across decision categories and affected systems |
+| **Accountability Tracking** | Reviewer accountability, decision chains, gap identification |
+| **Robustness Testing** | Single points of failure, irreversible risks, concentration risk analysis |
+| **Provenance Chain** | Cryptographic hash chain of decision history for tamper detection |
+| **Integrity Verification** | Hash chain validation, timestamp ordering, structure verification |
+| **Security Audit Log** | Immutable chronological log of all security-relevant events |
+| **Decision Versioning** | Version history, rollback support, change tracking |
+| **Automated Safety Checks** | Pre-decision safety analysis with risk scoring and recommendations |
+| **Synthetic Data Policy** | EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets — fidelity, privacy, bias audits, blocking gates |
+
+---
+
+## Safety & Alignment Documentation
+
+Tropelex doubles as empirical safety infrastructure for autonomous agents. For the alignment reframing of its features, threat models, and grant-specific technical summaries, see:
+
+- [SAFETY.md](./SAFETY.md) — mapping developer features to AI safety & control terminology.
+- [CAIS Grant Technical Summary](./docs/cais-summary.md) — objective drift and reward hacking prevention.
+- [FAR AI Grant Technical Summary](./docs/far-ai-summary.md) — cooperative multi-agent coordination and calibration.
+- [SFF Grant Technical Summary](./docs/sff-summary.md) — independent developer, open-source safety infrastructure.
 
 ---
 
@@ -304,6 +331,62 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 |---|---|---|
 | POST | `/api/memory/{project}/deep-research/web-research` | Citation-grade multi-step web research; imports results into the Tropebook |
 | POST | `/api/memory/{project}/deep-research/hybrid` | Runs last30days + web-researcher-mcp concurrently, LLM-merges the results |
+
+### Safety & Alignment
+
+| Method | Endpoint | Description |
+|---|---|---|
+| **Safety Metadata** | | |
+| POST | `/api/memory/{project}/decisions` | Add decision with optional `safety_metadata` (risk_level, reversibility, affected_systems, safety_category, requires_review) |
+| GET | `/api/memory/{project}/safety-stats` | Aggregated safety statistics (risk distribution, safety score) |
+| GET | `/api/memory/{project}/safety-dashboard` | Comprehensive safety metrics with trends and system exposure |
+| GET | `/api/memory/{project}/safety-trend` | Time-series risk data for charting |
+| **Decision Impact** | | |
+| GET | `/api/memory/{project}/decision-impact` | System-wide impact analysis with dependency graph and risk propagation |
+| GET | `/api/memory/{project}/decision-impact/{id}` | Per-decision impact with related decisions and dependency chain |
+| **Safety Review Workflow** | | |
+| GET | `/api/memory/{project}/reviews/pending` | Decisions requiring review (sorted by risk) |
+| GET | `/api/memory/{project}/reviews/history` | Review history with optional status filter |
+| GET | `/api/memory/{project}/reviews/stats` | Approval rates, reviewer activity, avg review time |
+| POST | `/api/memory/{project}/decisions/{id}/review` | Submit safety review (reviewer, status, comments, mitigation) |
+| POST | `/api/memory/{project}/decisions/{id}/approve` | Quick-approve a decision |
+| POST | `/api/memory/{project}/decisions/{id}/reject` | Quick-reject a decision |
+| **Alignment & Governance** | | |
+| GET | `/api/memory/{project}/alignment/evaluate` | Project-wide alignment scoring across 5 categories |
+| POST | `/api/memory/{project}/decisions/{id}/alignment` | Per-decision alignment evaluation with custom criteria |
+| GET | `/api/memory/{project}/alignment/values` | Check decisions against organizational values |
+| GET | `/api/memory/{project}/alignment/drift` | Detect alignment drift over time |
+| GET | `/api/memory/{project}/safety-envelope` | Monitor safety boundaries and thresholds |
+| GET | `/api/memory/{project}/corrigibility` | Track ability to correct/override decisions |
+| GET | `/api/memory/{project}/governance/policies` | Governance policy definitions |
+| GET | `/api/memory/{project}/governance/compliance` | Governance compliance checking |
+| GET | `/api/memory/{project}/interpretability/{id}` | Human-readable interpretability report |
+| **Fairness, Accountability, Robustness** | | |
+| GET | `/api/memory/{project}/fairness/audit` | Bias detection across categories and systems |
+| GET | `/api/memory/{project}/accountability/report` | Reviewer accountability and decision chains |
+| GET | `/api/memory/{project}/robustness/test` | Single points of failure, irreversible risks |
+| GET | `/api/memory/{project}/transparency/report` | Human-readable decision summaries |
+| **Provenance, Integrity, Security** | | |
+| GET | `/api/memory/{project}/provenance/chain` | Cryptographic hash chain of decisions |
+| GET | `/api/memory/{project}/integrity/verify` | Verify hash chain and timestamp ordering |
+| GET | `/api/memory/{project}/tamper-detection` | Detect duplicate IDs, timestamp anomalies |
+| GET | `/api/memory/{project}/security/audit-log` | Immutable chronological security event log |
+| **Compliance & Versioning** | | |
+| GET | `/api/memory/{project}/compliance/report` | EU AI Act, NIST, ISO 42001 compliance reports |
+| POST | `/api/memory/{project}/decisions/{id}/version` | Create version snapshot |
+| GET | `/api/memory/{project}/decisions/{id}/versions` | Get version history |
+| POST | `/api/memory/{project}/decisions/{id}/rollback/{v}` | Rollback to previous version |
+| GET | `/api/memory/{project}/stakeholder-impact` | System/stakeholder impact matrix |
+| GET | `/api/memory/{project}/risk-heatmap` | Risk distribution for visualization |
+| POST | `/api/memory/{project}/safety-check` | Pre-decision safety analysis |
+| **Synthetic Data Policy** | | |
+| POST | `/api/memory/{project}/synthetic-data-policies` | Register a synthetic dataset with full metadata |
+| GET | `/api/memory/{project}/synthetic-data-policies` | List all registered synthetic datasets |
+| GET | `/api/memory/{project}/synthetic-data-policies/{id}` | Get full policy details |
+| PUT | `/api/memory/{project}/synthetic-data-policies/{id}` | Update a policy |
+| DELETE | `/api/memory/{project}/synthetic-data-policies/{id}` | Delete a policy |
+| GET | `/api/memory/{project}/synthetic-data-policies/{id}/compliance` | Run compliance check with blocking gates |
+| GET | `/api/memory/{project}/synthetic-data/summary` | Aggregate statistics across all policies |
 
 ---
 
@@ -704,7 +787,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Background scheduler**: Automatic periodic tasks with error recovery
 
 ### Quality Metrics
-- **1292 tests passing** (up from 262)
+- **1408 tests passing** (up from 262)
 - 7 previously untested subsystems now have full coverage (3,093 lines)
 - AI compression via OpenAI (`gpt-4o-mini`)
 - CORS locked to localhost
