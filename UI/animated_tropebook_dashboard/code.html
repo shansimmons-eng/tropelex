@@ -6329,18 +6329,88 @@ async function loadSessions(project) {
         const summary = s.summary || s.session_type || 'Session';
         const copyText = `[${(s.timestamp || '').slice(0, 16)}] ${s.session_type || 'manual'} session — ${s.change_count || 0} changes\n${summary}`;
         return `
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
-            <div class="text-xs font-mono text-outline min-w-[6rem]">${(s.timestamp || '').slice(0, 16)}</div>
-            <div class="flex-1">
-                <span class="text-sm">${escapeHtml(summary)}</span>
-                <span class="text-xs text-outline ml-2">${s.change_count || 0} changes</span>
+        <div class="rounded-lg bg-surface-raised border border-glass-border">
+            <div class="flex items-center gap-3 p-3">
+                <div class="text-xs font-mono text-outline min-w-[6rem]">${(s.timestamp || '').slice(0, 16)}</div>
+                <div class="flex-1">
+                    <span class="text-sm">${escapeHtml(summary)}</span>
+                    <span class="text-xs text-outline ml-2">${s.change_count || 0} changes</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full ${s.session_type === 'rollback' ? 'bg-red-500/20 text-red-400' : 'bg-accent-lavender/20 text-accent-lavender'}">${s.session_type || 'manual'}</span>
+                <button class="session-diff-toggle text-xs text-accent-sky hover:underline shrink-0 cursor-pointer" data-session-id="${escapeAttr(s.session_id)}" data-project="${escapeAttr(project)}">diff</button>
+                <button class="copy-btn shrink-0 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button" title="Copy this session" data-copy-text="${escapeAttr(copyText)}"><span class="material-symbols-outlined text-xs">content_copy</span></button>
             </div>
-            <span class="text-xs px-2 py-0.5 rounded-full ${s.session_type === 'rollback' ? 'bg-red-500/20 text-red-400' : 'bg-accent-lavender/20 text-accent-lavender'}">${s.session_type || 'manual'}</span>
-            <button class="copy-btn shrink-0 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button" title="Copy this session" data-copy-text="${escapeAttr(copyText)}"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+            <div class="session-diff-panel hidden px-3 pb-3 border-t border-glass-border/50 pt-2" data-session-id="${escapeAttr(s.session_id)}"></div>
         </div>
     `;
     }).join('');
 }
+
+// Session Replay: structured memory diff, matching the data shape from
+// core/session_replay.py's _deep_diff (path/type/before/after/items/count)
+const DIFF_TYPE_META = {
+    added:               { symbol: '+', color: 'text-accent-lime', label: 'added' },
+    removed:             { symbol: '-', color: 'text-red-400', label: 'removed' },
+    modified:            { symbol: '~', color: 'text-accent-sky', label: 'modified' },
+    items_added:         { symbol: '+', color: 'text-accent-lime', label: 'items added' },
+    items_removed:       { symbol: '-', color: 'text-red-400', label: 'items removed' },
+    list_length_changed: { symbol: '~', color: 'text-accent-periwinkle', label: 'length changed' },
+    items_appended:      { symbol: '+', color: 'text-accent-lime', label: 'items appended' },
+};
+
+function fmtDiffVal(v) {
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+}
+
+function renderSessionDiff(changes) {
+    if (!changes.length) return '<p class="text-xs text-outline pt-1">No structural changes recorded.</p>';
+    return changes.map(c => {
+        const m = DIFF_TYPE_META[c.type] || { symbol: '•', color: 'text-outline', label: c.type };
+        let detail = '';
+        if (c.type === 'modified') {
+            detail = `<span class="text-red-400/70 line-through">${escapeHtml(fmtDiffVal(c.before))}</span> → <span class="text-accent-lime">${escapeHtml(fmtDiffVal(c.after))}</span>`;
+        } else if (c.type === 'added') {
+            detail = `<span class="text-accent-lime">${escapeHtml(fmtDiffVal(c.after))}</span>`;
+        } else if (c.type === 'removed') {
+            detail = `<span class="text-red-400/70">${escapeHtml(fmtDiffVal(c.before))}</span>`;
+        } else if (c.items) {
+            detail = escapeHtml(c.items.map(fmtDiffVal).join(', '));
+        } else if (c.type === 'list_length_changed') {
+            detail = `${c.before} → ${c.after}`;
+        }
+        return `<div class="flex items-start gap-2 py-1 border-b border-glass-border/30 last:border-0">
+            <span class="font-mono text-xs font-bold ${m.color} w-4 shrink-0">${m.symbol}</span>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs text-outline truncate">${escapeHtml(c.path)}</span>
+                    <span class="text-[10px] ${m.color} uppercase">${m.label}${c.count ? ` (${c.count})` : ''}</span>
+                </div>
+                ${detail ? `<div class="text-xs mt-0.5">${detail}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+document.getElementById('insights-session-list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.session-diff-toggle');
+    if (!btn) return;
+    const sessionId = btn.dataset.sessionId;
+    const project = btn.dataset.project;
+    const panel = document.querySelector(`.session-diff-panel[data-session-id="${CSS.escape(sessionId)}"]`);
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        btn.textContent = 'diff';
+        return;
+    }
+    btn.textContent = 'loading...';
+    const data = await api(`/memory/${encodeURIComponent(project)}/sessions/${encodeURIComponent(sessionId)}/changes`);
+    panel.innerHTML = data ? renderSessionDiff(data.changes || []) : '<p class="text-xs text-red-400 pt-1">Failed to load diff.</p>';
+    panel.classList.remove('hidden');
+    btn.textContent = 'hide diff';
+});
 
 // Cross-Pollination + Auto-Suggestions
 async function loadCrossPollinate(project) {
