@@ -3057,9 +3057,36 @@ void main() {
             </div>
             <div id="compliance-report" class="text-sm text-outline">Select a framework to generate report.</div>
         </div>
-        <div class="glass-panel rounded-xl p-6">
+        <div class="glass-panel rounded-xl p-6 mb-6">
             <h3 class="font-mono text-sm text-outline uppercase mb-4">Governance Policies</h3>
             <div id="governance-policies" class="text-sm text-outline">Loading policies...</div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">balance</span>
+                    Fairness Audit
+                </h3>
+                <div id="fairness-summary" class="grid grid-cols-2 gap-2 mb-3"></div>
+                <div id="fairness-flags" class="space-y-2"></div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">gavel</span>
+                    Accountability
+                </h3>
+                <div id="accountability-summary" class="grid grid-cols-2 gap-2 mb-3"></div>
+                <div id="accountability-gaps" class="space-y-2"></div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">visibility</span>
+                    Transparency
+                </h3>
+                <div id="transparency-summary" class="mb-3"></div>
+                <div id="transparency-insights" class="space-y-2"></div>
+            </div>
         </div>
     </div>
 
@@ -6926,6 +6953,66 @@ async function loadGovernance(project) {
             </div>
         `).join('');
     }
+
+    loadFairnessAudit(project);
+    loadAccountabilityReport(project);
+    loadTransparencyReport(project);
+}
+
+async function loadFairnessAudit(project) {
+    const data = await api(`/memory/${encodeURIComponent(project)}/fairness/audit`);
+    if (!data) return;
+    const s = data.summary || {};
+    document.getElementById('fairness-summary').innerHTML = `
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg ${s.bias_flags > 0 ? 'text-yellow-400' : 'text-accent-lime'}">${s.bias_flags ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Bias flags</div>
+        </div>
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg text-accent-sky">${s.categories_analyzed ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Categories</div>
+        </div>
+    `;
+    const flags = data.bias_flags || [];
+    document.getElementById('fairness-flags').innerHTML = flags.length
+        ? flags.map(f => `<div class="text-xs p-2 rounded bg-yellow-400/5 border-l-2 border-yellow-400/40">${escapeHtml(f.message)}</div>`).join('')
+        : '<p class="text-xs text-accent-lime">No bias patterns detected across risk/review/system distribution.</p>';
+}
+
+async function loadAccountabilityReport(project) {
+    const data = await api(`/memory/${encodeURIComponent(project)}/accountability/report`);
+    if (!data) return;
+    const s = data.summary || {};
+    document.getElementById('accountability-summary').innerHTML = `
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg ${s.accountability_gaps > 0 ? 'text-red-400' : 'text-accent-lime'}">${s.accountability_gaps ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Unreviewed gaps</div>
+        </div>
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg text-accent-sky">${s.total_reviewers ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Reviewers</div>
+        </div>
+    `;
+    const gaps = data.accountability_gaps || [];
+    document.getElementById('accountability-gaps').innerHTML = gaps.length
+        ? gaps.map(g => `<div class="text-xs p-2 rounded bg-red-500/5 border-l-2 border-red-500/40"><span class="text-red-400 uppercase mr-1">${escapeHtml(g.risk_level)}</span>${escapeHtml(g.decision || '')}</div>`).join('')
+        : '<p class="text-xs text-accent-lime">No high-risk decisions lack a review.</p>';
+}
+
+async function loadTransparencyReport(project) {
+    const data = await api(`/memory/${encodeURIComponent(project)}/transparency/report`);
+    if (!data) return;
+    const s = data.summary || {};
+    document.getElementById('transparency-summary').innerHTML = `
+        <div class="flex items-center gap-3">
+            <span class="font-mono text-2xl ${s.review_coverage >= 0.7 ? 'text-accent-lime' : s.review_coverage >= 0.4 ? 'text-yellow-400' : 'text-red-400'}">${((s.review_coverage ?? 0) * 100).toFixed(0)}%</span>
+            <span class="text-xs text-outline">review coverage across ${s.total_decisions ?? 0} decisions</span>
+        </div>
+    `;
+    const insights = data.key_insights || [];
+    document.getElementById('transparency-insights').innerHTML = insights.length
+        ? insights.map(i => `<div class="text-xs p-2 rounded bg-surface-raised">${escapeHtml(i)}</div>`).join('')
+        : '<p class="text-xs text-accent-lime">No transparency gaps identified.</p>';
 }
 
 async function loadComplianceReport(framework) {
