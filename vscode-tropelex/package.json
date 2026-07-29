@@ -26,8 +26,33 @@
         "command": "tropelex.refreshMemory",
         "title": "Refresh Memory",
         "category": "Tropelex"
+      },
+      {
+        "command": "tropelex.scanFileForDecisions",
+        "title": "Scan File for Decision References (Memory Lens)",
+        "category": "Tropelex"
+      },
+      {
+        "command": "tropelex.clearLensAnnotations",
+        "title": "Clear Memory Lens Annotations",
+        "category": "Tropelex"
       }
     ],
+    "configuration": {
+      "title": "Tropelex",
+      "properties": {
+        "tropelex.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8766",
+          "description": "URL of the running Tropelex server, used by Memory Lens to scan files for decision references."
+        },
+        "tropelex.project": {
+          "type": "string",
+          "default": "",
+          "description": "Tropelex project name to scan against. Defaults to the first workspace folder's name if left empty."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -44,6 +69,15 @@
           "name": "Project Memory",
           "icon": "$(list-unordered)",
           "contextualTitle": "Tropelex Memory"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "tropelex.scanFileForDecisions",
+          "group": "tropelex",
+          "when": "editorTextFocus"
         }
       ]
     }

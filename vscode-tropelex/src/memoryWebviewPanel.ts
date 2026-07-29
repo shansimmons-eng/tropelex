@@ -14,7 +14,6 @@ export class MemoryWebviewPanel {
   private static _instance: MemoryWebviewPanel | undefined;
 
   private readonly _panel: vscode.WebviewPanel;
-  private readonly _extensionUri: vscode.Uri;
   private _disposables: vscode.Disposable[] = [];
   private _memoryFilePath: string | undefined;
 
@@ -73,11 +72,10 @@ export class MemoryWebviewPanel {
 
   private constructor(
     panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
+    _extensionUri: vscode.Uri,
     memoryFilePath?: string
   ) {
     this._panel = panel;
-    this._extensionUri = extensionUri;
     this._memoryFilePath = memoryFilePath;
 
     this._panel.webview.html = this._getHtmlContent(
@@ -237,7 +235,7 @@ export class MemoryWebviewPanel {
    * @returns Complete HTML string with CSP, nonce, and theme support
    */
   private _getHtmlContent(
-    webview: vscode.Webview,
+    _webview: vscode.Webview,
     bodyContent: string
   ): string {
     const nonce = _getNonce();
@@ -414,7 +412,7 @@ export class MemoryWebviewPanel {
    * Renders memory content with basic JSON syntax highlighting.
    */
   private _renderMemoryContent(
-    fileName: string,
+    _fileName: string,
     jsonText: string
   ): string {
     const highlighted = _highlightJson(jsonText);
