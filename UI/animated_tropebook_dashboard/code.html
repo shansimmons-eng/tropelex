@@ -2999,11 +2999,34 @@ void main() {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="glass-panel rounded-xl p-6">
                 <h3 class="font-mono text-sm text-outline uppercase mb-4">Category Scores</h3>
-                <div id="alignment-categories" class="space-y-3"></div>
+                <svg id="alignment-radar" viewBox="0 0 300 260" class="w-full h-56"></svg>
+                <div id="alignment-categories" class="space-y-3 mt-2"></div>
             </div>
             <div class="glass-panel rounded-xl p-6">
                 <h3 class="font-mono text-sm text-outline uppercase mb-4">Drift Detection</h3>
                 <div id="alignment-drift" class="text-sm text-outline">Not enough data for drift detection.</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">undo</span>
+                    Corrigibility
+                </h3>
+                <div id="corrigibility-summary" class="grid grid-cols-2 gap-3 mb-3"></div>
+                <div id="corrigibility-list" class="space-y-2"></div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">health_and_safety</span>
+                    Pre-Write Safety Check
+                </h3>
+                <textarea id="safety-check-input" rows="2" placeholder="Draft a decision to check before recording it..."
+                    class="w-full bg-surface-raised border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-2"></textarea>
+                <button id="btn-safety-check" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">
+                    Check
+                </button>
+                <div id="safety-check-result" class="mt-3"></div>
             </div>
         </div>
     </div>
@@ -6744,29 +6767,136 @@ async function loadSafetyDashboard(project) {
 // Alignment
 async function loadAlignment(project) {
     if (!project) return;
-    const data = await api(`/memory/${encodeURIComponent(project)}/alignment/evaluate`);
-    if (!data) return;
-    
-    const summary = data.summary || {};
-    document.getElementById('alignment-score').textContent = summary.alignment_score?.toFixed(2) || '—';
-    document.getElementById('alignment-passing').textContent = summary.passing_count || '0';
-    document.getElementById('alignment-failing').textContent = summary.failing_count || '0';
-    
-    // Render category scores
-    const categories = document.getElementById('alignment-categories');
-    const categoryScores = data.category_scores || {};
-    categories.innerHTML = Object.entries(categoryScores).map(([cat, score]) => `
-        <div class="flex items-center justify-between">
-            <span class="text-sm capitalize">${cat}</span>
-            <div class="flex items-center gap-2">
-                <div class="w-24 h-2 bg-surface-high rounded-full overflow-hidden">
-                    <div class="h-full rounded-full ${score >= 0.7 ? 'bg-accent-lime' : score >= 0.4 ? 'bg-yellow-400' : 'bg-red-400'}" style="width: ${score * 100}%"></div>
+    const [data, drift] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/alignment/evaluate`),
+        api(`/memory/${encodeURIComponent(project)}/alignment/drift`),
+    ]);
+    if (data) {
+        const summary = data.summary || {};
+        document.getElementById('alignment-score').textContent = summary.alignment_score?.toFixed(2) || '—';
+        document.getElementById('alignment-passing').textContent = summary.passing_count || '0';
+        document.getElementById('alignment-failing').textContent = summary.failing_count || '0';
+
+        const categories = document.getElementById('alignment-categories');
+        const categoryScores = data.category_scores || {};
+        categories.innerHTML = Object.entries(categoryScores).map(([cat, score]) => `
+            <div class="flex items-center justify-between">
+                <span class="text-sm capitalize">${cat}</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-24 h-2 bg-surface-high rounded-full overflow-hidden">
+                        <div class="h-full rounded-full ${score >= 0.7 ? 'bg-accent-lime' : score >= 0.4 ? 'bg-yellow-400' : 'bg-red-400'}" style="width: ${score * 100}%"></div>
+                    </div>
+                    <span class="text-xs font-mono">${score?.toFixed(2)}</span>
                 </div>
-                <span class="text-xs font-mono">${score?.toFixed(2)}</span>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+        renderAlignmentRadar(document.getElementById('alignment-radar'), categoryScores);
+    }
+
+    renderAlignmentDrift(document.getElementById('alignment-drift'), drift);
+    loadCorrigibility(project);
 }
+
+// Radar chart of the 5 real alignment category scores (interpretability,
+// safety, fairness, robustness, governance) — computed by GET /alignment/evaluate
+// but, before now, only ever rendered as a flat bar list.
+function polarPoint(cx, cy, r, angleDeg) {
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function renderAlignmentRadar(svgEl, categoryScores) {
+    const labels = Object.keys(categoryScores);
+    if (!labels.length) { svgEl.innerHTML = ''; return; }
+    const n = labels.length;
+    const cx = 150, cy = 120, maxR = 90;
+    const angleStep = 360 / n;
+    let svg = '';
+    [0.25, 0.5, 0.75, 1.0].forEach(frac => {
+        const pts = labels.map((_, i) => polarPoint(cx, cy, maxR * frac, i * angleStep).join(',')).join(' ');
+        svg += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    });
+    labels.forEach((_, i) => {
+        const [x, y] = polarPoint(cx, cy, maxR, i * angleStep);
+        svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    });
+    const clamp = v => Math.max(0, Math.min(1, v ?? 0));
+    const dataPts = labels.map((l, i) => polarPoint(cx, cy, maxR * clamp(categoryScores[l]), i * angleStep).join(',')).join(' ');
+    svg += `<polygon points="${dataPts}" fill="rgba(165,128,250,0.25)" stroke="#a580fa" stroke-width="2"/>`;
+    labels.forEach((l, i) => {
+        const [x, y] = polarPoint(cx, cy, maxR * clamp(categoryScores[l]), i * angleStep);
+        svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#a580fa"/>`;
+    });
+    labels.forEach((l, i) => {
+        const [x, y] = polarPoint(cx, cy, maxR + 26, i * angleStep);
+        svg += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="JetBrains Mono, monospace" fill="#cbc3d5">${escapeHtml(l)}</text>`;
+    });
+    svgEl.innerHTML = svg;
+}
+
+function renderAlignmentDrift(el, drift) {
+    if (!drift) { el.innerHTML = '<p class="text-sm text-outline">Failed to load drift data.</p>'; return; }
+    if (drift.drift_detected === false && drift.message) {
+        el.innerHTML = `<p class="text-sm text-outline">${escapeHtml(drift.message)} (${drift.total_decisions || 0} decisions total)</p>`;
+        return;
+    }
+    const m = drift.metrics || {};
+    const badge = drift.drift_detected
+        ? '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400">drift detected</span>'
+        : '<span class="text-xs px-2 py-0.5 rounded-full bg-accent-lime/20 text-accent-lime">stable</span>';
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-3">${badge}<span class="text-xs text-outline">last ${drift.recent_size} vs. prior ${drift.baseline_size}</span></div>
+        <div class="space-y-2">
+            <div class="flex justify-between text-sm"><span class="text-outline">Risk drift</span><span class="font-mono ${m.risk_drift > 0 ? 'text-red-400' : 'text-accent-lime'}">${m.risk_drift > 0 ? '+' : ''}${m.risk_drift}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-outline">Review-rate drift</span><span class="font-mono ${m.review_drift < 0 ? 'text-red-400' : 'text-accent-lime'}">${m.review_drift > 0 ? '+' : ''}${m.review_drift}</span></div>
+        </div>
+        ${(drift.drift_indicators || []).length ? `<div class="mt-3 space-y-1">${drift.drift_indicators.map(i => `<div class="text-xs px-2 py-1 rounded bg-surface-raised">${escapeHtml(i.metric)} is ${escapeHtml(i.direction)} (${i.change > 0 ? '+' : ''}${i.change})</div>`).join('')}</div>` : ''}
+    `;
+}
+
+async function loadCorrigibility(project) {
+    const data = await api(`/memory/${encodeURIComponent(project)}/corrigibility`);
+    const summaryEl = document.getElementById('corrigibility-summary');
+    const listEl = document.getElementById('corrigibility-list');
+    if (!data) return;
+    const s = data.summary || {};
+    summaryEl.innerHTML = `
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg ${s.corrigibility_score >= 0.7 ? 'text-accent-lime' : s.corrigibility_score >= 0.4 ? 'text-yellow-400' : 'text-red-400'}">${((s.corrigibility_score ?? 0) * 100).toFixed(0)}%</div>
+            <div class="text-[10px] text-outline uppercase">Corrigibility</div>
+        </div>
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg text-accent-sky">${s.non_corrigible_count ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Non-corrigible</div>
+        </div>
+    `;
+    const nc = data.non_corrigible_decisions || [];
+    listEl.innerHTML = nc.length
+        ? nc.map(d => `<div class="text-xs p-2 rounded bg-red-500/5 border-l-2 border-red-500/40"><span class="text-red-400 uppercase mr-1">${escapeHtml(d.risk_level)}</span>${escapeHtml(d.decision || '')}</div>`).join('')
+        : '<p class="text-xs text-accent-lime">All decisions are reversible or reviewed.</p>';
+}
+
+document.getElementById('btn-safety-check').addEventListener('click', async () => {
+    const project = getCurrentProject();
+    const text = document.getElementById('safety-check-input').value.trim();
+    if (!project) { showToast('Select a project first'); return; }
+    if (!text) { showToast('Draft a decision to check'); return; }
+    const btn = document.getElementById('btn-safety-check');
+    btn.disabled = true;
+    const params = new URLSearchParams({ decision_text: text });
+    const data = await api(`/memory/${encodeURIComponent(project)}/safety-check?${params}`, 'POST');
+    btn.disabled = false;
+    const el = document.getElementById('safety-check-result');
+    if (!data) { el.innerHTML = ''; return; }
+    const scoreColor = data.safety_score >= 0.8 ? 'text-accent-lime' : data.safety_score >= 0.6 ? 'text-yellow-400' : data.safety_score >= 0.4 ? 'text-orange-400' : 'text-red-400';
+    el.innerHTML = `
+        <div class="flex items-center gap-3 mb-2">
+            <span class="font-mono text-2xl ${scoreColor}">${(data.safety_score * 100).toFixed(0)}%</span>
+            <span class="text-sm">${escapeHtml(data.recommendation)}</span>
+        </div>
+        ${(data.flags || []).length ? `<div class="space-y-1">${data.flags.map(f => `<div class="text-xs px-2 py-1 rounded bg-surface-raised text-outline">${escapeHtml(f)}</div>`).join('')}</div>` : '<p class="text-xs text-accent-lime">No flags raised.</p>'}
+    `;
+});
 
 // Governance
 async function loadGovernance(project) {
