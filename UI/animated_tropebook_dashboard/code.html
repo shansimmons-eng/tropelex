@@ -1716,6 +1716,7 @@ void main() {
                     <span class="material-symbols-outlined text-sm">history</span>
                     Session Replay
                 </h3>
+                <div id="weekly-summary" class="hidden mb-4 p-3 rounded-lg bg-surface-raised border border-glass-border"></div>
                 <div id="insights-session-list" class="space-y-2 max-h-64 overflow-y-auto">
                     <p class="text-sm text-outline">Select a project to view session history.</p>
                 </div>
@@ -6769,6 +6770,7 @@ document.getElementById('btn-generate-adrs').addEventListener('click', async () 
 // Session Replay
 async function loadSessions(project) {
     if (!project) return;
+    loadWeeklySummary(project);
     const data = await api(`/memory/${project}/sessions?limit=10`);
     const el = document.getElementById('insights-session-list');
     if (!data || data.sessions.length === 0) {
@@ -6794,6 +6796,25 @@ async function loadSessions(project) {
         </div>
     `;
     }).join('');
+}
+
+// GET /sessions/weekly-summary was fully built but never called — the
+// session list only ever showed individual entries, with no rollup of
+// what actually changed in the last 7 days.
+async function loadWeeklySummary(project) {
+    const data = await api(`/memory/${project}/sessions/weekly-summary`);
+    const el = document.getElementById('weekly-summary');
+    if (!data || data.sessions === 0) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    const types = Object.entries(data.change_types || {}).map(([t, c]) => `<span class="text-xs px-1.5 py-0.5 rounded bg-surface-high text-outline">${escapeHtml(t)} &times;${c}</span>`).join(' ');
+    const areas = Object.entries(data.top_areas || {}).map(([a, c]) => `<span class="text-xs px-1.5 py-0.5 rounded bg-accent-periwinkle/10 text-accent-periwinkle">${escapeHtml(a)} &times;${c}</span>`).join(' ');
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-mono uppercase text-accent-periwinkle">Past 7 days</span>
+            <span class="text-xs text-outline">${data.sessions} session${data.sessions !== 1 ? 's' : ''} &middot; ${data.total_changes} change${data.total_changes !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="flex flex-wrap gap-1">${types}${areas}</div>
+    `;
 }
 
 // Session Replay: structured memory diff, matching the data shape from

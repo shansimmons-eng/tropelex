@@ -4819,6 +4819,16 @@ async def get_sessions(project: str, limit: int = Query(20, ge=1, le=100)):
     return {"sessions": sessions, "count": len(sessions)}
 
 
+@app.get("/api/memory/{project}/sessions/weekly-summary")
+async def get_weekly_summary(project: str):
+    """Get a summary of what changed this week."""
+    project = _sanitise_project(project)
+    from core.session_replay import SessionReplay
+
+    replay = SessionReplay(str(BASE_DIR))
+    return replay.get_weekly_summary(project)
+
+
 @app.get("/api/memory/{project}/sessions/{session_id}")
 async def get_session_detail(project: str, session_id: str):
     """Get full session detail including snapshots."""
@@ -4888,16 +4898,6 @@ async def rollback_session(project: str, session_id: str):
     if not result.get("rolled_back"):
         raise HTTPException(status_code=400, detail=result.get("error", "Rollback failed"))
     return result
-
-
-@app.get("/api/memory/{project}/sessions/weekly-summary")
-async def get_weekly_summary(project: str):
-    """Get a summary of what changed this week."""
-    project = _sanitise_project(project)
-    from core.session_replay import SessionReplay
-
-    replay = SessionReplay(str(BASE_DIR))
-    return replay.get_weekly_summary(project)
 
 
 # ============================
