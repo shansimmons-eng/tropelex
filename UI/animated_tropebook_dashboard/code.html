@@ -1506,6 +1506,10 @@ void main() {
                     <span class="font-mono text-lg text-accent-sky" id="stat-context">0</span>
                     <span class="font-mono text-xs text-outline block">context</span>
                 </div>
+                <div class="text-center">
+                    <span class="font-mono text-lg" id="stat-clarity" title="Grade from the Context Check heuristics — A means no issues detected">--</span>
+                    <span class="font-mono text-xs text-outline block">clarity</span>
+                </div>
             </div>
             
             <div class="flex items-center justify-between mt-4">
@@ -1553,7 +1557,7 @@ void main() {
                 <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
                 <div class="relative code-copy-wrap">
                     <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
-                    <pre id="output-context" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto pt-6"></pre>
+                    <div id="output-context" class="font-mono text-xs text-on-surface h-32 overflow-auto pt-6 space-y-1.5"></div>
                 </div>
             </div>
             <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-lavender">
@@ -1601,14 +1605,44 @@ void main() {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Confidence Overview -->
-            <div class="glass-panel rounded-xl p-6">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">verified</span>
-                    Decision Confidence
-                </h3>
-                <div id="confidence-overview" class="space-y-3">
+            <!-- Confidence & Decay -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">verified</span>
+                        Decision Confidence &amp; Decay
+                    </h3>
+                    <button id="btn-apply-decay" title="Recompute and save confidence scores on every decision" class="px-3 py-1 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                        Apply Decay to All
+                    </button>
+                </div>
+                <div id="confidence-overview" class="space-y-3 mb-4">
                     <p class="text-sm text-outline">Select a project to view confidence scores.</p>
+                </div>
+                <div id="decay-scatter-wrap" class="mb-4 hidden">
+                    <div class="text-xs text-outline mb-1 flex items-center justify-between">
+                        <span>Score vs. Age (hover a point for details)</span>
+                        <span class="flex gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:#98fa80"></span>high</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:#80d5fa"></span>medium</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:#ffa500"></span>low</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:#ff4444"></span>stale</span>
+                        </span>
+                    </div>
+                    <svg id="decay-scatter" viewBox="0 0 800 180" preserveAspectRatio="none" class="w-full h-40 rounded-lg bg-surface-raised border border-glass-border"></svg>
+                    <div class="flex justify-between text-[10px] text-outline mt-1">
+                        <span>0d old</span>
+                        <span id="decay-scatter-max-age">--</span>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-mono uppercase text-outline mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">warning</span>
+                        Maintenance Queue
+                    </h4>
+                    <div id="decay-queue" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-sm text-outline">Select a project to view stale decisions.</p>
+                    </div>
                 </div>
             </div>
 
@@ -5019,6 +5053,48 @@ function contextAgent(input) {
     return issues;
 }
 
+// Context Check findings, rendered as alert cards instead of a flat text blob
+const CONTEXT_ISSUE_META = {
+    VAGUE:   { icon: 'help',    color: 'text-orange-400', border: 'border-orange-400/40', bg: 'bg-orange-400/5' },
+    CONTEXT: { icon: 'info',    color: 'text-accent-sky',  border: 'border-accent-sky/40',  bg: 'bg-accent-sky/5' },
+    COMPLEX: { icon: 'warning', color: 'text-red-400',    border: 'border-red-400/40',     bg: 'bg-red-400/5' },
+};
+
+function renderContextIssues(el, issues) {
+    if (issues.length === 0) {
+        el.innerHTML = `<div class="flex items-center gap-2 text-accent-lime text-xs pt-1">
+            <span class="material-symbols-outlined text-sm">check_circle</span>Clear — no issues detected
+        </div>`;
+        return;
+    }
+    el.innerHTML = issues.map(issue => {
+        const sep = issue.indexOf(':');
+        const category = sep === -1 ? issue : issue.slice(0, sep);
+        const desc = sep === -1 ? '' : issue.slice(sep + 1).trim();
+        const m = CONTEXT_ISSUE_META[category] || { icon: 'error', color: 'text-outline', border: 'border-glass-border', bg: '' };
+        return `<div class="flex items-start gap-2 p-1.5 rounded border-l-2 ${m.border} ${m.bg}">
+            <span class="material-symbols-outlined text-xs ${m.color} mt-0.5">${m.icon}</span>
+            <div class="min-w-0">
+                <span class="text-[10px] font-bold ${m.color} uppercase tracking-wider">${escapeHtml(category)}</span>
+                <span class="block text-outline">${escapeHtml(desc)}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Letter-grade summary of Context Check findings — not a security/quality score,
+// just a compressed read of how many clarity heuristics tripped.
+const CLARITY_GRADES = [
+    { max: 0, grade: 'A', color: '#98fa80' },
+    { max: 1, grade: 'B', color: '#80d5fa' },
+    { max: 2, grade: 'C', color: '#ffa500' },
+    { max: Infinity, grade: 'D', color: '#ff4444' },
+];
+
+function clarityGrade(issueCount) {
+    return CLARITY_GRADES.find(g => issueCount <= g.max);
+}
+
 function structureAgent(input) {
     // If input is already very short or structured, don't modify it
     if (input.length < 100 || input.includes('TASK:') || input.includes('###')) {
@@ -5067,6 +5143,8 @@ async function runPipeline() {
         panel.classList.remove('stage-active', 'stage-done');
         if (state === 'running') panel.classList.add('stage-active');
         if (state === 'done')    panel.classList.add('stage-done');
+        const statusEl = panel.querySelector('.status');
+        if (statusEl) statusEl.textContent = state === 'running' ? 'Running...' : state === 'done' ? 'Done' : 'Skipped';
         document.getElementById(id).textContent = text;
     };
 
@@ -5093,13 +5171,19 @@ async function runPipeline() {
     }
 
     // Context Stage
+    let clarityIssueCount = null;
     if (useContext) {
-        setStage('output-context', 'running', 'Checking...');
+        setStage('output-context', 'running', '');
         await new Promise(r => setTimeout(r, 150));
         const issues = contextAgent(result);
-        setStage('output-context', 'done', issues.length === 0 ? 'CONTEXT OK: Clear request' : 'ISSUES:\n' + issues.join('\n'));
+        clarityIssueCount = issues.length;
+        setStage('output-context', 'done', '');
+        renderContextIssues(document.getElementById('output-context'), issues);
+        const copyBtn = document.getElementById('output-context').closest('.code-copy-wrap').querySelector('.copy-btn');
+        copyBtn.dataset.copyText = issues.length === 0 ? 'CONTEXT OK: Clear request' : 'ISSUES:\n' + issues.join('\n');
     } else {
-        setStage('output-context', '', 'Skipped');
+        setStage('output-context', '', '');
+        document.getElementById('output-context').innerHTML = '<span class="text-outline opacity-70">Skipped</span>';
     }
 
     // Structure Stage
@@ -5129,6 +5213,16 @@ async function runPipeline() {
     const savings = originalLength > 0 ? Math.round((1 - compressedLength / originalLength) * 100) : 0;
     document.getElementById('stat-savings').textContent = (savings > 0 ? savings : 0) + '%';
     document.getElementById('stat-context').textContent = projectContext.length;
+
+    const clarityEl = document.getElementById('stat-clarity');
+    if (clarityIssueCount === null) {
+        clarityEl.textContent = '--';
+        clarityEl.style.color = '';
+    } else {
+        const g = clarityGrade(clarityIssueCount);
+        clarityEl.textContent = g.grade;
+        clarityEl.style.color = g.color;
+    }
 }
 
 document.getElementById('run-pipeline').addEventListener('click', runPipeline);
@@ -6006,32 +6100,112 @@ function getInsightsProject() {
 }
 
 // Confidence Overview
+const DECAY_TIER_COLORS = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
+const DECAY_TIER_BG = { high: 'bg-accent-lime/10', medium: 'bg-accent-sky/10', low: 'bg-orange-500/10', stale: 'bg-red-500/10' };
+
 async function loadConfidence(project) {
     if (!project) return;
-    const data = await api(`/memory/${project}/confidence`);
+    const [data, scoredData, staleData] = await Promise.all([
+        api(`/memory/${project}/confidence`),
+        api(`/memory/${project}/decisions/scored`),
+        api(`/memory/${project}/stale`),
+    ]);
     const el = document.getElementById('confidence-overview');
     if (!data || data.total === 0) {
         el.innerHTML = '<p class="text-sm text-outline">No decisions recorded yet.</p>';
+        document.getElementById('decay-scatter-wrap').classList.add('hidden');
+        document.getElementById('decay-queue').innerHTML = '<p class="text-sm text-outline">No stale decisions.</p>';
         return;
     }
-    const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
-    const tierBg = { high: 'bg-accent-lime/10', medium: 'bg-accent-sky/10', low: 'bg-orange-500/10', stale: 'bg-red-500/10' };
     el.innerHTML = `
         <div class="flex items-center gap-4 mb-3">
-            <div class="text-3xl font-mono font-bold" style="color: ${tierColors[data.most_confident?.tier || 'medium']}">${Math.round(data.average_confidence * 100)}%</div>
+            <div class="text-3xl font-mono font-bold" style="color: ${DECAY_TIER_COLORS[data.most_confident?.tier || 'medium']}">${Math.round(data.average_confidence * 100)}%</div>
             <div class="text-xs text-outline">avg confidence across ${data.total} decisions</div>
         </div>
         <div class="grid grid-cols-4 gap-2">
             ${Object.entries(data.by_tier).map(([tier, count]) => `
-                <div class="p-2 rounded-lg ${tierBg[tier]} border border-glass-border text-center">
-                    <div class="text-lg font-mono font-bold" style="color: ${tierColors[tier]}">${count}</div>
+                <div class="p-2 rounded-lg ${DECAY_TIER_BG[tier]} border border-glass-border text-center">
+                    <div class="text-lg font-mono font-bold" style="color: ${DECAY_TIER_COLORS[tier]}">${count}</div>
                     <div class="text-xs text-outline capitalize">${tier}</div>
                 </div>
             `).join('')}
         </div>
         ${data.stale_count > 0 ? `<p class="text-xs text-orange-400 mt-2">${data.stale_count} decisions need review (stale or low confidence)</p>` : ''}
     `;
+
+    renderDecayScatter(scoredData?.decisions || []);
+    renderDecayQueue(staleData?.stale || []);
 }
+
+// Score-vs-age scatter — plots every decision's real decay score against its real age
+function renderDecayScatter(scored) {
+    const wrap = document.getElementById('decay-scatter-wrap');
+    const svg = document.getElementById('decay-scatter');
+    if (!scored.length) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    const maxAge = Math.max(...scored.map(s => s.days_old || 0), 1);
+    document.getElementById('decay-scatter-max-age').textContent = `${Math.round(maxAge)}d old`;
+    const W = 800, H = 180, PAD = 8;
+    const grid = [0, 0.5, 1].map(f => {
+        const y = PAD + f * (H - PAD * 2);
+        return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>`;
+    }).join('');
+    const points = scored.map(s => {
+        const x = PAD + (Math.min(s.days_old || 0, maxAge) / maxAge) * (W - PAD * 2);
+        const y = PAD + (1 - s.score) * (H - PAD * 2);
+        const color = DECAY_TIER_COLORS[s.tier] || '#958e9e';
+        const label = escapeHtml(`${(s.decision || '').slice(0, 60)} — ${Math.round(s.score * 100)}% (${s.tier}, ${Math.round(s.days_old || 0)}d)`);
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${color}" fill-opacity="0.85" stroke="${color}" stroke-width="1"><title>${label}</title></circle>`;
+    }).join('');
+    svg.innerHTML = grid + points;
+}
+
+// Maintenance queue — real stale decisions, expandable to full text
+function renderDecayQueue(stale) {
+    const el = document.getElementById('decay-queue');
+    if (!stale.length) {
+        el.innerHTML = '<p class="text-sm text-accent-lime">No stale decisions — everything is holding up.</p>';
+        return;
+    }
+    el.innerHTML = stale.slice(0, 20).map((d, i) => {
+        const c = d.confidence || {};
+        const tier = c.tier || 'medium';
+        return `
+        <div class="p-3 rounded-lg ${DECAY_TIER_BG[tier]} border border-glass-border">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="font-mono text-sm font-bold shrink-0" style="color: ${DECAY_TIER_COLORS[tier]}">${Math.round((c.score || 0) * 100)}%</span>
+                    <span class="text-xs text-outline shrink-0 uppercase">${tier}</span>
+                    <span class="text-xs text-outline shrink-0">${Math.round(c.days_old || 0)}d old</span>
+                </div>
+                <button class="decay-queue-toggle text-xs text-accent-sky hover:underline shrink-0 cursor-pointer" data-idx="${i}">expand</button>
+            </div>
+            <p class="decay-queue-text text-sm text-on-surface mt-1 truncate" data-idx="${i}">${escapeHtml(d.decision || '')}</p>
+        </div>`;
+    }).join('');
+}
+
+document.getElementById('decay-queue').addEventListener('click', (e) => {
+    const btn = e.target.closest('.decay-queue-toggle');
+    if (!btn) return;
+    const textEl = document.querySelector(`.decay-queue-text[data-idx="${btn.dataset.idx}"]`);
+    if (!textEl) return;
+    const isTruncated = textEl.classList.toggle('truncate');
+    btn.textContent = isTruncated ? 'expand' : 'collapse';
+});
+
+document.getElementById('btn-apply-decay').addEventListener('click', async () => {
+    const project = getInsightsProject();
+    if (!project) { showToast('Select a project first'); return; }
+    const result = await api(`/memory/${project}/decay/apply`, 'POST');
+    if (result) {
+        showToast('Decay scores applied and saved');
+        loadConfidence(project);
+    }
+});
 
 // Agent Skills
 async function loadAgentSkills(project) {
