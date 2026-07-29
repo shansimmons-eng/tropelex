@@ -163,6 +163,66 @@ async def cost_report(project: str) -> dict[str, Any]:
     }
 
 
+@cost_router.get("/{project}/cost/compounding-risk")
+async def compounding_risk(project: str) -> dict[str, Any]:
+    """Decisions with real rework cost *and* poor Decision Market
+    calibration in their category — the Cost Ledger + Decision Market
+    compounding signal.
+
+    High rework cost alone is common (rework happens). Poor calibration
+    alone is common (every category has some bad bets). Both together on
+    the same decision is the pattern worth surfacing: this category is
+    expensive to get wrong AND the team has a track record of getting it
+    wrong. Previously these lived in separate tabs with no link between them.
+    """
+    memory = _load_memory(project)
+    tracker = _build_tracker(memory)
+
+    try:
+        report = tracker.generate_cost_report(project)
+    except CostError as exc:
+        logger.error("cost report failed for compounding-risk: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    from core.market import Err as MarketErr
+    from core.market.calibration import compute_calibration
+
+    bets = memory.get("market", {}).get("bets", [])
+    calibration_result = compute_calibration(bets, project)
+    category_scores = (
+        {} if isinstance(calibration_result, MarketErr)
+        else calibration_result.value.category_scores
+    )
+
+    decisions_by_id = {d.get("id"): d for d in memory.get("decisions", [])}
+    compounding: list[dict[str, Any]] = []
+    for dc in report.cost_per_decision:
+        if dc.reversal_cost <= 0:
+            continue
+        decision = decisions_by_id.get(dc.decision_id, {})
+        safety = decision.get("safety_metadata", {})
+        categories = {safety.get("safety_category", "general"), *safety.get("affected_systems", [])}
+        low_calibration = {
+            cat: category_scores[cat] for cat in categories
+            if category_scores.get(cat, 1.0) < 0.5
+        }
+        if low_calibration:
+            compounding.append({
+                "decision_id": dc.decision_id,
+                "decision_text": dc.decision_text,
+                "rework_cost_usd": dc.reversal_cost,
+                "total_cost_usd": dc.total_cost_usd,
+                "low_calibration_categories": low_calibration,
+            })
+
+    compounding.sort(key=lambda x: x["rework_cost_usd"], reverse=True)
+    return {
+        "project": project,
+        "compounding_risk": compounding,
+        "count": len(compounding),
+    }
+
+
 @cost_router.get("/{project}/cost/decision/{decision_id}")
 async def decision_cost(project: str, decision_id: str) -> dict[str, Any]:
     """Return per-decision cost breakdown."""

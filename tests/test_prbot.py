@@ -32,6 +32,7 @@ from core.prbot.analyzer import (
 from core.prbot.comment_builder import (
     build_pr_comment,
     format_decision,
+    format_safety_note,
     format_warning,
     generate_comment_summary,
 )
@@ -61,6 +62,8 @@ def _pr_decision(
     relevance=0.5,
     impact=0.0,
     relationship="direct",
+    risk_level="low",
+    requires_review=False,
 ):
     """Create a PRDecision dataclass for comment builder tests."""
     return PRDecision(
@@ -70,6 +73,8 @@ def _pr_decision(
         relevance_score=relevance,
         impact_score=impact,
         relationship=relationship,
+        risk_level=risk_level,
+        requires_review=requires_review,
     )
 
 
@@ -235,6 +240,32 @@ class TestFindRelevantDecisions:
 
         # Assert
         assert result == []
+
+    def test_carries_safety_metadata_from_decision(self):
+        """risk_level and requires_review are threaded through from the raw
+        decision dict's safety_metadata — the PR Bot / Safety cross-connect."""
+        # Arrange
+        risky = dict(NAMING_DECISION)
+        risky["safety_metadata"] = {"risk_level": "critical", "requires_review": True}
+        mem = _memory(decisions=[risky])
+
+        # Act
+        result = find_relevant_decisions(mem, MATCHING_DIFF)
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].risk_level == "critical"
+        assert result[0].requires_review is True
+
+    def test_defaults_when_no_safety_metadata(self):
+        """Decisions without safety_metadata default to low/False, not an error."""
+        mem = _memory(decisions=[NAMING_DECISION])
+
+        result = find_relevant_decisions(mem, MATCHING_DIFF)
+
+        assert len(result) == 1
+        assert result[0].risk_level == "low"
+        assert result[0].requires_review is False
 
 
 # ===========================================================================
@@ -543,6 +574,47 @@ class TestFormatDecision:
 
 
 # ===========================================================================
+#  4b. comment_builder.py — format_safety_note
+# ===========================================================================
+
+
+class TestFormatSafetyNote:
+    """Tests for format_safety_note — safety-relevant decision formatting."""
+
+    def test_contains_decision_id_and_text(self):
+        d = _pr_decision(did="my-dec-42", text="Ship the new login flow", risk_level="high")
+        result = format_safety_note(d)
+        assert "my-dec-42" in result
+        assert "Ship the new login flow" in result
+
+    def test_high_risk_tag(self):
+        d = _pr_decision(risk_level="high")
+        result = format_safety_note(d)
+        assert "risk: high" in result
+
+    def test_critical_risk_tag(self):
+        d = _pr_decision(risk_level="critical")
+        result = format_safety_note(d)
+        assert "risk: critical" in result
+
+    def test_requires_review_tag(self):
+        d = _pr_decision(risk_level="low", requires_review=True)
+        result = format_safety_note(d)
+        assert "requires review" in result
+        assert "risk:" not in result  # low risk isn't tagged, only the review flag
+
+    def test_both_tags_present(self):
+        d = _pr_decision(risk_level="critical", requires_review=True)
+        result = format_safety_note(d)
+        assert "risk: critical" in result
+        assert "requires review" in result
+
+    def test_starts_with_shield_emoji(self):
+        d = _pr_decision(risk_level="high")
+        assert format_safety_note(d).startswith("🛡️")
+
+
+# ===========================================================================
 #  5. comment_builder.py — format_warning
 # ===========================================================================
 
@@ -755,6 +827,37 @@ class TestBuildPRComment:
         # Assert
         assert "Relevant Decisions" in result.value.body
         assert "Ghost Warnings" in result.value.body
+
+    def test_with_safety_relevant_decision_adds_section(self):
+        """A high-risk or review-required decision adds a Safety & Alignment
+        section — the PR Bot cross-connect to Safety & Alignment."""
+        decisions = [_pr_decision(did="risky-1", text="Disable auth check", risk_level="critical")]
+        analysis = PRAnalysis([], decisions, 0.5)
+
+        result = build_pr_comment(analysis)
+
+        assert "Safety & Alignment" in result.value.body
+        assert "risky-1" in result.value.body
+        assert "risk: critical" in result.value.body
+
+    def test_requires_review_without_high_risk_still_included(self):
+        decisions = [_pr_decision(did="review-1", risk_level="low", requires_review=True)]
+        analysis = PRAnalysis([], decisions, 0.5)
+
+        result = build_pr_comment(analysis)
+
+        assert "Safety & Alignment" in result.value.body
+        assert "requires review" in result.value.body
+
+    def test_no_safety_section_when_all_low_risk(self):
+        """Low-risk decisions that don't require review don't trigger the
+        Safety & Alignment section — it should only appear when relevant."""
+        decisions = [_pr_decision(risk_level="low", requires_review=False)]
+        analysis = PRAnalysis([], decisions, 0.5)
+
+        result = build_pr_comment(analysis)
+
+        assert "Safety & Alignment" not in result.value.body
 
     def test_no_sections_when_empty(self):
         """Comment body omits sections when no decisions or warnings."""

@@ -42,6 +42,19 @@ def format_warning(warning: PRGhostWarning) -> str:
     return f"⚠️ **[{warning.severity}]** — {warning.recommendation}"
 
 
+def format_safety_note(decision: PRDecision) -> str:
+    """Format a single safety-relevant decision for the PR comment.
+
+    Pure function — same input always produces same output.
+    """
+    tags = []
+    if decision.risk_level in ("high", "critical"):
+        tags.append(f"risk: {decision.risk_level}")
+    if decision.requires_review:
+        tags.append("requires review")
+    return f"🛡️ **Decision #{decision.decision_id}** ({', '.join(tags)}) — {decision.decision_text}"
+
+
 def generate_comment_summary(
     decisions: list[PRDecision],
     warnings: list[PRGhostWarning],
@@ -82,6 +95,20 @@ def build_pr_comment(analysis: PRAnalysis, project: str = "") -> Result:
     if analysis.ghost_warnings:
         sections.append("### Ghost Warnings")
         sections.extend(format_warning(w) for w in analysis.ghost_warnings)
+        sections.append("")
+
+    # Section 2b: Safety & Alignment — decisions this PR touches that carry
+    # elevated risk or an open review requirement. PR Bot previously
+    # surfaced ghost decisions and health scores but nothing from the
+    # Safety & Alignment side, even though that's the most differentiated
+    # signal Tropelex has and PRs are where developers actually are.
+    safety_relevant = [
+        d for d in analysis.relevant_decisions
+        if d.risk_level in ("high", "critical") or d.requires_review
+    ]
+    if safety_relevant:
+        sections.append("### Safety & Alignment")
+        sections.extend(format_safety_note(d) for d in safety_relevant)
         sections.append("")
 
     # Section 3: Summary

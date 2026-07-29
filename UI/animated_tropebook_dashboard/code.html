@@ -81,9 +81,17 @@ tailwind.config = {
        these to the card's rounded-xl corners once backdrop-filter is in
        play (creates its own stacking context) — round the header itself
        instead of relying on clipping, which leaves a visible square-corner
-       sliver against the card's rounded border. */
+       sliver against the card's rounded border. border-radius+overflow can
+       still silently fail to clip in some Chromium GPU compositing paths
+       when nested inside a backdrop-filter ancestor even though computed
+       styles look correct, so clip-path is added as a second, differently-
+       composited enforcement of the same corner — belt and suspenders. */
+    .glass-panel.rounded-xl.overflow-hidden {
+        clip-path: inset(0 round 0.75rem);
+    }
     .glass-panel.rounded-xl.overflow-hidden > div:first-child {
         border-radius: 0.75rem 0.75rem 0 0;
+        clip-path: inset(0 round 0.75rem 0.75rem 0 0);
         position: relative;
         overflow: hidden;
         transition: filter 0.25s ease;
@@ -193,6 +201,13 @@ tailwind.config = {
         from { opacity: 0; transform: translateY(16px); }
         to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* ── Safety & Alignment in-page tabs ── */
+    .safety-tab-panel { display: none; }
+    .safety-tab-panel.active { display: block; animation: sectionIn 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+    .safety-tab-btn { color: #958e9e; background: transparent; border: 1px solid transparent; }
+    .safety-tab-btn:hover { color: #dce2fa; background: rgba(165, 128, 250, 0.06); }
+    .safety-tab-btn.active { color: #a580fa; background: rgba(165, 128, 250, 0.1); border-color: rgba(165, 128, 250, 0.25); }
 
     /* ── Glow ── */
     .glow { box-shadow: 0 0 24px rgba(165, 128, 250, 0.35); }
@@ -675,113 +690,158 @@ void main() {
                 <span class="material-symbols-outlined chevron">chevron_right</span>
             </div>
             <div class="accordion-body">
-                <button class="nav-item active" data-section="dashboard">
+                <button class="nav-item active" data-section="dashboard" title="Landing overview: quick stats, recent activity, and the Getting Started checklist">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard
                 </button>
-                <button class="nav-item" data-section="tropebook">
+                <button class="nav-item" data-section="tropebook" title="Research knowledge base — add citations, search, and build a knowledge graph">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M12 8v-1"/><path d="M12 13v-1"/><path d="M10 10h-1"/><path d="M15 10h-1"/></svg> Tropebook
                 </button>
-                <button class="nav-item" data-section="memory">
+                <button class="nav-item" data-section="memory" title="Project memory: decisions, sessions, tech stack, and preferences">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><circle cx="12" cy="10" r="3"/><path d="M12 7v-1"/><path d="M12 14v-1"/><path d="M9 10h-1"/><path d="M16 10h-1"/></svg> Memory
                 </button>
-                <button class="nav-item" data-section="patterns">
+                <button class="nav-item" data-section="patterns" title="Auto-detected patterns from session history, with AI-suggested next steps">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l3-4 3 2 4-6"/><circle cx="7" cy="16" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg> Patterns
                 </button>
-                <button class="nav-item" data-section="graph">
+                <button class="nav-item" data-section="graph" title="Interactive knowledge graph of decisions and their relationships">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg> Graph
                 </button>
             </div>
         </div>
-        <!-- Intelligence -->
+        <!-- Quality & Integrity -->
         <div class="accordion-group open">
             <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Intelligence</span>
+                <span>Quality &amp; Integrity</span>
                 <span class="material-symbols-outlined chevron">chevron_right</span>
             </div>
             <div class="accordion-body">
-                <button class="nav-item" data-section="insights">
+                <button class="nav-item" data-section="insights" title="Decision confidence, agent proficiency, decision chains, and ADR generation">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg> Insights
                 </button>
-                <button class="nav-item" data-section="health">
+                <button class="nav-item" data-section="health" title="Memory health score: stale decisions, coverage gaps, growth trends">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Health
                 </button>
-                <button class="nav-item" data-section="impact">
+                <button class="nav-item" data-section="impact" title="Tracks how decisions affected later work — reversal rate, time-to-value, ROI">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"/><path d="M6 8L2 12L6 16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Impact
                 </button>
-                <button class="nav-item" data-section="ghost">
+                <button class="nav-item" data-section="ghost" title="Detects code that silently contradicts a recorded decision">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg> Ghost Decisions
                 </button>
-                <button class="nav-item" data-section="explain">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M18 9h-6"/><path d="M18 13h-4"/><circle cx="8" cy="9" r="2"/></svg> Why Do We...?
-                </button>
-                <button class="nav-item" data-section="preventive">
+                <button class="nav-item" data-section="preventive" title="Runs the ghost-decision check before a diff is finalized, not after commit">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="2"/></svg> Pre-Write Guard
                 </button>
-                <button class="nav-item" data-section="friction">
+                <button class="nav-item" data-section="friction" title="Mines session transcripts for implicit friction — corrections, retries, rapid edits">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/></svg> Friction Mining
                 </button>
-                <button class="nav-item" data-section="corroborate">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2" ry="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> Rationale Check
+                <button class="nav-item" data-section="contradictions" title="Scans for unresolved contradictions between still-active decisions">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6"/><path d="M10 10l5 5"/><path d="M15 10l-5 5"/></svg> Contradictions
                 </button>
             </div>
         </div>
-        <!-- Tools -->
+        <!-- Explainability & Discovery -->
         <div class="accordion-group">
             <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Tools</span>
+                <span>Explainability &amp; Discovery</span>
                 <span class="material-symbols-outlined chevron">chevron_right</span>
             </div>
             <div class="accordion-body">
-                <button class="nav-item" data-section="pipeline">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/><circle cx="18" cy="6" r="2"/></svg> Prompt Lab
+                <button class="nav-item" data-section="explain" title="Ask natural-language questions and get a full causal-chain answer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M18 9h-6"/><path d="M18 13h-4"/><circle cx="8" cy="9" r="2"/></svg> Why Do We...?
                 </button>
-                <button class="nav-item" data-section="git">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v7c0 1.1.9 2 2 2h7"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg> Git
-                </button>
-                <button class="nav-item" data-section="feeds">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="12" cy="8" r="1"/></svg> Feeds
-                </button>
-                <button class="nav-item" data-section="deepresearch">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Deep Research
-                </button>
-                <button class="nav-item" data-section="handoff">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Agent Handoff
-                </button>
-                <button class="nav-item" data-section="compaction">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Memory Compaction
-                </button>
-                <button class="nav-item" data-section="prefetch">
+                <button class="nav-item" data-section="prefetch" title="Predicts the minimal context bundle for a task, sized to a token budget">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/></svg> Context Prefetch
                 </button>
-                <button class="nav-item" data-section="costs">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="14.5" r="2.5"/><path d="M6 14.5h.01"/><path d="M18 14.5h.01"/></svg> Cost Ledger
-                </button>
-                <button class="nav-item" data-section="prbot">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg> PR Bot
-                </button>
-                <button class="nav-item" data-section="narrative">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Narrative
-                </button>
-                <button class="nav-item" data-section="market">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 16v5h-5"/><path d="M3 16v5h5"/><circle cx="12" cy="12" r="2"/><path d="M12 8v-1"/><path d="M12 17v-1"/><path d="M8 12h-1"/><path d="M17 12h-1"/></svg> Decision Market
-                </button>
-                <button class="nav-item" data-section="slack">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="15" r="2"/></svg> Slack Capture
-                </button>
-                <button class="nav-item" data-section="timetravel">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7-7-7"/><path d="M5 19l7-7-7-7"/></svg> Time Travel
-                </button>
-                <button class="nav-item" data-section="contradictions">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6"/><path d="M10 10l5 5"/><path d="M15 10l-5 5"/></svg> Contradictions
-                </button>
-                <button class="nav-item" data-section="docmine">
+                <button class="nav-item" data-section="docmine" title="Mines markdown files for drift, contradictions, and undocumented decisions">
                     <span class="material-symbols-outlined">difference</span> Doc Mining
                 </button>
-                <button class="nav-item" data-section="personas">
+            </div>
+        </div>
+        <!-- Safety & Alignment -->
+        <div class="accordion-group">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>Safety &amp; Alignment</span>
+                <span class="material-symbols-outlined chevron">chevron_right</span>
+            </div>
+            <div class="accordion-body">
+                <button class="nav-item" data-section="safety" title="Risk, alignment, governance, provenance, reviews, synthetic data, and agent harness audit — all in one place">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Safety &amp; Alignment
+                </button>
+            </div>
+        </div>
+        <!-- Memory Lifecycle -->
+        <div class="accordion-group">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>Memory Lifecycle</span>
+                <span class="material-symbols-outlined chevron">chevron_right</span>
+            </div>
+            <div class="accordion-body">
+                <button class="nav-item" data-section="timetravel" title="Check out project memory as of any past date">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7-7-7"/><path d="M5 19l7-7-7-7"/></svg> Time Travel
+                </button>
+                <button class="nav-item" data-section="compaction" title="Collapses superseded decision chains into epoch summaries">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Memory Compaction
+                </button>
+            </div>
+        </div>
+        <!-- Research & Ingestion -->
+        <div class="accordion-group">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>Research &amp; Ingestion</span>
+                <span class="material-symbols-outlined chevron">chevron_right</span>
+            </div>
+            <div class="accordion-body">
+                <button class="nav-item" data-section="pipeline" title="3-stage prompt preprocessor: compression, context check, structure">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/><circle cx="18" cy="6" r="2"/></svg> Prompt Lab
+                </button>
+                <button class="nav-item" data-section="feeds" title="Scheduled research feeds with trend detection and alerts">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="12" cy="8" r="1"/></svg> Feeds
+                </button>
+                <button class="nav-item" data-section="deepresearch" title="Multi-source scan, citation-grade research, and hybrid mode">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Deep Research
+                </button>
+            </div>
+        </div>
+        <!-- Team & Collaboration -->
+        <div class="accordion-group">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>Team &amp; Collaboration</span>
+                <span class="material-symbols-outlined chevron">chevron_right</span>
+            </div>
+            <div class="accordion-body">
+                <button class="nav-item" data-section="handoff" title="Role-aware context packets for handing work off between agents">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Agent Handoff
+                </button>
+                <button class="nav-item" data-section="prbot" title="Delivers ghost decisions and health scores as PR comments">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg> PR Bot
+                </button>
+                <button class="nav-item" data-section="narrative" title="Generates readable prose summaries of project history">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Narrative
+                </button>
+                <button class="nav-item" data-section="market" title="Place confidence bets on decisions; track calibration over time">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 16v5h-5"/><path d="M3 16v5h5"/><circle cx="12" cy="12" r="2"/><path d="M12 8v-1"/><path d="M12 17v-1"/><path d="M8 12h-1"/><path d="M17 12h-1"/></svg> Decision Market
+                </button>
+                <button class="nav-item" data-section="slack" title="Bidirectional Slack integration for capturing decisions from chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="15" r="2"/></svg> Slack Capture
+                </button>
+                <button class="nav-item" data-section="personas" title="Digital-twin persona summaries from agent proficiency tracking">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Personas
                 </button>
-                <button class="nav-item" data-section="federation">
+            </div>
+        </div>
+        <!-- Integrations & Ops -->
+        <div class="accordion-group">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>Integrations &amp; Ops</span>
+                <span class="material-symbols-outlined chevron">chevron_right</span>
+            </div>
+            <div class="accordion-body">
+                <button class="nav-item" data-section="git" title="Repository integration: tech stack, commit sync, deep diff analysis">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v7c0 1.1.9 2 2 2h7"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg> Git
+                </button>
+                <button class="nav-item" data-section="federation" title="Opt-in anonymized benchmarking across Tropelex installs">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Federation
+                </button>
+                <button class="nav-item" data-section="costs" title="Tracks token/dollar cost per decision for ROI scoring">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="14.5" r="2.5"/><path d="M6 14.5h.01"/><path d="M18 14.5h.01"/></svg> Cost Ledger
                 </button>
             </div>
         </div>
@@ -1046,7 +1106,28 @@ void main() {
                 </div>
             </div>
         </div>
-        <!-- Third row: Interfaces, Quick Triggers -->
+        <!-- Third row: Safety & Alignment -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="glass-panel rounded-xl overflow-hidden cursor-pointer" onclick="switchSection('safety'); switchSafetyTab('safety-dashboard')">
+                <div class="px-4 py-2 bg-red-500/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-red-400 text-sm">shield</span>
+                    <span class="font-mono text-xs text-red-400 uppercase tracking-wider">Safety Score</span>
+                </div>
+                <div class="p-4 dash-card-body">
+                    <div id="dash-safety" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden cursor-pointer" onclick="switchSection('safety'); switchSafetyTab('alignment')">
+                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-sky text-sm">balance</span>
+                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Alignment Score</span>
+                </div>
+                <div class="p-4 dash-card-body">
+                    <div id="dash-alignment" class="font-mono text-sm text-outline">Select a project</div>
+                </div>
+            </div>
+        </div>
+        <!-- Fourth row: Interfaces, Quick Triggers -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div class="glass-panel rounded-xl overflow-hidden">
                 <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
@@ -1066,6 +1147,7 @@ void main() {
                     <button id="btn-dash-personas" class="px-3 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
                     <button id="btn-dash-federation" class="px-3 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Federation Benchmarks</button>
                     <button id="btn-dash-compact" class="px-3 py-1.5 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
+                    <button id="btn-dash-agent-audit" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-mono text-xs hover:bg-red-500/30 transition-all cursor-pointer">Agent Audit</button>
                     <div id="dash-triggers-result" class="w-full font-mono text-xs text-outline mt-1"></div>
                 </div>
             </div>
@@ -1458,7 +1540,10 @@ void main() {
                     <span class="font-mono text-sm text-accent-sky uppercase">1. Compression</span>
                 </div>
                 <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
-                <pre id="output-compression" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+                <div class="relative code-copy-wrap">
+                    <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+                    <pre id="output-compression" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto pt-6"></pre>
+                </div>
             </div>
             <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-periwinkle">
                 <div class="flex items-center gap-2 mb-3">
@@ -1466,7 +1551,10 @@ void main() {
                     <span class="font-mono text-sm text-accent-periwinkle uppercase">2. Context Check</span>
                 </div>
                 <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
-                <pre id="output-context" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto"></pre>
+                <div class="relative code-copy-wrap">
+                    <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+                    <pre id="output-context" class="font-mono text-xs text-on-surface opacity-70 whitespace-pre-wrap h-32 overflow-auto pt-6"></pre>
+                </div>
             </div>
             <div class="glass-panel rounded-xl p-4 border-l-2 border-accent-lavender">
                 <div class="flex items-center gap-2 mb-3">
@@ -1474,7 +1562,10 @@ void main() {
                     <span class="font-mono text-sm text-accent-lavender uppercase">3. Structure</span>
                 </div>
                 <div class="status font-mono text-xs text-outline mb-2">Waiting...</div>
-                <pre id="output-structure" class="font-mono text-xs text-on-surface opacity-pre-wrap h-32 overflow-auto"></pre>
+                <div class="relative code-copy-wrap">
+                    <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+                    <pre id="output-structure" class="font-mono text-xs text-on-surface opacity-pre-wrap h-32 overflow-auto pt-6"></pre>
+                </div>
             </div>
         </div>
         <div class="glass-panel rounded-xl p-6">
@@ -2439,27 +2530,6 @@ void main() {
         </div>
     </section>
 
-    <!-- Rationale Corroboration -->
-    <section id="section-corroborate" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lime text-2xl">fact_check</span>
-            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Rationale Check</h2>
-        </div>
-        <p class="text-outline mb-6">Fact-check decision rationale against the live web using research infrastructure.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex gap-3 mb-4">
-                <input type="text" id="corroborate-decision-id" placeholder="Decision ID (e.g., d1)" class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lime focus:outline-none"/>
-                <button id="btn-corroborate" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Check Rationale</button>
-            </div>
-        </div>
-        <div id="corroborate-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="corroborate-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">fact_check</span>
-            <p class="text-outline text-sm">No corroboration data yet. Enter a decision ID to check its rationale.</p>
-            <a href="/guide#rationale-check" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
     <!-- Memory Compaction -->
     <section id="section-compaction" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
         <div class="flex items-center gap-3 mb-6">
@@ -2747,6 +2817,366 @@ void main() {
             <p class="text-outline text-sm">No federation data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
             <a href="/guide#federation" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
         </div>
+    </section>
+
+    <!-- Safety & Alignment (consolidated: 6 former top-level sections + Agent Audit, as tabs) -->
+    <section id="section-safety" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Safety &amp; Alignment</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="safety-tab-strip">
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="safety-dashboard" onclick="switchSafetyTab('safety-dashboard')">Dashboard</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="alignment" onclick="switchSafetyTab('alignment')">Alignment</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="governance" onclick="switchSafetyTab('governance')">Governance</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="provenance" onclick="switchSafetyTab('provenance')">Provenance</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="reviews" onclick="switchSafetyTab('reviews')">Reviews</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="synthetic-data" onclick="switchSafetyTab('synthetic-data')">Synthetic Data</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="agent-audit" onclick="switchSafetyTab('agent-audit')">Agent Audit</button>
+        </div>
+
+    <div id="section-safety-dashboard" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Safety Dashboard</h2>
+        </div>
+        <p class="text-outline mb-6">Comprehensive safety metrics, risk trends, and system exposure analysis.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Safety Score</span>
+                <span class="font-mono text-3xl text-accent-lime" id="safety-score">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">High Risk</span>
+                <span class="font-mono text-3xl text-red-400" id="safety-high-risk">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Pending Reviews</span>
+                <span class="font-mono text-3xl text-yellow-400" id="safety-pending-reviews">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Systems Tracked</span>
+                <span class="font-mono text-3xl text-accent-periwinkle" id="safety-systems">—</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Risk Distribution</h3>
+                <div id="safety-risk-chart" class="h-48 flex items-center justify-center text-outline">Select a project to view risk distribution</div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Category Breakdown</h3>
+                <div id="safety-category-chart" class="h-48 flex items-center justify-center text-outline">Select a project to view categories</div>
+            </div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4">High Impact Decisions</h3>
+            <div id="safety-high-impact" class="text-sm text-outline">No high impact decisions found.</div>
+        </div>
+    </div>
+
+    <!-- Alignment -->
+    <div id="section-alignment" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">balance</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Alignment Evaluation</h2>
+        </div>
+        <p class="text-outline mb-6">Evaluation of decisions against safety criteria and organizational values.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Alignment Score</span>
+                <span class="font-mono text-3xl text-accent-lime" id="alignment-score">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Passing</span>
+                <span class="font-mono text-3xl text-accent-lime" id="alignment-passing">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Failing</span>
+                <span class="font-mono text-3xl text-red-400" id="alignment-failing">—</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Category Scores</h3>
+                <div id="alignment-categories" class="space-y-3"></div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Drift Detection</h3>
+                <div id="alignment-drift" class="text-sm text-outline">Not enough data for drift detection.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Governance -->
+    <div id="section-governance" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">policy</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Governance &amp; Compliance</h2>
+        </div>
+        <p class="text-outline mb-6">Governance policy compliance checking against EU AI Act, NIST, and ISO 42001 frameworks.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Compliance Rate</span>
+                <span class="font-mono text-3xl text-accent-lime" id="governance-compliance">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Policy Violations</span>
+                <span class="font-mono text-3xl text-red-400" id="governance-violations">—</span>
+            </div>
+        </div>
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4">Compliance Report</h3>
+            <div class="flex gap-2 mb-4">
+                <button onclick="loadComplianceReport('eu_ai_act')" class="px-3 py-1 rounded bg-accent-periwinkle/20 text-accent-periwinkle text-xs hover:bg-accent-periwinkle/30">EU AI Act</button>
+                <button onclick="loadComplianceReport('nist')" class="px-3 py-1 rounded bg-accent-periwinkle/20 text-accent-periwinkle text-xs hover:bg-accent-periwinkle/30">NIST</button>
+                <button onclick="loadComplianceReport('iso_42001')" class="px-3 py-1 rounded bg-accent-periwinkle/20 text-accent-periwinkle text-xs hover:bg-accent-periwinkle/30">ISO 42001</button>
+            </div>
+            <div id="compliance-report" class="text-sm text-outline">Select a framework to generate report.</div>
+        </div>
+        <div class="glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4">Governance Policies</h3>
+            <div id="governance-policies" class="text-sm text-outline">Loading policies...</div>
+        </div>
+    </div>
+
+    <!-- Provenance & Integrity -->
+    <div id="section-provenance" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">verified_user</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Provenance &amp; Integrity</h2>
+        </div>
+        <p class="text-outline mb-6">Cryptographic provenance chain, integrity verification, and tamper detection.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Chain Length</span>
+                <span class="font-mono text-3xl text-accent-lime" id="provenance-chain-length">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Integrity Score</span>
+                <span class="font-mono text-3xl text-accent-sky" id="provenance-integrity">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Tamper Status</span>
+                <span class="font-mono text-3xl" id="provenance-tamper">—</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Provenance Chain</h3>
+                <div id="provenance-chain" class="text-sm text-outline max-h-64 overflow-y-auto">Loading chain...</div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Security Audit Log</h3>
+                <div id="security-audit-log" class="text-sm text-outline max-h-64 overflow-y-auto">Loading audit log...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safety Reviews -->
+    <div id="section-reviews" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-yellow-400 text-2xl">rate_review</span>
+            <h2 class="font-mono text-xl text-yellow-400 uppercase tracking-wider">Safety Reviews</h2>
+        </div>
+        <p class="text-outline mb-6">Safety review workflow with approval/rejection tracking and mitigation suggestions.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Total Reviews</span>
+                <span class="font-mono text-3xl text-accent-lavender" id="reviews-total">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Approval Rate</span>
+                <span class="font-mono text-3xl text-accent-lime" id="reviews-approval-rate">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Pending</span>
+                <span class="font-mono text-3xl text-yellow-400" id="reviews-pending">—</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Pending Reviews</h3>
+                <div id="pending-reviews" class="text-sm text-outline max-h-64 overflow-y-auto">Loading pending reviews...</div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm text-outline uppercase mb-4">Review History</h3>
+                <div id="review-history" class="text-sm text-outline max-h-64 overflow-y-auto">Loading review history...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Synthetic Data Policy -->
+    <div id="section-synthetic-data" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">science</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Synthetic Data Policy</h2>
+        </div>
+        <p class="text-outline mb-6">EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets. Mandatory for preventing the "synthetic mirror" risk.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Total Policies</span>
+                <span class="font-mono text-3xl text-accent-lavender" id="synthetic-total">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Compliant</span>
+                <span class="font-mono text-3xl text-accent-lime" id="synthetic-compliant">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">Non-Compliant</span>
+                <span class="font-mono text-3xl text-red-400" id="synthetic-non-compliant">—</span>
+            </div>
+            <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                <span class="font-mono text-xs text-outline uppercase">High-Risk Tier</span>
+                <span class="font-mono text-3xl text-yellow-400" id="synthetic-high-risk">—</span>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-mono text-sm text-outline uppercase">Registered Synthetic Datasets</h3>
+                <button onclick="showAddSyntheticPolicy()" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm align-middle">add</span> Register Dataset
+                </button>
+            </div>
+            <div id="synthetic-policies-list" class="text-sm text-outline">Loading policies...</div>
+        </div>
+
+        <!-- Add/Edit Policy Form (hidden by default) -->
+        <div id="synthetic-policy-form" class="glass-panel rounded-xl p-6 mb-6 hidden">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4">Register Synthetic Dataset</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Identification & Provenance -->
+                <div class="space-y-3">
+                    <h4 class="text-xs text-accent-sky uppercase">Identification & Provenance</h4>
+                    <input id="synth-dataset-name" type="text" placeholder="Dataset Name *" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-generated-by" type="text" placeholder="Generated By (e.g., MOSTLY AI, Gretel) *" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-authorized-by" type="text" placeholder="Authorized By (DPO for regulated)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-source-seed" type="text" placeholder="Source Seed Data & Lawful Basis *" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-ratio" type="text" placeholder="Synthetic:Real Ratio (e.g., 10:1000) *" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                </div>
+                
+                <!-- Architecture & Modality -->
+                <div class="space-y-3">
+                    <h4 class="text-xs text-accent-sky uppercase">Architecture & Modality</h4>
+                    <input id="synth-models-used" type="text" placeholder="Models Used (e.g., CTGAN, Diffusion) *" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <select id="synth-architecture-type" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                        <option value="unknown">Architecture Type</option>
+                        <option value="gan">GAN</option>
+                        <option value="vae">VAE</option>
+                        <option value="diffusion">Diffusion</option>
+                        <option value="llm">LLM</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <select id="synth-eu-tier" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                        <option value="minimal">EU AI Act Tier: Minimal Risk</option>
+                        <option value="limited">EU AI Act Tier: Limited Risk</option>
+                        <option value="high">EU AI Act Tier: High Risk</option>
+                    </select>
+                    <input id="synth-data-types" type="text" placeholder="Data Types (Tabular, Time-Series, etc.)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                </div>
+            </div>
+            
+            <!-- Purpose & Constraints -->
+            <div class="mt-4 space-y-3">
+                <h4 class="text-xs text-accent-sky uppercase">Purpose & Constraints</h4>
+                <textarea id="synth-purpose" placeholder="Purpose (plain language) *" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+                <textarea id="synth-constraints" placeholder="Operational Constraints & Prohibited Uses" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+                <textarea id="synth-rationale" placeholder="Rationale for Synthetic Use *" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+            </div>
+            
+            <!-- Quality & Privacy -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <h4 class="text-xs text-accent-sky uppercase">Quality Matrix</h4>
+                    <input id="synth-fidelity" type="text" placeholder="Fidelity Score (KS, Wasserstein)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <textarea id="synth-utility" placeholder="Utility Validation (TSTR results)" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="text-xs text-accent-sky uppercase">Privacy & Risk</h4>
+                    <input id="synth-epsilon" type="number" step="0.01" placeholder="DP Epsilon (ε)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-delta" type="number" step="0.000001" placeholder="DP Delta (δ)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <textarea id="synth-bias-audit" placeholder="Bias Audit Results" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+                    <textarea id="synth-adversarial" placeholder="Adversarial Testing (MIA, AIA)" rows="2" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky"></textarea>
+                </div>
+            </div>
+            
+            <!-- Transparency & Verification -->
+            <div class="mt-4 space-y-3">
+                <h4 class="text-xs text-accent-sky uppercase">Transparency & Verification</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input id="synth-marking" type="text" placeholder="Distinguishability Marking (EU AI Act Art. 50(2))" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-attested-by" type="text" placeholder="Attested By (Independent Verifier)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-retention" type="text" placeholder="Retention/Deletion Policy (GDPR Art. 17)" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                    <input id="synth-review-date" type="date" class="w-full px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-accent-sky">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-3">
+                <button onclick="submitSyntheticPolicy()" class="px-6 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Register Dataset</button>
+                <button onclick="hideAddSyntheticPolicy()" class="px-6 py-2 rounded-lg bg-surface-high text-outline font-mono text-sm hover:bg-surface-high/80 transition-all cursor-pointer">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Policy Detail View (hidden by default) -->
+        <div id="synthetic-policy-detail" class="glass-panel rounded-xl p-6 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-mono text-sm text-outline uppercase">Dataset Policy Details</h3>
+                <button onclick="hidePolicyDetail()" class="text-outline hover:text-accent-sky"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div id="policy-detail-content" class="text-sm"></div>
+        </div>
+    </div>
+
+    <!-- Agent Surface Audit -->
+    <div id="section-agent-audit" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-red-400 text-2xl">security</span>
+            <h2 class="font-mono text-xl text-red-400 uppercase tracking-wider">Agent Surface Audit</h2>
+        </div>
+        <p class="text-outline mb-6">Every other feature on this page audits decisions and code. This audits the agent's own harness configuration — CLAUDE.md/AGENTS.md, .mcp.json, .claude/settings.json, hooks, agent definitions, and skills — for secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions.</p>
+
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <div class="flex items-center gap-3 mb-2">
+                <input id="audit-repo-path" type="text" placeholder="Repo path (blank = this Tropelex instance's own repo)" class="flex-1 px-3 py-2 rounded bg-surface-high border border-glass-border text-sm focus:outline-none focus:border-red-400/50">
+                <button id="btn-run-audit" onclick="runAgentAudit()" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 font-mono text-sm hover:bg-red-500/30 transition-all cursor-pointer flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">radar</span> Scan
+                </button>
+            </div>
+            <p class="text-xs text-outline">Read-only. No files are modified.</p>
+        </div>
+
+        <div id="audit-empty" class="glass-panel rounded-xl p-6 text-sm text-outline">Run a scan to see results.</div>
+
+        <div id="audit-results" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Grade</span>
+                    <span class="font-mono text-3xl" id="audit-grade">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Findings</span>
+                    <span class="font-mono text-3xl text-accent-lavender" id="audit-total">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Critical + High</span>
+                    <span class="font-mono text-3xl text-red-400" id="audit-critical-high">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Files Scanned</span>
+                    <span class="font-mono text-3xl text-accent-periwinkle" id="audit-files">—</span>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-outline uppercase">Findings</h3>
+                    <button class="copy-btn px-2 py-1 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer flex items-center gap-1" type="button" title="Copy report" id="btn-copy-audit"><span class="material-symbols-outlined text-xs">content_copy</span> Copy Report</button>
+                </div>
+                <div id="audit-findings" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
     </section>
 
 </main>
@@ -3794,6 +4224,12 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// escapeHtml doesn't escape quotes (fine for text nodes, not for going into
+// a quoted HTML attribute like data-copy-text="...").
+function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
+}
+
 function safeUrl(url) {
     try {
         const u = new URL(url);
@@ -4704,6 +5140,30 @@ document.getElementById('copy-master').addEventListener('click', () => {
     });
 });
 
+// Generic copy-to-clipboard for code/output blocks and one-off text (e.g.
+// session rows via data-copy-text). Delegated on document so it works for
+// blocks rendered later via innerHTML, not just ones present at load.
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+    let text = btn.dataset.copyText;
+    if (text === undefined) {
+        const wrap = btn.closest('.code-copy-wrap');
+        const target = wrap?.querySelector('pre, code');
+        if (!target) return;
+        text = target.innerText || target.textContent || '';
+    }
+    navigator.clipboard.writeText(text).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined text-xs">check</span>';
+        btn.classList.add('!text-accent-lime', '!border-accent-lime/40');
+        setTimeout(() => {
+            btn.innerHTML = original;
+            btn.classList.remove('!text-accent-lime', '!border-accent-lime/40');
+        }, 1500);
+    }).catch(() => showToast('Copy failed — clipboard permission blocked'));
+});
+
 // Prompt Lab: Auto-load context when project changes
 async function loadPipelineContext() {
     const indicator = document.getElementById('pipeline-project-indicator');
@@ -5014,10 +5474,15 @@ function renderSessions(sessions) {
     }
     list.innerHTML = sessions.slice(-5).reverse().map(s => {
         const text = s.summary || (s.insights ? s.insights.join('; ') : '');
+        const date = (s.timestamp || '').slice(0, 10);
+        const copyText = `[${date}] ${s.session_type || 'manual'} session${s.change_count ? ` — ${s.change_count} changes` : ''}\n${text}`;
         return `
-            <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-sky/30 fade-in">
-                <p class="text-sm">${escapeHtml(text)}</p>
-                <span class="text-xs text-outline font-mono">${(s.timestamp || '').slice(0, 10)}</span>
+            <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-sky/30 fade-in flex items-start justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm">${escapeHtml(text)}</p>
+                    <span class="text-xs text-outline font-mono">${date}</span>
+                </div>
+                <button class="copy-btn shrink-0 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-sky hover:border-accent-sky/40 transition-all cursor-pointer" type="button" title="Copy this session" data-copy-text="${escapeAttr(copyText)}"><span class="material-symbols-outlined text-xs">content_copy</span></button>
             </div>
         `;
     }).join('');
@@ -5668,7 +6133,10 @@ document.getElementById('btn-generate-adrs').addEventListener('click', async () 
     list.innerHTML = data.adrs.map(adr => `
         <details class="p-3 rounded bg-surface border border-glass-border">
             <summary class="text-sm font-medium cursor-pointer hover:text-accent-lavender">${escapeHtml(adr.filename)}</summary>
-            <pre class="mt-2 text-xs text-on-surface/80 whitespace-pre-wrap max-h-48 overflow-y-auto">${escapeHtml(adr.content)}</pre>
+            <div class="relative code-copy-wrap mt-2">
+                <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+                <pre class="text-xs text-on-surface/80 whitespace-pre-wrap max-h-48 overflow-y-auto pt-6">${escapeHtml(adr.content)}</pre>
+            </div>
         </details>
     `).join('');
     showToast(`Generated ${data.adrs.length} ADRs`);
@@ -5683,16 +6151,21 @@ async function loadSessions(project) {
         el.innerHTML = '<p class="text-sm text-outline">No sessions recorded yet.</p>';
         return;
     }
-    el.innerHTML = data.sessions.map(s => `
+    el.innerHTML = data.sessions.map(s => {
+        const summary = s.summary || s.session_type || 'Session';
+        const copyText = `[${(s.timestamp || '').slice(0, 16)}] ${s.session_type || 'manual'} session — ${s.change_count || 0} changes\n${summary}`;
+        return `
         <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
             <div class="text-xs font-mono text-outline min-w-[6rem]">${(s.timestamp || '').slice(0, 16)}</div>
             <div class="flex-1">
-                <span class="text-sm">${escapeHtml(s.summary || s.session_type || 'Session')}</span>
+                <span class="text-sm">${escapeHtml(summary)}</span>
                 <span class="text-xs text-outline ml-2">${s.change_count || 0} changes</span>
             </div>
             <span class="text-xs px-2 py-0.5 rounded-full ${s.session_type === 'rollback' ? 'bg-red-500/20 text-red-400' : 'bg-accent-lavender/20 text-accent-lavender'}">${s.session_type || 'manual'}</span>
+            <button class="copy-btn shrink-0 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button" title="Copy this session" data-copy-text="${escapeAttr(copyText)}"><span class="material-symbols-outlined text-xs">content_copy</span></button>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Cross-Pollination + Auto-Suggestions
@@ -5760,6 +6233,565 @@ document.getElementById('insights-project-select').addEventListener('change', (e
 document.getElementById('btn-refresh-insights').addEventListener('click', () => {
     loadAllInsights(getInsightsProject());
 });
+
+// ==================== SAFETY & ALIGNMENT JS ====================
+
+// Safety Dashboard
+async function loadSafetyDashboard(project) {
+    if (!project) return;
+    const data = await api(`/memory/${encodeURIComponent(project)}/safety-dashboard`);
+    if (!data) return;
+    
+    const summary = data.summary || {};
+    document.getElementById('safety-score').textContent = summary.safety_score?.toFixed(2) || '—';
+    document.getElementById('safety-high-risk').textContent = summary.high_risk_decisions || '0';
+    document.getElementById('safety-pending-reviews').textContent = summary.pending_reviews || '0';
+    document.getElementById('safety-systems').textContent = summary.affected_systems_count || '0';
+    
+    // Render risk distribution
+    const riskChart = document.getElementById('safety-risk-chart');
+    const riskTrend = data.risk_trend || [];
+    if (riskTrend.length > 0) {
+        riskChart.innerHTML = riskTrend.map(t => `
+            <div class="flex items-center justify-between py-1 border-b border-glass-border">
+                <span class="text-xs">${t.month}</span>
+                <span class="text-xs font-mono">${t.total_decisions} decisions</span>
+                <span class="text-xs font-mono ${t.avg_risk > 0.5 ? 'text-red-400' : 'text-accent-lime'}">${t.avg_risk?.toFixed(2)}</span>
+            </div>
+        `).join('');
+    }
+    
+    // Render high impact decisions
+    const highImpact = document.getElementById('safety-high-impact');
+    const highImpactDecisions = data.high_impact_decisions || [];
+    if (highImpactDecisions.length > 0) {
+        highImpact.innerHTML = highImpactDecisions.map(d => `
+            <div class="flex items-center justify-between py-2 border-b border-glass-border">
+                <span class="text-sm">${escapeHtml(d.decision || '')}</span>
+                <span class="text-xs px-2 py-0.5 rounded ${d.risk_level === 'critical' ? 'bg-red-400/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}">${d.risk_level}</span>
+            </div>
+        `).join('');
+    }
+}
+
+// Alignment
+async function loadAlignment(project) {
+    if (!project) return;
+    const data = await api(`/memory/${encodeURIComponent(project)}/alignment/evaluate`);
+    if (!data) return;
+    
+    const summary = data.summary || {};
+    document.getElementById('alignment-score').textContent = summary.alignment_score?.toFixed(2) || '—';
+    document.getElementById('alignment-passing').textContent = summary.passing_count || '0';
+    document.getElementById('alignment-failing').textContent = summary.failing_count || '0';
+    
+    // Render category scores
+    const categories = document.getElementById('alignment-categories');
+    const categoryScores = data.category_scores || {};
+    categories.innerHTML = Object.entries(categoryScores).map(([cat, score]) => `
+        <div class="flex items-center justify-between">
+            <span class="text-sm capitalize">${cat}</span>
+            <div class="flex items-center gap-2">
+                <div class="w-24 h-2 bg-surface-high rounded-full overflow-hidden">
+                    <div class="h-full rounded-full ${score >= 0.7 ? 'bg-accent-lime' : score >= 0.4 ? 'bg-yellow-400' : 'bg-red-400'}" style="width: ${score * 100}%"></div>
+                </div>
+                <span class="text-xs font-mono">${score?.toFixed(2)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Governance
+async function loadGovernance(project) {
+    if (!project) return;
+    
+    const [compliance, policies] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/governance/compliance`),
+        api(`/memory/${encodeURIComponent(project)}/governance/policies`),
+    ]);
+    
+    if (compliance) {
+        const summary = compliance.summary || {};
+        document.getElementById('governance-compliance').textContent = ((summary.compliance_rate || 0) * 100).toFixed(0) + '%';
+        document.getElementById('governance-violations').textContent = summary.non_compliant_count || '0';
+    }
+    
+    if (policies) {
+        const policiesEl = document.getElementById('governance-policies');
+        const allPolicies = [...(policies.default_policies || []), ...(policies.project_policies || [])];
+        policiesEl.innerHTML = allPolicies.map(p => `
+            <div class="flex items-center justify-between py-2 border-b border-glass-border">
+                <div>
+                    <span class="text-sm font-medium">${escapeHtml(p.name)}</span>
+                    <p class="text-xs text-outline">${escapeHtml(p.description)}</p>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded ${p.required ? 'bg-accent-lavender/20 text-accent-lavender' : 'bg-surface-high text-outline'}">${p.required ? 'Required' : 'Optional'}</span>
+            </div>
+        `).join('');
+    }
+}
+
+async function loadComplianceReport(framework) {
+    const project = getCurrentProject();
+    if (!project) return showToast('Select a project first');
+    
+    const data = await api(`/memory/${encodeURIComponent(project)}/compliance/report?framework=${framework}`);
+    if (!data) return;
+    
+    const report = document.getElementById('compliance-report');
+    const summary = data.summary || {};
+    report.innerHTML = `
+        <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium">${framework.toUpperCase()} Compliance</span>
+                <span class="text-lg font-mono ${summary.compliance_score >= 0.8 ? 'text-accent-lime' : 'text-yellow-400'}">${(summary.compliance_score * 100).toFixed(0)}%</span>
+            </div>
+            <div class="flex gap-4 text-xs text-outline">
+                <span>Compliant: ${summary.compliant}</span>
+                <span>Partial: ${summary.partial}</span>
+                <span>Non-compliant: ${summary.non_compliant}</span>
+            </div>
+        </div>
+        <div class="space-y-2">
+            ${(data.requirements || []).map(r => `
+                <div class="flex items-center justify-between py-1 border-b border-glass-border">
+                    <span class="text-xs">${r.name}</span>
+                    <span class="text-xs px-2 py-0.5 rounded ${r.status === 'compliant' ? 'bg-accent-lime/20 text-accent-lime' : r.status === 'partial' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'}">${r.status}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Provenance & Integrity
+async function loadProvenance(project) {
+    if (!project) return;
+    
+    const [chain, integrity, tamper, auditLog] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/provenance/chain`),
+        api(`/memory/${encodeURIComponent(project)}/integrity/verify`),
+        api(`/memory/${encodeURIComponent(project)}/tamper-detection`),
+        api(`/memory/${encodeURIComponent(project)}/security/audit-log?limit=20`),
+    ]);
+    
+    if (chain) {
+        document.getElementById('provenance-chain-length').textContent = chain.summary?.chain_length || '0';
+        const chainEl = document.getElementById('provenance-chain');
+        chainEl.innerHTML = (chain.chain || []).slice(-10).map(c => `
+            <div class="flex items-center justify-between py-1 border-b border-glass-border">
+                <span class="text-xs font-mono">${c.index}</span>
+                <span class="text-xs truncate max-w-[200px]">${escapeHtml(c.decision || '')}</span>
+                <span class="text-xs font-mono text-outline">${c.hash?.substring(0, 8)}...</span>
+            </div>
+        `).join('');
+    }
+    
+    if (integrity) {
+        document.getElementById('provenance-integrity').textContent = (integrity.summary?.integrity_score * 100).toFixed(0) + '%';
+    }
+    
+    if (tamper) {
+        const tamperEl = document.getElementById('provenance-tamper');
+        tamperEl.textContent = tamper.status;
+        tamperEl.className = `font-mono text-3xl ${tamper.status === 'clean' ? 'text-accent-lime' : tamper.status === 'suspicious' ? 'text-yellow-400' : 'text-red-400'}`;
+    }
+    
+    if (auditLog) {
+        const logEl = document.getElementById('security-audit-log');
+        logEl.innerHTML = (auditLog.events || []).map(e => `
+            <div class="flex items-center justify-between py-1 border-b border-glass-border">
+                <span class="text-xs px-2 py-0.5 rounded bg-surface-high">${e.event_type}</span>
+                <span class="text-xs truncate max-w-[150px]">${escapeHtml(e.decision || e.reviewer || '')}</span>
+                <span class="text-xs text-outline">${e.timestamp?.substring(0, 10)}</span>
+            </div>
+        `).join('');
+    }
+}
+
+// Safety Reviews
+async function loadReviews(project) {
+    if (!project) return;
+    
+    const [stats, pending, history] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/reviews/stats`),
+        api(`/memory/${encodeURIComponent(project)}/reviews/pending`),
+        api(`/memory/${encodeURIComponent(project)}/reviews/history?limit=10`),
+    ]);
+    
+    if (stats) {
+        document.getElementById('reviews-total').textContent = stats.total_reviews || '0';
+        document.getElementById('reviews-approval-rate').textContent = ((stats.approval_rate || 0) * 100).toFixed(0) + '%';
+        document.getElementById('reviews-pending').textContent = stats.pending_decisions || '0';
+    }
+    
+    if (pending) {
+        const pendingEl = document.getElementById('pending-reviews');
+        const reviews = pending.pending_reviews || [];
+        if (reviews.length === 0) {
+            pendingEl.innerHTML = '<p class="text-sm text-outline">No pending reviews.</p>';
+        } else {
+            pendingEl.innerHTML = reviews.map(r => `
+                <div class="flex items-center justify-between py-2 border-b border-glass-border">
+                    <div>
+                        <span class="text-sm">${escapeHtml(r.decision || '')}</span>
+                        <p class="text-xs text-outline">${r.risk_level} risk</p>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded ${r.risk_level === 'critical' ? 'bg-red-400/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}">${r.risk_level}</span>
+                </div>
+            `).join('');
+        }
+    }
+    
+    if (history) {
+        const historyEl = document.getElementById('review-history');
+        const reviews = history.review_history || [];
+        if (reviews.length === 0) {
+            historyEl.innerHTML = '<p class="text-sm text-outline">No review history.</p>';
+        } else {
+            historyEl.innerHTML = reviews.map(r => `
+                <div class="flex items-center justify-between py-2 border-b border-glass-border">
+                    <div>
+                        <span class="text-sm">${escapeHtml(r.decision || '')}</span>
+                        <p class="text-xs text-outline">by ${escapeHtml(r.reviewer || 'unknown')}</p>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded ${r.status === 'approved' ? 'bg-accent-lime/20 text-accent-lime' : r.status === 'rejected' ? 'bg-red-400/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}">${r.status}</span>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// Safety & Alignment: in-page tabs (Dashboard, Alignment, Governance,
+// Provenance, Reviews, Synthetic Data, Agent Audit) inside one section.
+// Each tab lazy-loads only its own data when selected, instead of the old
+// behavior of loading all six sub-features whenever the section was opened.
+const SAFETY_TAB_LOADERS = {
+    'safety-dashboard': loadSafetyDashboard,
+    'alignment': loadAlignment,
+    'governance': loadGovernance,
+    'provenance': loadProvenance,
+    'reviews': loadReviews,
+    'synthetic-data': loadSyntheticDataPolicies,
+    'agent-audit': null,  // manual "Scan" button, not auto-loaded
+};
+
+function switchSafetyTab(tab) {
+    document.querySelectorAll('.safety-tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`section-${tab}`)?.classList.add('active');
+    document.querySelectorAll('.safety-tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    state.currentSafetyTab = tab;
+    localStorage.setItem('tropelex-safety-tab', tab);
+
+    const loader = SAFETY_TAB_LOADERS[tab];
+    const project = getCurrentProject();
+    if (loader && project) loader(project);
+}
+
+// Entering the Safety & Alignment section (from the sidebar or elsewhere)
+// restores whichever tab was last open, defaulting to the dashboard tab.
+document.querySelector('[data-section="safety"]')?.addEventListener('click', () => {
+    switchSafetyTab(state.currentSafetyTab || localStorage.getItem('tropelex-safety-tab') || 'safety-dashboard');
+});
+
+// ==================== AGENT SURFACE AUDIT JS ====================
+
+async function runAgentAudit() {
+    const btn = document.getElementById('btn-run-audit');
+    const repoPath = document.getElementById('audit-repo-path').value.trim();
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Scanning...';
+    try {
+        const params = repoPath ? `?repo_path=${encodeURIComponent(repoPath)}` : '';
+        const res = await fetch(`/api/agent-audit/scan${params}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.detail || 'Audit scan failed'); return; }
+        renderAgentAudit(data);
+    } catch (e) {
+        showToast(`Audit scan error: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">radar</span> Scan';
+    }
+}
+
+const AUDIT_GRADE_COLOR = {
+    A: 'text-accent-lime', B: 'text-accent-lime', C: 'text-yellow-400',
+    D: 'text-red-400', F: 'text-red-400',
+};
+const AUDIT_SEVERITY_BORDER = {
+    critical: 'border-red-500', high: 'border-red-400',
+    medium: 'border-yellow-400', low: 'border-glass-border',
+};
+
+function renderAgentAudit(data) {
+    document.getElementById('audit-empty').classList.add('hidden');
+    document.getElementById('audit-results').classList.remove('hidden');
+
+    const gradeEl = document.getElementById('audit-grade');
+    gradeEl.textContent = data.grade;
+    gradeEl.className = `font-mono text-3xl ${AUDIT_GRADE_COLOR[data.grade] || 'text-outline'}`;
+
+    document.getElementById('audit-total').textContent = data.total_findings;
+    const sev = data.severity_distribution || {};
+    document.getElementById('audit-critical-high').textContent = (sev.critical || 0) + (sev.high || 0);
+    document.getElementById('audit-files').textContent = (data.files_scanned || []).length;
+
+    const findingsEl = document.getElementById('audit-findings');
+    if (!data.findings.length) {
+        findingsEl.innerHTML = `<p class="text-sm text-outline">No findings across ${(data.files_scanned || []).length} file(s) scanned. Clean.</p>`;
+    } else {
+        findingsEl.innerHTML = data.findings.map(f => `
+            <div class="glass-panel rounded-lg p-3 border-l-2 ${AUDIT_SEVERITY_BORDER[f.severity] || 'border-glass-border'}">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high text-outline uppercase">${escapeHtml(f.severity)}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-accent-lavender/20 text-accent-lavender">${escapeHtml(f.category)}</span>
+                    <span class="text-xs text-outline font-mono">${escapeHtml(f.file)}:${f.line}</span>
+                </div>
+                <p class="text-sm mb-1">${escapeHtml(f.description)}</p>
+                <p class="text-xs text-outline">→ ${escapeHtml(f.recommendation)}</p>
+            </div>
+        `).join('');
+    }
+
+    const reportText = [
+        `Agent Surface Audit — ${data.repo_path}`,
+        `Grade: ${data.grade} · ${data.total_findings} finding(s) across ${(data.files_scanned || []).length} file(s)`,
+        '',
+        ...data.findings.map(f => `[${f.severity.toUpperCase()}] ${f.category} — ${f.file}:${f.line}\n  ${f.description}\n  -> ${f.recommendation}`),
+    ].join('\n');
+    document.getElementById('btn-copy-audit').dataset.copyText = reportText;
+}
+
+// ==================== SYNTHETIC DATA POLICY JS ====================
+
+async function loadSyntheticDataPolicies(project) {
+    if (!project) return;
+    
+    const [policies, summary] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/synthetic-data-policies`),
+        api(`/memory/${encodeURIComponent(project)}/synthetic-data/summary`),
+    ]);
+    
+    if (summary) {
+        const s = summary.summary || {};
+        document.getElementById('synthetic-total').textContent = s.total_policies || '0';
+        document.getElementById('synthetic-compliant').textContent = s.compliant || '0';
+        document.getElementById('synthetic-non-compliant').textContent = s.non_compliant || '0';
+        
+        const tierDist = summary.tier_distribution || {};
+        document.getElementById('synthetic-high-risk').textContent = tierDist.high || '0';
+    }
+    
+    if (policies) {
+        const listEl = document.getElementById('synthetic-policies-list');
+        const policyList = policies.policies || [];
+        
+        if (policyList.length === 0) {
+            listEl.innerHTML = '<p class="text-sm text-outline">No synthetic datasets registered yet. Click "Register Dataset" to add one.</p>';
+        } else {
+            listEl.innerHTML = `
+                <div class="space-y-2">
+                    ${policyList.map(p => {
+                        const policy = p.policy || {};
+                        const statusColor = p.compliance_status === 'compliant' ? 'text-accent-lime' : p.compliance_status === 'partial' ? 'text-yellow-400' : 'text-red-400';
+                        const tierColor = policy.eu_ai_act_tier === 'high' ? 'text-red-400' : 'text-accent-lime';
+                        return `
+                            <div class="flex items-center justify-between py-3 border-b border-glass-border cursor-pointer hover:bg-surface-high/30" onclick="showPolicyDetail('${p.id}')">
+                                <div>
+                                    <span class="text-sm font-medium">${escapeHtml(policy.dataset_name || '')}</span>
+                                    <p class="text-xs text-outline">${escapeHtml(policy.generated_by || '')} • ${escapeHtml(policy.architecture_type || 'unknown')}</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs px-2 py-0.5 rounded ${tierColor} bg-surface-high">${policy.eu_ai_act_tier || 'minimal'}</span>
+                                    <span class="text-xs px-2 py-0.5 rounded ${statusColor} bg-surface-high">${p.compliance_status || 'unknown'}</span>
+                                    <span class="material-symbols-outlined text-outline text-sm">chevron_right</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+    }
+}
+
+function showAddSyntheticPolicy() {
+    document.getElementById('synthetic-policy-form').classList.remove('hidden');
+    document.getElementById('synthetic-policy-detail').classList.add('hidden');
+}
+
+function hideAddSyntheticPolicy() {
+    document.getElementById('synthetic-policy-form').classList.add('hidden');
+    // Clear form
+    document.getElementById('synthetic-policy-form').querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.type === 'select-one') el.selectedIndex = 0;
+        else el.value = '';
+    });
+}
+
+async function submitSyntheticPolicy() {
+    const project = getCurrentProject();
+    if (!project) return showToast('Select a project first');
+    
+    const datasetName = document.getElementById('synth-dataset-name').value.trim();
+    const generatedBy = document.getElementById('synth-generated-by').value.trim();
+    const sourceSeed = document.getElementById('synth-source-seed').value.trim();
+    const ratio = document.getElementById('synth-ratio').value.trim();
+    const modelsUsed = document.getElementById('synth-models-used').value.trim();
+    const purpose = document.getElementById('synth-purpose').value.trim();
+    const rationale = document.getElementById('synth-rationale').value.trim();
+    
+    if (!datasetName || !generatedBy || !sourceSeed || !ratio || !modelsUsed || !purpose || !rationale) {
+        return showToast('Please fill in all required fields (*)');
+    }
+    
+    const policy = {
+        dataset_name: datasetName,
+        generated_by: generatedBy,
+        authorized_by: document.getElementById('synth-authorized-by').value.trim(),
+        source_seed_data: sourceSeed,
+        synthetic_real_ratio: ratio,
+        models_used: modelsUsed,
+        architecture_type: document.getElementById('synth-architecture-type').value,
+        eu_ai_act_tier: document.getElementById('synth-eu-tier').value,
+        data_types: document.getElementById('synth-data-types').value.split(',').map(s => s.trim()).filter(Boolean),
+        purpose: purpose,
+        operational_constraints: document.getElementById('synth-constraints').value.trim(),
+        rationale: rationale,
+        fidelity_score: document.getElementById('synth-fidelity').value.trim(),
+        utility_validation: document.getElementById('synth-utility').value.trim(),
+        dp_epsilon: parseFloat(document.getElementById('synth-epsilon').value) || 0,
+        dp_delta: parseFloat(document.getElementById('synth-delta').value) || 0,
+        privacy_parameters: document.getElementById('synth-epsilon').value ? `ε=${document.getElementById('synth-epsilon').value}, δ=${document.getElementById('synth-delta').value}` : '',
+        bias_audit_results: document.getElementById('synth-bias-audit').value.trim(),
+        adversarial_testing: document.getElementById('synth-adversarial').value.trim(),
+        distinguishability_marking: document.getElementById('synth-marking').value.trim(),
+        attested_by: document.getElementById('synth-attested-by').value.trim(),
+        retention_deletion: document.getElementById('synth-retention').value.trim(),
+        review_date: document.getElementById('synth-review-date').value,
+    };
+    
+    const result = await api(`/memory/${encodeURIComponent(project)}/synthetic-data-policies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(policy),
+    });
+    
+    if (result && result.success) {
+        showToast(`Dataset registered. Compliance: ${result.compliance_status}`);
+        hideAddSyntheticPolicy();
+        loadSyntheticDataPolicies(project);
+    } else {
+        showToast('Failed to register dataset');
+    }
+}
+
+async function showPolicyDetail(policyId) {
+    const project = getCurrentProject();
+    if (!project) return;
+    
+    const policy = await api(`/memory/${encodeURIComponent(project)}/synthetic-data-policies/${policyId}`);
+    if (!policy) return;
+    
+    const p = policy.policy || {};
+    const gates = policy.blocking_gates || {};
+    
+    document.getElementById('synthetic-policy-form').classList.add('hidden');
+    document.getElementById('synthetic-policy-detail').classList.remove('hidden');
+    
+    const detailContent = document.getElementById('policy-detail-content');
+    detailContent.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-xs text-accent-sky uppercase mb-3">Identification</h4>
+                <div class="space-y-2 text-sm">
+                    <div><span class="text-outline">Dataset:</span> <span class="font-medium">${escapeHtml(p.dataset_name)}</span></div>
+                    <div><span class="text-outline">Version:</span> ${escapeHtml(p.version)}</div>
+                    <div><span class="text-outline">Generated By:</span> ${escapeHtml(p.generated_by)}</div>
+                    <div><span class="text-outline">Authorized By:</span> ${escapeHtml(p.authorized_by || 'Not specified')}</div>
+                    <div><span class="text-outline">Source:</span> ${escapeHtml(p.source_seed_data)}</div>
+                    <div><span class="text-outline">Ratio:</span> ${escapeHtml(p.synthetic_real_ratio)}</div>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-xs text-accent-sky uppercase mb-3">Architecture</h4>
+                <div class="space-y-2 text-sm">
+                    <div><span class="text-outline">Models:</span> ${escapeHtml(p.models_used)}</div>
+                    <div><span class="text-outline">Type:</span> ${escapeHtml(p.architecture_type)}</div>
+                    <div><span class="text-outline">EU AI Act Tier:</span> <span class="${p.eu_ai_act_tier === 'high' ? 'text-red-400' : 'text-accent-lime'}">${p.eu_ai_act_tier}</span></div>
+                    <div><span class="text-outline">Data Types:</span> ${(p.data_types || []).join(', ') || 'Not specified'}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <h4 class="text-xs text-accent-sky uppercase mb-3">Purpose & Rationale</h4>
+            <p class="text-sm mb-2">${escapeHtml(p.purpose)}</p>
+            <p class="text-xs text-outline">${escapeHtml(p.rationale)}</p>
+        </div>
+        
+        <div class="mt-6">
+            <h4 class="text-xs text-accent-sky uppercase mb-3">Quality & Privacy</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span class="text-outline">Fidelity:</span> ${escapeHtml(p.fidelity_score || 'Not documented')}</div>
+                <div><span class="text-outline">DP Parameters:</span> ${p.dp_epsilon > 0 ? `ε=${p.dp_epsilon}, δ=${p.dp_delta}` : 'Not using DP'}</div>
+                <div><span class="text-outline">Bias Audit:</span> ${escapeHtml(p.bias_audit_results || 'Not documented')}</div>
+                <div><span class="text-outline">Adversarial:</span> ${escapeHtml(p.adversarial_testing || 'Not documented')}</div>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <h4 class="text-xs text-accent-sky uppercase mb-3">Compliance Blocking Gates</h4>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                ${Object.entries(gates).map(([name, gate]) => `
+                    <div class="text-center p-2 rounded ${gate.passed ? 'bg-accent-lime/10' : gate.required ? 'bg-red-400/10' : 'bg-surface-high'}">
+                        <span class="material-symbols-outlined text-lg ${gate.passed ? 'text-accent-lime' : gate.required ? 'text-red-400' : 'text-outline'}">${gate.passed ? 'check_circle' : gate.required ? 'error' : 'info'}</span>
+                        <p class="text-xs mt-1">${name}</p>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div class="mt-6 flex gap-3">
+            <button onclick="runComplianceCheck('${policyId}')" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Run Compliance Check</button>
+            <button onclick="deleteSyntheticPolicy('${policyId}')" class="px-4 py-2 rounded-lg bg-red-400/20 text-red-400 font-mono text-sm hover:bg-red-400/30 transition-all cursor-pointer">Delete</button>
+        </div>
+    `;
+}
+
+function hidePolicyDetail() {
+    document.getElementById('synthetic-policy-detail').classList.add('hidden');
+}
+
+async function runComplianceCheck(policyId) {
+    const project = getCurrentProject();
+    if (!project) return;
+    
+    const result = await api(`/memory/${encodeURIComponent(project)}/synthetic-data-policies/${policyId}/compliance`);
+    if (result) {
+        showToast(`Compliance: ${result.compliance_status} (${result.gates_passed}/${result.gates_total} gates passed)`);
+        showPolicyDetail(policyId); // Refresh
+    }
+}
+
+async function deleteSyntheticPolicy(policyId) {
+    if (!confirm('Delete this synthetic data policy?')) return;
+    
+    const project = getCurrentProject();
+    if (!project) return;
+    
+    const result = await api(`/memory/${encodeURIComponent(project)}/synthetic-data-policies/${policyId}`, {
+        method: 'DELETE',
+    });
+    
+    if (result && result.success) {
+        showToast('Policy deleted');
+        hidePolicyDetail();
+        loadSyntheticDataPolicies(project);
+    }
+}
 
 // ==================== GIT JS ====================
 
@@ -6229,6 +7261,47 @@ async function loadDashboardStatusCards() {
             }
         } catch { impactEl.textContent = 'N/A'; }
     }
+    // Safety Score — includes the friction-penalty and pending-review
+    // cross-connects, not just the raw risk-level score, so this card
+    // reflects the same picture the Safety & Alignment tabs show.
+    const safetyEl = document.getElementById('dash-safety');
+    if (safetyEl) {
+        try {
+            const [safetyData, reviewsData] = await Promise.all([
+                api(`/memory/${encodeURIComponent(project)}/safety-stats`),
+                api(`/memory/${encodeURIComponent(project)}/reviews/pending`),
+            ]);
+            if (safetyData) {
+                const score = Math.round((safetyData.safety_score || 0) * 100);
+                const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
+                const highRisk = safetyData.high_risk_decisions || 0;
+                const pending = reviewsData?.total_pending || 0;
+                const frictionPenalty = safetyData.friction_penalty || 0;
+                let extra = '';
+                if (pending > 0) extra += `<div class="text-xs mt-1"><span class="text-yellow-400">${pending} pending review${pending === 1 ? '' : 's'}</span></div>`;
+                if (frictionPenalty > 0) extra += `<div class="text-xs mt-1 text-outline">-${(frictionPenalty * 100).toFixed(1)}% from recent friction</div>`;
+                safetyEl.innerHTML = `
+                    <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">safety score</span></div>
+                    <div class="text-xs mt-1">${highRisk > 0 ? `<span class="text-red-400">${highRisk} high-risk</span> · ` : ''}<span class="text-outline">${safetyData.total_decisions} decisions</span></div>
+                    ${extra}`;
+            }
+        } catch { safetyEl.textContent = 'N/A'; }
+    }
+    // Alignment Score
+    const alignmentEl = document.getElementById('dash-alignment');
+    if (alignmentEl) {
+        try {
+            const alignData = await api(`/memory/${encodeURIComponent(project)}/alignment/evaluate`);
+            if (alignData) {
+                const score = Math.round((alignData.summary?.alignment_score || 0) * 100);
+                const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
+                const passing = alignData.summary?.passing_count || 0;
+                alignmentEl.innerHTML = `
+                    <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">alignment</span></div>
+                    <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span> <span class="text-outline">passing criteria</span></div>`;
+            }
+        } catch { alignmentEl.textContent = 'N/A'; }
+    }
 }
 
 // ── Interfaces card: live connection status ──
@@ -6302,6 +7375,15 @@ document.getElementById('btn-dash-compact')?.addEventListener('click', async () 
     el.textContent = 'Running compaction...';
     const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/compact`, 'POST');
     el.textContent = data ? `Archived ${data.decisions_archived || 0} decisions into ${data.epochs_created || 0} epochs` : 'N/A';
+});
+document.getElementById('btn-dash-agent-audit')?.addEventListener('click', async () => {
+    const el = document.getElementById('dash-triggers-result');
+    el.textContent = 'Scanning agent harness config...';
+    const res = await fetch('/api/agent-audit/scan', { method: 'POST' });
+    const data = await res.json().catch(() => null);
+    el.textContent = data
+        ? `Agent Surface Audit: grade ${data.grade}, ${data.total_findings} finding(s) across ${(data.files_scanned || []).length} file(s) — see Safety & Alignment → Agent Audit`
+        : 'N/A';
 });
 
 async function updateOnboarding() {
@@ -6468,7 +7550,7 @@ document.getElementById('btn-run-webresearch')?.addEventListener('click', async 
         const results = document.getElementById('webresearch-results');
         results.classList.remove('hidden');
         results.innerHTML = `<p class="text-xs text-outline mb-3">${data.steps_run} step(s) run · ${data.sources_found} source(s) found · ${data.sources_imported} imported into Tropebook</p>
-            <div class="glass-panel rounded-lg p-3"><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
+            <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
         showToast(`Web research complete: ${data.sources_imported} sources imported`);
     }
 });
@@ -6494,12 +7576,12 @@ document.getElementById('btn-run-hybrid')?.addEventListener('click', async () =>
                 <span class="text-xs text-outline">${data.sources_imported} source(s) imported into Tropebook</span>
             </div>
             ${(!data.last30days_ok || !data.web_research_ok) ? `<p class="text-xs text-red-400 mb-3">${!data.last30days_ok ? 'Multi-source: ' + escapeHtml(data.last30days_error || '') : ''} ${!data.web_research_ok ? 'Citation-grade: ' + escapeHtml(data.web_research_error || '') : ''}</p>` : ''}
-            <div class="glass-panel rounded-lg p-4"><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.merged_report || 'No merged report generated.')}</pre></div>
+            <div class="glass-panel rounded-lg p-4 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.merged_report || 'No merged report generated.')}</pre></div>
             <details class="mt-3">
                 <summary class="font-mono text-xs text-outline cursor-pointer hover:text-accent-sky">Show raw reports from each engine</summary>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                    <div class="glass-panel rounded-lg p-3"><p class="font-mono text-xs text-accent-periwinkle mb-2">Multi-Source</p><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.last30days_markdown || '(none)')}</pre></div>
-                    <div class="glass-panel rounded-lg p-3"><p class="font-mono text-xs text-accent-lime mb-2">Citation-Grade</p><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.web_research_markdown || '(none)')}</pre></div>
+                    <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><p class="font-mono text-xs text-accent-periwinkle mb-2">Multi-Source</p><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.last30days_markdown || '(none)')}</pre></div>
+                    <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><p class="font-mono text-xs text-accent-lime mb-2">Citation-Grade</p><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.web_research_markdown || '(none)')}</pre></div>
                 </div>
             </details>`;
         showToast('Hybrid research complete');
@@ -6602,7 +7684,7 @@ document.getElementById('btn-prbot')?.addEventListener('click', async () => {
         const results = document.getElementById('prbot-results');
         results.classList.remove('hidden');
         let html = `<p class="text-xs text-outline mb-3">${data.decision_count || 0} decisions referenced, ${data.warning_count || 0} ghost warnings, relevance ${Math.round((data.relevance_score || 0) * 100)}%</p>`;
-        html += `<pre class="font-mono text-xs text-outline whitespace-pre-wrap glass-panel rounded-lg p-3 mb-3">${escapeHtml(data.body || '')}</pre>`;
+        html += `<div class="relative code-copy-wrap mb-3"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap glass-panel rounded-lg p-3 pt-6">${escapeHtml(data.body || '')}</pre></div>`;
         if ((data.ghost_warnings || []).length) {
             html += '<h4 class="font-mono text-xs uppercase text-red-400 mb-2">Ghost Warnings</h4>' + data.ghost_warnings.map(w => `<div class="p-2 rounded bg-red-500/10 border border-red-400/20 mb-2 text-xs"><span class="text-red-400">${escapeHtml(w.severity)}</span> — ${escapeHtml(w.recommendation || '')}</div>`).join('');
         }
@@ -6628,27 +7710,6 @@ document.getElementById('btn-check-ghost')?.addEventListener('click', async () =
         html += warnings.length
             ? warnings.map(w => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${w.severity === 'high' ? 'border-red-400' : 'border-yellow-400'}"><p class="text-sm">${escapeHtml(w.recommendation || w.message || JSON.stringify(w))}</p></div>`).join('')
             : '<p class="text-sm text-outline">No warnings — this diff does not appear to conflict with active decisions.</p>';
-        results.innerHTML = html;
-    }
-});
-
-// ── Rationale Check: Corroborate ──
-document.getElementById('btn-corroborate')?.addEventListener('click', async () => {
-    if (!state.currentProject) { showToast('Select a project first'); return; }
-    const decision_id = document.getElementById('corroborate-decision-id').value.trim();
-    if (!decision_id) { showToast('Enter a decision ID first'); return; }
-    const btn = document.getElementById('btn-corroborate');
-    btn.disabled = true; btn.textContent = 'Checking...';
-    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/corroborate`, 'POST', { decision_id, force_refresh: false });
-    btn.disabled = false; btn.textContent = 'Check Rationale';
-    if (data) {
-        document.getElementById('corroborate-empty')?.classList.add('hidden');
-        const results = document.getElementById('corroborate-results');
-        results.classList.remove('hidden');
-        let html = `<div class="flex items-center gap-2 mb-3"><span class="text-xs px-2 py-0.5 rounded-full bg-accent-lime/20 text-accent-lime">${escapeHtml(data.status)}</span><span class="text-xs text-outline">confidence adj: ${data.confidence_adjustment ?? '--'}</span></div>`;
-        html += (data.research_findings || []).length
-            ? data.research_findings.map(f => `<div class="glass-panel rounded-lg p-3 mb-2"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener" class="text-sm text-accent-sky hover:underline">${escapeHtml(f.title)}</a><p class="text-xs text-outline mt-1">${escapeHtml(f.description || '')}</p></div>`).join('')
-            : '<p class="text-sm text-outline">No supporting research findings.</p>';
         results.innerHTML = html;
     }
 });
@@ -6806,7 +7867,7 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
             results.classList.remove('hidden');
             empty?.classList.add('hidden');
             status.textContent = `Last run: ${new Date().toLocaleString()} — archived ${data.decisions_archived || 0} decisions into ${data.epochs_created || 0} epochs`;
-            results.innerHTML = `<pre class="font-mono text-xs text-outline whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            results.innerHTML = `<div class="relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${JSON.stringify(data, null, 2)}</pre></div>`;
             showToast(`Compaction complete: ${data.epochs_created} epochs, ${data.decisions_archived} archived`);
         }
     } catch (e) {

@@ -46,6 +46,8 @@ class PRDecision:
     relevance_score: float
     impact_score: float
     relationship: str  # "direct" | "ancestor" | "descendant"
+    risk_level: str = "low"
+    requires_review: bool = False
 
 
 @dataclass(frozen=True)

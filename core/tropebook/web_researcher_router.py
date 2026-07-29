@@ -79,7 +79,7 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
 class HybridResearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
     max_web_steps: int = Field(2, ge=1, le=4)
-    last30days_timeout: int = Field(120, ge=30, le=280)
+    last30days_timeout: int = Field(180, ge=30, le=360)
 
 
 @web_research_router.post("/{project}/deep-research/hybrid")

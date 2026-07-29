@@ -60,6 +60,54 @@ class TestMemoryManagerCRUD:
         assert "theme: dark" in context
 
 
+class TestDecisionIdBackfill:
+    """mm.add_decision itself never assigns an id (only the server.py
+    endpoint does) — decisions written any other way, or predating id
+    generation entirely, end up with no stable id. Every feature that
+    matches decisions by id (dropdowns, Contradictions escalation, Cost
+    Ledger, PR Bot) silently can't reference them, so get_project_memory
+    backfills one on read.
+    """
+
+    def test_backfills_missing_id_on_load(self, mm):
+        mm.add_decision("proj", "Used React", "Frontend needed SPA")
+        memory = mm.get_project_memory("proj")
+        assert memory["decisions"][0].get("id")
+
+    def test_backfilled_id_is_stable_across_reloads(self, mm):
+        mm.add_decision("proj", "Used React", "Frontend needed SPA")
+        first = mm.get_project_memory("proj")["decisions"][0]["id"]
+        second = mm.get_project_memory("proj")["decisions"][0]["id"]
+        assert first == second
+
+    def test_does_not_touch_decisions_that_already_have_an_id(self, mm):
+        mm.add_decision("proj", "Used React", "Frontend needed SPA")
+
+        def _mutate(m):
+            m["decisions"][0]["id"] = "existing-id-123"
+        mm._modify_project_memory("proj", _mutate)
+
+        memory = mm.get_project_memory("proj")
+        assert memory["decisions"][0]["id"] == "existing-id-123"
+
+    def test_mixed_decisions_only_missing_ones_backfilled(self, mm):
+        mm.add_decision("proj", "First", "c1")
+        mm.add_decision("proj", "Second", "c2")
+
+        def _mutate(m):
+            m["decisions"][0]["id"] = "keep-me"
+        mm._modify_project_memory("proj", _mutate)
+
+        memory = mm.get_project_memory("proj")
+        assert memory["decisions"][0]["id"] == "keep-me"
+        assert memory["decisions"][1].get("id")
+        assert memory["decisions"][1]["id"] != "keep-me"
+
+    def test_no_decisions_no_error(self, mm):
+        memory = mm.get_project_memory("empty-proj")
+        assert memory["decisions"] == []
+
+
 class TestPathTraversal:
     def test_safe_path_strips_dotslash(self, mm):
         # _safe_path uses Path().name which strips directory components

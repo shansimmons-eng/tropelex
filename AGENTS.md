@@ -35,7 +35,7 @@ Tropelex is a persistent memory system that stores:
 
 ## Tropelex Overview
 
-Tropelex accumulates knowledge across sessions so agents don't start from scratch.
+Tropelex accumulates knowledge across sessions so agents don't start from scratch. See [`SAFETY.md`](SAFETY.md) for how the same mechanisms double as safety/audit infrastructure (drift detection, contradiction surfacing, agent handoff, forensic time-travel).
 
 ## Core Components
 
@@ -101,6 +101,12 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 ### OpenCode Adapter (`adapters/opencode.py`)
 - Primary integration point for OpenCode agent
 - `generate_session_prompt(project_name)` → creates Tropelex context block
+
+### Safety & Alignment Framework (`core/tropebook/web/server.py`)
+- Safety metadata (risk_level, reversibility, affected_systems, safety_category) attachable to any decision
+- Safety Dashboard, Review Workflow, Alignment/Governance scoring, Provenance/Integrity chain, Synthetic Data Policy compliance gates
+- See [`SAFETY.md`](SAFETY.md) for the full framing and [`design.md`](design.md) §19 for the API surface
+- **Note for agents touching this area:** unlike every other `core/` feature, this one is implemented inline in `web/server.py` rather than its own module — don't assume `core/safety/` exists
 
 ## Usage
 

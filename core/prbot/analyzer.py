@@ -64,6 +64,7 @@ def _build_pr_decision(
         return None
 
     confidence = scored_map.get(did, {}).get("score", 0.5)
+    safety = decision.get("safety_metadata", {})
     return PRDecision(
         decision_id=did,
         decision_text=text[:120],
@@ -71,6 +72,8 @@ def _build_pr_decision(
         relevance_score=round(relevance, 4),
         impact_score=0.0,
         relationship="direct",
+        risk_level=safety.get("risk_level", "low"),
+        requires_review=safety.get("requires_review", False),
     )
 
 

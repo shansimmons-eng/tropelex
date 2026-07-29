@@ -161,6 +161,24 @@ class TestDeepResearchPersistence:
 
 
 class TestFeedCreateAPI:
+    @pytest.fixture(autouse=True)
+    def _isolated_feed_storage(self, tmp_path, monkeypatch):
+        """Point the app's feed manager at an isolated temp directory.
+
+        Without this, these tests hit the real app singleton
+        (``_get_feed_manager`` caches a module-level ``ResearchFeedManager``
+        pointed at ``BASE_DIR / "memory"``, the same storage the live
+        dashboard reads) and permanently write "Deep Feed"/"Default Feed"
+        entries into production feed storage on every test run.
+        """
+        from core.tropebook.web import server as server_module
+
+        monkeypatch.setattr(
+            server_module,
+            "_feed_manager",
+            ResearchFeedManager(storage_path=str(tmp_path / "feeds")),
+        )
+
     def test_create_feed_with_deep_research(self):
         """POST /api/research-feeds with research_provider='deep_research'."""
         from core.tropebook.web.server import app as full_app

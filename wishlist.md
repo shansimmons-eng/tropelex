@@ -2,38 +2,11 @@
 
 **Novel features and improvements planned for future development.**
 
----
-
-## High Priority (Core Improvements)
-
-### 1. Versioned Memory Snapshots
-**Purpose:** Automatic versioning of memory state with diff visualization.
-
-**Why:** Currently session replay is manual. Automatic snapshots would create a complete audit trail.
-
-**Features:**
-- Auto-snapshot on every memory mutation
-- Visual diff between any two snapshots
-- Branch/merge support for parallel experiments
-- Storage-efficient delta compression
+Grouped by function (what the feature is *for*), not by build priority or chronology — mirrors the dashboard sidebar's category structure. See `## Implementation Roadmap` below for the phase-by-phase build history.
 
 ---
 
-### 2. Memory Health Dashboard
-**Purpose:** Monitor memory quality, freshness, and coverage.
-
-**Why:** Decisions decay, patterns become stale. Users need visibility into memory health.
-
-**Features:**
-- Stale decision alerts
-- Coverage metrics (what categories are missing)
-- Growth trends over time
-- Quality scores per project
-- Recommendations for memory maintenance
-
-**Status:** ✅ Implemented (core/health/)
-
----
+## Content
 
 ### 3. Knowledge Graph Visualization
 **Purpose:** Interactive graph showing decisions, relationships, and confidence.
@@ -51,18 +24,21 @@
 
 ---
 
-### 4. Cross-Project Learning Automation
-**Purpose:** Automatically surface solutions from similar projects.
+## Quality & Integrity
 
-**Why:** Currently cross-pollination is manual. Automation would catch transferable patterns.
+### 2. Memory Health Dashboard
+**Purpose:** Monitor memory quality, freshness, and coverage.
+
+**Why:** Decisions decay, patterns become stale. Users need visibility into memory health.
 
 **Features:**
-- Auto-detect similar projects by tech stack overlap
-- Periodic knowledge transfer suggestions
-- Solution templates from successful patterns
-- Anti-pattern warnings from failures in similar projects
+- Stale decision alerts
+- Coverage metrics (what categories are missing)
+- Growth trends over time
+- Quality scores per project
+- Recommendations for memory maintenance
 
-**Status:** ✅ Implemented (core/rag.py extensions)
+**Status:** ✅ Implemented (core/health/)
 
 ---
 
@@ -95,214 +71,6 @@
 - Confidence scoring based on diff severity and decision confidence
 
 **Status:** ✅ Implemented (core/ghost/)
-
----
-
-### 7. Explainable Memory — "Why do we...?" Chat
-**Purpose:** Conversational front-end that fuses RAG + decision tree + impact analysis into causal answers.
-
-**Why:** "Why do we use Postgres instead of MySQL?" should trace the decision, who made it, confidence/tier, what superseded it, and what it caused downstream. This is qualitatively different from search — it's architecture archaeology as a conversation.
-
-**Features:**
-- Natural language "why" questions answered with full causal chain
-- Decision provenance (who, when, confidence)
-- Supersession chain (what replaced this, if anything)
-- Downstream impact (what this decision caused)
-- Source citations (git commits, session history)
-
-**Status:** ✅ Implemented (core/explain/)
-
----
-
-### 8. Agent Handoff Packets
-**Purpose:** Generate role-aware context bundles when one agent hands off to another.
-
-**Why:** Tropelex is used inside multi-subagent systems. When one agent's session ends and hands off to a different specialist, generate a role-aware context packet — "here's what a TestEngineer specifically needs to know" vs "here's what a Frontend specialist needs."
-
-**Features:**
-- Role-specific context slicing (different agents get different memory slices)
-- Formatted for target agent type (e.g., TestEngineer gets test-relevant decisions + coverage gaps)
-- Token-budget-aware (fits within target agent's context window)
-- Includes recent session state and active decisions
-- API endpoint for programmatic generation
-
-**Status:** ✅ Implemented (core/handoff/)
-
----
-
-## Medium Priority (Enhanced Features)
-
-### 9. Research Feed Intelligence
-**Purpose:** AI-powered analysis of research feed results.
-
-**Why:** Feeds collect data but don't analyze patterns or significance.
-
-**Features:**
-- Trend detection across feed runs
-- Anomaly flagging (unusual results)
-- Automatic summarization of feed evolution
-- Relevance scoring per feed item
-- Cross-feed correlation detection
-
-**Status:** ✅ Implemented (core/tropebook/feed_intelligence.py)
-
----
-
-### 10. Prompt Effectiveness Tracking
-**Purpose:** Track which prompts produced best outcomes.
-
-**Why:** Prompt genealogy tracks compression, but not prompt quality itself.
-
-**Features:**
-- A/B test prompt variations
-- Outcome correlation (which prompts led to success)
-- Prompt templates from high-performing examples
-- Automatic prompt refinement suggestions
-- Context-aware prompt selection
-
----
-
-### 11. Memory Backup & Restore
-**Purpose:** Export/import memory snapshots for portability.
-
-**Why:** Currently memory is local. Backup enables migration and disaster recovery.
-
-**Features:**
-- Full memory export as compressed archive
-- Selective backup (specific projects or categories)
-- Version-stamped restore points
-- Conflict resolution on import
-- Cloud storage integration (S3, GCS, etc.)
-
-**Status:** ✅ Implemented (core/sync/)
-
----
-
-### 12. Research Feed Alerts
-**Purpose:** Email/Slack notifications for feed updates.
-
-**Why:** Users check feeds manually. Alerts would surface important changes.
-
-**Features:**
-- Configurable alert triggers (new results, trend changes)
-- Email digest (daily/weekly summary)
-- Slack/Discord webhook integration
-- Alert rules (only notify for high-relevance items)
-- Quiet hours configuration
-
-**Status:** ✅ Implemented (core/tropebook/alert_service.py, alert_router.py)
-
----
-
-### 13. Memory Search API
-**Purpose:** Natural language search across all memory.
-
-**Why:** Current search is basic text matching. Semantic search would be more useful.
-
-**Features:**
-- Natural language queries ("what did we decide about auth?")
-- Context-aware search (project-specific)
-- Ranked results by relevance and recency
-- Faceted filtering (by date, category, confidence)
-- Search suggestions and auto-complete
-
-**Status:** ✅ Implemented (core/search_router.py)
-
----
-
-### 14. Decision Market / Calibration Score
-**Purpose:** Team members place confidence bets on decisions; track calibration over time.
-
-**Why:** Gamifies retrospective honesty. "Alice's gut calls are 85% accurate; Bob is overconfident on auth decisions." Genuinely novel — not in Continue, Cursor, mem0, or Zep.
-
-**Features:**
-- Place confidence bets before decisions are finalized
-- Track bet accuracy against outcomes (reversal rate)
-- Per-person calibration scores
-- Category-specific accuracy (e.g., "85% on auth, 60% on DB")
-- Calibration leaderboards
-
-**Status:** ✅ Implemented (core/market/)
-
----
-
-### 15. Memory Lens — IDE Inline Annotations
-**Purpose:** Ambient decision annotations in code editors, like GitLens but for decisions.
-
-**Why:** Most people never open a dashboard, but everyone reads code. Highest "daily-use stickiness" upgrade.
-
-**Features:**
-- Hover annotations on functions/patterns
-- Decision provenance inline (who decided, when, confidence)
-- Reference count ("referenced 6 times since")
-- Diff annotations showing decision drift
-- VS Code extension integration
-
-**Status:** ✅ Implemented
-
----
-
-### 16. Predictive Context Prefetch / Budget-Aware Assembler
-**Purpose:** Predict ideal minimal context bundle for a task before the agent starts, sized to a token budget.
-
-**Why:** Context compression is reactive. Proactive prediction prioritizes by impact score rather than recency.
-
-**Features:**
-- Task-aware context prediction
-- Token budget constraints
-- Impact-score prioritization
-- Agent-specific tuning (based on prompt genealogy)
-- Compression ratio tracking
-
-**Status:** ✅ Implemented (core/prefetch/)
-
----
-
-### 17. Bidirectional Slack Decision Capture
-**Purpose:** Capture decisions at the moment they're made in chat, where most undocumented decisions happen.
-
-**Why:** Current Slack integration is one-way (alerts). Bidirectional removes the friction of logging decisions after the fact.
-
-**Features:**
-- `/tropelex decide "..."` captures decisions inline
-- `/tropelex ask "why did we pick Redis"` queries memory
-- Automatic decision extraction from chat threads
-- Slack thread context preservation
-- Conflict detection on capture
-
-**Status:** ✅ Implemented
-
----
-
-## Low Priority (Experimental)
-
-### 18. Collaborative Memory
-**Purpose:** Share memory between multiple agents/projects.
-
-**Why:** Currently memory is isolated. Collaboration would enable team knowledge sharing.
-
-**Features:**
-- Multi-agent memory access
-- Conflict resolution for concurrent writes
-- Permission-based access control
-- Change tracking per agent
-- Merge strategies for parallel edits
-
-**Status:** ✅ Implemented (core/collaboration/, WebSocket-based)
-
----
-
-### 19. Session Replay with AI Analysis
-**Purpose:** AI-generated insights from session diffs.
-
-**Why:** Session diffs are raw data. AI analysis would extract actionable insights.
-
-**Features:**
-- Auto-summarize session changes
-- Identify decision patterns across sessions
-- Suggest process improvements
-- Detect regressions or repeated work
-- Generate retrospective reports
 
 ---
 
@@ -354,22 +122,6 @@
 
 ---
 
-### 23. Memory Time-Travel Debugger
-**Purpose:** Check out project memory as of any past date; get agent context as if it were that point in time.
-
-**Why:** Forensic tool for postmortems. "What would an agent operating in March have known when it made this call?"
-
-**Features:**
-- Snapshot-as-of-any-date retrieval
-- Context generation for historical point-in-time
-- Diff between two historical snapshots
-- Session replay with original context preserved
-- Timeline visualization of memory evolution
-
-**Status:** ✅ Implemented
-
----
-
 ### 24. Contradiction Detection (Active)
 **Purpose:** Actively scan for unresolved contradictions that were never formally reconciled.
 
@@ -383,55 +135,6 @@
 - Integration with Health Dashboard
 
 **Status:** ✅ Implemented
-
----
-
-### 25. "Digital Twin" Contributor Personas
-**Purpose:** Synthesize readable persona summaries from agent proficiency tracking.
-
-**Why:** "This agent tends to over-engineer auth flows, prefers functional patterns, rarely reverts DB decisions." Auto-generated calibration notes for code reviewers.
-
-**Features:**
-- Per-agent personality summaries
-- Strength/weakness analysis by category
-- Historical accuracy tracking
-- Review focus suggestions
-- Integration with Agent Handoff Packets
-
-**Status:** ✅ Implemented
-
----
-
-### 26. Federated Anonymized Benchmarking
-**Purpose:** Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs.
-
-**Why:** "Projects using FastAPI+Postgres have a 12% ORM-choice reversal rate." Network effect from aggregate benchmarking.
-
-**Features:**
-- Structural-only sharing (no decision text)
-- Aggregate pattern statistics
-- Benchmark comparison reports
-- Opt-in/opt-out per project
-- Central aggregation service
-
-**Status:** ✅ Implemented
-
----
-
-### 27. Memory Compaction / Epoch Summarization
-**Purpose:** Prevent memory from growing unbounded by collapsing superseded/low-confidence decision chains into higher-level "epoch summaries."
-
-**Why:** Every feature adds more memory. After 18 months with 2,000 decisions, context injection gets truncated arbitrarily or token budgets balloon. This is the difference between memory that grows and memory that matures.
-
-**Features:**
-- Periodic LLM-driven compaction pass
-- Merge superseded chains into one-line summaries (e.g., "frontend framework churned 3x in 2026, settled on Svelte, see decision #412")
-- Archive originals (never delete) for time-travel/audit
-- Confidence-tier-based compaction priority
-- Token budget tracking per project
-- Compaction history with rollback
-
-**Status:** ✅ Implemented (core/compaction/)
 
 ---
 
@@ -482,7 +185,360 @@
 - Confidence adjustment based on corroboration
 - Integration with Knowledge Decay scoring
 
-**Status:** ✅ Implemented (core/corroboration/)
+**Status:** ❌ Removed (2026-07-28). Web-search-based keyword matching was a poor fit for most real decisions: anything self-referential to the project's own architecture/tests has no public source to corroborate against, so results were consistently irrelevant regardless of query-quality fixes (narration-verb stripping, rationale-only queries, etc. — see git history on `core/corroboration/` before removal). Removed rather than kept as a feature that mostly produced noise.
+
+---
+
+## Explainability & Discovery
+
+### 7. Explainable Memory — "Why do we...?" Chat
+**Purpose:** Conversational front-end that fuses RAG + decision tree + impact analysis into causal answers.
+
+**Why:** "Why do we use Postgres instead of MySQL?" should trace the decision, who made it, confidence/tier, what superseded it, and what it caused downstream. This is qualitatively different from search — it's architecture archaeology as a conversation.
+
+**Features:**
+- Natural language "why" questions answered with full causal chain
+- Decision provenance (who, when, confidence)
+- Supersession chain (what replaced this, if anything)
+- Downstream impact (what this decision caused)
+- Source citations (git commits, session history)
+
+**Status:** ✅ Implemented (core/explain/)
+
+---
+
+### 13. Memory Search API
+**Purpose:** Natural language search across all memory.
+
+**Why:** Current search is basic text matching. Semantic search would be more useful.
+
+**Features:**
+- Natural language queries ("what did we decide about auth?")
+- Context-aware search (project-specific)
+- Ranked results by relevance and recency
+- Faceted filtering (by date, category, confidence)
+- Search suggestions and auto-complete
+
+**Status:** ✅ Implemented (core/search_router.py)
+
+---
+
+### 15. Memory Lens — IDE Inline Annotations
+**Purpose:** Ambient decision annotations in code editors, like GitLens but for decisions.
+
+**Why:** Most people never open a dashboard, but everyone reads code. Highest "daily-use stickiness" upgrade.
+
+**Features:**
+- Hover annotations on functions/patterns
+- Decision provenance inline (who decided, when, confidence)
+- Reference count ("referenced 6 times since")
+- Diff annotations showing decision drift
+- VS Code extension integration
+
+**Status:** ✅ Implemented
+
+---
+
+### 16. Predictive Context Prefetch / Budget-Aware Assembler
+**Purpose:** Predict ideal minimal context bundle for a task before the agent starts, sized to a token budget.
+
+**Why:** Context compression is reactive. Proactive prediction prioritizes by impact score rather than recency.
+
+**Features:**
+- Task-aware context prediction
+- Token budget constraints
+- Impact-score prioritization
+- Agent-specific tuning (based on prompt genealogy)
+- Compression ratio tracking
+
+**Status:** ✅ Implemented (core/prefetch/)
+
+**Implementation detail:** relevance scoring is a composite of impact score, category match, decay confidence, and semantic similarity; assembly uses a budget-aware knapsack (value-density greedy + exact DP pass for boundary optimization); near-misses are surfaced with their scores rather than silently dropped; a genealogy/feedback loop tracks precision (included items referenced) and recall proxy (requested but excluded) to improve weights over time. Reuses `impact/analysis.py`, `agent_skills.py`, and `packet_builder.py` trimming logic.
+
+**API:**
+- `POST /api/memory/{project}/prefetch` — task + token_budget → bundle + near_misses + bundle_id
+- `POST /api/memory/{project}/prefetch/{bundle_id}/outcome` — referenced_ids + requested_but_missing
+
+---
+
+## Safety & Alignment
+
+### 35. Safety Metadata, Review Workflow & Alignment/Governance Scoring
+**Purpose:** Risk classification, review workflow, and multi-dimensional alignment/governance scoring for the decision graph.
+
+**Why:** Decisions were recorded with confidence and rationale but no risk classification, review trail, or compliance framing — needed for evaluating Tropelex as safety-relevant infrastructure (see `SAFETY.md`) rather than just a productivity tool.
+
+**Features:**
+- Safety metadata on every decision: risk_level, reversibility, affected_systems, safety_category, requires_review
+- Safety Dashboard: risk trends, system exposure, aggregate safety score
+- Safety Review Workflow: pending queue, approve/reject, reviewer accountability, mitigation suggestions
+- Alignment Evaluation: scoring across interpretability, safety, fairness, robustness, governance
+- Governance Compliance: EU AI Act, NIST, ISO 42001 policy checks
+- Fairness Audit, Accountability Tracking, Robustness Testing, Interpretability Reports
+- Provenance Chain, Integrity Verification, Tamper Detection, immutable Security Audit Log
+- Decision Versioning with rollback
+
+**Status:** ✅ Implemented — but as an exception to this codebase's own pattern: every other feature above ships as its own `core/<name>/` module with a router; this one (~3,200 lines) is inline in `core/tropebook/web/server.py`. Candidate for extraction into `core/safety/` + `core/governance/`. Tests: `tests/test_safety_features.py`, `tests/test_alignment_governance.py`, `tests/test_far_cais_sff.py`.
+
+---
+
+### 36. Synthetic Data Policy
+**Purpose:** EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets used in agent training/eval.
+
+**Why:** Decisions can now carry safety metadata, but nothing tracked the provenance and compliance posture of *synthetic data* feeding those decisions.
+
+**Features:**
+- Full CRUD for synthetic dataset registration with fidelity, privacy (ε/δ), bias audit, adversarial testing, source data, rationale, distinguishability, model-collapse-prevention, retention, and attestation metadata
+- 10 blocking compliance gates run per policy
+- UI registration form + compliance dashboard
+- Aggregate statistics across all registered policies
+
+**Status:** ✅ Implemented (`core/tropebook/web/server.py` — same inline-implementation caveat as #35). Tests: `tests/test_synthetic_data_policy.py` — note: 17 of these currently fail only when the full `pytest tests/` suite runs together (pass 100% in isolation); see `design.md`'s Security Features section for the known cross-test state-leak issue.
+
+---
+
+### 37. Agent Surface Audit
+**Purpose:** Scan the agent's own harness configuration for risk — secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions.
+
+**Why:** Every other feature in this list audits decisions and code — the things an agent *produces*. Nothing audited the agent's own operating environment (`CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent/skill definitions), even though a leaked key in a committed config file, an unrestricted `Bash(*)` permission, or a hook that pipes remote content into a shell is a safety-relevant risk that never shows up in the decision graph. Inspired by [AgentShield](https://github.com/affaan-m/agentshield)'s five-category shape, reimplemented as pure functions so it plugs into the same severity-ranked finding pattern Contradictions and Doc Mining already use, rather than shelling out to a separate tool.
+
+**Features:**
+- Secrets detection: AWS/GitHub/OpenAI/Anthropic/Slack key patterns, private key headers, generic high-entropy assignments
+- Permission auditing: `dangerouslySkipPermissions`, unrestricted `Bash(*)`-style wildcard rules
+- Hook injection analysis: `curl|sh`/`wget|sh` patterns, unquoted `eval`, unquoted `$ARGUMENTS` interpolation
+- MCP server risk profiling: unpinned `@latest` packages, unresolved env placeholder values
+- Agent/skill config review: prompt-injection-style markers ("ignore previous instructions", "disable safety", exfiltration language)
+- A–F grade computed from severity-weighted findings; read-only, no files modified
+- Defaults to auditing Tropelex's own repo; `repo_path` param audits any other repo
+
+**API:** `POST /api/agent-audit/scan?repo_path=...`
+
+**Status:** ✅ Implemented (`core/agent_audit/`). Lives as the 7th tab in the consolidated Safety & Alignment section rather than its own sidebar entry. Tests: `tests/test_agent_audit.py`.
+
+---
+
+## Memory Lifecycle
+
+### 1. Versioned Memory Snapshots
+**Purpose:** Automatic versioning of memory state with diff visualization.
+
+**Why:** Currently session replay is manual. Automatic snapshots would create a complete audit trail.
+
+**Features:**
+- Auto-snapshot on every memory mutation
+- Visual diff between any two snapshots
+- Branch/merge support for parallel experiments
+- Storage-efficient delta compression
+
+---
+
+### 11. Memory Backup & Restore
+**Purpose:** Export/import memory snapshots for portability.
+
+**Why:** Currently memory is local. Backup enables migration and disaster recovery.
+
+**Features:**
+- Full memory export as compressed archive
+- Selective backup (specific projects or categories)
+- Version-stamped restore points
+- Conflict resolution on import
+- Cloud storage integration (S3, GCS, etc.)
+
+**Status:** ✅ Implemented (core/sync/)
+
+---
+
+### 19. Session Replay with AI Analysis
+**Purpose:** AI-generated insights from session diffs.
+
+**Why:** Session diffs are raw data. AI analysis would extract actionable insights.
+
+**Features:**
+- Auto-summarize session changes
+- Identify decision patterns across sessions
+- Suggest process improvements
+- Detect regressions or repeated work
+- Generate retrospective reports
+
+**Status:** Open — the one feature on this list not yet implemented.
+
+---
+
+### 23. Memory Time-Travel Debugger
+**Purpose:** Check out project memory as of any past date; get agent context as if it were that point in time.
+
+**Why:** Forensic tool for postmortems. "What would an agent operating in March have known when it made this call?"
+
+**Features:**
+- Snapshot-as-of-any-date retrieval
+- Context generation for historical point-in-time
+- Diff between two historical snapshots
+- Session replay with original context preserved
+- Timeline visualization of memory evolution
+
+**Status:** ✅ Implemented
+
+---
+
+### 27. Memory Compaction / Epoch Summarization
+**Purpose:** Prevent memory from growing unbounded by collapsing superseded/low-confidence decision chains into higher-level "epoch summaries."
+
+**Why:** Every feature adds more memory. After 18 months with 2,000 decisions, context injection gets truncated arbitrarily or token budgets balloon. This is the difference between memory that grows and memory that matures.
+
+**Features:**
+- Periodic LLM-driven compaction pass
+- Merge superseded chains into one-line summaries (e.g., "frontend framework churned 3x in 2026, settled on Svelte, see decision #412")
+- Archive originals (never delete) for time-travel/audit
+- Confidence-tier-based compaction priority
+- Token budget tracking per project
+- Compaction history with rollback
+
+**Status:** ✅ Implemented (core/compaction/)
+
+---
+
+## Research & Ingestion
+
+### 4. Cross-Project Learning Automation
+**Purpose:** Automatically surface solutions from similar projects.
+
+**Why:** Currently cross-pollination is manual. Automation would catch transferable patterns.
+
+**Features:**
+- Auto-detect similar projects by tech stack overlap
+- Periodic knowledge transfer suggestions
+- Solution templates from successful patterns
+- Anti-pattern warnings from failures in similar projects
+
+**Status:** ✅ Implemented (core/rag.py extensions)
+
+---
+
+### 9. Research Feed Intelligence
+**Purpose:** AI-powered analysis of research feed results.
+
+**Why:** Feeds collect data but don't analyze patterns or significance.
+
+**Features:**
+- Trend detection across feed runs
+- Anomaly flagging (unusual results)
+- Automatic summarization of feed evolution
+- Relevance scoring per feed item
+- Cross-feed correlation detection
+
+**Status:** ✅ Implemented (core/tropebook/feed_intelligence.py)
+
+---
+
+### 10. Prompt Effectiveness Tracking
+**Purpose:** Track which prompts produced best outcomes.
+
+**Why:** Prompt genealogy tracks compression, but not prompt quality itself.
+
+**Features:**
+- A/B test prompt variations
+- Outcome correlation (which prompts led to success)
+- Prompt templates from high-performing examples
+- Automatic prompt refinement suggestions
+- Context-aware prompt selection
+
+---
+
+### 12. Research Feed Alerts
+**Purpose:** Email/Slack notifications for feed updates.
+
+**Why:** Users check feeds manually. Alerts would surface important changes.
+
+**Features:**
+- Configurable alert triggers (new results, trend changes)
+- Email digest (daily/weekly summary)
+- Slack/Discord webhook integration
+- Alert rules (only notify for high-relevance items)
+- Quiet hours configuration
+
+**Status:** ✅ Implemented (core/tropebook/alert_service.py, alert_router.py)
+
+---
+
+## Team & Collaboration
+
+### 8. Agent Handoff Packets
+**Purpose:** Generate role-aware context bundles when one agent hands off to another.
+
+**Why:** Tropelex is used inside multi-subagent systems. When one agent's session ends and hands off to a different specialist, generate a role-aware context packet — "here's what a TestEngineer specifically needs to know" vs "here's what a Frontend specialist needs."
+
+**Features:**
+- Role-specific context slicing (different agents get different memory slices)
+- Formatted for target agent type (e.g., TestEngineer gets test-relevant decisions + coverage gaps)
+- Token-budget-aware (fits within target agent's context window)
+- Includes recent session state and active decisions
+- API endpoint for programmatic generation
+
+**Status:** ✅ Implemented (core/handoff/)
+
+---
+
+### 14. Decision Market / Calibration Score
+**Purpose:** Team members place confidence bets on decisions; track calibration over time.
+
+**Why:** Gamifies retrospective honesty. "Alice's gut calls are 85% accurate; Bob is overconfident on auth decisions." Genuinely novel — not in Continue, Cursor, mem0, or Zep.
+
+**Features:**
+- Place confidence bets before decisions are finalized
+- Track bet accuracy against outcomes (reversal rate)
+- Per-person calibration scores
+- Category-specific accuracy (e.g., "85% on auth, 60% on DB")
+- Calibration leaderboards
+
+**Status:** ✅ Implemented (core/market/)
+
+---
+
+### 17. Bidirectional Slack Decision Capture
+**Purpose:** Capture decisions at the moment they're made in chat, where most undocumented decisions happen.
+
+**Why:** Current Slack integration is one-way (alerts). Bidirectional removes the friction of logging decisions after the fact.
+
+**Features:**
+- `/tropelex decide "..."` captures decisions inline
+- `/tropelex ask "why did we pick Redis"` queries memory
+- Automatic decision extraction from chat threads
+- Slack thread context preservation
+- Conflict detection on capture
+
+**Status:** ✅ Implemented
+
+---
+
+### 18. Collaborative Memory
+**Purpose:** Share memory between multiple agents/projects.
+
+**Why:** Currently memory is isolated. Collaboration would enable team knowledge sharing.
+
+**Features:**
+- Multi-agent memory access
+- Conflict resolution for concurrent writes
+- Permission-based access control
+- Change tracking per agent
+- Merge strategies for parallel edits
+
+**Status:** ✅ Implemented (core/collaboration/, WebSocket-based)
+
+---
+
+### 25. "Digital Twin" Contributor Personas
+**Purpose:** Synthesize readable persona summaries from agent proficiency tracking.
+
+**Why:** "This agent tends to over-engineer auth flows, prefers functional patterns, rarely reverts DB decisions." Auto-generated calibration notes for code reviewers.
+
+**Features:**
+- Per-agent personality summaries
+- Strength/weakness analysis by category
+- Historical accuracy tracking
+- Review focus suggestions
+- Integration with Agent Handoff Packets
+
+**Status:** ✅ Implemented
 
 ---
 
@@ -520,6 +576,24 @@
 
 ---
 
+## Integrations & Ops
+
+### 26. Federated Anonymized Benchmarking
+**Purpose:** Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs.
+
+**Why:** "Projects using FastAPI+Postgres have a 12% ORM-choice reversal rate." Network effect from aggregate benchmarking.
+
+**Features:**
+- Structural-only sharing (no decision text)
+- Aggregate pattern statistics
+- Benchmark comparison reports
+- Opt-in/opt-out per project
+- Central aggregation service
+
+**Status:** ✅ Implemented
+
+---
+
 ### 33. Cost Ledger (Decision Impact ROI)
 **Purpose:** Track actual dollars/tokens spent per decision to give ROI scoring a real denominator.
 
@@ -534,28 +608,6 @@
 - Budget alerts per project
 
 **Status:** ✅ Implemented (core/cost/)
-
----
-
-### 34. Predictive Context Prefetch / Budget-Aware Assembler
-**Purpose:** Predict the ideal minimal context bundle for a task before the agent starts, sized to a token budget, prioritized by impact score rather than recency.
-
-**Why:** Context compression is reactive — applied after content is already selected. This closes the loop between context-compressor, impact analysis, and agent skills to predict what the agent needs, sized to budget, and learns from outcomes. Attacks the real pain: context bloat vs. missing the one decision that matters.
-
-**Features:**
-- Relevance scoring: composite of impact score, category match, decay confidence, semantic similarity
-- Budget-aware knapsack assembler: value-density greedy + exact DP pass for boundary optimization
-- Near-miss transparency: excluded items surfaced with scores, not silently dropped
-- Skill-aware tuning: widen budget for novice categories, tighten for expert
-- Genealogy/feedback loop: precision (included items referenced) and recall proxy (requested but excluded)
-- Weight improvement over time from outcome data
-- Reuses impact/analysis.py, agent_skills.py, packet_builder.py trimming logic — smallest diff for value
-
-**API:**
-- `POST /api/memory/{project}/prefetch` — task + token_budget → bundle + near_misses + bundle_id
-- `POST /api/memory/{project}/prefetch/{bundle_id}/outcome` — referenced_ids + requested_but_missing
-
-**Status:** ✅ Implemented (core/prefetch/)
 
 ---
 
@@ -649,6 +701,31 @@
 - ✅ Run Pipeline button fix (missing element ID)
 - ✅ 46 new tests (test_deep_research.py, test_router_fixes.py, test_last30days_runner.py)
 
+### Phase 12: Safety, Alignment & Governance (Complete, uncommitted)
+- ✅ Safety Metadata on decisions (risk_level, reversibility, affected_systems, safety_category, requires_review)
+- ✅ Safety Dashboard, Decision Impact Analysis, Safety Review Workflow
+- ✅ Alignment Evaluation, Governance Compliance (EU AI Act, NIST, ISO 42001)
+- ✅ Fairness, Accountability, Robustness, Interpretability, Transparency reports
+- ✅ Provenance Chain, Integrity Verification, Tamper Detection, Security Audit Log
+- ✅ Decision Versioning with rollback
+- ✅ Synthetic Data Policy framework (EU AI Act Art. 10 & 50) with 10 blocking compliance gates
+- ✅ 116 new tests (1292 → 1408 total, all passing together)
+- ✅ Fixed a cross-test rate-limiter state leak (`tests/conftest.py`) that was causing 21 failures in this area when the full suite ran together — see `design.md` §17
+- ⚠️ Known gap: implemented inline in `core/tropebook/web/server.py` rather than a dedicated `core/` module (breaks the pattern every prior phase followed)
+
+---
+
+### Phase 13: Agent Surface Audit & Cross-Connections (Complete)
+- ✅ Agent Surface Audit (`core/agent_audit/`, feature #37) — scans the agent's own harness config (CLAUDE.md/AGENTS.md, .mcp.json, .claude/settings.json, hooks, agent/skill definitions) for secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions. Inspired by AgentShield.
+- ✅ Safety & Alignment dashboard consolidation: 6 separate sidebar sections (Safety Dashboard, Alignment, Governance, Provenance, Reviews, Synthetic Data) collapsed into one sidebar entry with 7 in-page tabs (the 6 plus Agent Audit), each lazy-loaded on selection instead of all six loading eagerly together
+- ✅ Cross-connect: Friction Mining → Safety score. Recent friction history (capped, last 10 scans) now contributes a bounded penalty to the aggregate safety score, not just the Health Dashboard. Also fixed: `friction_history` was read by `/friction/summary` but nothing had ever written to it — the scan endpoint now persists results.
+- ✅ Cross-connect: Contradictions / Doc Mining → Safety Review queue. High-severity contradictions and doc-vs-decision findings auto-escalate their decisions' `requires_review` flag instead of only surfacing in their own tabs.
+- ✅ Cross-connect: Personas + Decision Market → Safety Review queue. A decision touching a category that's *both* a known persona weakness *and* has poor market calibration auto-escalates — neither signal alone is enough, since every project has some weak category and some mediocre bet.
+- ✅ Cross-connect: Cost Ledger ↔ Decision Market. New `GET /{project}/cost/compounding-risk` surfaces decisions with real rework cost *and* poor calibration in the same category — previously these lived in unconnected tabs.
+- ✅ Cross-connect: PR Bot → Safety & Alignment. PR comments now include a "Safety & Alignment" section for any relevant decision that's high/critical risk or flagged for review — previously PR Bot only surfaced ghost decisions and health scores.
+- ✅ Cross-connect: Federation → safety-posture benchmarking. `AnonymizedStats` gained `avg_safety_score` and `risk_level_distribution`, threaded through share/aggregate/compare — anonymized safety posture, not just structural stats like reversal rate.
+- ✅ 66 new tests (1408 → 1474 total, all passing together)
+
 ---
 
 ## Technical Notes
@@ -690,6 +767,6 @@
 
 ---
 
-**Last Updated:** 2026-07-21
-**Status:** All Features Implemented + Deep Research + Emacs Magit/LSP + Dashboard Overhaul
+**Last Updated:** 2026-07-28
+**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13). #30 (Rationale Corroboration) removed 2026-07-28 — see its entry above.
 **Next Review:** 2026-08-15

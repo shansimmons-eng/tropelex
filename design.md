@@ -48,7 +48,7 @@
   "created": "ISO timestamp",
   "last_updated": "ISO timestamp",
   "description": "string",
-  "decisions": [{"timestamp": "", "decision": "", "context": "", "confidence": {"score": 0.8, "corroboration_status": "supported"}}],
+  "decisions": [{"timestamp": "", "decision": "", "context": "", "confidence": {"score": 0.8}}],
   "session_history": [{"date": "", "summary": ""}],
   "preferences": {"key": "value"},
   "patterns": [{"name": "category:name", "count": 0, "first_seen": "", "last_seen": ""}],
@@ -192,7 +192,7 @@ score = (base_decay + reference_boost) * contradiction_penalty
 - Tracks outcomes (good/rephrased/failed)
 - Ranks strategies by effectiveness
 
-### 12. Compression Dictionary (`core/compression/dictionary.py`)
+### 12. Tropebook (`core/tropebook/`)
 
 **Purpose:** Research knowledge base for storing links, summaries, and relationships.
 
@@ -248,7 +248,7 @@ python -m core.tropebook.cli stats
 python -m core.tropebook.cli link url1 url2 relationship
 ```
 
-### 12. Compression Dictionary (`core/compression/dictionary.py`)
+### 18. Compression Dictionary (`core/compression/dictionary.py`)
 
 **Stop Words:** 100+ common words (the, a, and, or, etc.)
 
@@ -266,6 +266,25 @@ python -m core.tropebook.cli link url1 url2 relationship
 - `>>>` - keep all
 
 **Compact Patterns:** Regex-based filler word removal (just, actually, basically, etc.)
+
+### 19. Safety & Alignment Framework (`core/tropebook/web/server.py`)
+
+**Purpose:** Risk classification, review workflow, alignment/governance scoring, and tamper-evidence for the decision graph — see [`SAFETY.md`](SAFETY.md) for the broader framing.
+
+**Components:**
+- **Safety Metadata** — `risk_level`, `reversibility`, `affected_systems`, `safety_category`, `requires_review` attached to any decision at creation
+- **Safety Dashboard** — aggregated risk stats, trend time-series, system exposure (`/safety-stats`, `/safety-dashboard`, `/safety-trend`)
+- **Decision Impact** — dependency graph + risk propagation, per-decision and system-wide (`/decision-impact`)
+- **Safety Review Workflow** — pending queue, approve/reject, reviewer accountability (`/reviews/*`, `/decisions/{id}/review|approve|reject`)
+- **Alignment & Governance** — 5-category alignment scoring, organizational-values check, drift detection, corrigibility tracking, EU AI Act / NIST / ISO 42001 compliance reports (`/alignment/*`, `/governance/*`, `/compliance/report`)
+- **Fairness, Accountability, Robustness, Transparency** — bias audit, reviewer accountability, single-point-of-failure detection, human-readable reports (`/fairness/audit`, `/accountability/report`, `/robustness/test`, `/transparency/report`)
+- **Provenance & Integrity** — cryptographic hash chain of decision history, hash/timestamp verification, tamper detection, immutable security audit log (`/provenance/chain`, `/integrity/verify`, `/tamper-detection`, `/security/audit-log`)
+- **Decision Versioning** — version snapshots and rollback (`/decisions/{id}/version|versions|rollback/{v}`)
+- **Synthetic Data Policy** — EU AI Act Art. 10 & 50 "nutritional label" for synthetic datasets: fidelity, privacy (ε/δ), bias audit, adversarial testing, blocking-gate compliance check (`/synthetic-data-policies*`)
+
+**Architecture note:** unlike every other feature in this file, this one has no dedicated `core/<name>/` module — it's implemented inline in `web/server.py` (~3,200 lines). Every other feature here self-mounts a router from its own subpackage; this is the one exception and a candidate for extraction into `core/safety/` + `core/governance/` to match the rest of the codebase.
+
+**Tests:** `tests/test_safety_features.py`, `tests/test_alignment_governance.py`, `tests/test_synthetic_data_policy.py`, `tests/test_far_cais_sff.py`
 
 ### 13. Adapters (`adapters/`)
 
@@ -360,6 +379,8 @@ Tropelex integration with Tropebook research capabilities.
 **Path Traversal Protection** (`core/webhooks/router.py`):
 - Regex sanitization of repo names
 - Resolved path validation under base directory
+
+**Fixed — cross-test state leak:** `_rate_limits` in `web/server.py` (the rate limiter's in-memory, per-IP request log) is module-level and was never reset between tests. FastAPI's `TestClient` reports its host as `"testclient"`, which the middleware does *not* exempt (only `127.0.0.1`/`::1` are), so every test file's requests accumulated in the same dict entry within the 60s window. Once the cumulative count crossed `RATE_LIMIT_MAX` (120), later-running files — `test_security.py`, `test_synthetic_data_policy.py` — started getting 429s on unrelated requests. Fixed with an autouse `_reset_rate_limits` fixture in `tests/conftest.py` that clears `_rate_limits` before/after every test. All 1408 tests pass together as of this fix.
 
 ## Data Flow
 
@@ -484,7 +505,7 @@ Tropelex/
 │   ├── animated_tropebook_dashboard/code.html
 │   └── prompt-compressor.html
 ├── memory/                   # Persistent storage (gitignored)
-├── tests/                    # 1292 tests
+├── tests/                    # 1408 tests, all passing
 ├── requirements.txt
 ├── README.md
 ├── AGENTS.md                 # Agent guidance

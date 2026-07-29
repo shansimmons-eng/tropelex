@@ -147,9 +147,15 @@ Visit **http://localhost:8766/hijacker** — paste any verbose prompt and get it
 
 ## Web Interface
 
-The dashboard has seven sections:
+The dashboard sidebar groups 32 sections into 9 categories — the same grouping used in `wishlist.md` for the feature backlog. Within a category, sections are ordered as they appear in the sidebar. Safety & Alignment is a single sidebar entry that opens onto seven in-page tabs (listed below) rather than seven separate sidebar entries, since those seven are all facets of one thing.
 
-### Tropebook
+### Content
+Browsing and visualizing what's stored.
+
+#### Dashboard
+Landing overview: quick stats, recent activity, and the Getting Started checklist.
+
+#### Tropebook
 Add, search, and manage research citations. Each citation can have tags, entities, and relationships to other citations.
 
 - **Add Citation** — manually add a URL with title, summary, tags
@@ -157,25 +163,23 @@ Add, search, and manage research citations. Each citation can have tags, entitie
 - **Search** — full-text search across titles and summaries
 - **Sync** — refresh all data from the server
 
-### Memory
+#### Memory
 Project-based persistent memory. Each project stores:
 - Decisions (key choices made during development)
 - Session history (what was worked on and when)
 - Tech stack
 - Preferences
 
-### Patterns
+#### Patterns
 Automatically detected patterns from session history. Shows what categories of work (UI, backend, bug fixes, etc.) appear most frequently, with AI-generated suggestions for next steps.
 
-### Prompt Lab
-3-stage prompt preprocessor:
-1. **Compression** — AI strips filler, fixes typos, makes prompts imperative
-2. **Context Check** — flags vague or missing context
-3. **Structure** — formats output as TASK / CONSTRAINTS / CONTEXT
+#### Graph
+Interactive, force-directed knowledge graph of decisions and their relationships. Node size reflects confidence/age, edge color reflects relationship type, filterable by date range, confidence tier, and category.
 
-The final output is ready to paste into any AI assistant.
+### Quality & Integrity
+Surfacing problems in the decision corpus — stale, contradictory, or silently-drifted decisions.
 
-### Insights
+#### Insights
 Decision intelligence and knowledge analysis:
 - **Decision Confidence** — time-based reliability scoring (decays with age, boosted by references)
 - **Agent Proficiency** — tracks what the agent is good at per category (ui, backend, testing, etc.)
@@ -185,16 +189,84 @@ Decision intelligence and knowledge analysis:
 - **Session Replay** — structured memory diffs, rollback support
 - **Cross-Project Knowledge** — finds transferable solutions from similar projects
 
-### Git
-Repository integration and deep analysis:
-- **Summary** — tech stack detection, work category frequency, recent commits
-- **Sync** — extract decisions from conventional commits
-- **Deep Sync** — parse diffs, detect rationale, dependency changes, revert chains, structural patterns
+#### Health
+Memory health dashboard: stale-decision alerts, category coverage gaps, growth trends, per-project quality scores, and maintenance recommendations.
 
-### Settings
-Configure compression behavior, session limits, and API keys. Keys entered here are written directly to your `.env` file. Includes a **Deep Research Sources** panel for configuring xAI, ScrapeCreators, Bluesky, and other keys that expand deep research coverage.
+#### Impact
+Decision Impact Analysis: links decisions to the commits/tasks that followed, tracks reversal rate and time-to-value, and scores architectural choices by ROI.
 
-### Deep Research
+#### Ghost Decisions
+Diffs incoming commits against the decision corpus to flag "ghost decisions" — code that silently contradicts a recorded decision without anyone documenting the drift.
+
+#### Pre-Write Guard
+Runs the same ghost-decision check *before* a diff is finalized, not after commit — prevention instead of after-the-fact detection.
+
+#### Friction Mining
+Mines session transcripts for implicit friction signals — corrections, rephrasing, retry loops, rapid edits — that never got explicitly logged as decisions. Feeds a session-level friction score into the Health Dashboard.
+
+#### Contradictions
+Actively scans for unresolved contradictions between decisions that are both still marked active (e.g., "use REST" and "use GraphQL" with no supersede link), with resolution suggestions.
+
+### Explainability & Discovery
+Helping a human or agent find and understand what's already known.
+
+#### Why Do We...?
+Conversational front-end that answers "why do we...?" questions by fusing RAG, the decision tree, and impact analysis into a full causal chain — provenance, supersession, downstream impact, and source citations.
+
+#### Context Prefetch
+Predicts the minimal context bundle for a task before an agent starts, sized to a token budget and prioritized by impact score rather than recency. Near-misses are surfaced with their scores instead of silently dropped.
+
+#### Doc Mining
+Mines project markdown files for drift, contradictions, and undocumented decisions that never made it into the decision graph.
+
+### Safety & Alignment
+Risk classification, review workflow, and compliance framing for the decision graph — one sidebar entry, seven in-page tabs. Each tab lazy-loads only its own data when selected. See [SAFETY.md](./SAFETY.md) for the full alignment/control-terminology mapping.
+
+#### Dashboard (tab)
+Risk trends, system exposure, and aggregate safety score across a project's decisions.
+
+#### Alignment (tab)
+Scoring across interpretability, safety, fairness, robustness, and governance, with drift detection between evaluation runs.
+
+#### Governance (tab)
+Compliance checks against EU AI Act, NIST, and ISO 42001 policies, plus fairness, accountability, robustness, and interpretability reports.
+
+#### Provenance (tab)
+Provenance chain, integrity verification, tamper detection, and an immutable security audit log for every decision.
+
+#### Reviews (tab)
+Review workflow for decisions flagged `requires_review`: pending queue, approve/reject, reviewer accountability, mitigation suggestions.
+
+#### Synthetic Data (tab)
+EU AI Act Art. 10 & 50 compliant registration for synthetic datasets used in agent training/eval — fidelity, privacy budget, bias audit, adversarial testing, and 10 blocking compliance gates.
+
+#### Agent Audit (tab)
+Every other feature in this app audits decisions and code; this audits the agent's own harness configuration — `CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent definitions, and skills — across five categories: hardcoded secrets, over-broad tool permissions, hook-injection risk, MCP server risk profiling, and injected-instruction patterns in agent/skill definitions. Read-only, A–F graded, defaults to scanning this Tropelex instance's own repo when no path is given.
+
+### Memory Lifecycle
+Keeping the memory store itself navigable and bounded as it grows.
+
+#### Time Travel
+Check out project memory as of any past date and generate agent context as if it were that point in time — a forensic tool for postmortems.
+
+#### Memory Compaction
+Collapses superseded or low-confidence decision chains into higher-level "epoch summaries" so memory matures instead of growing unbounded. Originals are archived, never deleted.
+
+### Research & Ingestion
+Pulling outside information in.
+
+#### Prompt Lab
+3-stage prompt preprocessor:
+1. **Compression** — AI strips filler, fixes typos, makes prompts imperative
+2. **Context Check** — flags vague or missing context
+3. **Structure** — formats output as TASK / CONSTRAINTS / CONTEXT
+
+The final output is ready to paste into any AI assistant.
+
+#### Feeds
+Scheduled research feeds with trend detection across runs, anomaly flagging, cross-feed correlation, and email/Slack alerts for high-relevance changes.
+
+#### Deep Research
 Two independent research engines, laid out side by side so neither buries the other, plus a hybrid mode:
 
 - **Multi-Source Scan** — last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes, synchronous.
@@ -202,6 +274,50 @@ Two independent research engines, laid out side by side so neither buries the ot
 - **Hybrid** — runs both engines concurrently on the same query, then asks the project's LLM backend to deduplicate and merge them into a single report. Degrades gracefully if one engine fails: the other's results (and any citations it found) are still returned and imported.
 
 Configure sources for the multi-source scan in Settings → Deep Research Sources. Citation-grade research prefers `BRAVE_SEARCH_API_KEY` when set (falls back to the free DuckDuckGo provider otherwise, which rate-limits more aggressively under repeated use).
+
+### Team & Collaboration
+Getting decisions to the humans (and other agents) who need them.
+
+#### Agent Handoff
+Generates role-aware context packets when one agent's session hands off to another — a TestEngineer gets test-relevant decisions and coverage gaps, a Frontend specialist gets something different. Token-budget-aware.
+
+#### PR Bot
+Delivers ghost decisions, contradictions, and health scores as PR comments, so detection reaches developers where they already work instead of sitting in a dashboard.
+
+#### Narrative
+Converts the decision graph and git history into readable prose — "what was tried, what failed, why" — with presets for investors, new hires, and PMs. Exports to markdown/PDF.
+
+#### Decision Market
+Team members place confidence bets on decisions before they're finalized; tracks bet accuracy against outcomes for per-person and per-category calibration scores.
+
+#### Slack Capture
+Bidirectional Slack integration: `/tropelex decide "..."` captures a decision inline, `/tropelex ask "..."` queries memory, with automatic extraction from chat threads.
+
+#### Personas
+Synthesizes "digital twin" persona summaries from agent proficiency tracking — strengths, weaknesses, and historical accuracy per category, meant as calibration notes for reviewers.
+
+### Integrations & Ops
+Cross-system hooks and cost accounting.
+
+#### Git
+Repository integration and deep analysis:
+- **Summary** — tech stack detection, work category frequency, recent commits
+- **Sync** — extract decisions from conventional commits
+- **Deep Sync** — parse diffs, detect rationale, dependency changes, revert chains, structural patterns
+
+#### Federation
+Opt-in, privacy-preserving sharing of structural statistics (not decision text) across Tropelex installs, for aggregate benchmark comparisons.
+
+#### Cost Ledger
+Tracks token/dollar cost per decision, including rework cost on reversals, to give ROI scoring a real denominator.
+
+### System
+
+#### Getting Started
+Onboarding checklist: create a project, record a decision, configure API keys, set up research feeds.
+
+#### Settings
+Configure compression behavior, session limits, and API keys. Keys entered here are written directly to your `.env` file. Includes a **Deep Research Sources** panel for configuring xAI, ScrapeCreators, Bluesky, and other keys that expand deep research coverage.
 
 ---
 

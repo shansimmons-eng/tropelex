@@ -11,6 +11,6 @@ Record this decision in the Tropelex memory system:
 **Context:** Based on our recent discussion
 
 Use this bash command to record it:
-!`curl -s -X POST http://localhost:8766/api/memory/!$(basename $(pwd))/decisions -H "Content-Type: application/json" -d "{\"decision\":\"$ARGUMENTS\",\"context\":\"From OpenCode session\"}" && echo "✓ Decision recorded in Tropelex"`
+!`curl -s -X POST http://localhost:8766/api/memory/tropelex/decisions -H "Content-Type: application/json" -d "{\"decision\":\"$ARGUMENTS\",\"context\":\"From OpenCode session\"}" && echo "✓ Decision recorded in Tropelex"`
 
 After recording, continue with the task at hand.

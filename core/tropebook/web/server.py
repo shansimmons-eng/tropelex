@@ -173,7 +173,6 @@ from core.explain.router import explain_router              # noqa: E402
 from core.handoff.router import handoff_router              # noqa: E402
 from core.ghost.preventive_router import preventive_router  # noqa: E402
 from core.compaction.router import compaction_router        # noqa: E402
-from core.corroboration.router import corroboration_router  # noqa: E402
 from core.cost.router import cost_router                    # noqa: E402
 from core.friction.router import friction_router            # noqa: E402
 from core.prefetch.router import prefetch_router            # noqa: E402
@@ -188,6 +187,7 @@ from core.personas.router import persona_router            # noqa: E402
 from core.federation.router import federation_router        # noqa: E402
 from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
 from core.docmine.router import docmine_router                     # noqa: E402
+from core.agent_audit.router import agent_audit_router              # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -209,7 +209,6 @@ app.include_router(explain_router)
 app.include_router(handoff_router)
 app.include_router(preventive_router)
 app.include_router(compaction_router)
-app.include_router(corroboration_router)
 app.include_router(cost_router)
 app.include_router(friction_router)
 app.include_router(prefetch_router)
@@ -224,6 +223,7 @@ app.include_router(persona_router)
 app.include_router(federation_router)
 app.include_router(web_research_router)
 app.include_router(docmine_router)
+app.include_router(agent_audit_router)
 
 
 # --- Request body models ---
@@ -720,18 +720,157 @@ async def update_memory_project(project: str, data: MemoryUpdate):
     return {"updated": True}
 
 
+class SafetyMetadata(BaseModel):
+    """Safety metadata for decisions, aligned with AI safety research priorities."""
+    risk_level: str = Field(
+        default="low",
+        pattern="^(low|medium|high|critical)$",
+        description="Risk level: low, medium, high, or critical"
+    )
+    reversibility: bool = Field(
+        default=True,
+        description="Whether this decision can be easily reversed"
+    )
+    affected_systems: list[str] = Field(
+        default_factory=list,
+        description="List of systems/components affected by this decision"
+    )
+    rationale_quality: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for the decision rationale (0.0-1.0)"
+    )
+    alignment_considerations: str = Field(
+        default="",
+        max_length=500,
+        description="Notes on alignment/safety considerations"
+    )
+    requires_review: bool = Field(
+        default=False,
+        description="Whether this decision requires human review"
+    )
+    safety_category: str = Field(
+        default="general",
+        pattern="^(general|adversarial|robustness|monitoring|governance|alignment)$",
+        description="Safety category for classification"
+    )
+
+
 class DecisionCreate(BaseModel):
     decision: str = Field(..., max_length=500)
     context: str = Field("", max_length=1000)
+    safety_metadata: SafetyMetadata | None = Field(
+        default=None,
+        description="Optional safety metadata for AI safety research alignment"
+    )
 
 
 class SessionCreate(BaseModel):
     summary: str = Field(..., max_length=2000)
 
 
+def _auto_classify_safety(decision: str, context: str) -> dict:
+    """
+    Auto-classify safety metadata for a decision based on content analysis.
+    Uses keyword matching and heuristics to assign risk levels and categories.
+    """
+    decision_lower = decision.lower()
+    context_lower = context.lower()
+    combined = f"{decision_lower} {context_lower}"
+
+    # Risk level classification
+    risk_level = "low"
+    requires_review = False
+
+    # High-risk indicators
+    high_risk_keywords = [
+        "delete", "remove", "drop", "destroy", "purge", "wipe",
+        "security", "auth", "permission", "access", "credential",
+        "production", "live", "deploy", "release",
+        "database", "schema", "migration", "backup",
+        "api key", "secret", "token", "password",
+    ]
+
+    # Critical-risk indicators
+    critical_risk_keywords = [
+        "rm -rf", "drop table", "delete all", "purge all",
+        "revoke access", "disable security", "bypass auth",
+        "emergency", "hotfix", "rollback",
+    ]
+
+    # Medium-risk indicators
+    medium_risk_keywords = [
+        "change", "update", "modify", "refactor",
+        "config", "settings", "environment",
+        "dependency", "upgrade", "version",
+    ]
+
+    # Check for critical risks first
+    if any(kw in combined for kw in critical_risk_keywords):
+        risk_level = "critical"
+        requires_review = True
+    elif any(kw in combined for kw in high_risk_keywords):
+        risk_level = "high"
+        requires_review = True
+    elif any(kw in combined for kw in medium_risk_keywords):
+        risk_level = "medium"
+
+    # Safety category classification
+    safety_category = "general"
+
+    category_keywords = {
+        "adversarial": ["adversarial", "attack", "exploit", "vulnerability", "penetration", "red team"],
+        "robustness": ["robust", "reliable", "fault tolerant", "resilient", "fail safe", "error handling"],
+        "monitoring": ["monitor", "observe", "track", "log", "alert", "detect", "anomaly"],
+        "governance": ["govern", "compliance", "audit", "policy", "standard", "regulation"],
+        "alignment": ["alignment", "value", "ethical", "safety", "harm", "bias", "fairness"],
+    }
+
+    for category, keywords in category_keywords.items():
+        if any(kw in combined for kw in keywords):
+            safety_category = category
+            break
+
+    # Reversibility assessment
+    reversible_indicators = ["add", "create", "enable", "extend", "augment"]
+    irreversible_indicators = ["delete", "remove", "drop", "destroy", "migrate", "convert"]
+
+    reversibility = True
+    if any(kw in combined for kw in irreversible_indicators):
+        reversibility = False
+    elif any(kw in combined for kw in reversible_indicators):
+        reversibility = True
+
+    # Affected systems detection
+    affected_systems = []
+    system_keywords = {
+        "memory": ["memory", "storage", "persistence", "database", "db"],
+        "api": ["api", "endpoint", "route", "server", "http"],
+        "auth": ["auth", "authentication", "authorization", "login", "session"],
+        "ui": ["ui", "frontend", "dashboard", "interface", "display"],
+        "security": ["security", "encryption", "hash", "token", "key"],
+        "git": ["git", "commit", "branch", "merge", "repository"],
+    }
+
+    for system, keywords in system_keywords.items():
+        if any(kw in combined for kw in keywords):
+            affected_systems.append(system)
+
+    return {
+        "risk_level": risk_level,
+        "reversibility": reversibility,
+        "affected_systems": affected_systems,
+        "rationale_quality": 0.5,  # Default, can be overridden
+        "alignment_considerations": "",
+        "requires_review": requires_review,
+        "safety_category": safety_category,
+    }
+
+
 @app.post("/api/memory/{project}/decisions")
 async def add_decision(project: str, data: DecisionCreate):
-    """Add a decision to project memory."""
+    """Add a decision to project memory with optional safety metadata."""
     project = _sanitise_project(project)
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
@@ -743,6 +882,13 @@ async def add_decision(project: str, data: DecisionCreate):
         "decision": data.decision,
         "context": data.context,
     }
+
+    # Add safety metadata if provided
+    if data.safety_metadata:
+        decision_entry["safety_metadata"] = data.safety_metadata.model_dump()
+    else:
+        # Auto-classify risk level if not provided
+        decision_entry["safety_metadata"] = _auto_classify_safety(data.decision, data.context)
 
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
@@ -1313,7 +1459,7 @@ async def git_sync_deep(req: GitSyncRequest):
 
 @app.get("/api/memory/{project}/decisions/timeline")
 async def decision_timeline(project: str):
-    """Return decisions as a timeline, detecting reversals."""
+    """Return decisions as a timeline with safety metadata and reversal detection."""
     project = _sanitise_project(project)
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
@@ -1348,7 +1494,27 @@ async def decision_timeline(project: str):
             if len(shared) >= 3 and "reversal" in flags:
                 flags.append("reverses_prior")
                 break
-        timeline.append({**d, "flags": flags, "index": i})
+
+        # Add safety metadata to timeline entry
+        entry = {**d, "flags": flags, "index": i}
+
+        # Include safety metadata if present, otherwise use defaults
+        safety = d.get("safety_metadata", {})
+        if safety:
+            entry["safety_metadata"] = safety
+        else:
+            # Provide default safety metadata for older decisions
+            entry["safety_metadata"] = {
+                "risk_level": "low",
+                "reversibility": True,
+                "affected_systems": [],
+                "rationale_quality": 0.5,
+                "alignment_considerations": "",
+                "requires_review": False,
+                "safety_category": "general",
+            }
+
+        timeline.append(entry)
 
     return {"timeline": timeline, "total": len(timeline)}
 
@@ -1423,6 +1589,3173 @@ async def get_decision_detail(project: str, decision_id: str):
         "decision": node,
         "ancestors": ancestors,
         "descendants": descendants,
+    }
+
+
+@app.get("/api/memory/{project}/safety-stats")
+async def get_safety_stats(project: str):
+    """Get safety statistics for a project's decisions.
+    
+    Returns aggregated safety metadata across all decisions, including:
+    - Risk level distribution
+    - Safety category breakdown
+    - Decisions requiring review
+    - Reversibility statistics
+    - Affected systems summary
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions = memory.get("decisions", [])
+
+    # Initialize counters
+    risk_levels = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    safety_categories = {}
+    affected_systems = {}
+    requires_review_count = 0
+    reversible_count = 0
+    irreversible_count = 0
+    total_decisions = len(decisions)
+
+    for d in decisions:
+        safety = d.get("safety_metadata", {})
+
+        # Count risk levels
+        risk_level = safety.get("risk_level", "low")
+        risk_levels[risk_level] = risk_levels.get(risk_level, 0) + 1
+
+        # Count safety categories
+        category = safety.get("safety_category", "general")
+        safety_categories[category] = safety_categories.get(category, 0) + 1
+
+        # Count affected systems
+        for system in safety.get("affected_systems", []):
+            affected_systems[system] = affected_systems.get(system, 0) + 1
+
+        # Count review requirements
+        if safety.get("requires_review", False):
+            requires_review_count += 1
+
+        # Count reversibility
+        if safety.get("reversibility", True):
+            reversible_count += 1
+        else:
+            irreversible_count += 1
+
+    return {
+        "project": project,
+        "total_decisions": total_decisions,
+        "risk_levels": risk_levels,
+        "safety_categories": safety_categories,
+        "affected_systems": affected_systems,
+        "requires_review_count": requires_review_count,
+        "reversible_count": reversible_count,
+        "irreversible_count": irreversible_count,
+        "high_risk_decisions": risk_levels.get("high", 0) + risk_levels.get("critical", 0),
+        "safety_score": _calculate_safety_score(
+            risk_levels, requires_review_count, total_decisions,
+            friction_penalty=_friction_penalty(memory),
+        ),
+        "friction_penalty": _friction_penalty(memory),
+    }
+
+
+def _friction_penalty(memory: dict) -> float:
+    """Recent friction feeds into the safety score, not just the Health
+    Dashboard — a project with a run of high-friction sessions (repeated
+    corrections, retries, escalation) is a leading indicator of instability
+    even before any individual decision looks risky on its own.
+
+    Averages friction_score over the last 10 recorded scans; 0.0 if none.
+    """
+    history = memory.get("friction_history", [])
+    if not history:
+        return 0.0
+    recent = history[-10:]
+    avg = sum(h.get("friction_score", 0.0) for h in recent) / len(recent)
+    return round(min(avg * 0.15, 0.15), 3)  # capped — friction nudges the score, doesn't dominate it
+
+
+def _calculate_safety_score(
+    risk_levels: dict, requires_review: int, total: int, friction_penalty: float = 0.0,
+) -> float:
+    """Calculate a safety score (0.0-1.0) based on risk distribution."""
+    if total == 0:
+        return 1.0
+
+    # Weighted risk score: lower is safer
+    weights = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+    weighted_sum = sum(risk_levels.get(level, 0) * weight for level, weight in weights.items())
+    avg_risk = weighted_sum / total
+
+    # Review penalty
+    review_penalty = (requires_review / total) * 0.2
+
+    # Safety score is inverse of risk (1.0 = safest)
+    safety_score = max(0.0, 1.0 - avg_risk - review_penalty - friction_penalty)
+    return round(safety_score, 3)
+
+
+@app.get("/api/memory/{project}/safety-dashboard")
+async def get_safety_dashboard(project: str):
+    """Get comprehensive safety metrics dashboard for a project.
+    
+    Returns detailed safety analytics including:
+    - Risk trend analysis over time
+    - Safety category distribution
+    - Decision impact matrix
+    - Review status tracking
+    - System risk exposure
+    - Safety score history
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        _apply_persona_market_escalation(project, memory, mm)
+        decisions = memory.get("decisions", [])
+
+        # Time-based analysis
+        monthly_risk = {}
+        category_by_month = {}
+        risk_trend = []
+
+        # Impact analysis
+        high_impact_decisions = []
+        pending_reviews = []
+        system_exposure = {}
+
+        for d in decisions:
+            timestamp = d.get("timestamp", "")
+            safety = d.get("safety_metadata", {})
+            risk_level = safety.get("risk_level", "low")
+            category = safety.get("safety_category", "general")
+            systems = safety.get("affected_systems", [])
+
+            # Monthly grouping
+            if timestamp:
+                month_key = timestamp[:7]  # YYYY-MM
+                if month_key not in monthly_risk:
+                    monthly_risk[month_key] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+                monthly_risk[month_key][risk_level] = monthly_risk[month_key].get(risk_level, 0) + 1
+
+                if month_key not in category_by_month:
+                    category_by_month[month_key] = {}
+                category_by_month[month_key][category] = category_by_month[month_key].get(category, 0) + 1
+
+            # High impact decisions
+            if risk_level in ["high", "critical"]:
+                high_impact_decisions.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "risk_level": risk_level,
+                    "timestamp": timestamp,
+                    "safety_category": category,
+                })
+
+            # Pending reviews
+            if safety.get("requires_review", False):
+                pending_reviews.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "timestamp": timestamp,
+                    "risk_level": risk_level,
+                })
+
+            # System exposure
+            for system in systems:
+                if system not in system_exposure:
+                    system_exposure[system] = {"total": 0, "high_risk": 0, "categories": {}}
+                system_exposure[system]["total"] += 1
+                if risk_level in ["high", "critical"]:
+                    system_exposure[system]["high_risk"] += 1
+                system_exposure[system]["categories"][category] = system_exposure[system]["categories"].get(category, 0) + 1
+
+        # Calculate trend (simple moving average of risk scores)
+        risk_weights = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+        for month in sorted(monthly_risk.keys()):
+            month_data = monthly_risk[month]
+            total = sum(month_data.values())
+            if total > 0:
+                weighted_sum = sum(month_data[level] * risk_weights[level] for level in risk_weights)
+                avg_risk = weighted_sum / total
+                risk_trend.append({
+                    "month": month,
+                    "avg_risk": round(avg_risk, 3),
+                    "total_decisions": total,
+                    "distribution": month_data,
+                })
+
+        # Get basic stats for context
+        stats = await get_safety_stats(project)
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": stats["total_decisions"],
+                "safety_score": stats["safety_score"],
+                "high_risk_decisions": stats["high_risk_decisions"],
+                "pending_reviews": len(pending_reviews),
+                "affected_systems_count": len(system_exposure),
+            },
+            "risk_trend": risk_trend,
+            "category_distribution": stats["safety_categories"],
+            "high_impact_decisions": high_impact_decisions[:10],  # Top 10
+            "pending_reviews": pending_reviews[:10],  # Top 10
+            "system_exposure": system_exposure,
+            "monthly_risk": monthly_risk,
+        }
+    except Exception as e:
+        logger.error("safety-dashboard failed: %s", e)
+        raise HTTPException(500, f"Safety dashboard failed: {e}")
+
+
+@app.get("/api/memory/{project}/safety-trend")
+async def get_safety_trend(project: str, months: int = Query(12, ge=1, le=60)):
+    """Get safety trend data for charting.
+    
+    Returns time-series data for visualizing safety metrics over time.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Group by month
+        monthly_data = {}
+        risk_weights = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+
+        for d in decisions:
+            timestamp = d.get("timestamp", "")
+            if not timestamp:
+                continue
+
+            month_key = timestamp[:7]
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {
+                    "risk_levels": {"low": 0, "medium": 0, "high": 0, "critical": 0},
+                    "categories": {},
+                    "total": 0,
+                }
+
+            safety = d.get("safety_metadata", {})
+            risk_level = safety.get("risk_level", "low")
+            category = safety.get("safety_category", "general")
+
+            monthly_data[month_key]["risk_levels"][risk_level] = monthly_data[month_key]["risk_levels"].get(risk_level, 0) + 1
+            monthly_data[month_key]["categories"][category] = monthly_data[month_key]["categories"].get(category, 0) + 1
+            monthly_data[month_key]["total"] += 1
+
+        # Convert to time series
+        time_series = []
+        for month in sorted(monthly_data.keys())[-months:]:
+            data = monthly_data[month]
+            total = data["total"]
+            if total > 0:
+                weighted_sum = sum(data["risk_levels"][level] * risk_weights[level] for level in risk_weights)
+                avg_risk = weighted_sum / total
+            else:
+                avg_risk = 0.0
+
+            time_series.append({
+                "month": month,
+                "avg_risk": round(avg_risk, 3),
+                "total_decisions": total,
+                "risk_levels": data["risk_levels"],
+                "categories": data["categories"],
+            })
+
+        return {
+            "project": project,
+            "time_series": time_series,
+            "period_months": months,
+        }
+    except Exception as e:
+        logger.error("safety-trend failed: %s", e)
+        raise HTTPException(500, f"Safety trend failed: {e}")
+
+
+@app.get("/api/memory/{project}/decision-impact")
+async def get_decision_impact(project: str):
+    """Analyze the impact of decisions on system safety and dependencies.
+    
+    Returns:
+    - Dependency graph of decisions
+    - Risk propagation analysis
+    - System vulnerability assessment
+    - Critical path identification
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build dependency graph
+        decision_graph = {}
+        system_dependencies = {}
+        risk_propagation = {}
+
+        for d in decisions:
+            decision_id = d.get("id")
+            safety = d.get("safety_metadata", {})
+            systems = safety.get("affected_systems", [])
+            risk_level = safety.get("risk_level", "low")
+
+            # Build decision node
+            decision_graph[decision_id] = {
+                "id": decision_id,
+                "decision": d.get("decision"),
+                "risk_level": risk_level,
+                "systems": systems,
+                "depends_on": [],  # Will be populated
+                "affects": [],     # Will be populated
+            }
+
+            # Track system dependencies
+            for system in systems:
+                if system not in system_dependencies:
+                    system_dependencies[system] = {
+                        "decisions": [],
+                        "risk_levels": [],
+                        "categories": [],
+                }
+            system_dependencies[system]["decisions"].append(decision_id)
+            system_dependencies[system]["risk_levels"].append(risk_level)
+            system_dependencies[system]["categories"].append(safety.get("safety_category", "general"))
+
+        # Analyze risk propagation (decisions affecting same systems)
+        for system, data in system_dependencies.items():
+            if len(data["decisions"]) > 1:
+                # Calculate cumulative risk
+                risk_weights = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+                total_risk = sum(risk_weights.get(r, 0.0) for r in data["risk_levels"])
+                avg_risk = total_risk / len(data["risk_levels"])
+
+                risk_propagation[system] = {
+                    "decision_count": len(data["decisions"]),
+                    "avg_risk": round(avg_risk, 3),
+                    "max_risk": max(data["risk_levels"], key=lambda x: risk_weights.get(x, 0.0)),
+                    "categories": list(set(data["categories"])),
+                    "decisions": data["decisions"],
+                }
+
+        # Identify critical systems (high risk + multiple decisions)
+        critical_systems = []
+        for system, data in risk_propagation.items():
+            if data["avg_risk"] > 0.5 or data["max_risk"] in ["high", "critical"]:
+                critical_systems.append({
+                    "system": system,
+                    "risk_score": data["avg_risk"],
+                    "decision_count": data["decision_count"],
+                    "max_risk": data["max_risk"],
+                })
+
+        # Sort by risk score
+        critical_systems.sort(key=lambda x: x["risk_score"], reverse=True)
+
+        # Calculate overall impact metrics
+        total_systems = len(system_dependencies)
+        high_risk_systems = len([s for s in critical_systems if s["risk_score"] > 0.5])
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "total_systems": total_systems,
+                "high_risk_systems": high_risk_systems,
+                "critical_systems": len(critical_systems),
+            },
+            "system_dependencies": system_dependencies,
+            "risk_propagation": risk_propagation,
+            "critical_systems": critical_systems[:10],  # Top 10
+        }
+    except Exception as e:
+        logger.error("decision-impact failed: %s", e)
+        raise HTTPException(500, f"Decision impact analysis failed: {e}")
+
+
+@app.get("/api/memory/{project}/decision-impact/{decision_id}")
+async def get_decision_impact_detail(project: str, decision_id: str):
+    """Get detailed impact analysis for a specific decision.
+    
+    Returns:
+    - Direct impacts on systems
+    - Related decisions (same systems)
+    - Risk contribution
+    - Dependency chain
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the target decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        target_safety = target_decision.get("safety_metadata", {})
+        target_systems = target_safety.get("affected_systems", [])
+        target_risk = target_safety.get("risk_level", "low")
+
+        # Find related decisions (affecting same systems)
+        related_decisions = []
+        system_group = {}
+
+        for d in decisions:
+            if d.get("id") == decision_id:
+                continue
+
+            d_safety = d.get("safety_metadata", {})
+            d_systems = d_safety.get("affected_systems", [])
+
+            # Check for system overlap
+            overlap = set(target_systems) & set(d_systems)
+            if overlap:
+                related_decisions.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "risk_level": d_safety.get("risk_level", "low"),
+                    "shared_systems": list(overlap),
+                    "timestamp": d.get("timestamp"),
+                })
+
+                # Group by system
+                for system in overlap:
+                    if system not in system_group:
+                        system_group[system] = []
+                    system_group[system].append(d.get("id"))
+
+        # Calculate risk contribution
+        risk_weights = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+        risk_score = risk_weights.get(target_risk, 0.0)
+
+        # Find decisions that this one might depend on (earlier decisions on same systems)
+        dependencies = []
+        for d in decisions:
+            if d.get("id") == decision_id:
+                break
+            d_safety = d.get("safety_metadata", {})
+            d_systems = d_safety.get("affected_systems", [])
+            overlap = set(target_systems) & set(d_systems)
+            if overlap:
+                dependencies.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "risk_level": d_safety.get("risk_level", "low"),
+                    "shared_systems": list(overlap),
+                })
+
+        return {
+            "project": project,
+            "decision": {
+                "id": decision_id,
+                "decision": target_decision.get("decision"),
+                "context": target_decision.get("context"),
+                "risk_level": target_risk,
+                "risk_score": risk_score,
+                "safety_category": target_safety.get("safety_category", "general"),
+                "affected_systems": target_systems,
+                "requires_review": target_safety.get("requires_review", False),
+                "timestamp": target_decision.get("timestamp"),
+            },
+            "impact_summary": {
+                "related_decisions_count": len(related_decisions),
+                "affected_systems_count": len(target_systems),
+                "dependency_count": len(dependencies),
+            },
+            "related_decisions": related_decisions[:10],  # Top 10
+            "dependencies": dependencies[:5],  # Top 5
+            "system_group": system_group,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("decision-impact/%s failed: %s", decision_id, e)
+        raise HTTPException(500, f"Decision impact detail failed: {e}")
+
+
+# ============================
+#  Safety Review Workflow
+# ============================
+
+
+class SafetyReviewRequest(BaseModel):
+    """Request model for safety review operations."""
+    reviewer: str = Field(..., max_length=100)
+    status: str = Field(..., pattern=r"^(approved|rejected|needs_info|deferred)$")
+    comments: str = Field("", max_length=2000)
+    risk_assessment: str = Field("", max_length=1000)
+    mitigation_suggestions: list[str] = Field(default_factory=list)
+
+
+class SafetyReviewResponse(BaseModel):
+    """Response model for safety review operations."""
+    decision_id: str
+    reviewer: str
+    status: str
+    timestamp: str
+    comments: str
+    risk_assessment: str
+    mitigation_suggestions: list[str]
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/review")
+async def submit_safety_review(
+    project: str,
+    decision_id: str,
+    review: SafetyReviewRequest,
+):
+    """Submit a safety review for a decision.
+    
+    Records reviewer assessment, approval status, and mitigation suggestions.
+    Updates the decision's safety metadata with review information.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        decision_found = False
+        for d in decisions:
+            if d.get("id") == decision_id:
+                decision_found = True
+
+                # Initialize safety_reviews if not present
+                if "safety_reviews" not in d:
+                    d["safety_reviews"] = []
+
+                # Add the review
+                review_entry = {
+                    "reviewer": review.reviewer,
+                    "status": review.status,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "comments": review.comments,
+                    "risk_assessment": review.risk_assessment,
+                    "mitigation_suggestions": review.mitigation_suggestions,
+                }
+                d["safety_reviews"].append(review_entry)
+
+                # Update requires_review based on status
+                if review.status in ["approved", "rejected"]:
+                    if "safety_metadata" not in d:
+                        d["safety_metadata"] = {}
+                    d["safety_metadata"]["requires_review"] = False
+
+                # Save updated memory
+                mm.save_project_memory(project, memory)
+                break
+
+        if not decision_found:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        return {
+            "success": True,
+            "decision_id": decision_id,
+            "review": {
+                "reviewer": review.reviewer,
+                "status": review.status,
+                "timestamp": review_entry["timestamp"],
+                "comments": review.comments,
+                "risk_assessment": review.risk_assessment,
+                "mitigation_suggestions": review.mitigation_suggestions,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("submit_safety_review failed: %s", e)
+        raise HTTPException(500, f"Review submission failed: {e}")
+
+
+def _persona_market_risk_categories(project: str, memory: dict) -> dict[str, str]:
+    """Categories where this project's own persona is a known weakness AND
+    Decision Market calibration is poor — the compounding signal from
+    Personas + Decision Market. Neither alone is enough to auto-flag (every
+    project has *some* weak category and *some* mediocre bet); both together
+    is a real "poor track record here" signal worth surfacing.
+
+    Returns {category: reason}. Empty dict if no persona/market data exists
+    yet for this project — both are optional, seeded-on-use features.
+    """
+    try:
+        from core.agent_skills import AgentSkillGraph
+        from core.personas import Err as PersonaErr
+        from core.personas.persona_builder import build_persona, suggest_review_focus
+        from core.market import Err as MarketErr
+        from core.market.calibration import compute_calibration
+
+        graph = AgentSkillGraph(str(BASE_DIR))
+        if not graph._skills_file(project).exists():
+            return {}
+        agent_skills = graph._load(project)
+        persona_result = build_persona(agent_skills, project)
+        if isinstance(persona_result, PersonaErr):
+            return {}
+        persona = persona_result.value
+        weak_categories = set(suggest_review_focus(persona).focus_areas)
+        if not weak_categories:
+            return {}
+
+        bets = memory.get("market", {}).get("bets", [])
+        calibration_result = compute_calibration(bets, project)
+        if isinstance(calibration_result, MarketErr):
+            return {}
+        category_scores = calibration_result.value.category_scores
+
+        return {
+            cat: f"persona weakness + {category_scores[cat]:.0%} bet accuracy in '{cat}'"
+            for cat in weak_categories
+            if category_scores.get(cat, 1.0) < 0.5
+        }
+    except Exception as exc:
+        logger.warning("persona/market risk lookup failed for '%s': %s", project, exc)
+        return {}
+
+
+def _apply_persona_market_escalation(project: str, memory: dict, mm) -> int:
+    """Auto-flag decisions touching a persona+market compounding-risk
+    category for review, if not already flagged. Mutates memory in place,
+    saves if anything changed, returns count newly escalated.
+    """
+    risk_categories = _persona_market_risk_categories(project, memory)
+    if not risk_categories:
+        return 0
+
+    escalated = 0
+    for d in memory.get("decisions", []):
+        safety = d.setdefault("safety_metadata", {})
+        if safety.get("requires_review"):
+            continue
+        touched = {safety.get("safety_category", "general"), *safety.get("affected_systems", [])}
+        matched = touched & risk_categories.keys()
+        if not matched:
+            continue
+        safety["requires_review"] = True
+        safety["escalation_reason"] = risk_categories[next(iter(matched))]
+        if safety.get("risk_level", "low") == "low":
+            safety["risk_level"] = "medium"
+        escalated += 1
+
+    if escalated:
+        mm.save_project_memory(project, memory)
+    return escalated
+
+
+@app.get("/api/memory/{project}/reviews/pending")
+async def get_pending_reviews(project: str):
+    """Get all decisions requiring safety review.
+
+    Returns decisions marked for review, sorted by risk level and timestamp.
+    Decisions touching a category where this project's own persona has a
+    known weakness *and* Decision Market calibration is poor are
+    auto-escalated here too, not just ones explicitly flagged at capture time.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        _apply_persona_market_escalation(project, memory, mm)
+        decisions = memory.get("decisions", [])
+
+        pending_reviews = []
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            if safety.get("requires_review", False):
+                reviews = d.get("safety_reviews", [])
+                review_count = len(reviews)
+                last_review = reviews[-1] if reviews else None
+
+                pending_reviews.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "context": d.get("context"),
+                    "risk_level": safety.get("risk_level", "low"),
+                    "safety_category": safety.get("safety_category", "general"),
+                    "affected_systems": safety.get("affected_systems", []),
+                    "timestamp": d.get("timestamp"),
+                    "review_count": review_count,
+                    "last_review": last_review,
+                    "alignment_considerations": safety.get("alignment_considerations", ""),
+                    "escalation_reason": safety.get("escalation_reason"),
+                })
+
+        # Sort by risk level (high/critical first)
+        risk_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        pending_reviews.sort(key=lambda x: risk_order.get(x["risk_level"], 4))
+
+        return {
+            "project": project,
+            "pending_reviews": pending_reviews,
+            "total_pending": len(pending_reviews),
+        }
+    except Exception as e:
+        logger.error("get_pending_reviews failed: %s", e)
+        raise HTTPException(500, f"Failed to get pending reviews: {e}")
+
+
+@app.get("/api/memory/{project}/reviews/history")
+async def get_review_history(
+    project: str,
+    limit: int = Query(20, ge=1, le=100),
+    status: str = Query(None, pattern=r"^(approved|rejected|needs_info|deferred)$"),
+):
+    """Get review history for a project.
+    
+    Returns past reviews with optional filtering by status.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        review_history = []
+        for d in decisions:
+            reviews = d.get("safety_reviews", [])
+            for review in reviews:
+                if status and review.get("status") != status:
+                    continue
+
+                review_history.append({
+                    "decision_id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "reviewer": review.get("reviewer"),
+                    "status": review.get("status"),
+                    "timestamp": review.get("timestamp"),
+                    "comments": review.get("comments"),
+                    "risk_level": d.get("safety_metadata", {}).get("risk_level", "low"),
+                })
+
+        # Sort by timestamp (most recent first)
+        review_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+        return {
+            "project": project,
+            "review_history": review_history[:limit],
+            "total_reviews": len(review_history),
+        }
+    except Exception as e:
+        logger.error("get_review_history failed: %s", e)
+        raise HTTPException(500, f"Failed to get review history: {e}")
+
+
+@app.get("/api/memory/{project}/reviews/stats")
+async def get_review_stats(project: str):
+    """Get review statistics for a project.
+    
+    Returns aggregated review metrics including approval rates,
+    reviewer activity, and average review time.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Initialize counters
+        status_counts = {"approved": 0, "rejected": 0, "needs_info": 0, "deferred": 0}
+        reviewer_counts = {}
+        review_times = []
+        total_reviews = 0
+
+        for d in decisions:
+            reviews = d.get("safety_reviews", [])
+            decision_timestamp = d.get("timestamp")
+
+            for review in reviews:
+                total_reviews += 1
+                status = review.get("status", "needs_info")
+                reviewer = review.get("reviewer", "unknown")
+                review_timestamp = review.get("timestamp")
+
+                # Count by status
+                status_counts[status] = status_counts.get(status, 0) + 1
+
+                # Count by reviewer
+                reviewer_counts[reviewer] = reviewer_counts.get(reviewer, 0) + 1
+
+                # Calculate review time if timestamps available
+                if decision_timestamp and review_timestamp:
+                    try:
+                        from datetime import datetime
+                        dt_dec = datetime.fromisoformat(decision_timestamp.replace("Z", "+00:00"))
+                        dt_rev = datetime.fromisoformat(review_timestamp.replace("Z", "+00:00"))
+                        review_time_hours = (dt_rev - dt_dec).total_seconds() / 3600
+                        review_times.append(review_time_hours)
+                    except (ValueError, TypeError):
+                        pass
+
+        # Calculate statistics
+        avg_review_time = sum(review_times) / len(review_times) if review_times else 0
+        approval_rate = status_counts.get("approved", 0) / total_reviews if total_reviews > 0 else 0
+
+        # Find most active reviewers
+        top_reviewers = sorted(reviewer_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        return {
+            "project": project,
+            "total_reviews": total_reviews,
+            "status_distribution": status_counts,
+            "approval_rate": round(approval_rate, 3),
+            "avg_review_time_hours": round(avg_review_time, 2),
+            "top_reviewers": [{"reviewer": r, "count": c} for r, c in top_reviewers],
+            "pending_decisions": sum(1 for d in decisions if d.get("safety_metadata", {}).get("requires_review", False)),
+        }
+    except Exception as e:
+        logger.error("get_review_stats failed: %s", e)
+        raise HTTPException(500, f"Failed to get review stats: {e}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/approve")
+async def approve_decision(
+    project: str,
+    decision_id: str,
+    reviewer: str = Query(..., max_length=100),
+    comments: str = Query("", max_length=2000),
+):
+    """Quick-approve a decision (convenience endpoint)."""
+    review = SafetyReviewRequest(
+        reviewer=reviewer,
+        status="approved",
+        comments=comments,
+    )
+    return await submit_safety_review(project, decision_id, review)
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/reject")
+async def reject_decision(
+    project: str,
+    decision_id: str,
+    reviewer: str = Query(..., max_length=100),
+    comments: str = Query("", max_length=2000),
+    risk_assessment: str = Query("", max_length=1000),
+):
+    """Quick-reject a decision (convenience endpoint)."""
+    review = SafetyReviewRequest(
+        reviewer=reviewer,
+        status="rejected",
+        comments=comments,
+        risk_assessment=risk_assessment,
+    )
+    return await submit_safety_review(project, decision_id, review)
+
+
+# ============================
+#  Alignment Evaluation & Governance
+# ============================
+
+
+class AlignmentCriteria(BaseModel):
+    """Criteria for evaluating alignment of a decision."""
+    name: str = Field(..., max_length=100)
+    description: str = Field("", max_length=500)
+    weight: float = Field(1.0, ge=0.0, le=10.0)
+    category: str = Field("general", pattern=r"^(general|robustness|interpretability|fairness|safety|governance)$")
+
+
+class AlignmentEvaluationRequest(BaseModel):
+    """Request model for alignment evaluation."""
+    criteria: list[AlignmentCriteria] = Field(default_factory=list)
+    include_governance_check: bool = True
+    include_safety_case: bool = False
+
+
+class GovernancePolicy(BaseModel):
+    """Governance policy definition."""
+    name: str = Field(..., max_length=100)
+    description: str = Field("", max_length=500)
+    required: bool = Field(True)
+    category: str = Field("general", max_length=50)
+
+
+# Default alignment criteria
+DEFAULT_ALIGNMENT_CRITERIA = [
+    {"name": "transparency", "description": "Is the decision rationale clearly documented?", "weight": 1.0, "category": "interpretability"},
+    {"name": "reversibility", "description": "Can this decision be easily reversed if needed?", "weight": 0.8, "category": "safety"},
+    {"name": "stakeholder_impact", "description": "Have all stakeholder impacts been considered?", "weight": 1.2, "category": "fairness"},
+    {"name": "risk_documentation", "description": "Are risks clearly documented and mitigated?", "weight": 1.0, "category": "robustness"},
+    {"name": "governance_compliance", "description": "Does the decision comply with governance policies?", "weight": 1.5, "category": "governance"},
+]
+
+
+@app.get("/api/memory/{project}/alignment/evaluate")
+async def evaluate_alignment(project: str):
+    """Evaluate all decisions against default alignment criteria.
+    
+    Returns a project-wide alignment score and per-decision evaluations.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        criteria = DEFAULT_ALIGNMENT_CRITERIA
+        evaluations = []
+
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            eval_result = _evaluate_decision_alignment(d, criteria)
+            evaluations.append(eval_result)
+
+        # Calculate project-wide alignment score
+        if evaluations:
+            avg_score = sum(e["alignment_score"] for e in evaluations) / len(evaluations)
+            passing = sum(1 for e in evaluations if e["alignment_score"] >= 0.7)
+            failing = len(evaluations) - passing
+        else:
+            avg_score = 1.0
+            passing = 0
+            failing = 0
+
+        # Category breakdown
+        category_scores = {}
+        for cat in ["interpretability", "safety", "fairness", "robustness", "governance"]:
+            cat_evals = [e for e in evaluations if any(c["category"] == cat for c in e["criteria_evaluated"])]
+            if cat_evals:
+                category_scores[cat] = sum(e["alignment_score"] for e in cat_evals) / len(cat_evals)
+            else:
+                category_scores[cat] = 1.0
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "alignment_score": round(avg_score, 3),
+                "passing_count": passing,
+                "failing_count": failing,
+                "pass_rate": round(passing / len(decisions), 3) if decisions else 1.0,
+            },
+            "category_scores": category_scores,
+            "criteria_used": criteria,
+            "evaluations": evaluations[:20],  # Top 20 most recent
+        }
+    except Exception as e:
+        logger.error("alignment evaluate failed: %s", e)
+        raise HTTPException(500, f"Alignment evaluation failed: {e}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/alignment")
+async def evaluate_decision_alignment(
+    project: str,
+    decision_id: str,
+    request: AlignmentEvaluationRequest,
+):
+    """Evaluate a specific decision against alignment criteria.
+    
+    Returns detailed alignment evaluation with criteria scoring.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        criteria = request.criteria if request.criteria else DEFAULT_ALIGNMENT_CRITERIA
+        eval_result = _evaluate_decision_alignment(target_decision, criteria)
+
+        # Governance check
+        governance_result = None
+        if request.include_governance_check:
+            governance_result = _check_governance_compliance(target_decision)
+
+        # Safety case
+        safety_case = None
+        if request.include_safety_case:
+            safety_case = _build_safety_case(target_decision, eval_result)
+
+        return {
+            "project": project,
+            "decision_id": decision_id,
+            "evaluation": eval_result,
+            "governance_check": governance_result,
+            "safety_case": safety_case,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("alignment evaluate/%s failed: %s", decision_id, e)
+        raise HTTPException(500, f"Decision alignment evaluation failed: {e}")
+
+
+@app.get("/api/memory/{project}/governance/policies")
+async def get_governance_policies(project: str):
+    """Get governance policies for a project.
+    
+    Returns default policies and any project-specific overrides.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        # Default governance policies
+        default_policies = [
+            {"name": "risk_review_required", "description": "High-risk decisions require explicit review", "required": True, "category": "risk_management"},
+            {"name": "reversibility_assessment", "description": "Irreversible decisions must document justification", "required": True, "category": "safety"},
+            {"name": "stakeholder_documentation", "description": "Affected stakeholders must be identified", "required": True, "category": "fairness"},
+            {"name": "alignment_consideration", "description": "Alignment implications must be documented", "required": False, "category": "alignment"},
+            {"name": "rollback_plan", "description": "Critical decisions should have rollback plans", "required": False, "category": "robustness"},
+        ]
+
+        # Get project-specific policies if any
+        project_policies = memory.get("governance_policies", [])
+
+        return {
+            "project": project,
+            "default_policies": default_policies,
+            "project_policies": project_policies,
+            "total_policies": len(default_policies) + len(project_policies),
+        }
+    except Exception as e:
+        logger.error("governance/policies failed: %s", e)
+        raise HTTPException(500, f"Failed to get governance policies: {e}")
+
+
+@app.get("/api/memory/{project}/governance/compliance")
+async def get_governance_compliance(project: str):
+    """Check governance compliance for all decisions.
+    
+    Returns compliance status against governance policies.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        compliance_results = []
+        for d in decisions:
+            result = _check_governance_compliance(d)
+            compliance_results.append(result)
+
+        # Aggregate stats
+        total = len(compliance_results)
+        compliant = sum(1 for r in compliance_results if r["compliant"])
+        non_compliant = total - compliant
+
+        # Policy violation breakdown
+        policy_violations = {}
+        for r in compliance_results:
+            for violation in r["violations"]:
+                policy_name = violation["policy"]
+                policy_violations[policy_name] = policy_violations.get(policy_name, 0) + 1
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": total,
+                "compliant_count": compliant,
+                "non_compliant_count": non_compliant,
+                "compliance_rate": round(compliant / total, 3) if total > 1.0 else 1.0,
+            },
+            "policy_violations": policy_violations,
+            "decisions": compliance_results[:20],  # Top 20
+        }
+    except Exception as e:
+        logger.error("governance/compliance failed: %s", e)
+        raise HTTPException(500, f"Governance compliance check failed: {e}")
+
+
+@app.get("/api/memory/{project}/interpretability/{decision_id}")
+async def get_interpretability_report(project: str, decision_id: str):
+    """Generate an interpretability report for a decision.
+    
+    Returns a human-readable explanation of the decision rationale and factors.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        report = _generate_interpretability_report(target_decision)
+
+        return {
+            "project": project,
+            "decision_id": decision_id,
+            "report": report,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("interpretability/%s failed: %s", decision_id, e)
+        raise HTTPException(500, f"Interpretability report failed: {e}")
+
+
+# Helper functions for alignment evaluation
+
+def _evaluate_decision_alignment(decision: dict, criteria: list) -> dict:
+    """Evaluate a decision against alignment criteria."""
+    safety = decision.get("safety_metadata", {})
+    criteria_evaluated = []
+    total_score = 0.0
+    total_weight = 0.0
+
+    for criterion in criteria:
+        # Handle both dict and Pydantic model inputs
+        if hasattr(criterion, "model_dump"):
+            c = criterion.model_dump()
+        elif hasattr(criterion, "__dict__"):
+            c = criterion.__dict__
+        else:
+            c = criterion
+
+        name = c.get("name", "") if isinstance(c, dict) else getattr(criterion, "name", "")
+        weight = c.get("weight", 1.0) if isinstance(c, dict) else getattr(criterion, "weight", 1.0)
+        category = c.get("category", "general") if isinstance(c, dict) else getattr(criterion, "category", "general")
+
+        # Score based on criteria type
+        score = _score_criterion(name, decision, safety)
+
+        criteria_evaluated.append({
+            "name": name,
+            "category": category,
+            "score": score,
+            "weight": weight,
+            "weighted_score": round(score * weight, 3),
+        })
+
+        total_score += score * weight
+        total_weight += weight
+
+    alignment_score = round(total_score / total_weight, 3) if total_weight > 0 else 1.0
+
+    return {
+        "decision_id": decision.get("id"),
+        "decision": decision.get("decision"),
+        "alignment_score": alignment_score,
+        "criteria_evaluated": criteria_evaluated,
+        "passing": alignment_score >= 0.7,
+    }
+
+
+def _score_criterion(criterion_name: str, decision: dict, safety: dict) -> float:
+    """Score a decision against a specific criterion."""
+    if criterion_name == "transparency":
+        # Check if rationale is documented
+        context = decision.get("context", "")
+        return 1.0 if len(context) > 10 else 0.3
+
+    elif criterion_name == "reversibility":
+        # Check reversibility metadata
+        return 1.0 if safety.get("reversibility", True) else 0.4
+
+    elif criterion_name == "stakeholder_impact":
+        # Check if affected systems are documented
+        systems = safety.get("affected_systems", [])
+        return min(1.0, 0.5 + len(systems) * 0.1)
+
+    elif criterion_name == "risk_documentation":
+        # Check if risk level is documented
+        risk_level = safety.get("risk_level", "low")
+        return 1.0 if risk_level != "low" or safety.get("requires_review") else 0.6
+
+    elif criterion_name == "governance_compliance":
+        # Check review requirements
+        if safety.get("requires_review", False):
+            reviews = decision.get("safety_reviews", [])
+            return 1.0 if reviews else 0.3
+        return 0.8
+
+    return 0.7  # Default moderate score
+
+
+def _check_governance_compliance(decision: dict) -> dict:
+    """Check a decision against governance policies."""
+    safety = decision.get("safety_metadata", {})
+    violations = []
+
+    # Policy: High-risk decisions require review
+    if safety.get("risk_level") in ["high", "critical"] and not decision.get("safety_reviews"):
+        violations.append({
+            "policy": "risk_review_required",
+            "severity": "high",
+            "message": "High-risk decision lacks review",
+        })
+
+    # Policy: Irreversible decisions need justification
+    if not safety.get("reversibility", True) and not safety.get("alignment_considerations"):
+        violations.append({
+            "policy": "reversibility_assessment",
+            "severity": "medium",
+            "message": "Irreversible decision lacks justification",
+        })
+
+    # Policy: Affected systems should be documented
+    if not safety.get("affected_systems"):
+        violations.append({
+            "policy": "stakeholder_documentation",
+            "severity": "low",
+            "message": "No affected systems documented",
+        })
+
+    return {
+        "decision_id": decision.get("id"),
+        "decision": decision.get("decision"),
+        "compliant": len(violations) == 0,
+        "violations": violations,
+        "violation_count": len(violations),
+    }
+
+
+def _generate_interpretability_report(decision: dict) -> dict:
+    """Generate an interpretability report for a decision."""
+    safety = decision.get("safety_metadata", {})
+
+    # Extract key factors
+    factors = []
+    if decision.get("context"):
+        factors.append({"factor": "rationale", "value": decision["context"], "type": "documented"})
+    if safety.get("risk_level"):
+        factors.append({"factor": "risk_level", "value": safety["risk_level"], "type": "classified"})
+    if safety.get("affected_systems"):
+        factors.append({"factor": "affected_systems", "value": ", ".join(safety["affected_systems"]), "type": "documented"})
+    if safety.get("alignment_considerations"):
+        factors.append({"factor": "alignment", "value": safety["alignment_considerations"], "type": "documented"})
+
+    # Generate explanation
+    explanation_parts = [f"Decision: {decision.get('decision', 'Unknown')}"]
+    if decision.get("context"):
+        explanation_parts.append(f"Rationale: {decision['context']}")
+    if safety.get("risk_level") != "low":
+        explanation_parts.append(f"Risk Level: {safety['risk_level']}")
+    if safety.get("requires_review"):
+        explanation_parts.append("This decision requires safety review.")
+
+    return {
+        "decision_id": decision.get("id"),
+        "timestamp": decision.get("timestamp"),
+        "factors": factors,
+        "explanation": " | ".join(explanation_parts),
+        "completeness_score": min(1.0, len(factors) * 0.25),
+    }
+
+
+def _build_safety_case(decision: dict, evaluation: dict) -> dict:
+    """Build a structured safety case for a decision."""
+    safety = decision.get("safety_metadata", {})
+
+    # Claims
+    claims = []
+    if evaluation.get("alignment_score", 0) >= 0.7:
+        claims.append({"claim": "Decision meets alignment criteria", "confidence": evaluation["alignment_score"]})
+    if safety.get("reversibility", True):
+        claims.append({"claim": "Decision is reversible", "confidence": 1.0})
+
+    # Evidence
+    evidence = []
+    if decision.get("context"):
+        evidence.append({"type": "documentation", "content": decision["context"]})
+    if safety.get("safety_reviews"):
+        evidence.append({"type": "review", "content": f"Reviewed by {len(safety['safety_reviews'])} reviewers"})
+
+    # Assumptions
+    assumptions = []
+    if safety.get("risk_level") in ["high", "critical"]:
+        assumptions.append("Risk mitigation measures are in place")
+
+    return {
+        "decision_id": decision.get("id"),
+        "claims": claims,
+        "evidence": evidence,
+        "assumptions": assumptions,
+        "overall_confidence": evaluation.get("alignment_score", 0.5),
+    }
+
+
+# ============================
+#  Cross-Cutting Features
+# ============================
+
+
+@app.get("/api/memory/{project}/compliance/report")
+async def get_compliance_report(project: str, framework: str = Query("eu_ai_act", pattern=r"^(eu_ai_act|nist|iso_42001|general)$")):
+    """Generate compliance report for regulatory frameworks.
+    
+    Supports: EU AI Act, NIST AI RMF, ISO 42001, and general compliance.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Framework-specific requirements
+        requirements = _get_compliance_requirements(framework)
+        
+        # Evaluate each requirement
+        requirement_results = []
+        for req in requirements:
+            result = _evaluate_compliance_requirement(req, decisions)
+            requirement_results.append(result)
+
+        # Calculate overall compliance
+        total = len(requirement_results)
+        compliant = sum(1 for r in requirement_results if r["status"] == "compliant")
+        partial = sum(1 for r in requirement_results if r["status"] == "partial")
+        non_compliant = sum(1 for r in requirement_results if r["status"] == "non_compliant")
+
+        # Generate gaps
+        gaps = [r for r in requirement_results if r["status"] != "compliant"]
+
+        return {
+            "project": project,
+            "framework": framework,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "summary": {
+                "total_requirements": total,
+                "compliant": compliant,
+                "partial": partial,
+                "non_compliant": non_compliant,
+                "compliance_score": round(compliant / total, 3) if total > 0 else 1.0,
+            },
+            "requirements": requirement_results,
+            "gaps": gaps,
+            "recommendations": _generate_compliance_recommendations(gaps),
+        }
+    except Exception as e:
+        logger.error("compliance report failed: %s", e)
+        raise HTTPException(500, f"Compliance report failed: {e}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/version")
+async def create_decision_version(
+    project: str,
+    decision_id: str,
+    change_reason: str = Query("", max_length=500),
+):
+    """Create a new version of a decision.
+    
+    Stores the current state as a version before any modifications.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        # Initialize version history if not present
+        if "version_history" not in target_decision:
+            target_decision["version_history"] = []
+
+        # Create version snapshot
+        version = {
+            "version": len(target_decision["version_history"]) + 1,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "decision": target_decision.get("decision"),
+            "context": target_decision.get("context"),
+            "safety_metadata": target_decision.get("safety_metadata", {}),
+            "change_reason": change_reason,
+        }
+
+        target_decision["version_history"].append(version)
+
+        # Save
+        mm.save_project_memory(project, memory)
+
+        return {
+            "success": True,
+            "decision_id": decision_id,
+            "version": version["version"],
+            "total_versions": len(target_decision["version_history"]),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("create version failed: %s", e)
+        raise HTTPException(500, f"Version creation failed: {e}")
+
+
+@app.get("/api/memory/{project}/decisions/{decision_id}/versions")
+async def get_decision_versions(project: str, decision_id: str):
+    """Get version history for a decision."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        versions = target_decision.get("version_history", [])
+
+        return {
+            "project": project,
+            "decision_id": decision_id,
+            "current_version": len(versions) + 1,
+            "versions": versions,
+            "total_versions": len(versions),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get versions failed: %s", e)
+        raise HTTPException(500, f"Get versions failed: {e}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/rollback/{version}")
+async def rollback_decision(project: str, decision_id: str, version: int):
+    """Rollback a decision to a previous version."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Find the decision
+        target_decision = None
+        for d in decisions:
+            if d.get("id") == decision_id:
+                target_decision = d
+                break
+
+        if not target_decision:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        versions = target_decision.get("version_history", [])
+        
+        # Find the target version
+        target_version = None
+        for v in versions:
+            if v.get("version") == version:
+                target_version = v
+                break
+
+        if not target_version:
+            raise HTTPException(status_code=404, detail=f"Version {version} not found")
+
+        # Save current state as a version before rollback
+        current_version = {
+            "version": len(versions) + 1,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "decision": target_decision.get("decision"),
+            "context": target_decision.get("context"),
+            "safety_metadata": target_decision.get("safety_metadata", {}),
+            "change_reason": f"Rollback to version {version}",
+        }
+        versions.append(current_version)
+
+        # Apply rollback
+        target_decision["decision"] = target_version["decision"]
+        target_decision["context"] = target_version["context"]
+        target_decision["safety_metadata"] = target_version.get("safety_metadata", {})
+
+        # Save
+        mm.save_project_memory(project, memory)
+
+        return {
+            "success": True,
+            "decision_id": decision_id,
+            "rolled_back_to": version,
+            "new_version": len(versions) + 1,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("rollback failed: %s", e)
+        raise HTTPException(500, f"Rollback failed: {e}")
+
+
+@app.get("/api/memory/{project}/stakeholder-impact")
+async def get_stakeholder_impact(project: str):
+    """Get stakeholder impact matrix for all decisions.
+    
+    Returns a matrix showing which systems/stakeholders are affected by which decisions.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build impact matrix
+        impact_matrix = {}
+        decision_impacts = []
+
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            systems = safety.get("affected_systems", [])
+            risk_level = safety.get("risk_level", "low")
+
+            decision_entry = {
+                "id": d.get("id"),
+                "decision": d.get("decision"),
+                "risk_level": risk_level,
+                "affected_systems": systems,
+                "timestamp": d.get("timestamp"),
+            }
+            decision_impacts.append(decision_entry)
+
+            # Update impact matrix
+            for system in systems:
+                if system not in impact_matrix:
+                    impact_matrix[system] = {
+                        "decision_count": 0,
+                        "high_risk_count": 0,
+                        "decisions": [],
+                    }
+                impact_matrix[system]["decision_count"] += 1
+                if risk_level in ["high", "critical"]:
+                    impact_matrix[system]["high_risk_count"] += 1
+                impact_matrix[system]["decisions"].append(d.get("id"))
+
+        # Sort systems by impact (most impacted first)
+        sorted_systems = sorted(
+            impact_matrix.items(),
+            key=lambda x: x[1]["decision_count"],
+            reverse=True,
+        )
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "total_systems": len(impact_matrix),
+                "most_impacted_systems": [s[0] for s in sorted_systems[:5]],
+            },
+            "impact_matrix": dict(sorted_systems),
+            "decisions": decision_impacts,
+        }
+    except Exception as e:
+        logger.error("stakeholder impact failed: %s", e)
+        raise HTTPException(500, f"Stakeholder impact analysis failed: {e}")
+
+
+@app.get("/api/memory/{project}/risk-heatmap")
+async def get_risk_heatmap(project: str):
+    """Get risk heatmap data for visualization.
+    
+    Returns risk distribution across time and categories for heatmap rendering.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build heatmap data
+        heatmap_data = []
+        risk_by_category = {}
+        risk_by_month = {}
+
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            risk_level = safety.get("risk_level", "low")
+            category = safety.get("safety_category", "general")
+            timestamp = d.get("timestamp", "")
+
+            # Risk by category
+            if category not in risk_by_category:
+                risk_by_category[category] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+            risk_by_category[category][risk_level] = risk_by_category[category].get(risk_level, 0) + 1
+
+            # Risk by month
+            if timestamp:
+                month_key = timestamp[:7]
+                if month_key not in risk_by_month:
+                    risk_by_month[month_key] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+                risk_by_month[month_key][risk_level] = risk_by_month[month_key].get(risk_level, 0) + 1
+
+            # Individual decision heatmap entry
+            heatmap_data.append({
+                "id": d.get("id"),
+                "decision": d.get("decision"),
+                "risk_level": risk_level,
+                "category": category,
+                "timestamp": timestamp,
+                "risk_score": {"low": 0.25, "medium": 0.5, "high": 0.75, "critical": 1.0}.get(risk_level, 0),
+            })
+
+        # Sort heatmap data by risk score (highest first)
+        heatmap_data.sort(key=lambda x: x["risk_score"], reverse=True)
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "high_risk_count": sum(1 for d in heatmap_data if d["risk_level"] in ["high", "critical"]),
+                "categories": list(risk_by_category.keys()),
+                "months": sorted(risk_by_month.keys()),
+            },
+            "heatmap": heatmap_data[:50],  # Top 50 for visualization
+            "risk_by_category": risk_by_category,
+            "risk_by_month": risk_by_month,
+        }
+    except Exception as e:
+        logger.error("risk heatmap failed: %s", e)
+        raise HTTPException(500, f"Risk heatmap failed: {e}")
+
+
+@app.post("/api/memory/{project}/safety-check")
+async def run_safety_check(project: str, decision_text: str = Query(...), context: str = Query("")):
+    """Run automated safety checks on a proposed decision.
+    
+    Returns safety analysis before the decision is recorded.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        # Analyze the proposed decision
+        analysis = _analyze_proposed_decision(decision_text, context, memory)
+
+        return {
+            "project": project,
+            "decision_text": decision_text,
+            "analysis": analysis,
+            "recommendation": analysis["recommendation"],
+            "safety_score": analysis["safety_score"],
+            "flags": analysis["flags"],
+        }
+    except Exception as e:
+        logger.error("safety check failed: %s", e)
+        raise HTTPException(500, f"Safety check failed: {e}")
+
+
+# Helper functions for cross-cutting features
+
+def _get_compliance_requirements(framework: str) -> list:
+    """Get compliance requirements for a framework."""
+    if framework == "eu_ai_act":
+        return [
+            {"id": "EU-AI-1", "name": "Risk Management", "description": "Risk management system established", "category": "risk"},
+            {"id": "EU-AI-2", "name": "Data Governance", "description": "Data governance measures implemented", "category": "data"},
+            {"id": "EU-AI-3", "name": "Transparency", "description": "Transparency obligations met", "category": "transparency"},
+            {"id": "EU-AI-4", "name": "Human Oversight", "description": "Human oversight measures in place", "category": "oversight"},
+            {"id": "EU-AI-5", "name": "Documentation", "description": "Technical documentation maintained", "category": "documentation"},
+            {"id": "EU-AI-6", "name": "Record Keeping", "description": "Automatic recording of events", "category": "logging"},
+            {"id": "EU-AI-7", "name": "Accuracy & Robustness", "description": "Accuracy and robustness ensured", "category": "robustness"},
+        ]
+    elif framework == "nist":
+        return [
+            {"id": "NIST-1", "name": "Governance", "description": "AI governance policies established", "category": "governance"},
+            {"id": "NIST-2", "name": "Risk Assessment", "description": "Regular risk assessments conducted", "category": "risk"},
+            {"id": "NIST-3", "name": "Testing", "description": "AI systems tested for safety", "category": "testing"},
+            {"id": "NIST-4", "name": "Monitoring", "description": "Continuous monitoring in place", "category": "monitoring"},
+        ]
+    else:  # general
+        return [
+            {"id": "GEN-1", "name": "Decision Documentation", "description": "All decisions documented", "category": "documentation"},
+            {"id": "GEN-2", "name": "Risk Assessment", "description": "Risks assessed and documented", "category": "risk"},
+            {"id": "GEN-3", "name": "Review Process", "description": "Review process for high-risk decisions", "category": "review"},
+            {"id": "GEN-4", "name": "Audit Trail", "description": "Complete audit trail maintained", "category": "audit"},
+        ]
+
+
+def _evaluate_compliance_requirement(requirement: dict, decisions: list) -> dict:
+    """Evaluate a compliance requirement against decisions."""
+    req_id = requirement["id"]
+    category = requirement.get("category", "")
+
+    # Evaluate based on category
+    if category == "documentation":
+        documented = sum(1 for d in decisions if d.get("context"))
+        total = len(decisions)
+        ratio = documented / total if total > 0 else 1.0
+        status = "compliant" if ratio >= 0.8 else "partial" if ratio >= 0.5 else "non_compliant"
+        evidence = f"{documented}/{total} decisions documented"
+
+    elif category == "risk":
+        risk_assessed = sum(1 for d in decisions if d.get("safety_metadata", {}).get("risk_level"))
+        total = len(decisions)
+        ratio = risk_assessed / total if total > 0 else 1.0
+        status = "compliant" if ratio >= 0.9 else "partial" if ratio >= 0.6 else "non_compliant"
+        evidence = f"{risk_assessed}/{total} decisions have risk assessment"
+
+    elif category == "review":
+        high_risk = [d for d in decisions if d.get("safety_metadata", {}).get("risk_level") in ["high", "critical"]]
+        reviewed = sum(1 for d in high_risk if d.get("safety_reviews"))
+        total = len(high_risk)
+        ratio = reviewed / total if total > 0 else 1.0
+        status = "compliant" if ratio >= 0.9 else "partial" if ratio >= 0.5 else "non_compliant"
+        evidence = f"{reviewed}/{total} high-risk decisions reviewed"
+
+    elif category == "audit":
+        has_safety = sum(1 for d in decisions if d.get("safety_metadata"))
+        total = len(decisions)
+        ratio = has_safety / total if total > 0 else 1.0
+        status = "compliant" if ratio >= 0.9 else "partial" if ratio >= 0.6 else "non_compliant"
+        evidence = f"{has_safety}/{total} decisions have safety metadata"
+
+    else:
+        status = "compliant"
+        evidence = "Requirement evaluated"
+
+    return {
+        "requirement_id": req_id,
+        "name": requirement["name"],
+        "description": requirement["description"],
+        "status": status,
+        "evidence": evidence,
+    }
+
+
+def _generate_compliance_recommendations(gaps: list) -> list:
+    """Generate recommendations for compliance gaps."""
+    recommendations = []
+    for gap in gaps:
+        category = gap.get("description", "").lower()
+        if "document" in category:
+            recommendations.append(f"Improve documentation for: {gap['name']}")
+        elif "risk" in category:
+            recommendations.append(f"Conduct risk assessment for: {gap['name']}")
+        elif "review" in category:
+            recommendations.append(f"Implement review process for: {gap['name']}")
+        else:
+            recommendations.append(f"Address gap in: {gap['name']}")
+    return recommendations
+
+
+def _analyze_proposed_decision(decision_text: str, context: str, memory: dict) -> dict:
+    """Analyze a proposed decision for safety concerns."""
+    flags = []
+    safety_score = 1.0
+
+    # Check for high-risk keywords
+    high_risk_keywords = ["critical", "production", "security", "emergency", "urgent", "immediate"]
+    for keyword in high_risk_keywords:
+        if keyword.lower() in decision_text.lower():
+            flags.append(f"High-risk keyword: {keyword}")
+            safety_score -= 0.1
+
+    # Check for reversibility concerns
+    irreversible_keywords = ["permanent", "irreversible", "delete", "remove", "destroy"]
+    for keyword in irreversible_keywords:
+        if keyword.lower() in decision_text.lower():
+            flags.append(f"Irreversibility keyword: {keyword}")
+            safety_score -= 0.15
+
+    # Check context quality
+    if not context or len(context) < 20:
+        flags.append("Insufficient context provided")
+        safety_score -= 0.2
+
+    # Check against recent decisions
+    recent_decisions = memory.get("decisions", [])[-10:]
+    similar_count = 0
+    for d in recent_decisions:
+        if decision_text.lower() in d.get("decision", "").lower() or d.get("decision", "").lower() in decision_text.lower():
+            similar_count += 1
+
+    if similar_count > 0:
+        flags.append(f"Similar decision found {similar_count} time(s) recently")
+        safety_score -= 0.05
+
+    safety_score = max(0.0, min(1.0, safety_score))
+
+    # Determine recommendation
+    if safety_score >= 0.8:
+        recommendation = "Approved - Low risk"
+    elif safety_score >= 0.6:
+        recommendation = "Caution - Moderate risk, consider review"
+    elif safety_score >= 0.4:
+        recommendation = "Warning - High risk, review recommended"
+    else:
+        recommendation = "Critical - Very high risk, review required"
+
+    return {
+        "safety_score": round(safety_score, 3),
+        "flags": flags,
+        "recommendation": recommendation,
+        "similar_decisions": similar_count,
+    }
+
+
+# ============================
+#  Fairness, Accountability, Robustness Features
+# ============================
+
+
+@app.get("/api/memory/{project}/fairness/audit")
+async def get_fairness_audit(project: str):
+    """Audit decisions for fairness and bias patterns.
+    
+    Analyzes decisions for potential bias across:
+    - Risk level distribution (are some categories over-represented as high-risk?)
+    - Review patterns (are some decision types reviewed more?)
+    - System impact distribution (are some systems disproportionately affected?)
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Analyze risk distribution by category
+        category_risk = {}
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            category = safety.get("safety_category", "general")
+            risk = safety.get("risk_level", "low")
+            if category not in category_risk:
+                category_risk[category] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+            category_risk[category][risk] = category_risk[category].get(risk, 0) + 1
+
+        # Detect bias patterns
+        bias_flags = []
+        risk_weights = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        for cat, risks in category_risk.items():
+            total = sum(risks.values())
+            if total > 0:
+                weighted = sum(risks[r] * risk_weights[r] for r in risks)
+                avg_risk = weighted / total
+                if avg_risk > 1.5:
+                    bias_flags.append({
+                        "type": "elevated_risk",
+                        "category": cat,
+                        "avg_risk": round(avg_risk, 2),
+                        "message": f"Category '{cat}' has elevated average risk ({avg_risk:.2f})",
+                    })
+
+        # Review pattern analysis
+        reviewed_by_category = {}
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            cat = safety.get("safety_category", "general")
+            if d.get("safety_reviews"):
+                reviewed_by_category[cat] = reviewed_by_category.get(cat, 0) + 1
+
+        # System impact analysis
+        system_impact = {}
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            for system in safety.get("affected_systems", []):
+                if system not in system_impact:
+                    system_impact[system] = 0
+                system_impact[system] += 1
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "bias_flags": len(bias_flags),
+                "categories_analyzed": len(category_risk),
+                "systems_analyzed": len(system_impact),
+            },
+            "category_risk_distribution": category_risk,
+            "bias_flags": bias_flags,
+            "review_patterns": reviewed_by_category,
+            "system_impact_distribution": system_impact,
+        }
+    except Exception as e:
+        logger.error("fairness audit failed: %s", e)
+        raise HTTPException(500, f"Fairness audit failed: {e}")
+
+
+@app.get("/api/memory/{project}/accountability/report")
+async def get_accountability_report(project: str):
+    """Generate accountability report showing decision chains and responsibility.
+    
+    Tracks:
+    - Who reviewed what
+    - Decision chains (what caused what)
+    - Accountability gaps (unreviewed high-risk decisions)
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build reviewer accountability
+        reviewer_stats = {}
+        for d in decisions:
+            for review in d.get("safety_reviews", []):
+                reviewer = review.get("reviewer", "unknown")
+                if reviewer not in reviewer_stats:
+                    reviewer_stats[reviewer] = {"total_reviews": 0, "approved": 0, "rejected": 0}
+                reviewer_stats[reviewer]["total_reviews"] += 1
+                if review.get("status") == "approved":
+                    reviewer_stats[reviewer]["approved"] += 1
+                elif review.get("status") == "rejected":
+                    reviewer_stats[reviewer]["rejected"] += 1
+
+        # Find accountability gaps
+        accountability_gaps = []
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            if safety.get("risk_level") in ["high", "critical"] and not d.get("safety_reviews"):
+                accountability_gaps.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "risk_level": safety.get("risk_level"),
+                    "timestamp": d.get("timestamp"),
+                })
+
+        # Decision chain analysis (decisions affecting same systems)
+        chains = []
+        systems_map = {}
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            for system in safety.get("affected_systems", []):
+                if system not in systems_map:
+                    systems_map[system] = []
+                systems_map[system].append(d.get("id"))
+
+        for system, ids in systems_map.items():
+            if len(ids) > 1:
+                chains.append({"system": system, "decision_count": len(ids), "decisions": ids[:5]})
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "total_reviewers": len(reviewer_stats),
+                "accountability_gaps": len(accountability_gaps),
+                "decision_chains": len(chains),
+            },
+            "reviewer_stats": reviewer_stats,
+            "accountability_gaps": accountability_gaps[:10],
+            "decision_chains": chains[:10],
+        }
+    except Exception as e:
+        logger.error("accountability report failed: %s", e)
+        raise HTTPException(500, f"Accountability report failed: {e}")
+
+
+@app.get("/api/memory/{project}/robustness/test")
+async def run_robustness_test(project: str):
+    """Test decision robustness against edge cases and adversarial scenarios.
+    
+    Checks for:
+    - Single points of failure (decisions with no alternatives)
+    - Irreversibility risks (irreversible decisions without reviews)
+    - Concentration risk (too many decisions affecting one system)
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        robustness_issues = []
+
+        # Check for irreversible decisions without reviews
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            if not safety.get("reversibility", True) and not d.get("safety_reviews"):
+                robustness_issues.append({
+                    "type": "irreversible_no_review",
+                    "severity": "high",
+                    "decision_id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "message": "Irreversible decision lacks review",
+                })
+
+        # Check concentration risk
+        system_counts = {}
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            for system in safety.get("affected_systems", []):
+                system_counts[system] = system_counts.get(system, 0) + 1
+
+        for system, count in system_counts.items():
+            if count > len(decisions) * 0.3 and len(decisions) > 5:
+                robustness_issues.append({
+                    "type": "concentration_risk",
+                    "severity": "medium",
+                    "system": system,
+                    "decision_count": count,
+                    "message": f"System '{system}' is affected by {count} decisions ({count/len(decisions)*100:.0f}%)",
+                })
+
+        # Check for decisions without context
+        no_context = sum(1 for d in decisions if not d.get("context"))
+        if no_context > len(decisions) * 0.2:
+            robustness_issues.append({
+                "type": "documentation_gap",
+                "severity": "medium",
+                "count": no_context,
+                "message": f"{no_context} decisions lack context documentation",
+            })
+
+        # Calculate robustness score
+        total_checks = 3
+        passed_checks = total_checks - len(set(i["type"] for i in robustness_issues))
+        robustness_score = passed_checks / total_checks
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "issues_found": len(robustness_issues),
+                "robustness_score": round(robustness_score, 3),
+            },
+            "issues": robustness_issues,
+            "system_concentration": system_counts,
+        }
+    except Exception as e:
+        logger.error("robustness test failed: %s", e)
+        raise HTTPException(500, f"Robustness test failed: {e}")
+
+
+@app.get("/api/memory/{project}/transparency/report")
+async def get_transparency_report(project: str):
+    """Generate transparency report with human-readable explanations.
+    
+    Provides:
+    - Summary of all decisions with rationale
+    - Risk distribution overview
+    - Review coverage statistics
+    - Key decision factors
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build decision summaries
+        decision_summaries = []
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            summary = {
+                "id": d.get("id"),
+                "decision": d.get("decision"),
+                "rationale": d.get("context", "No rationale provided"),
+                "risk_level": safety.get("risk_level", "low"),
+                "category": safety.get("safety_category", "general"),
+                "affected_systems": safety.get("affected_systems", []),
+                "reviewed": bool(d.get("safety_reviews")),
+                "timestamp": d.get("timestamp"),
+            }
+            decision_summaries.append(summary)
+
+        # Risk overview
+        risk_counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+        for d in decisions:
+            risk = d.get("safety_metadata", {}).get("risk_level", "low")
+            risk_counts[risk] = risk_counts.get(risk, 0) + 1
+
+        # Review coverage
+        reviewed = sum(1 for d in decisions if d.get("safety_reviews"))
+        coverage = reviewed / len(decisions) if decisions else 1.0
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "review_coverage": round(coverage, 3),
+                "risk_distribution": risk_counts,
+            },
+            "decisions": decision_summaries[:30],
+            "key_insights": _generate_transparency_insights(decisions),
+        }
+    except Exception as e:
+        logger.error("transparency report failed: %s", e)
+        raise HTTPException(500, f"Transparency report failed: {e}")
+
+
+def _generate_transparency_insights(decisions: list) -> list:
+    """Generate key insights for transparency report."""
+    insights = []
+    if not decisions:
+        return insights
+
+    # High risk decisions
+    high_risk = [d for d in decisions if d.get("safety_metadata", {}).get("risk_level") in ["high", "critical"]]
+    if high_risk:
+        insights.append(f"{len(high_risk)} high/critical risk decisions require attention")
+
+    # Unreviewed high risk
+    unreviewed = [d for d in high_risk if not d.get("safety_reviews")]
+    if unreviewed:
+        insights.append(f"{len(unreviewed)} high-risk decisions lack reviews")
+
+    # Documentation gaps
+    no_context = sum(1 for d in decisions if not d.get("context"))
+    if no_context:
+        insights.append(f"{no_context} decisions lack rationale documentation")
+
+    return insights
+
+
+# ============================
+#  Alignment, Safety Envelope, Drift Detection Features
+# ============================
+
+
+@app.get("/api/memory/{project}/alignment/values")
+async def check_value_alignment(project: str, values: str = Query("")):
+    """Check decisions against organizational values.
+    
+    Provides a list of default values or accepts custom values via query param.
+    Evaluates each decision's alignment with specified values.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Default values if none provided
+        if values:
+            value_list = [v.strip() for v in values.split(",")]
+        else:
+            value_list = ["safety", "transparency", "accountability", "fairness", "robustness"]
+
+        # Evaluate alignment
+        alignment_results = []
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            decision_text = d.get("decision", "").lower()
+            context = d.get("context", "").lower()
+
+            value_scores = {}
+            for value in value_list:
+                # Simple keyword-based alignment scoring
+                score = _score_value_alignment(value, decision_text, context, safety)
+                value_scores[value] = score
+
+            avg_score = sum(value_scores.values()) / len(value_scores) if value_scores else 0
+
+            alignment_results.append({
+                "id": d.get("id"),
+                "decision": d.get("decision"),
+                "value_scores": value_scores,
+                "overall_alignment": round(avg_score, 3),
+            })
+
+        # Summary statistics
+        if alignment_results:
+            avg_alignment = sum(r["overall_alignment"] for r in alignment_results) / len(alignment_results)
+            low_alignment = [r for r in alignment_results if r["overall_alignment"] < 0.5]
+        else:
+            avg_alignment = 1.0
+            low_alignment = []
+
+        return {
+            "project": project,
+            "values_evaluated": value_list,
+            "summary": {
+                "total_decisions": len(decisions),
+                "avg_alignment": round(avg_alignment, 3),
+                "low_alignment_count": len(low_alignment),
+            },
+            "results": alignment_results[:20],
+            "low_alignment_decisions": low_alignment[:10],
+        }
+    except Exception as e:
+        logger.error("value alignment check failed: %s", e)
+        raise HTTPException(500, f"Value alignment check failed: {e}")
+
+
+def _score_value_alignment(value: str, decision: str, context: str, safety: dict) -> float:
+    """Score alignment with a specific value."""
+    value_lower = value.lower()
+
+    # Safety-related values
+    if value_lower in ["safety", "security"]:
+        if safety.get("risk_level") in ["high", "critical"] and safety.get("requires_review"):
+            return 0.9  # Good: high-risk decisions flagged for review
+        if safety.get("risk_level") in ["high", "critical"] and not safety.get("requires_review"):
+            return 0.3  # Bad: high-risk without review
+        return 0.7
+
+    # Transparency
+    if value_lower == "transparency":
+        if context and len(context) > 20:
+            return 0.9  # Good: well-documented rationale
+        if context:
+            return 0.6  # Partial: some context
+        return 0.3  # Bad: no context
+
+    # Accountability
+    if value_lower == "accountability":
+        if d := safety.get("safety_reviews"):
+            return 0.9  # Good: has reviews
+        if safety.get("requires_review"):
+            return 0.5  # Partial: needs review
+        return 0.7  # Default
+
+    # Fairness
+    if value_lower == "fairness":
+        if safety.get("affected_systems"):
+            return 0.8  # Good: systems documented
+        return 0.5
+
+    # Robustness
+    if value_lower == "robustness":
+        if safety.get("reversibility", True):
+            return 0.8  # Good: reversible
+        return 0.4  # Concern: irreversible
+
+    return 0.7  # Default moderate score
+
+
+@app.get("/api/memory/{project}/safety-envelope")
+async def get_safety_envelope(project: str):
+    """Monitor safety envelope - track when decisions approach safety boundaries.
+    
+    Identifies:
+    - Decisions near risk thresholds
+    - Systems approaching capacity limits
+    - Review backlog trends
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Risk threshold monitoring
+        risk_weights = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        recent_decisions = decisions[-20:] if len(decisions) > 20 else decisions
+
+        if recent_decisions:
+            avg_risk = sum(risk_weights.get(d.get("safety_metadata", {}).get("risk_level", "low"), 0) for d in recent_decisions) / len(recent_decisions)
+        else:
+            avg_risk = 0
+
+        # System capacity monitoring
+        system_counts = {}
+        for d in decisions:
+            for system in d.get("safety_metadata", {}).get("affected_systems", []):
+                system_counts[system] = system_counts.get(system, 0) + 1
+
+        system_warnings = []
+        for system, count in system_counts.items():
+            if count > 10:
+                system_warnings.append({
+                    "system": system,
+                    "decision_count": count,
+                    "warning": f"System '{system}' has {count} associated decisions",
+                })
+
+        # Review backlog
+        pending_reviews = sum(1 for d in decisions if d.get("safety_metadata", {}).get("requires_review"))
+        reviewed = sum(1 for d in decisions if d.get("safety_reviews"))
+        backlog_ratio = pending_reviews / len(decisions) if decisions else 0
+
+        # Envelope status
+        envelope_status = "healthy"
+        if avg_risk > 1.5:
+            envelope_status = "warning"
+        if avg_risk > 2.0 or backlog_ratio > 0.3:
+            envelope_status = "critical"
+
+        return {
+            "project": project,
+            "envelope_status": envelope_status,
+            "metrics": {
+                "avg_recent_risk": round(avg_risk, 3),
+                "pending_reviews": pending_reviews,
+                "reviewed_decisions": reviewed,
+                "backlog_ratio": round(backlog_ratio, 3),
+                "systems_at_capacity": len(system_warnings),
+            },
+            "system_warnings": system_warnings,
+            "recommendations": _generate_envelope_recommendations(envelope_status, avg_risk, backlog_ratio),
+        }
+    except Exception as e:
+        logger.error("safety envelope failed: %s", e)
+        raise HTTPException(500, f"Safety envelope check failed: {e}")
+
+
+def _generate_envelope_recommendations(status: str, avg_risk: float, backlog: float) -> list:
+    """Generate recommendations based on safety envelope status."""
+    recommendations = []
+    if status == "critical":
+        recommendations.append("URGENT: Address high-risk decisions immediately")
+    if avg_risk > 1.5:
+        recommendations.append("Review recent high-risk decisions")
+    if backlog > 0.2:
+        recommendations.append(f"Clear review backlog ({backlog*100:.0f}% pending)")
+    if not recommendations:
+        recommendations.append("Safety envelope is healthy - continue monitoring")
+    return recommendations
+
+
+@app.get("/api/memory/{project}/alignment/drift")
+async def get_alignment_drift(project: str, window: int = Query(10, ge=5, le=50)):
+    """Detect alignment drift - changes in decision patterns over time.
+    
+    Compares recent decisions against historical patterns to detect drift.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        if len(decisions) < window * 2:
+            return {
+                "project": project,
+                "drift_detected": False,
+                "message": "Not enough decisions for drift detection",
+                "total_decisions": len(decisions),
+            }
+
+        # Split into baseline and recent
+        baseline = decisions[:len(decisions) - window]
+        recent = decisions[-window:]
+
+        # Compare metrics
+        risk_weights = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+        baseline_risk = sum(risk_weights.get(d.get("safety_metadata", {}).get("risk_level", "low"), 0) for d in baseline) / len(baseline)
+        recent_risk = sum(risk_weights.get(d.get("safety_metadata", {}).get("risk_level", "low"), 0) for d in recent) / len(recent)
+
+        baseline_reviewed = sum(1 for d in baseline if d.get("safety_reviews")) / len(baseline)
+        recent_reviewed = sum(1 for d in recent if d.get("safety_reviews")) / len(recent)
+
+        # Detect drift
+        risk_drift = recent_risk - baseline_risk
+        review_drift = recent_reviewed - baseline_reviewed
+
+        drift_detected = abs(risk_drift) > 0.5 or abs(review_drift) > 0.3
+
+        drift_indicators = []
+        if risk_drift > 0.5:
+            drift_indicators.append({"metric": "risk_level", "direction": "increasing", "change": round(risk_drift, 3)})
+        elif risk_drift < -0.5:
+            drift_indicators.append({"metric": "risk_level", "direction": "decreasing", "change": round(risk_drift, 3)})
+
+        if review_drift > 0.3:
+            drift_indicators.append({"metric": "review_rate", "direction": "increasing", "change": round(review_drift, 3)})
+        elif review_drift < -0.3:
+            drift_indicators.append({"metric": "review_rate", "direction": "decreasing", "change": round(review_drift, 3)})
+
+        return {
+            "project": project,
+            "drift_detected": drift_detected,
+            "baseline_size": len(baseline),
+            "recent_size": len(recent),
+            "metrics": {
+                "baseline_avg_risk": round(baseline_risk, 3),
+                "recent_avg_risk": round(recent_risk, 3),
+                "risk_drift": round(risk_drift, 3),
+                "baseline_review_rate": round(baseline_reviewed, 3),
+                "recent_review_rate": round(recent_reviewed, 3),
+                "review_drift": round(review_drift, 3),
+            },
+            "drift_indicators": drift_indicators,
+        }
+    except Exception as e:
+        logger.error("alignment drift detection failed: %s", e)
+        raise HTTPException(500, f"Alignment drift detection failed: {e}")
+
+
+@app.get("/api/memory/{project}/corrigibility")
+async def get_corrigibility_tracker(project: str):
+    """Track corrigibility - ability to correct or override decisions.
+    
+    Measures:
+    - Reversibility rate
+    - Review coverage
+    - Override/reversal history
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Calculate corrigibility metrics
+        reversible = sum(1 for d in decisions if d.get("safety_metadata", {}).get("reversibility", True))
+        reviewed = sum(1 for d in decisions if d.get("safety_reviews"))
+        has_rollback = sum(1 for d in decisions if d.get("version_history"))
+
+        # Identify non-corrigible decisions
+        non_corrigible = []
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+            if not safety.get("reversibility", True) and not d.get("safety_reviews"):
+                non_corrigible.append({
+                    "id": d.get("id"),
+                    "decision": d.get("decision"),
+                    "risk_level": safety.get("risk_level", "low"),
+                })
+
+        # Corrigibility score
+        total = len(decisions) if decisions else 1
+        corrigibility_score = (reversible + reviewed) / (total * 2)
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "reversible_count": reversible,
+                "reviewed_count": reviewed,
+                "versioned_count": has_rollback,
+                "non_corrigible_count": len(non_corrigible),
+                "corrigibility_score": round(corrigibility_score, 3),
+            },
+            "non_corrigible_decisions": non_corrigible[:10],
+        }
+    except Exception as e:
+        logger.error("corrigibility tracker failed: %s", e)
+        raise HTTPException(500, f"Corrigibility tracking failed: {e}")
+
+
+# ============================
+#  Provenance, Integrity, Security Features
+# ============================
+
+
+import hashlib
+import json as _json
+
+
+def _compute_decision_hash(decision: dict) -> str:
+    """Compute a hash of a decision for integrity verification."""
+    content = _json.dumps(decision, sort_keys=True, default=str)
+    return hashlib.sha256(content.encode()).hexdigest()
+
+
+@app.get("/api/memory/{project}/provenance/chain")
+async def get_provenance_chain(project: str):
+    """Get the provenance chain for all decisions.
+    
+    Creates a cryptographic chain where each decision's hash
+    includes the previous decision's hash, forming an immutable chain.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        # Build provenance chain
+        chain = []
+        previous_hash = "genesis"
+
+        for i, d in enumerate(decisions):
+            decision_hash = _compute_decision_hash(d)
+            chain_entry = {
+                "index": i,
+                "decision_id": d.get("id"),
+                "decision": d.get("decision"),
+                "timestamp": d.get("timestamp"),
+                "hash": decision_hash,
+                "previous_hash": previous_hash,
+                "chain_valid": True,
+            }
+            chain.append(chain_entry)
+            previous_hash = decision_hash
+
+        return {
+            "project": project,
+            "summary": {
+                "chain_length": len(chain),
+                "genesis_hash": chain[0]["hash"] if chain else None,
+                "latest_hash": chain[-1]["hash"] if chain else None,
+            },
+            "chain": chain[-20:],  # Return last 20
+        }
+    except Exception as e:
+        logger.error("provenance chain failed: %s", e)
+        raise HTTPException(500, f"Provenance chain failed: {e}")
+
+
+@app.get("/api/memory/{project}/integrity/verify")
+async def verify_integrity(project: str):
+    """Verify the integrity of the decision history.
+    
+    Checks:
+    - Hash chain integrity
+    - Decision structure validity
+    - Timestamp ordering
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        issues = []
+        previous_hash = "genesis"
+        previous_timestamp = None
+
+        for i, d in enumerate(decisions):
+            # Verify hash chain
+            expected_hash = _compute_decision_hash(d)
+
+            # Verify structure
+            if not d.get("decision"):
+                issues.append({
+                    "type": "missing_decision_text",
+                    "index": i,
+                    "severity": "high",
+                })
+
+            # Verify timestamp ordering
+            current_ts = d.get("timestamp")
+            if current_ts and previous_timestamp:
+                if current_ts < previous_timestamp:
+                    issues.append({
+                        "type": "timestamp_order_violation",
+                        "index": i,
+                        "severity": "medium",
+                        "message": f"Timestamp {current_ts} is before {previous_timestamp}",
+                    })
+            previous_timestamp = current_ts
+
+            previous_hash = expected_hash
+
+        integrity_score = 1.0 - (len(issues) / max(len(decisions), 1))
+
+        return {
+            "project": project,
+            "summary": {
+                "total_decisions": len(decisions),
+                "issues_found": len(issues),
+                "integrity_score": round(max(0, integrity_score), 3),
+            },
+            "issues": issues[:20],
+            "valid": len(issues) == 0,
+        }
+    except Exception as e:
+        logger.error("integrity verification failed: %s", e)
+        raise HTTPException(500, f"Integrity verification failed: {e}")
+
+
+@app.get("/api/memory/{project}/tamper-detection")
+async def detect_tampering(project: str):
+    """Detect potential tampering with decision history.
+    
+    Checks for:
+    - Missing decisions (gaps in sequence)
+    - Modified decisions (hash mismatches)
+    - Anomalous patterns
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        tamper_flags = []
+
+        # Check for ID continuity
+        ids = [d.get("id") for d in decisions if d.get("id")]
+        if len(ids) != len(set(ids)):
+            tamper_flags.append({
+                "type": "duplicate_ids",
+                "severity": "high",
+                "message": "Duplicate decision IDs detected",
+            })
+
+        # Check for timestamp anomalies
+        timestamps = [d.get("timestamp") for d in decisions if d.get("timestamp")]
+        for i in range(1, len(timestamps)):
+            if timestamps[i] < timestamps[i-1]:
+                tamper_flags.append({
+                    "type": "timestamp_anomaly",
+                    "severity": "medium",
+                    "index": i,
+                    "message": f"Timestamp out of order at index {i}",
+                })
+
+        # Check for empty decisions
+        empty_count = sum(1 for d in decisions if not d.get("decision"))
+        if empty_count > 0:
+            tamper_flags.append({
+                "type": "empty_decisions",
+                "severity": "high",
+                "count": empty_count,
+                "message": f"{empty_count} decisions have empty decision text",
+            })
+
+        # Tamper risk score
+        tamper_risk = len(tamper_flags) / max(len(decisions), 1)
+        status = "clean" if tamper_risk == 0 else "suspicious" if tamper_risk < 0.1 else "compromised"
+
+        return {
+            "project": project,
+            "status": status,
+            "summary": {
+                "total_decisions": len(decisions),
+                "tamper_flags": len(tamper_flags),
+                "tamper_risk": round(tamper_risk, 3),
+            },
+            "flags": tamper_flags,
+        }
+    except Exception as e:
+        logger.error("tamper detection failed: %s", e)
+        raise HTTPException(500, f"Tamper detection failed: {e}")
+
+
+@app.get("/api/memory/{project}/security/audit-log")
+async def get_security_audit_log(project: str, limit: int = Query(50, ge=1, le=200)):
+    """Get immutable security audit log.
+    
+    Returns a chronological log of all security-relevant events:
+    - Decision creations
+    - Reviews
+    - Risk level changes
+    - Version changes
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        decisions = memory.get("decisions", [])
+
+        audit_events = []
+
+        for d in decisions:
+            safety = d.get("safety_metadata", {})
+
+            # Decision creation event
+            audit_events.append({
+                "event_type": "decision_created",
+                "timestamp": d.get("timestamp"),
+                "decision_id": d.get("id"),
+                "decision": d.get("decision"),
+                "risk_level": safety.get("risk_level", "low"),
+                "hash": _compute_decision_hash(d),
+            })
+
+            # Review events
+            for review in d.get("safety_reviews", []):
+                audit_events.append({
+                    "event_type": "review_submitted",
+                    "timestamp": review.get("timestamp"),
+                    "decision_id": d.get("id"),
+                    "reviewer": review.get("reviewer"),
+                    "status": review.get("status"),
+                })
+
+            # Version events
+            for version in d.get("version_history", []):
+                audit_events.append({
+                    "event_type": "version_created",
+                    "timestamp": version.get("timestamp"),
+                    "decision_id": d.get("id"),
+                    "version": version.get("version"),
+                    "change_reason": version.get("change_reason"),
+                })
+
+        # Sort by timestamp
+        audit_events.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+        return {
+            "project": project,
+            "summary": {
+                "total_events": len(audit_events),
+                "decision_events": sum(1 for e in audit_events if e["event_type"] == "decision_created"),
+                "review_events": sum(1 for e in audit_events if e["event_type"] == "review_submitted"),
+                "version_events": sum(1 for e in audit_events if e["event_type"] == "version_created"),
+            },
+            "events": audit_events[:limit],
+        }
+    except Exception as e:
+        logger.error("security audit log failed: %s", e)
+        raise HTTPException(500, f"Security audit log failed: {e}")
+
+
+# ============================
+#  Synthetic Data Policy
+# ============================
+
+
+class SyntheticDataPolicy(BaseModel):
+    """Synthetic Data Policy - A Living Record following EU AI Act Articles 10 & 50, NIST guidance."""
+    
+    # Identification & Provenance
+    dataset_name: str = Field(..., max_length=200, description="Standard unique identifier with domain/use case")
+    version: str = Field("1.0", max_length=50, description="Dataset and schema versioning")
+    generated_by: str = Field(..., max_length=200, description="Entity and specific software tool (e.g., Tonic Fabricate, MOSTLY AI, Gretel)")
+    authorized_by: str = Field("", max_length=200, description="Approver and role (must include DPO for regulated sectors)")
+    generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    source_seed_data: str = Field(..., max_length=500, description="Origin and Lawful Basis (e.g., GDPR Art. 6)")
+    synthetic_real_ratio: str = Field(..., max_length=100, description="Proportion (e.g., 10 real:1000 synthetic)")
+    
+    # Architecture Details
+    models_used: str = Field(..., max_length=300, description="Architecture and parameters (e.g., CTGAN, Diffusion)")
+    architecture_type: str = Field("unknown", pattern=r"^(gan|vae|diffusion|llm|other|unknown)$")
+    
+    # Modality & Schema
+    data_types: list[str] = Field(default_factory=list, description="Tabular, Relational, Time-Series, Unstructured, Multi-camera Video")
+    referential_integrity: str = Field("", max_length=500, description="How PK/FK constraints were preserved")
+    
+    # Intended Use & Risk
+    eu_ai_act_tier: str = Field("minimal", pattern=r"^(high|minimal|limited|unacceptable)$")
+    purpose: str = Field(..., max_length=500, description="Plain language description of intended use")
+    operational_constraints: str = Field("", max_length=500, description="What this data should never be used for")
+    legal_traceability: str = Field("", max_length=500, description="Suitability for legal provenance use cases")
+    
+    # Quality Matrix
+    fidelity_score: str = Field("", max_length=200, description="Statistical similarity (KS, Wasserstein, cardinality)")
+    utility_validation: str = Field("", max_length=500, description="TSTR protocol results")
+    
+    # Privacy
+    privacy_parameters: str = Field("", max_length=300, description="DP parameters (ε, δ) or SBPM scores (IMS, DCR, NNDR)")
+    dp_epsilon: float = Field(0.0, ge=0.0, description="Differential Privacy epsilon value")
+    dp_delta: float = Field(0.0, ge=0.0, description="Differential Privacy delta value")
+    
+    # Risk Assessment
+    bias_audit_results: str = Field("", max_length=500, description="Demographic parity or disparate impact audit results")
+    adversarial_testing: str = Field("", max_length=500, description="MIA, AIA, Reconstruction attack results")
+    outlier_vulnerability: str = Field("", max_length=500, description="Assessment of rare record reproduction risk")
+    
+    # Environment Assumptions
+    environment_assumptions: str = Field("", max_length=500, description="What the simulation silently assumes")
+    adversary_knowledge: str = Field("", max_length=300, description="Assumed background knowledge (quasi-identifiers)")
+    
+    # Lifecycle
+    model_collapse_prevention: str = Field("", max_length=500, description="Provenance to prevent recursive training")
+    retention_deletion: str = Field("", max_length=300, description="When the dataset expires (GDPR Art. 17)")
+    
+    # Transparency
+    distinguishability_marking: str = Field("", max_length=300, description="Watermarking method (EU AI Act Art. 50(2))")
+    rationale: str = Field(..., max_length=500, description="Motivation for synthetic use")
+    
+    # Verification
+    attested_by: str = Field("", max_length=200, description="Independent verifier identity")
+    human_oversight: str = Field("", max_length=300, description="Oversight mechanism for AI system use")
+    review_date: str = Field("", max_length=50, description="Next review date")
+    superseded_version: str = Field("", max_length=100, description="Ancestral real data or previous synthetic versions")
+    appeal_path: str = Field("", max_length=300, description="Where data subjects can contest inferences")
+
+
+class SyntheticDataPolicyResponse(BaseModel):
+    """Response model for synthetic data policy."""
+    id: str
+    policy: SyntheticDataPolicy
+    compliance_status: str
+    blocking_gates: dict
+    created_at: str
+    updated_at: str
+
+
+@app.post("/api/memory/{project}/synthetic-data-policies")
+async def create_synthetic_data_policy(project: str, policy: SyntheticDataPolicy):
+    """Create a new Synthetic Data Policy record.
+    
+    This is a mandatory "nutritional label" for synthetic datasets following
+    EU AI Act Articles 10 & 50, NIST synthetic content guidance, and
+    Datasheets for Datasets best practices.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        # Initialize policies list if not present
+        if "synthetic_data_policies" not in memory:
+            memory["synthetic_data_policies"] = []
+        
+        # Generate ID
+        import uuid as _uuid
+        policy_id = _uuid.uuid4().hex[:12]
+        
+        # Run compliance validation
+        compliance_result = _validate_synthetic_data_compliance(policy)
+        
+        # Create policy entry
+        policy_entry = {
+            "id": policy_id,
+            "policy": policy.model_dump(),
+            "compliance_status": compliance_result["status"],
+            "blocking_gates": compliance_result["blocking_gates"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        memory["synthetic_data_policies"].append(policy_entry)
+        memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+        mm.save_project_memory(project, memory)
+        
+        return {
+            "success": True,
+            "policy_id": policy_id,
+            "compliance_status": compliance_result["status"],
+            "blocking_gates": compliance_result["blocking_gates"],
+            "warnings": compliance_result.get("warnings", []),
+        }
+    except Exception as e:
+        logger.error("create synthetic data policy failed: %s", e)
+        raise HTTPException(500, f"Failed to create policy: {e}")
+
+
+@app.get("/api/memory/{project}/synthetic-data-policies")
+async def list_synthetic_data_policies(project: str):
+    """List all Synthetic Data Policies for a project."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        
+        return {
+            "project": project,
+            "total_policies": len(policies),
+            "policies": policies,
+        }
+    except Exception as e:
+        logger.error("list synthetic data policies failed: %s", e)
+        raise HTTPException(500, f"Failed to list policies: {e}")
+
+
+@app.get("/api/memory/{project}/synthetic-data-policies/{policy_id}")
+async def get_synthetic_data_policy(project: str, policy_id: str):
+    """Get a specific Synthetic Data Policy with full details."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        
+        for p in policies:
+            if p.get("id") == policy_id:
+                return p
+        
+        raise HTTPException(status_code=404, detail="Policy not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get synthetic data policy failed: %s", e)
+        raise HTTPException(500, f"Failed to get policy: {e}")
+
+
+@app.put("/api/memory/{project}/synthetic-data-policies/{policy_id}")
+async def update_synthetic_data_policy(project: str, policy_id: str, policy: SyntheticDataPolicy):
+    """Update an existing Synthetic Data Policy."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        
+        for i, p in enumerate(policies):
+            if p.get("id") == policy_id:
+                # Run compliance validation
+                compliance_result = _validate_synthetic_data_compliance(policy)
+                
+                # Update policy
+                policies[i] = {
+                    "id": policy_id,
+                    "policy": policy.model_dump(),
+                    "compliance_status": compliance_result["status"],
+                    "blocking_gates": compliance_result["blocking_gates"],
+                    "created_at": p.get("created_at"),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                
+                memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+                mm.save_project_memory(project, memory)
+                
+                return {
+                    "success": True,
+                    "policy_id": policy_id,
+                    "compliance_status": compliance_result["status"],
+                    "blocking_gates": compliance_result["blocking_gates"],
+                    "warnings": compliance_result.get("warnings", []),
+                }
+        
+        raise HTTPException(status_code=404, detail="Policy not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("update synthetic data policy failed: %s", e)
+        raise HTTPException(500, f"Failed to update policy: {e}")
+
+
+@app.delete("/api/memory/{project}/synthetic-data-policies/{policy_id}")
+async def delete_synthetic_data_policy(project: str, policy_id: str):
+    """Delete a Synthetic Data Policy."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        original_length = len(policies)
+        
+        memory["synthetic_data_policies"] = [p for p in policies if p.get("id") != policy_id]
+        
+        if len(memory["synthetic_data_policies"]) == original_length:
+            raise HTTPException(status_code=404, detail="Policy not found")
+        
+        memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+        mm.save_project_memory(project, memory)
+        
+        return {"success": True, "deleted": policy_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("delete synthetic data policy failed: %s", e)
+        raise HTTPException(500, f"Failed to delete policy: {e}")
+
+
+@app.get("/api/memory/{project}/synthetic-data-policies/{policy_id}/compliance")
+async def check_synthetic_data_compliance(project: str, policy_id: str):
+    """Run compliance check on a Synthetic Data Policy.
+    
+    Validates against blocking gates:
+    - Fidelity threshold
+    - Privacy parameters (ε/δ)
+    - Bias audit requirements
+    - Adversarial testing requirements
+    - EU AI Act tier requirements
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        
+        for p in policies:
+            if p.get("id") == policy_id:
+                policy_data = p.get("policy", {})
+                # Reconstruct policy object for validation
+                policy = SyntheticDataPolicy(**policy_data)
+                compliance_result = _validate_synthetic_data_compliance(policy)
+                
+                return {
+                    "policy_id": policy_id,
+                    "compliance_status": compliance_result["status"],
+                    "blocking_gates": compliance_result["blocking_gates"],
+                    "warnings": compliance_result.get("warnings", []),
+                    "recommendations": compliance_result.get("recommendations", []),
+                }
+        
+        raise HTTPException(status_code=404, detail="Policy not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("compliance check failed: %s", e)
+        raise HTTPException(500, f"Compliance check failed: {e}")
+
+
+@app.get("/api/memory/{project}/synthetic-data/summary")
+async def get_synthetic_data_summary(project: str):
+    """Get summary of all Synthetic Data Policies for a project."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        
+        policies = memory.get("synthetic_data_policies", [])
+        
+        # Aggregate statistics
+        total = len(policies)
+        compliant = sum(1 for p in policies if p.get("compliance_status") == "compliant")
+        non_compliant = sum(1 for p in policies if p.get("compliance_status") == "non_compliant")
+        partial = sum(1 for p in policies if p.get("compliance_status") == "partial")
+        
+        # Risk tier distribution
+        tier_distribution = {}
+        for p in policies:
+            tier = p.get("policy", {}).get("eu_ai_act_tier", "minimal")
+            tier_distribution[tier] = tier_distribution.get(tier, 0) + 1
+        
+        # Architecture distribution
+        architecture_distribution = {}
+        for p in policies:
+            arch = p.get("policy", {}).get("architecture_type", "unknown")
+            architecture_distribution[arch] = architecture_distribution.get(arch, 0) + 1
+        
+        # Privacy parameter summary
+        dp_enabled = sum(1 for p in policies if p.get("policy", {}).get("dp_epsilon", 0) > 0)
+        
+        return {
+            "project": project,
+            "summary": {
+                "total_policies": total,
+                "compliant": compliant,
+                "non_compliant": non_compliant,
+                "partial": partial,
+                "compliance_rate": round(compliant / total, 3) if total > 0 else 1.0,
+            },
+            "tier_distribution": tier_distribution,
+            "architecture_distribution": architecture_distribution,
+            "privacy_summary": {
+                "dp_enabled_count": dp_enabled,
+                "total_policies": total,
+            },
+        }
+    except Exception as e:
+        logger.error("synthetic data summary failed: %s", e)
+        raise HTTPException(500, f"Summary failed: {e}")
+
+
+def _validate_synthetic_data_compliance(policy: SyntheticDataPolicy) -> dict:
+    """Validate a Synthetic Data Policy against compliance requirements.
+    
+    Implements blocking gates as specified in the framework:
+    - Fidelity threshold
+    - Privacy parameters
+    - Bias audit requirements
+    - Adversarial testing
+    - EU AI Act tier requirements
+    """
+    blocking_gates = {}
+    warnings = []
+    recommendations = []
+    
+    # Gate 1: Fidelity Score (blocking gate)
+    has_fidelity = bool(policy.fidelity_score and len(policy.fidelity_score) > 0)
+    blocking_gates["fidelity"] = {
+        "passed": has_fidelity,
+        "required": True,
+        "message": "Fidelity score documented" if has_fidelity else "MISSING: Fidelity score required",
+    }
+    if not has_fidelity:
+        recommendations.append("Run Kolmogorov-Smirnov or Wasserstein distance tests")
+    
+    # Gate 2: Privacy Parameters (blocking gate for high-risk)
+    has_privacy = bool(policy.privacy_parameters and len(policy.privacy_parameters) > 0)
+    has_dp = policy.dp_epsilon > 0
+    blocking_gates["privacy"] = {
+        "passed": has_privacy or has_dp,
+        "required": policy.eu_ai_act_tier == "high",
+        "message": "Privacy parameters documented" if (has_privacy or has_dp) else "Privacy parameters not documented",
+    }
+    if policy.eu_ai_act_tier == "high" and not (has_privacy or has_dp):
+        warnings.append("HIGH-RISK: Privacy parameters (ε/δ) required for high-risk tier")
+        recommendations.append("Implement Differential Privacy with explicit ε/δ values")
+    
+    # Gate 3: Bias Audit (blocking gate)
+    has_bias_audit = bool(policy.bias_audit_results and len(policy.bias_audit_results) > 0)
+    blocking_gates["bias_audit"] = {
+        "passed": has_bias_audit,
+        "required": True,
+        "message": "Bias audit documented" if has_bias_audit else "MISSING: Bias audit results required",
+    }
+    if not has_bias_audit:
+        recommendations.append("Run demographic parity or disparate impact audits")
+    
+    # Gate 4: Adversarial Testing (blocking gate for high-risk)
+    has_adversarial = bool(policy.adversarial_testing and len(policy.adversarial_testing) > 0)
+    blocking_gates["adversarial_testing"] = {
+        "passed": has_adversarial,
+        "required": policy.eu_ai_act_tier == "high",
+        "message": "Adversarial testing documented" if has_adversarial else "Adversarial testing not documented",
+    }
+    if policy.eu_ai_act_tier == "high" and not has_adversarial:
+        warnings.append("HIGH-RISK: MIA/AIA/Reconstruction attack results required")
+        recommendations.append("Run Membership Inference, Attribute Inference, and Reconstruction attacks")
+    
+    # Gate 5: Source Seed Data (always required)
+    has_source = bool(policy.source_seed_data and len(policy.source_seed_data) > 10)
+    blocking_gates["source_data"] = {
+        "passed": has_source,
+        "required": True,
+        "message": "Source seed data documented" if has_source else "MISSING: Source seed data origin required",
+    }
+    
+    # Gate 6: Rationale (always required)
+    has_rationale = bool(policy.rationale and len(policy.rationale) > 10)
+    blocking_gates["rationale"] = {
+        "passed": has_rationale,
+        "required": True,
+        "message": "Rationale documented" if has_rationale else "MISSING: Rationale for synthetic use required",
+    }
+    
+    # Gate 7: Distinguishability Marking (EU AI Act Art. 50(2))
+    has_marking = bool(policy.distinguishability_marking and len(policy.distinguishability_marking) > 0)
+    blocking_gates["distinguishability"] = {
+        "passed": has_marking,
+        "required": policy.eu_ai_act_tier == "high",
+        "message": "Distinguishability marking documented" if has_marking else "Distinguishability marking not documented",
+    }
+    if policy.eu_ai_act_tier == "high" and not has_marking:
+        warnings.append("HIGH-RISK: EU AI Act Art. 50(2) requires labeling of AI-generated content")
+    
+    # Gate 8: Model Collapse Prevention
+    has_collapse = bool(policy.model_collapse_prevention and len(policy.model_collapse_prevention) > 0)
+    blocking_gates["model_collapse"] = {
+        "passed": has_collapse,
+        "required": False,
+        "message": "Model collapse prevention documented" if has_collapse else "Model collapse prevention not documented",
+    }
+    if not has_collapse:
+        recommendations.append("Document training ratios to prevent recursive degradation")
+    
+    # Gate 9: Retention/Deletion
+    has_retention = bool(policy.retention_deletion and len(policy.retention_deletion) > 0)
+    blocking_gates["retention"] = {
+        "passed": has_retention,
+        "required": True,
+        "message": "Retention/deletion policy documented" if has_retention else "MISSING: Retention/deletion policy required (GDPR Art. 17)",
+    }
+    
+    # Gate 10: Attestation
+    has_attestation = bool(policy.attested_by and len(policy.attested_by) > 0)
+    blocking_gates["attestation"] = {
+        "passed": has_attestation,
+        "required": policy.eu_ai_act_tier == "high",
+        "message": "Independent attestation documented" if has_attestation else "Attestation not documented",
+    }
+    
+    # Calculate overall status
+    required_gates = [g for g in blocking_gates.values() if g["required"]]
+    passed_required = sum(1 for g in required_gates if g["passed"])
+    
+    if len(required_gates) == 0:
+        status = "compliant"
+    elif passed_required == len(required_gates):
+        status = "compliant"
+    elif passed_required >= len(required_gates) * 0.7:
+        status = "partial"
+    else:
+        status = "non_compliant"
+    
+    return {
+        "status": status,
+        "blocking_gates": blocking_gates,
+        "warnings": warnings,
+        "recommendations": recommendations,
+        "gates_passed": sum(1 for g in blocking_gates.values() if g["passed"]),
+        "gates_total": len(blocking_gates),
     }
 
 
@@ -2107,7 +5440,10 @@ def _get_feed_manager():
     if _feed_manager is None:
         from core.tropebook.research_feeds import ResearchFeedManager
 
-        _feed_manager = ResearchFeedManager(storage_path=str(BASE_DIR / "memory"))
+        # A dedicated subdirectory, not "memory/" directly — list_projects()
+        # globs memory/*.json for project names, and research_feeds.json /
+        # research_feeds_runs.json living there get misidentified as projects.
+        _feed_manager = ResearchFeedManager(storage_path=str(BASE_DIR / "memory" / "feeds"))
     return _feed_manager
 
 

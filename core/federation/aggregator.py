@@ -30,6 +30,7 @@ def aggregate_benchmarks(stats_list: list[AnonymizedStats]) -> Result[Anonymized
 
     all_tech = set(chain.from_iterable(s.tech_stack for s in stats_list))
     all_dists = [s.category_distribution for s in stats_list]
+    all_risk_dists = [s.risk_level_distribution for s in stats_list]
 
     return Ok(value=AnonymizedStats(
         project_hash="aggregate",
@@ -38,6 +39,8 @@ def aggregate_benchmarks(stats_list: list[AnonymizedStats]) -> Result[Anonymized
         reversal_rate=_safe_mean([s.reversal_rate for s in stats_list]),
         avg_confidence=_safe_mean([s.avg_confidence for s in stats_list]),
         category_distribution=_merge_distributions(all_dists),
+        avg_safety_score=_safe_mean([s.avg_safety_score for s in stats_list]),
+        risk_level_distribution=_merge_distributions(all_risk_dists),
     ))
 
 
@@ -49,7 +52,7 @@ def compute_percentiles(
         return Err(error="Empty stats list", code="VALIDATION_ERROR")
 
     n = len(stats_list)
-    metrics = ("decision_count", "reversal_rate", "avg_confidence")
+    metrics = ("decision_count", "reversal_rate", "avg_confidence", "avg_safety_score")
     percentiles: dict[str, float] = {}
 
     for metric in metrics:
@@ -65,7 +68,7 @@ def compare_to_aggregate(
     project_stats: AnonymizedStats, aggregate: AnonymizedStats
 ) -> Result[BenchmarkComparison]:
     """Compare a single project's stats to the aggregate benchmark."""
-    metrics = ("decision_count", "reversal_rate", "avg_confidence")
+    metrics = ("decision_count", "reversal_rate", "avg_confidence", "avg_safety_score")
     deviation: dict[str, float] = {}
 
     for metric in metrics:

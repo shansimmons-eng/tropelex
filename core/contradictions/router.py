@@ -29,12 +29,38 @@ def _load_memory(project: str) -> dict[str, Any]:
     return _mm.get_project_memory(project)
 
 
+def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
+    """Flip requires_review=True on decisions referenced by a high-severity
+    finding, if not already flagged — an unresolved contradiction in a
+    decision that was never marked for review is exactly the kind of thing
+    the Safety Review queue exists to catch, so it shouldn't have to wait
+    for someone to separately notice it in the Contradictions tab.
+
+    Mutates memory in place. Returns how many decisions were newly escalated.
+    """
+    escalated = 0
+    for d in memory.get("decisions", []):
+        if d.get("id") not in decision_ids:
+            continue
+        safety = d.setdefault("safety_metadata", {})
+        if safety.get("requires_review"):
+            continue
+        safety["requires_review"] = True
+        if safety.get("risk_level", "low") == "low":
+            safety["risk_level"] = "medium"
+        escalated += 1
+    return escalated
+
+
 @contradiction_router.get("/{project}/contradictions")
 async def project_contradictions(project: str) -> dict[str, Any]:
     """Scan a project's decisions for contradictions.
 
     Returns a list of contradictions with type, severity, and resolution
     suggestions. Integrates with the Health Dashboard via the summary stats.
+    High-severity contradictions auto-escalate their decisions into the
+    Safety Review queue (requires_review=True) rather than only surfacing
+    here.
     """
     try:
         memory = _load_memory(project)
@@ -51,6 +77,17 @@ async def project_contradictions(project: str) -> dict[str, Any]:
     except ContradictionError as exc:
         logger.error("contradiction detection failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
+
+    high_severity_ids = {
+        did
+        for c in report.contradictions if c.severity == "high"
+        for did in (c.decision_a_id, c.decision_b_id)
+    }
+    escalated_count = 0
+    if high_severity_ids:
+        escalated_count = _escalate_to_review(memory, high_severity_ids)
+        if escalated_count:
+            _mm.save_project_memory(project, memory)
 
     return {
         "contradictions": [
@@ -75,4 +112,7 @@ async def project_contradictions(project: str) -> dict[str, Any]:
             "medium": sum(1 for c in report.contradictions if c.severity == "medium"),
             "low": sum(1 for c in report.contradictions if c.severity == "low"),
         },
+        # Safety Review integration: high-severity contradictions auto-flag
+        # their decisions for review rather than waiting to be noticed here.
+        "escalated_to_review": escalated_count,
     }

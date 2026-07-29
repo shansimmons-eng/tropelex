@@ -699,6 +699,115 @@ class TestRouterCostReport:
         router_mod.BASE_DIR = original
 
 
+class TestRouterCompoundingRisk:
+    """Tests for GET /{project}/cost/compounding-risk — the Cost Ledger +
+    Decision Market cross-connect: decisions with real rework cost AND poor
+    market calibration in their category.
+    """
+
+    def _bet(self, decision_id, category, outcome, bet_id, agent="test-proj"):
+        return {
+            "id": bet_id, "decision_id": decision_id, "agent_name": agent,
+            "confidence": 0.8, "category": category,
+            "resolved": True, "outcome": outcome,
+        }
+
+    def test_high_rework_and_poor_calibration_flagged(self, _patch_router, tmp_path):
+        import core.cost.router as router_mod
+        original = router_mod.BASE_DIR
+        router_mod.BASE_DIR = tmp_path
+
+        events = [_event(event_type="rework", amount=1, decision_id="d1", eid="ev1")]
+        memory = _memory_with_events(
+            events,
+            decisions=[{"id": "d1", "decision": "x", "safety_metadata": {"affected_systems": ["auth"]}}],
+        )
+        memory["market"] = {"bets": [
+            self._bet("d1", "auth", "incorrect", "b1"),
+            self._bet("d1", "auth", "incorrect", "b2"),
+            self._bet("d1", "auth", "correct", "b3"),
+        ]}
+        _patch_router["set_memory"](memory)
+
+        app = FastAPI()
+        app.include_router(router_mod.cost_router)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        resp = client.get("/api/memory/test-proj/cost/compounding-risk")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["compounding_risk"][0]["decision_id"] == "d1"
+        assert "auth" in data["compounding_risk"][0]["low_calibration_categories"]
+
+        router_mod.BASE_DIR = original
+
+    def test_rework_cost_without_poor_calibration_not_flagged(self, _patch_router, tmp_path):
+        import core.cost.router as router_mod
+        original = router_mod.BASE_DIR
+        router_mod.BASE_DIR = tmp_path
+
+        events = [_event(event_type="rework", amount=1, decision_id="d1", eid="ev1")]
+        memory = _memory_with_events(
+            events,
+            decisions=[{"id": "d1", "decision": "x", "safety_metadata": {"affected_systems": ["auth"]}}],
+        )
+        # Good calibration in "auth" — no compounding risk.
+        memory["market"] = {"bets": [self._bet("d1", "auth", "correct", "b1")]}
+        _patch_router["set_memory"](memory)
+
+        app = FastAPI()
+        app.include_router(router_mod.cost_router)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        resp = client.get("/api/memory/test-proj/cost/compounding-risk")
+        assert resp.json()["count"] == 0
+
+        router_mod.BASE_DIR = original
+
+    def test_no_rework_cost_not_flagged_even_with_poor_calibration(self, _patch_router, tmp_path):
+        import core.cost.router as router_mod
+        original = router_mod.BASE_DIR
+        router_mod.BASE_DIR = tmp_path
+
+        # agent_time, not rework — no reversal_cost.
+        events = [_event(event_type="agent_time", amount=100, decision_id="d1", eid="ev1")]
+        memory = _memory_with_events(
+            events,
+            decisions=[{"id": "d1", "decision": "x", "safety_metadata": {"affected_systems": ["auth"]}}],
+        )
+        memory["market"] = {"bets": [self._bet("d1", "auth", "incorrect", "b1")]}
+        _patch_router["set_memory"](memory)
+
+        app = FastAPI()
+        app.include_router(router_mod.cost_router)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        resp = client.get("/api/memory/test-proj/cost/compounding-risk")
+        assert resp.json()["count"] == 0
+
+        router_mod.BASE_DIR = original
+
+    def test_no_market_data_degrades_gracefully(self, _patch_router, tmp_path):
+        import core.cost.router as router_mod
+        original = router_mod.BASE_DIR
+        router_mod.BASE_DIR = tmp_path
+
+        events = [_event(event_type="rework", amount=1, decision_id="d1", eid="ev1")]
+        memory = _memory_with_events(events, decisions=[{"id": "d1", "decision": "x"}])
+        _patch_router["set_memory"](memory)
+
+        app = FastAPI()
+        app.include_router(router_mod.cost_router)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        resp = client.get("/api/memory/test-proj/cost/compounding-risk")
+        assert resp.status_code == 200
+        assert resp.json()["count"] == 0
+
+        router_mod.BASE_DIR = original
+
+
 class TestRouterDecisionCost:
     """Tests for GET /{project}/cost/decision/{decision_id}."""
 

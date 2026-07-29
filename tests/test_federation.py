@@ -84,6 +84,34 @@ class TestExtractStructuralStats:
         assert "FastAPI" in result["tech_stack"]
         assert 123 not in result["tech_stack"]
 
+    def test_no_decisions_perfect_safety_score(self):
+        result = extract_structural_stats({})
+        assert result["avg_safety_score"] == 1.0
+        assert result["risk_level_distribution"] == {}
+
+    def test_all_low_risk_perfect_safety_score(self):
+        memory = {"decisions": [
+            {"decision": "a", "safety_metadata": {"risk_level": "low"}},
+            {"decision": "b", "safety_metadata": {"risk_level": "low"}},
+        ]}
+        result = extract_structural_stats(memory)
+        assert result["avg_safety_score"] == 1.0
+        assert result["risk_level_distribution"] == {"low": 2}
+
+    def test_critical_risk_lowers_safety_score(self):
+        memory = {"decisions": [
+            {"decision": "a", "safety_metadata": {"risk_level": "critical"}},
+        ]}
+        result = extract_structural_stats(memory)
+        assert result["avg_safety_score"] == 0.0
+        assert result["risk_level_distribution"] == {"critical": 1}
+
+    def test_missing_safety_metadata_defaults_to_low(self):
+        memory = {"decisions": [{"decision": "a"}]}
+        result = extract_structural_stats(memory)
+        assert result["avg_safety_score"] == 1.0
+        assert result["risk_level_distribution"] == {"low": 1}
+
 
 # ── anonymize_project ─────────────────────────────────────────────────────
 
@@ -149,6 +177,26 @@ class TestAggregateBenchmarks:
         result = aggregate_benchmarks([s1, s2])
         assert "Go" in result.value.tech_stack
         assert "Python" in result.value.tech_stack
+
+    def test_averages_safety_score(self):
+        s1 = AnonymizedStats(project_hash="a", tech_stack=[], decision_count=1,
+                             reversal_rate=0, avg_confidence=0.5, category_distribution={},
+                             avg_safety_score=1.0)
+        s2 = AnonymizedStats(project_hash="b", tech_stack=[], decision_count=1,
+                             reversal_rate=0, avg_confidence=0.5, category_distribution={},
+                             avg_safety_score=0.6)
+        result = aggregate_benchmarks([s1, s2])
+        assert result.value.avg_safety_score == pytest.approx(0.8, abs=0.01)
+
+    def test_merges_risk_level_distribution(self):
+        s1 = AnonymizedStats(project_hash="a", tech_stack=[], decision_count=1,
+                             reversal_rate=0, avg_confidence=0.5, category_distribution={},
+                             risk_level_distribution={"low": 3, "high": 1})
+        s2 = AnonymizedStats(project_hash="b", tech_stack=[], decision_count=1,
+                             reversal_rate=0, avg_confidence=0.5, category_distribution={},
+                             risk_level_distribution={"low": 2, "critical": 1})
+        result = aggregate_benchmarks([s1, s2])
+        assert result.value.risk_level_distribution == {"low": 5, "high": 1, "critical": 1}
 
 
 # ── compute_percentiles ───────────────────────────────────────────────────

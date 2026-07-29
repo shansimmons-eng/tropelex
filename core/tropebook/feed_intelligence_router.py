@@ -25,7 +25,7 @@ feed_intel_router = APIRouter(prefix="/api/research-feeds", tags=["feed-intellig
 def _get_fm() -> ResearchFeedManager:
     """Return a shared ResearchFeedManager instance."""
     from core.tropebook.web.server import BASE_DIR
-    return ResearchFeedManager(storage_path=str(BASE_DIR / "memory"))
+    return ResearchFeedManager(storage_path=str(BASE_DIR / "memory" / "feeds"))
 
 
 @feed_intel_router.get("/{feed_id}/intelligence")

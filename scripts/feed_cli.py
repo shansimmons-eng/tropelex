@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.tropebook.research_feeds import ResearchFeedManager
 from core.tropebook.scheduler import FeedScheduler
 
-STORAGE = str(Path(__file__).parent.parent / "memory")
+STORAGE = str(Path(__file__).parent.parent / "memory" / "feeds")
 
 
 def get_fm():

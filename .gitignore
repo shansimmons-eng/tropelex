@@ -20,6 +20,9 @@ memory/deep_research/
 memory/embeddings/
 memory/prefetch/
 memory/research_feeds/
+memory/feeds/
+memory/agent_skills/
+memory/replays/
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
 UI/UI2/

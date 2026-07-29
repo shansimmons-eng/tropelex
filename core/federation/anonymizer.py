@@ -15,11 +15,32 @@ def hash_project_name(name: str) -> str:
     return hashlib.sha256(name.encode("utf-8")).hexdigest()[:16]
 
 
+_RISK_WEIGHTS = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
+
+
+def _safety_posture(decisions: list) -> tuple[float, dict[str, int]]:
+    """Aggregate safety_metadata across decisions into (avg_safety_score,
+    risk_level_distribution). Mirrors the weighting in the Safety Dashboard's
+    own score so federated benchmarks are comparable to what a project sees
+    locally, without importing server.py (would be circular).
+    """
+    if not decisions:
+        return 1.0, {}
+    risk_dist: dict[str, int] = {}
+    weighted_sum = 0.0
+    for d in decisions:
+        risk_level = d.get("safety_metadata", {}).get("risk_level", "low")
+        risk_dist[risk_level] = risk_dist.get(risk_level, 0) + 1
+        weighted_sum += _RISK_WEIGHTS.get(risk_level, 0.0)
+    avg_safety_score = round(max(0.0, 1.0 - weighted_sum / len(decisions)), 4)
+    return avg_safety_score, risk_dist
+
+
 def extract_structural_stats(memory: dict) -> dict:
     """Extract purely structural statistics from a project memory dict.
 
     Returns dict with: decision_count, reversal_rate, avg_confidence,
-    category_distribution, tech_stack.
+    category_distribution, tech_stack, avg_safety_score, risk_level_distribution.
     """
     decisions = memory.get("decisions", [])
     tech_stack = memory.get("tech_stack", [])
@@ -50,12 +71,16 @@ def extract_structural_stats(memory: dict) -> dict:
         round(sum(confidences) / len(confidences), 4) if confidences else 0.5
     )
 
+    avg_safety_score, risk_level_distribution = _safety_posture(decisions)
+
     return {
         "decision_count": total,
         "reversal_rate": reversal_rate,
         "avg_confidence": avg_confidence,
         "category_distribution": dict(categories),
         "tech_stack": [t for t in tech_stack if isinstance(t, str)],
+        "avg_safety_score": avg_safety_score,
+        "risk_level_distribution": risk_level_distribution,
     }
 
 
@@ -76,4 +101,6 @@ def anonymize_project(memory: dict) -> Result[AnonymizedStats]:
         reversal_rate=stats["reversal_rate"],
         avg_confidence=stats["avg_confidence"],
         category_distribution=stats["category_distribution"],
+        avg_safety_score=stats["avg_safety_score"],
+        risk_level_distribution=stats["risk_level_distribution"],
     ))

@@ -11,6 +11,9 @@
     h1 { color: #a580fa; font-family: 'JetBrains Mono', monospace; font-size: 1.75rem; margin-bottom: 0.5rem; }
     h2 { color: #80d5fa; font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid rgba(165,128,250,0.15); padding-bottom: 0.5rem; }
     h3 { color: #98fa80; font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin-top: 1.5rem; }
+    h3.group { color: #80d5fa; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2.25rem; margin-bottom: 0.25rem; border-top: 1px solid rgba(165,128,250,0.1); padding-top: 1.25rem; }
+    h3.group:first-of-type { border-top: none; padding-top: 0; }
+    h4 { color: #dce2fa; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; margin-top: 1.25rem; margin-bottom: 0.3rem; }
     p, li { color: #958e9e; line-height: 1.7; font-size: 0.9rem; }
     code { background: rgba(20,27,45,0.8); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #80d5fa; }
     pre { background: rgba(20,27,45,0.8); padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid rgba(165,128,250,0.12); }
@@ -33,6 +36,19 @@
     th { color: #80d5fa; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .warn { border-left: 3px solid #fac880; background: rgba(250,200,128,0.08); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; }
     .warn strong { color: #fac880; }
+    .code-copy-wrap { position: relative; }
+    .code-copy-wrap pre { padding-top: 2.25rem; }
+    .copy-btn {
+        position: absolute; top: 0.5rem; right: 0.5rem;
+        display: flex; align-items: center; gap: 0.3rem;
+        padding: 0.2rem 0.55rem;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+        color: #958e9e; background: rgba(20,27,45,0.9);
+        border: 1px solid rgba(165,128,250,0.18); border-radius: 6px;
+        cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .copy-btn:hover { color: #dce2fa; border-color: rgba(165,128,250,0.4); }
+    .copy-btn.copied { color: #98fa80; border-color: rgba(152,250,128,0.4); }
 </style>
 </head>
 <body>
@@ -85,71 +101,57 @@
 
     <div class="section" id="features">
         <h2>Features</h2>
+        <p>The 38 features below are grouped the same way the dashboard sidebar groups them — same 9 categories, same order. See <code>wishlist.md</code> in the repo for this grouping applied to the feature backlog.</p>
 
-        <h3 id="tropebook">Tropebook</h3>
+        <h3 class="group" id="group-content">Content</h3>
+
+        <h4 id="dashboard">Dashboard</h4>
+        <p>Landing overview: quick stats, recent activity, and the Getting Started checklist.</p>
+
+        <h4 id="tropebook">Tropebook</h4>
         <p>Research knowledge base. Add citations, search locally or on the web, and build a knowledge graph.</p>
 
-        <h3 id="memory">Memory</h3>
+        <h4 id="memory">Memory</h4>
         <p>View and manage project memory — decisions, sessions, preferences, and patterns.</p>
 
-        <h3 id="patterns">Patterns</h3>
+        <h4 id="patterns">Patterns</h4>
         <p>Auto-detected patterns from your usage. Tropelex learns what categories you work in, what days you're most active, and more.</p>
 
-        <h3 id="graph">Knowledge Graph</h3>
+        <h4 id="graph">Knowledge Graph</h4>
         <p>Visual D3 force-directed graph of decisions and their relationships (supersedes, caused_by, related_to).</p>
 
-        <h3 id="health">Health Dashboard</h3>
+        <h3 class="group" id="group-quality">Quality &amp; Integrity</h3>
+
+        <h4 id="insights">Insights</h4>
+        <p>Decision intelligence and knowledge analysis: decision confidence scoring, agent proficiency tracking, decision timeline and chains, one-click ADR generation, session replay, and cross-project knowledge transfer.</p>
+
+        <h4 id="health">Health Dashboard</h4>
         <p>Project health score based on decision confidence, session coverage, and pattern detection accuracy.</p>
 
-        <h3 id="impact">Impact Analysis</h3>
+        <h4 id="impact">Impact Analysis</h4>
         <p>See which decisions have the most downstream impact and track reversal rates.</p>
 
-        <h3 id="ghost-decisions">Ghost Decisions</h3>
+        <h4 id="ghost-decisions">Ghost Decisions</h4>
         <p>Detect when code silently drifts from documented decisions. Compares decision keywords against git diffs.</p>
 
-        <h3 id="pre-write-guard">Pre-Write Guard <span class="badge badge-new">NEW</span></h3>
+        <h4 id="pre-write-guard">Pre-Write Guard <span class="badge badge-new">NEW</span></h4>
         <p>Check a proposed diff against active decisions <em>before</em> writing code. Prevention is better than detection.</p>
 
-        <h3 id="explain">"Why Do We...?" Chat</h3>
-        <p>Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers.</p>
-
-        <h3 id="handoff">Agent Handoff</h3>
-        <p>Generate role-aware context bundles when one agent hands off to another. Token-budget-aware, role-specific.</p>
-
-        <h3 id="friction-mining">Friction Mining <span class="badge badge-new">NEW</span></h3>
+        <h4 id="friction-mining">Friction Mining <span class="badge badge-new">NEW</span></h4>
         <p>Detect frustration signals in session transcripts — rephrasing patterns, retry loops, escalation markers. No explicit logging needed.</p>
 
-        <h3 id="rationale-check">Rationale Check <span class="badge badge-new">NEW</span></h3>
-        <p>Fact-check decision rationale against the live web. If your rationale is "chose Postgres for JSON support," Tropelex checks if that's still true.</p>
-
-        <h3 id="compaction">Memory Compaction <span class="badge badge-new">NEW</span></h3>
-        <p>Collapse superseded decision chains into epoch summaries. Keeps memory lean as projects age.</p>
-
-        <h3 id="prefetch">Context Prefetch <span class="badge badge-new">NEW</span></h3>
-        <p>Predict the ideal minimal context bundle for a task, sized to a token budget, prioritized by impact score.</p>
-
-        <h3 id="cost-ledger">Cost Ledger <span class="badge badge-new">NEW</span></h3>
-        <p>Track actual dollars and tokens spent per decision. ROI scoring with real denominators.</p>
-
-        <h3 id="pr-bot">PR Bot <span class="badge badge-new">NEW</span></h3>
-        <p>Generate PR comments with relevant decision context and ghost warnings. Distribution channel for insights.</p>
-
-        <h3 id="narrative">Narrative Mode <span class="badge badge-new">NEW</span></h3>
-        <p>Generate readable prose from the decision graph. Audience presets: new hire, investor, product manager.</p>
-
-        <h3 id="decision-market">Decision Market <span class="badge badge-new">NEW</span></h3>
-        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty.</p>
-
-        <h3 id="slack-capture">Slack Capture <span class="badge badge-new">NEW</span></h3>
-        <p>Capture decisions from chat messages and extract implicit decisions from threads.</p>
-
-        <h3 id="time-travel">Time Travel <span class="badge badge-new">NEW</span></h3>
-        <p>Check out project memory as of any past date. Forensic tool for postmortems.</p>
-
-        <h3 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h3>
+        <h4 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h4>
         <p>Scan for unresolved contradictions between active decisions. "Use REST" and "use GraphQL" both active? Tropelex catches it.</p>
 
-        <h3 id="docmine">Doc Mining <span class="badge badge-new">NEW</span></h3>
+        <h3 class="group" id="group-explainability">Explainability &amp; Discovery</h3>
+
+        <h4 id="explain">"Why Do We...?" Chat</h4>
+        <p>Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers.</p>
+
+        <h4 id="prefetch">Context Prefetch <span class="badge badge-new">NEW</span></h4>
+        <p>Predict the ideal minimal context bundle for a task, sized to a token budget, prioritized by impact score.</p>
+
+        <h4 id="docmine">Doc Mining <span class="badge badge-new">NEW</span></h4>
         <p>Scans every markdown file in the repo (excluding <code>node_modules</code>, venvs, <code>.git</code>, caches, and <code>memory/</code>) for three things, reusing the same matching engine as Contradictions rather than a separate one:</p>
         <ul>
             <li><strong>Doc vs. decision</strong> — a doc claims something that contradicts an active, recorded decision</li>
@@ -160,13 +162,49 @@
         <pre><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{}'</code></pre>
         <p>Pass <code>{"paths": ["README.md", "docs/"]}</code> to scan specific files/directories instead of the whole repo.</p>
 
-        <h3 id="personas">Personas <span class="badge badge-new">NEW</span></h3>
-        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows."</p>
+        <h3 class="group" id="group-safety">Safety &amp; Alignment</h3>
+        <p>Risk classification, review workflow, and compliance framing for the decision graph — one sidebar entry opening onto seven in-page tabs, each lazy-loaded on selection. See <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for the full alignment/control-terminology mapping.</p>
 
-        <h3 id="federation">Federation <span class="badge badge-new">NEW</span></h3>
-        <p>Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs. "Projects using FastAPI+Postgres have a 12% reversal rate."</p>
+        <h4 id="safety-dashboard">Dashboard <span class="badge badge-new">NEW</span></h4>
+        <p>Risk trends, system exposure, and aggregate safety score across a project's decisions.</p>
 
-        <h3 id="deep-research">Deep Research <span class="badge badge-new">NEW</span></h3>
+        <h4 id="alignment">Alignment <span class="badge badge-new">NEW</span></h4>
+        <p>Scoring across interpretability, safety, fairness, robustness, and governance, with drift detection between evaluation runs.</p>
+
+        <h4 id="governance">Governance <span class="badge badge-new">NEW</span></h4>
+        <p>Compliance checks against EU AI Act, NIST, and ISO 42001 policies, plus fairness, accountability, robustness, and interpretability reports.</p>
+
+        <h4 id="provenance">Provenance &amp; Integrity <span class="badge badge-new">NEW</span></h4>
+        <p>Provenance chain, integrity verification, tamper detection, and an immutable security audit log for every decision.</p>
+
+        <h4 id="safety-reviews">Safety Reviews <span class="badge badge-new">NEW</span></h4>
+        <p>Review workflow for decisions flagged <code>requires_review</code>: pending queue, approve/reject, reviewer accountability, mitigation suggestions.</p>
+
+        <h4 id="synthetic-data">Synthetic Data Policy <span class="badge badge-new">NEW</span></h4>
+        <p>EU AI Act Art. 10 &amp; 50 compliant registration for synthetic datasets used in agent training/eval — fidelity, privacy budget, bias audit, adversarial testing, and 10 blocking compliance gates.</p>
+
+        <h4 id="agent-audit">Agent Surface Audit <span class="badge badge-new">NEW</span></h4>
+        <p>Every other feature above audits decisions and code. This audits the agent's own harness configuration instead — <code>CLAUDE.md</code>/<code>AGENTS.md</code>, <code>.mcp.json</code>, <code>.claude/settings.json</code>, hooks, agent definitions, and skills — across five categories: hardcoded secrets, over-broad tool permissions, hook-injection risk (e.g. a hook piping remote content into a shell), MCP server risk profiling (unpinned packages, unresolved env placeholders), and injected-instruction patterns in agent/skill definitions ("ignore previous instructions" and similar). Read-only — no files are modified. Grades A–F. Defaults to scanning this Tropelex instance's own repo when no path is given:</p>
+        <pre><code>curl -X POST http://localhost:8766/api/agent-audit/scan</code></pre>
+        <p>Pass <code>?repo_path=/path/to/other/repo</code> to audit a different project's harness config instead.</p>
+
+        <h3 class="group" id="group-lifecycle">Memory Lifecycle</h3>
+
+        <h4 id="time-travel">Time Travel <span class="badge badge-new">NEW</span></h4>
+        <p>Check out project memory as of any past date. Forensic tool for postmortems.</p>
+
+        <h4 id="compaction">Memory Compaction <span class="badge badge-new">NEW</span></h4>
+        <p>Collapse superseded decision chains into epoch summaries. Keeps memory lean as projects age.</p>
+
+        <h3 class="group" id="group-research">Research &amp; Ingestion</h3>
+
+        <h4 id="prompt-lab">Prompt Lab</h4>
+        <p>3-stage prompt preprocessor: compression (strips filler, fixes typos, makes prompts imperative), context check (flags vague or missing context), and structure (formats output as TASK / CONSTRAINTS / CONTEXT). Output is ready to paste into any AI assistant.</p>
+
+        <h4 id="feeds">Feeds</h4>
+        <p>Scheduled research feeds with trend detection across runs, anomaly flagging, cross-feed correlation, and email/Slack alerts for high-relevance changes.</p>
+
+        <h4 id="deep-research">Deep Research <span class="badge badge-new">NEW</span></h4>
         <p>Two independent research engines, side by side, plus a hybrid mode that merges them:</p>
         <ul>
             <li><strong>Multi-Source Scan</strong> — the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes.</li>
@@ -180,7 +218,38 @@
         </ul>
         <p>Free sources (HackerNews, GitHub, Polymarket, YouTube, DuckDuckGo) work without any keys. Additional sources and providers unlock with API keys.</p>
 
-        <h3 id="emacs-integration">Emacs Integration <span class="badge badge-new">NEW</span></h3>
+        <h3 class="group" id="group-team">Team &amp; Collaboration</h3>
+
+        <h4 id="handoff">Agent Handoff</h4>
+        <p>Generate role-aware context bundles when one agent hands off to another. Token-budget-aware, role-specific.</p>
+
+        <h4 id="pr-bot">PR Bot <span class="badge badge-new">NEW</span></h4>
+        <p>Generate PR comments with relevant decision context and ghost warnings. Distribution channel for insights.</p>
+
+        <h4 id="narrative">Narrative Mode <span class="badge badge-new">NEW</span></h4>
+        <p>Generate readable prose from the decision graph. Audience presets: new hire, investor, product manager.</p>
+
+        <h4 id="decision-market">Decision Market <span class="badge badge-new">NEW</span></h4>
+        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty.</p>
+
+        <h4 id="slack-capture">Slack Capture <span class="badge badge-new">NEW</span></h4>
+        <p>Capture decisions from chat messages and extract implicit decisions from threads.</p>
+
+        <h4 id="personas">Personas <span class="badge badge-new">NEW</span></h4>
+        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows."</p>
+
+        <h3 class="group" id="group-integrations">Integrations &amp; Ops</h3>
+
+        <h4 id="git">Git</h4>
+        <p>Tech stack detection, work category frequency, and recent commits (Summary); extracting decisions from conventional commits (Sync); and parsing diffs for rationale, dependency changes, revert chains, and structural patterns (Deep Sync).</p>
+
+        <h4 id="federation">Federation <span class="badge badge-new">NEW</span></h4>
+        <p>Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs. "Projects using FastAPI+Postgres have a 12% reversal rate."</p>
+
+        <h4 id="cost-ledger">Cost Ledger <span class="badge badge-new">NEW</span></h4>
+        <p>Track actual dollars and tokens spent per decision. ROI scoring with real denominators.</p>
+
+        <h4 id="emacs-integration">Emacs Integration <span class="badge badge-new">NEW</span></h4>
         <p>Capture decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in Emacs libraries.</p>
         <ul>
             <li><code>C-c t c</code> — Capture a decision with auto-detected context (file, project, major mode, code context)</li>
@@ -349,5 +418,32 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
         <p>Several features are empty by design until they're seeded — Decision Market needs a bet placed, Time Travel needs at least one recorded session (<strong>+ End Session</strong> in the Memory tab), Personas need a skill outcome recorded. This is normal for a fresh project, not a bug.</p>
     </div>
 </div>
+<script>
+    document.querySelectorAll('pre').forEach(pre => {
+        const wrap = document.createElement('div');
+        wrap.className = 'code-copy-wrap';
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.title = 'Copy to clipboard';
+        btn.textContent = 'Copy';
+        wrap.insertBefore(btn, pre);
+    });
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.copy-btn');
+        if (!btn) return;
+        const pre = btn.closest('.code-copy-wrap')?.querySelector('pre');
+        if (!pre) return;
+        const text = pre.innerText || pre.textContent || '';
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+        });
+    });
+</script>
 </body>
 </html>

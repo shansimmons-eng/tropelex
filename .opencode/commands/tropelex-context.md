@@ -10,20 +10,20 @@ Run these commands to see project memory:
 
 **View project summary:**
 ```
-curl http://localhost:8766/api/memory/$(basename $(pwd))
+curl http://localhost:8766/api/memory/tropelex
 ```
 
 **View full context:**
 ```
-curl http://localhost:8766/api/memory/$(basename $(pwd))/context
+curl http://localhost:8766/api/memory/tropelex/context
 ```
 
 **View recent decisions:**
 ```
-curl http://localhost:8766/api/memory/$(basename $(pwd))/decisions
+curl http://localhost:8766/api/memory/tropelex/decisions
 ```
 
 **View insights:**
 ```
-curl http://localhost:8766/api/memory/$(basename $(pwd))/insights
+curl http://localhost:8766/api/memory/tropelex/insights
 ```

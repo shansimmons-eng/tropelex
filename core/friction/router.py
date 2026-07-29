@@ -8,6 +8,7 @@ Mount into the main app:
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -96,6 +97,21 @@ async def friction_scan(project: str, body: FrictionScanRequest) -> dict[str, An
     severity_distribution: dict[str, int] = {}
     for sig in signals:
         severity_distribution[sig.severity] = severity_distribution.get(sig.severity, 0) + 1
+
+    # Persist to friction_history so Safety scoring can see recent friction
+    # trends, not just the single scan just run. Previously this only
+    # returned results — friction_summary read from friction_history, but
+    # nothing ever wrote to it.
+    memory = _load_memory(project)
+    history = memory.setdefault("friction_history", [])
+    history.append({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "friction_score": friction_score,
+        "total_signals": len(signals),
+        "severity_distribution": severity_distribution,
+    })
+    memory["friction_history"] = history[-50:]  # bounded — most recent 50 scans
+    _mm.save_project_memory(project, memory)
 
     return {
         "signals": [

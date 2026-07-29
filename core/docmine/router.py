@@ -38,6 +38,25 @@ def _load_memory(project: str) -> dict[str, Any]:
     return _mm.get_project_memory(project)
 
 
+def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
+    """Flip requires_review=True on decisions a high-severity doc-vs-decision
+    finding contradicts, if not already flagged. Same escalation rule as
+    Contradictions — mutates memory in place, returns count newly escalated.
+    """
+    escalated = 0
+    for d in memory.get("decisions", []):
+        if d.get("id") not in decision_ids:
+            continue
+        safety = d.setdefault("safety_metadata", {})
+        if safety.get("requires_review"):
+            continue
+        safety["requires_review"] = True
+        if safety.get("risk_level", "low") == "low":
+            safety["risk_level"] = "medium"
+        escalated += 1
+    return escalated
+
+
 def _discover_markdown_files(base: Path) -> list[Path]:
     found: list[Path] = []
     for path in base.rglob("*.md"):
@@ -105,6 +124,21 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
         if f.severity in severity_distribution:
             severity_distribution[f.severity] += 1
 
+    # Safety Review integration: a high-severity doc-vs-decision finding
+    # means a committed doc actively contradicts a recorded decision — that
+    # decision auto-escalates into the review queue. doc_vs_doc findings
+    # don't reference a decision at all, so only doc_vs_decision counts here.
+    high_severity_decision_ids = {
+        f.claim_b_source
+        for f in report.findings
+        if f.severity == "high" and f.kind == "doc_vs_decision"
+    }
+    escalated_count = 0
+    if high_severity_decision_ids:
+        escalated_count = _escalate_to_review(memory, high_severity_decision_ids)
+        if escalated_count:
+            _mm.save_project_memory(project, memory)
+
     return {
         "project": project,
         "files_scanned": report.files_scanned,
@@ -132,4 +166,5 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
             for c in report.uncaptured_claims[:100]
         ],
         "uncaptured_count": len(report.uncaptured_claims),
+        "escalated_to_review": escalated_count,
     }

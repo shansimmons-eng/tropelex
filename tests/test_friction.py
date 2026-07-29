@@ -656,8 +656,12 @@ class TestFrictionRouterScan:
         )
         mock_memory = {"decisions": [], "session_history": []}
 
-        # Act
-        with patch("core.friction.router._load_memory", return_value=mock_memory):
+        # Act — also patch save_project_memory: the scan endpoint now
+        # persists friction_history (previously read-only), and without this
+        # patch it writes mock_memory to a real memory/test-project.json in
+        # the live repo via the real _mm instance.
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory") as mock_save:
             async def _call():
                 async with AsyncClient(
                     transport=ASGITransport(app=_app()), base_url="http://test"
@@ -667,6 +671,8 @@ class TestFrictionRouterScan:
                         json={"transcript": transcript},
                     )
             resp = asyncio.run(_call())
+
+        assert mock_save.called
 
         # Assert
         assert resp.status_code == 200

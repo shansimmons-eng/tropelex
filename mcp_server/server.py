@@ -67,17 +67,47 @@ async def get_project_memory(project: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-async def capture_decision(project: str, decision: str, context: str = "") -> dict[str, Any]:
-    """Record a new decision in a project's memory.
+async def capture_decision(
+    project: str,
+    decision: str,
+    context: str = "",
+    risk_level: str = "low",
+    reversibility: bool = True,
+    affected_systems: list[str] = None,
+    safety_category: str = "general",
+    requires_review: bool = False,
+    alignment_considerations: str = "",
+) -> dict[str, Any]:
+    """Record a new decision in a project's memory with optional safety metadata.
 
     Args:
         project: Project name (created automatically if it doesn't exist).
         decision: What was decided, in one sentence (e.g. "Use Postgres for the primary database").
         context: Why it was decided — optional but recommended for future recall.
+        risk_level: Risk level: low, medium, high, or critical. Default: low.
+        reversibility: Whether this decision can be easily reversed. Default: True.
+        affected_systems: List of systems/components affected (e.g., ["memory", "api"]).
+        safety_category: Safety category: general, adversarial, robustness, monitoring, governance, alignment.
+        requires_review: Whether this decision requires human review. Default: False.
+        alignment_considerations: Notes on alignment/safety considerations.
     """
+    safety_metadata = {
+        "risk_level": risk_level,
+        "reversibility": reversibility,
+        "affected_systems": affected_systems or [],
+        "rationale_quality": 0.5,
+        "alignment_considerations": alignment_considerations,
+        "requires_review": requires_review,
+        "safety_category": safety_category,
+    }
+
     return await _request(
         "POST", f"/api/memory/{quote(project, safe='')}/decisions",
-        json={"decision": decision, "context": context},
+        json={
+            "decision": decision,
+            "context": context,
+            "safety_metadata": safety_metadata,
+        },
     )
 
 

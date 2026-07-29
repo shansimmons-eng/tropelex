@@ -114,6 +114,8 @@ async def federation_share(
             "reversal_rate": stats.reversal_rate,
             "avg_confidence": stats.avg_confidence,
             "category_distribution": dict(stats.category_distribution),
+            "avg_safety_score": stats.avg_safety_score,
+            "risk_level_distribution": dict(stats.risk_level_distribution),
         }
         _save_shared_stats(stats.project_hash, stats_dict)
 
@@ -126,6 +128,8 @@ async def federation_share(
             "decision_count": stats.decision_count,
             "reversal_rate": stats.reversal_rate,
             "avg_confidence": stats.avg_confidence,
+            "avg_safety_score": stats.avg_safety_score,
+            "risk_level_distribution": dict(stats.risk_level_distribution),
         },
     }
 
@@ -154,6 +158,8 @@ async def federation_benchmarks() -> dict[str, Any]:
                 reversal_rate=s.get("reversal_rate", 0.0),
                 avg_confidence=s.get("avg_confidence", 0.0),
                 category_distribution=s.get("category_distribution", {}),
+                avg_safety_score=s.get("avg_safety_score", 1.0),
+                risk_level_distribution=s.get("risk_level_distribution", {}),
             ))
         except (KeyError, TypeError):
             continue
@@ -176,6 +182,8 @@ async def federation_benchmarks() -> dict[str, Any]:
             "reversal_rate": agg.reversal_rate,
             "avg_confidence": agg.avg_confidence,
             "category_distribution": dict(agg.category_distribution),
+            "avg_safety_score": agg.avg_safety_score,
+            "risk_level_distribution": dict(agg.risk_level_distribution),
         },
     }
 
@@ -208,6 +216,8 @@ async def federation_compare(project: str) -> dict[str, Any]:
                 reversal_rate=s.get("reversal_rate", 0.0),
                 avg_confidence=s.get("avg_confidence", 0.0),
                 category_distribution=s.get("category_distribution", {}),
+                avg_safety_score=s.get("avg_safety_score", 1.0),
+                risk_level_distribution=s.get("risk_level_distribution", {}),
             ))
         except (KeyError, TypeError):
             continue
@@ -227,6 +237,8 @@ async def federation_compare(project: str) -> dict[str, Any]:
         "compared_to_aggregate": {
             "tech_stack": list(comp.compared_to_aggregate.tech_stack),
             "decision_count": comp.compared_to_aggregate.decision_count,
+            "avg_safety_score": comp.compared_to_aggregate.avg_safety_score,
+            "risk_level_distribution": dict(comp.compared_to_aggregate.risk_level_distribution),
         },
         "deviation": dict(comp.deviation),
         "percentile": dict(comp.percentile),

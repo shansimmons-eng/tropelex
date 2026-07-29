@@ -10,6 +10,7 @@ import fcntl
 import json
 import logging
 import re
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,14 +73,35 @@ class MemoryManager:
         if memory_file.exists():
             try:
                 with _read_lock(memory_file) as fh:
-                    return json.load(fh)
+                    memory = json.load(fh)
             except json.JSONDecodeError as exc:
                 logger.error("Corrupt memory file %s: %s", memory_file, exc)
                 raise
             except OSError as exc:
                 logger.error("Failed to read %s: %s", memory_file, exc)
                 raise
+            if self._backfill_decision_ids(memory):
+                self.save_project_memory(project_name, memory)
+            return memory
         return self._create_empty_project_memory(project_name)
+
+    @staticmethod
+    def _backfill_decision_ids(memory: dict[str, Any]) -> bool:
+        """Assign a stable id to any decision missing one.
+
+        Decisions created before id generation was added to add_decision
+        have no id at all — every feature that matches decisions by id
+        (dropdowns, Contradictions escalation, Cost Ledger, PR Bot, Doc
+        Mining) silently can't reference them. Self-healing: runs on every
+        load, but only ever writes once per decision since the id then
+        persists. Returns True if anything changed (caller should save).
+        """
+        changed = False
+        for d in memory.get("decisions", []):
+            if not d.get("id"):
+                d["id"] = uuid.uuid4().hex[:12]
+                changed = True
+        return changed
 
     def save_project_memory(self, project_name: str, memory: dict[str, Any]) -> None:
         memory_file = self._safe_path(project_name)

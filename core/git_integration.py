@@ -203,8 +203,9 @@ def extract_decisions_from_commits(
         lower = subject.lower()
         for prefix, label in DECISION_PREFIXES.items():
             if lower.startswith(prefix + ":") or lower.startswith(prefix + "("):
+                # Extract body: remove prefix and optional scope like (scope)
                 body = re.sub(
-                    r"^" + prefix + r"[:(][^)]*\)?:?\s*",
+                    r"^" + prefix + r"(\([^)]*\))?:?\s*",
                     "",
                     subject,
                     flags=re.IGNORECASE,
@@ -212,7 +213,7 @@ def extract_decisions_from_commits(
                 context = f"From git commit {c['hash']} on {c['date']}"
                 decisions.append(
                     {
-                        "decision": f"{label}: {body}",
+                        "decision": f"{label}: {body}" if body else label,
                         "context": context,
                         "date": c["date"],
                         "hash": c["hash"],

@@ -87,7 +87,7 @@ class BackgroundScheduler:
             from core.tropebook.research_feeds import ResearchFeedManager
             from core.tropebook.scheduler import FeedScheduler
 
-            fm = ResearchFeedManager(storage_path=str(self.base_dir / "memory"))
+            fm = ResearchFeedManager(storage_path=str(self.base_dir / "memory" / "feeds"))
             scheduler = FeedScheduler(
                 feed_manager=fm,
                 brave_api_key=os.environ.get("BRAVE_API_KEY"),
