@@ -1511,7 +1511,18 @@ void main() {
                     <span class="font-mono text-xs text-outline block">clarity</span>
                 </div>
             </div>
-            
+
+            <!-- Prompt Genealogy feedback — GET/POST /prompt-genealogy was fully
+                 built (record compression events, score outcomes, rank
+                 strategies) but nothing ever called it; the compress step
+                 ran and vanished with no memory of what worked. -->
+            <div id="genealogy-feedback" class="hidden flex items-center gap-3 mt-3 py-2 border-t border-glass-border">
+                <span class="font-mono text-xs text-outline uppercase">Did this compression preserve meaning?</span>
+                <button data-outcome="good" class="genealogy-outcome-btn px-2.5 py-1 rounded-lg border border-green-400/30 text-green-400 font-mono text-xs hover:bg-green-400/10 transition-all cursor-pointer">Worked</button>
+                <button data-outcome="rephrased" class="genealogy-outcome-btn px-2.5 py-1 rounded-lg border border-yellow-400/30 text-yellow-400 font-mono text-xs hover:bg-yellow-400/10 transition-all cursor-pointer">Had to rephrase</button>
+                <button data-outcome="failed" class="genealogy-outcome-btn px-2.5 py-1 rounded-lg border border-red-400/30 text-red-400 font-mono text-xs hover:bg-red-400/10 transition-all cursor-pointer">Lost meaning</button>
+            </div>
+
             <div class="flex items-center justify-between mt-4">
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -1584,6 +1595,14 @@ void main() {
                 </button>
             </div>
             <pre id="master-output" class="font-mono text-sm text-on-surface whitespace-pre-wrap"></pre>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">insights</span>
+                Compression Strategy Rankings
+            </h3>
+            <div id="genealogy-summary" class="text-sm text-outline">Select a project to see which compression strategies actually preserve meaning.</div>
+            <div id="genealogy-rankings" class="space-y-2 mt-3"></div>
         </div>
     </section>
 
@@ -3660,6 +3679,7 @@ function switchSectionWithGraph(section) {
     if (section === 'ghost') syncGhostProject();
     if (section === 'explain') syncExplainProject();
     if (section === 'handoff') syncHandoffProject();
+    if (section === 'pipeline') loadPipelineContext();
 }
 
 // Sidebar accordion
@@ -5233,17 +5253,17 @@ function clientCompress(text, level = 2) {
 }
 
 async function compressionAgent(input) {
-    if (!input) return '';
-    
+    if (!input) return { text: '', strategy: 'client' };
+
     // Try client-side compression first (instant)
     const clientCompressed = clientCompress(input, 2);
-    
+
     // If compression made a significant difference, use it
     const savings = ((input.length - clientCompressed.length) / input.length) * 100;
     if (savings > 5) {
-        return clientCompressed;
+        return { text: clientCompressed, strategy: 'client' };
     }
-    
+
     // Otherwise try server-side AI compression (slower but smarter)
     try {
         const response = await fetch('/api/compress', {
@@ -5252,10 +5272,10 @@ async function compressionAgent(input) {
             body: JSON.stringify({ prompt: input })
         });
         const data = await response.json();
-        return data.compressed || clientCompressed || input;
+        return { text: data.compressed || clientCompressed || input, strategy: data.backend || 'client' };
     } catch (e) {
         console.error('Server compression failed, using client compression:', e);
-        return clientCompressed || input;
+        return { text: clientCompressed || input, strategy: 'client' };
     }
 }
 
@@ -5382,13 +5402,38 @@ async function runPipeline() {
     }
 
     // Compression Stage
+    document.getElementById('genealogy-feedback').classList.add('hidden');
+    let compressionStrategy = null;
+    const originalForGenealogy = result;
     if (useCompression) {
         setStage('output-compression', 'running', 'Compressing...');
-        result = await compressionAgent(result);
+        const compression = await compressionAgent(result);
+        result = compression.text;
+        compressionStrategy = compression.strategy;
         compressedLength = result.length; // Save compressed length before structure adds to it
         setStage('output-compression', 'done', result);
     } else {
         setStage('output-compression', '', 'Skipped');
+    }
+
+    // Prompt Genealogy — record the compression event so its outcome can be
+    // rated below and strategies ranked by what actually preserved meaning.
+    if (useCompression && selectedProject && result !== originalForGenealogy) {
+        try {
+            const ratio = originalForGenealogy.length > 0 ? compressedLength / originalForGenealogy.length : 0;
+            const rec = await api(`/memory/${encodeURIComponent(selectedProject)}/prompt-genealogy/record`, 'POST', {
+                original: originalForGenealogy.slice(0, 5000),
+                compressed: result.slice(0, 5000),
+                strategy: compressionStrategy || 'default',
+                compression_ratio: Math.max(0, Math.min(1, ratio)),
+            });
+            if (rec?.prompt_id) {
+                const feedback = document.getElementById('genealogy-feedback');
+                feedback.dataset.promptId = rec.prompt_id;
+                feedback.dataset.project = selectedProject;
+                feedback.classList.remove('hidden');
+            }
+        } catch (e) { /* genealogy tracking is best-effort */ }
     }
 
     // Context Stage
@@ -5447,6 +5492,59 @@ async function runPipeline() {
 }
 
 document.getElementById('run-pipeline').addEventListener('click', runPipeline);
+
+// Prompt Genealogy — score the outcome of the last compression and refresh
+// the strategy rankings so /prompt-genealogy/outcome and /rankings, both
+// fully built and previously never called, get real signal to rank on.
+document.querySelectorAll('.genealogy-outcome-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const feedback = document.getElementById('genealogy-feedback');
+        const promptId = feedback.dataset.promptId;
+        const project = feedback.dataset.project;
+        if (!promptId || !project) return;
+        try {
+            await api(`/memory/${encodeURIComponent(project)}/prompt-genealogy/outcome`, 'POST', {
+                prompt_id: promptId,
+                outcome: btn.dataset.outcome,
+            });
+            feedback.classList.add('hidden');
+            showToast('Thanks — noted for strategy rankings');
+            loadGenealogyRankings(project);
+        } catch (e) { /* best-effort */ }
+    });
+});
+
+async function loadGenealogyRankings(project) {
+    const summaryEl = document.getElementById('genealogy-summary');
+    const listEl = document.getElementById('genealogy-rankings');
+    if (!project) {
+        summaryEl.textContent = 'Select a project to see which compression strategies actually preserve meaning.';
+        listEl.innerHTML = '';
+        return;
+    }
+    const stats = await api(`/memory/${encodeURIComponent(project)}/prompt-genealogy`);
+    if (!stats || !stats.with_outcomes) {
+        summaryEl.textContent = 'No rated compressions yet for this project — run the pipeline and rate the result above.';
+        listEl.innerHTML = '';
+        return;
+    }
+    summaryEl.innerHTML = `
+        <span class="text-on-surface">${stats.with_outcomes}</span> of ${stats.total_prompts} compressions rated ·
+        <span class="text-accent-lime">${Math.round((stats.success_rate || 0) * 100)}%</span> preserved meaning ·
+        avg ratio <span class="text-accent-sky">${Math.round((stats.avg_compression_ratio || 0) * 100)}%</span>
+        ${stats.best_strategy ? `· best strategy: <span class="text-accent-lavender">${escapeHtml(stats.best_strategy)}</span>` : ''}
+    `;
+    const strategies = stats.strategies || [];
+    listEl.innerHTML = strategies.length ? strategies.map(s => `
+        <div class="flex items-center justify-between p-2 rounded bg-surface-raised">
+            <span class="text-sm font-mono">${escapeHtml(s.strategy)}</span>
+            <div class="flex items-center gap-3 shrink-0 text-xs text-outline">
+                <span>${s.total_uses} use${s.total_uses > 1 ? 's' : ''}</span>
+                <span class="${s.effectiveness >= 0.7 ? 'text-accent-lime' : s.effectiveness >= 0.4 ? 'text-yellow-400' : 'text-red-400'}">${Math.round(s.effectiveness * 100)}% effective</span>
+            </div>
+        </div>
+    `).join('') : '<p class="text-sm text-outline">No strategy data yet.</p>';
+}
 document.getElementById('copy-master').addEventListener('click', () => {
     navigator.clipboard.writeText(document.getElementById('master-output').textContent).then(() => {
         const btn = document.getElementById('copy-master');
@@ -5482,6 +5580,7 @@ document.addEventListener('click', (e) => {
 // Prompt Lab: Auto-load context when project changes
 async function loadPipelineContext() {
     const indicator = document.getElementById('pipeline-project-indicator');
+    loadGenealogyRankings(state.currentProject);
     if (!state.currentProject) {
         indicator.textContent = 'No project';
         document.getElementById('context-preview').textContent = '';
