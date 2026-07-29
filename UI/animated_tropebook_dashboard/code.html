@@ -1944,10 +1944,6 @@ void main() {
                 <div class="handoff-input mb-4">
                     <select id="handoff-role" class="bg-surface-raised border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
                         <option value="CoderAgent">CoderAgent</option>
-                        <option value="TestEngineer">TestEngineer</option>
-                        <option value="Architect">Architect</option>
-                        <option value="FrontendSpecialist">Frontend Specialist</option>
-                        <option value="DevOpsSpecialist">DevOps Specialist</option>
                     </select>
                     <button id="btn-generate-handoff" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm">bolt</span>
@@ -3685,7 +3681,7 @@ function switchSectionWithGraph(section) {
     if (section === 'impact') loadImpact();
     if (section === 'ghost') syncGhostProject();
     if (section === 'explain') syncExplainProject();
-    if (section === 'handoff') syncHandoffProject();
+    if (section === 'handoff') { syncHandoffProject(); loadHandoffRoles(); }
     if (section === 'pipeline') loadPipelineContext();
 }
 
@@ -3830,6 +3826,24 @@ function syncExplainProject() {
 function syncHandoffProject() {
     const sel = document.getElementById('handoff-project-select');
     if (sel) sel.value = state.currentProject || '';
+}
+
+// GET /handoff/roles was fully built (role -> description from
+// packet_builder.py's ROLE_PROFILES) but the dashboard hardcoded its own
+// copy of the role list with no descriptions shown anywhere. Fetch once —
+// role definitions aren't project-specific despite the URL shape.
+let handoffRolesLoaded = false;
+async function loadHandoffRoles() {
+    if (handoffRolesLoaded) return;
+    const project = getCurrentProject() || state.currentProject || 'tropelex';
+    const data = await api(`/memory/${encodeURIComponent(project)}/handoff/roles`);
+    const roles = data?.roles;
+    if (!roles || !Object.keys(roles).length) return;
+    const sel = document.getElementById('handoff-role');
+    sel.innerHTML = Object.entries(roles).map(([name, desc]) =>
+        `<option value="${escapeAttr(name)}" title="${escapeAttr(desc)}">${escapeHtml(name)}</option>`
+    ).join('');
+    handoffRolesLoaded = true;
 }
 
 async function loadGhostDecisions() {
