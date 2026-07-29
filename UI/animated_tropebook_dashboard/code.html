@@ -7053,10 +7053,12 @@ document.getElementById('btn-git-summary').addEventListener('click', async () =>
     if (!data) return;
     if (data.error) { el.innerHTML = `<p class="text-sm text-red-400">${escapeHtml(data.error)}</p>`; return; }
     const catFreq = data.category_frequency || {};
+    const reverts = data.reverts || [];
     el.innerHTML = `
         <div class="flex items-center gap-3 mb-3">
             <span class="text-xs px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender">${data.branch || 'unknown'}</span>
             <span class="text-xs text-outline">${data.total_commits_analyzed || 0} commits analyzed</span>
+            ${reverts.length > 0 ? `<span class="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400">${reverts.length} revert${reverts.length > 1 ? 's' : ''} detected</span>` : ''}
         </div>
         <div class="mb-3">
             <h4 class="text-xs uppercase text-outline mb-1">Tech Stack</h4>
@@ -7069,17 +7071,40 @@ document.getElementById('btn-git-summary').addEventListener('click', async () =>
             </div>
         ` : ''}
         <div>
-            <h4 class="text-xs uppercase text-outline mb-1">Recent Commits</h4>
-            ${(data.commits || []).map(c => `
-                <div class="flex items-center gap-2 py-1">
-                    <span class="font-mono text-xs text-accent-periwinkle">${c.hash}</span>
-                    <span class="text-xs text-outline">${c.date}</span>
-                    <span class="text-sm">${escapeHtml(c.subject?.slice(0, 60) || '')}</span>
-                </div>
-            `).join('')}
+            <h4 class="text-xs uppercase text-outline mb-1">Deep Decision Analysis</h4>
+            ${renderGitDeepDecisions(data.deep_decisions || [])}
         </div>
     `;
 });
+
+// Deep decision cards — real per-commit analysis from extract_deep_decisions()
+// (rationale parsed from commit body, revert-chain detection, dependency and
+// structural-change signals). Previously computed but never rendered — the
+// UI only ever showed the flat 5-commit subject list.
+function renderGitDeepDecisions(decisions) {
+    if (!decisions.length) {
+        return '<p class="text-sm text-outline">No commits with detectable rationale, structural changes, or reverts in this range.</p>';
+    }
+    return decisions.map(d => {
+        const badges = [
+            ...(d.categories || []).map(c => `<span class="text-xs px-1.5 py-0.5 rounded bg-accent-sky/20 text-accent-sky">${escapeHtml(c)}</span>`),
+            d.is_revert ? `<span class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">reverts: ${escapeHtml(d.reverts || '?')}</span>` : '',
+            d.dependency_changes ? `<span class="text-xs px-1.5 py-0.5 rounded bg-accent-periwinkle/20 text-accent-periwinkle">deps changed</span>` : '',
+            d.structural_changes?.migrations ? `<span class="text-xs px-1.5 py-0.5 rounded bg-orange-400/20 text-orange-400">migration</span>` : '',
+            d.structural_changes?.tests_touched ? `<span class="text-xs px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">${d.structural_changes.tests_touched} test file${d.structural_changes.tests_touched > 1 ? 's' : ''}</span>` : '',
+        ].filter(Boolean).join('');
+        return `
+        <div class="p-3 rounded-lg bg-surface-raised border ${d.is_revert ? 'border-red-500/30' : 'border-glass-border'} mb-2">
+            <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-xs text-accent-periwinkle">${escapeHtml(d.hash || '')}</span>
+                <span class="text-xs text-outline">${escapeHtml(d.date || '')} · ${escapeHtml(d.author || '')}</span>
+            </div>
+            <p class="text-sm mt-1">${escapeHtml(d.decision || d.subject || '')}</p>
+            ${badges ? `<div class="flex flex-wrap gap-1 mt-1.5">${badges}</div>` : ''}
+            ${d.rationale ? `<p class="text-xs text-outline italic mt-1.5">"${escapeHtml(d.rationale)}"</p>` : ''}
+        </div>`;
+    }).join('');
+}
 
 // Git Sync
 document.getElementById('btn-git-sync').addEventListener('click', async () => {
