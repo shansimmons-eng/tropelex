@@ -2969,6 +2969,27 @@ void main() {
                 <div id="safety-category-chart" class="h-48 flex items-center justify-center text-outline">Select a project to view categories</div>
             </div>
         </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-outline uppercase">Safety Trend</h3>
+                    <span id="safety-trend-legend" class="text-xs text-outline"></span>
+                </div>
+                <svg id="safety-trend-chart" viewBox="0 0 800 160" preserveAspectRatio="none" class="w-full h-36 rounded-lg bg-surface-raised border border-glass-border"></svg>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-outline uppercase">Safety Envelope</h3>
+                    <span id="envelope-status-badge"></span>
+                </div>
+                <div id="envelope-metrics" class="space-y-1 mb-3 text-sm"></div>
+                <div id="envelope-recommendations" class="space-y-1"></div>
+            </div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4">Risk Heatmap — by Category</h3>
+            <div id="risk-heatmap" class="space-y-2"></div>
+        </div>
         <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm text-outline uppercase mb-4">High Impact Decisions</h3>
             <div id="safety-high-impact" class="text-sm text-outline">No high impact decisions found.</div>
@@ -6756,15 +6777,19 @@ document.getElementById('btn-refresh-insights').addEventListener('click', () => 
 // Safety Dashboard
 async function loadSafetyDashboard(project) {
     if (!project) return;
-    const data = await api(`/memory/${encodeURIComponent(project)}/safety-dashboard`);
+    const [data, envelope, heatmap] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/safety-dashboard`),
+        api(`/memory/${encodeURIComponent(project)}/safety-envelope`),
+        api(`/memory/${encodeURIComponent(project)}/risk-heatmap`),
+    ]);
     if (!data) return;
-    
+
     const summary = data.summary || {};
     document.getElementById('safety-score').textContent = summary.safety_score?.toFixed(2) || '—';
     document.getElementById('safety-high-risk').textContent = summary.high_risk_decisions || '0';
     document.getElementById('safety-pending-reviews').textContent = summary.pending_reviews || '0';
     document.getElementById('safety-systems').textContent = summary.affected_systems_count || '0';
-    
+
     // Render risk distribution
     const riskChart = document.getElementById('safety-risk-chart');
     const riskTrend = data.risk_trend || [];
@@ -6777,7 +6802,22 @@ async function loadSafetyDashboard(project) {
             </div>
         `).join('');
     }
-    
+
+    // Category breakdown — data.category_distribution was already computed
+    // by GET /safety-dashboard but the panel that displays it was never wired.
+    const catChart = document.getElementById('safety-category-chart');
+    const catDist = data.category_distribution || {};
+    const catEntries = Object.entries(catDist);
+    if (catEntries.length > 0) {
+        const maxCount = Math.max(...catEntries.map(([, c]) => c));
+        catChart.innerHTML = `<div class="w-full space-y-2">` + catEntries.map(([cat, count]) => `
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span class="capitalize">${escapeHtml(cat)}</span><span class="font-mono text-outline">${count}</span></div>
+                <div class="h-2 bg-surface-high rounded-full overflow-hidden"><div class="h-full bg-accent-periwinkle rounded-full" style="width:${(count / maxCount * 100).toFixed(0)}%"></div></div>
+            </div>
+        `).join('') + `</div>`;
+    }
+
     // Render high impact decisions
     const highImpact = document.getElementById('safety-high-impact');
     const highImpactDecisions = data.high_impact_decisions || [];
@@ -6789,6 +6829,77 @@ async function loadSafetyDashboard(project) {
             </div>
         `).join('');
     }
+
+    renderSafetyTrendChart(document.getElementById('safety-trend-chart'), riskTrend);
+    document.getElementById('safety-trend-legend').textContent = riskTrend.length ? `${riskTrend.length} months` : '';
+    renderSafetyEnvelope(envelope);
+    renderRiskHeatmap(document.getElementById('risk-heatmap'), heatmap);
+}
+
+// Line chart of monthly avg_risk (0-1) — built from GET /safety-dashboard's
+// own risk_trend, which already computes the same thing the standalone,
+// otherwise-unused GET /safety-trend endpoint does.
+function renderSafetyTrendChart(svgEl, riskTrend) {
+    if (!riskTrend.length) { svgEl.innerHTML = ''; return; }
+    const W = 800, H = 160, PAD = 12;
+    const step = riskTrend.length > 1 ? (W - PAD * 2) / (riskTrend.length - 1) : 0;
+    const grid = [0, 0.5, 1].map(f => {
+        const y = PAD + f * (H - PAD * 2);
+        return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>`;
+    }).join('');
+    const pts = riskTrend.map((t, i) => {
+        const x = PAD + i * step;
+        const y = PAD + (1 - Math.max(0, Math.min(1, t.avg_risk))) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="#a580fa" stroke-width="2"/>`;
+    const dots = riskTrend.map((t, i) => {
+        const [x, y] = pts[i].split(',');
+        const color = t.avg_risk > 0.5 ? '#ff4444' : t.avg_risk > 0.25 ? '#ffa500' : '#98fa80';
+        return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"><title>${escapeHtml(t.month)}: ${t.avg_risk} (${t.total_decisions} decisions)</title></circle>`;
+    }).join('');
+    svgEl.innerHTML = grid + line + dots;
+}
+
+function renderSafetyEnvelope(envelope) {
+    const badgeEl = document.getElementById('envelope-status-badge');
+    const metricsEl = document.getElementById('envelope-metrics');
+    const recsEl = document.getElementById('envelope-recommendations');
+    if (!envelope) { badgeEl.innerHTML = ''; metricsEl.innerHTML = ''; recsEl.innerHTML = '<p class="text-xs text-outline">Failed to load.</p>'; return; }
+    const statusColor = { healthy: 'bg-accent-lime/20 text-accent-lime', warning: 'bg-yellow-400/20 text-yellow-400', critical: 'bg-red-400/20 text-red-400' };
+    badgeEl.innerHTML = `<span class="text-xs px-2 py-0.5 rounded-full ${statusColor[envelope.envelope_status] || 'bg-surface-high text-outline'}">${escapeHtml(envelope.envelope_status)}</span>`;
+    const m = envelope.metrics || {};
+    metricsEl.innerHTML = `
+        <div class="flex justify-between"><span class="text-outline">Recent avg risk</span><span class="font-mono">${m.avg_recent_risk ?? '—'}</span></div>
+        <div class="flex justify-between"><span class="text-outline">Review backlog</span><span class="font-mono">${((m.backlog_ratio ?? 0) * 100).toFixed(0)}%</span></div>
+        <div class="flex justify-between"><span class="text-outline">Systems at capacity</span><span class="font-mono">${m.systems_at_capacity ?? 0}</span></div>
+    `;
+    recsEl.innerHTML = (envelope.recommendations || []).map(r => `<div class="text-xs px-2 py-1 rounded bg-surface-raised text-outline">${escapeHtml(r)}</div>`).join('');
+}
+
+// Category x risk-level matrix — stacked bars, one row per safety category,
+// segmented by low/medium/high/critical count.
+const RISK_HEATMAP_COLORS = { low: '#98fa80', medium: '#80d5fa', high: '#ffa500', critical: '#ff4444' };
+
+function renderRiskHeatmap(el, heatmap) {
+    if (!heatmap) { el.innerHTML = '<p class="text-sm text-outline">Failed to load.</p>'; return; }
+    const byCategory = heatmap.risk_by_category || {};
+    const categories = Object.keys(byCategory);
+    if (!categories.length) { el.innerHTML = '<p class="text-sm text-outline">No categorized decisions yet.</p>'; return; }
+    el.innerHTML = categories.map(cat => {
+        const counts = byCategory[cat];
+        const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+        const segments = ['low', 'medium', 'high', 'critical'].map(level => {
+            const pct = (counts[level] || 0) / total * 100;
+            return pct > 0 ? `<div class="h-full" style="width:${pct}%;background:${RISK_HEATMAP_COLORS[level]}" title="${level}: ${counts[level]}"></div>` : '';
+        }).join('');
+        return `
+        <div class="flex items-center gap-3">
+            <span class="text-xs w-28 shrink-0 capitalize truncate">${escapeHtml(cat)}</span>
+            <div class="flex-1 h-4 rounded-full overflow-hidden bg-surface-high flex">${segments}</div>
+            <span class="text-xs text-outline w-10 text-right shrink-0">${total}</span>
+        </div>`;
+    }).join('');
 }
 
 // Alignment
