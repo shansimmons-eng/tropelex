@@ -1703,6 +1703,14 @@ void main() {
                     <span class="material-symbols-outlined text-sm">swap_horiz</span>
                     Cross-Project Knowledge
                 </h3>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="cross-pollinate-query" placeholder="Describe a problem — e.g. 'flaky auth token refresh'"
+                        class="flex-1 bg-surface-raised border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                    <button id="btn-suggest-approaches" title="Search how similar projects solved this problem" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer shrink-0">
+                        Suggest Approaches
+                    </button>
+                </div>
+                <div id="suggested-approaches" class="space-y-2 mb-3"></div>
                 <div id="cross-pollinate-results" class="space-y-2">
                     <p class="text-sm text-outline">Select a project to find transferable knowledge from similar projects.</p>
                 </div>
@@ -6413,6 +6421,42 @@ document.getElementById('insights-session-list').addEventListener('click', async
 });
 
 // Cross-Pollination + Auto-Suggestions
+// Suggest Approaches — CrossPollinator.suggest_approaches(), a real, already-
+// implemented endpoint the UI never called: given a problem description, it
+// finds and deduplicates how similar projects solved related problems.
+function renderSuggestedApproaches(approaches) {
+    const el = document.getElementById('suggested-approaches');
+    if (!approaches.length) {
+        el.innerHTML = '';
+        return;
+    }
+    el.innerHTML = `<h4 class="font-mono text-xs uppercase text-accent-lavender mb-2">Suggested Approaches</h4>` +
+        approaches.map(a => `
+        <div class="p-3 rounded-lg bg-surface-raised border border-accent-lavender/20 mb-2">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-accent-lavender/20 text-accent-lavender">${escapeHtml(a.from_project || '')}</span>
+                <span class="text-xs text-outline">confidence: ${a.confidence ?? '--'}</span>
+            </div>
+            <p class="text-sm">${escapeHtml(a.approach || '')}</p>
+            ${a.reason ? `<p class="text-xs text-outline mt-1">${escapeHtml(a.reason)}</p>` : ''}
+        </div>
+    `).join('');
+}
+
+document.getElementById('btn-suggest-approaches').addEventListener('click', async () => {
+    const project = getInsightsProject();
+    const problem = document.getElementById('cross-pollinate-query').value.trim();
+    if (!project) { showToast('Select a project first'); return; }
+    if (!problem) { showToast('Describe a problem first'); return; }
+    const btn = document.getElementById('btn-suggest-approaches');
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    const data = await api(`/memory/${encodeURIComponent(project)}/suggest-approaches`, 'POST', { problem });
+    btn.disabled = false;
+    btn.textContent = 'Suggest Approaches';
+    renderSuggestedApproaches(data?.approaches || []);
+});
+
 async function loadCrossPollinate(project) {
     if (!project) return;
     const [data, autoData] = await Promise.all([
