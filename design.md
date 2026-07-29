@@ -170,16 +170,7 @@ score = (base_decay + reference_boost) * contradiction_penalty
 - `MemoryRAG` → Retrieves relevant decisions, sessions, captures by keyword matching
 - `CrossPollinator` → Finds transferable knowledge from projects with overlapping tech stacks
 
-### 10. Research Chains (`core/research_chains.py`)
-
-**Purpose:** Multi-hop knowledge building — search → find gaps → search again → link → synthesize.
-
-**Key Methods:**
-- `ResearchChain(goal)` → Create a research investigation
-- `add_step(query, findings, gaps)` → Record a research step
-- `auto_research(project, goal)` → Automated multi-hop research
-
-### 11. Agent Skills & Prompt Genealogy (`core/agent_skills.py`)
+### 10. Agent Skills & Prompt Genealogy (`core/agent_skills.py`)
 
 **Purpose:** Track agent proficiency and compression strategy effectiveness.
 
@@ -465,7 +456,6 @@ Tropelex/
 │   ├── adr_generator.py     # Living ADRs
 │   ├── session_replay.py    # Session diffs + rollback
 │   ├── knowledge_decay.py   # Confidence scoring
-│   ├── research_chains.py   # Multi-hop research
 │   ├── rag.py               # Memory RAG + Cross-Pollination
 │   ├── agent_skills.py      # Agent skills + Prompt genealogy
 │   ├── embeddings.py        # Vector embeddings

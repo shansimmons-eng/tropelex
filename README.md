@@ -23,7 +23,6 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Living ADRs** | Auto-generate Architecture Decision Records from memory data |
 | **Session Replay** | Structured memory diffs per session — what changed, rollback support |
 | **Knowledge Decay** | Time-based confidence scoring — decisions lose reliability over age, preventing stale policy from silently retaining full authority ([SAFETY.md](SAFETY.md#guardrail-ossification-prevention)) |
-| **Research Chains** | Multi-hop knowledge building — search → find gaps → search again → link |
 | **Memory RAG** | Semantic retrieval from project memory at query time |
 | **Cross-Pollination** | Surface solutions from similar projects with matching tech stacks |
 | **Agent Skills** | Track what the agent has become proficient at per project |
@@ -396,16 +395,6 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 | GET | `/api/memory/{project}/cross-pollinate/briefing` | Cross-project knowledge briefing |
 | POST | `/api/memory/{project}/suggest-approaches` | Suggest approaches for a problem |
 
-### Research Chains
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/memory/{project}/research-chains` | List research chains |
-| POST | `/api/memory/{project}/research-chains` | Create a new chain |
-| GET | `/api/memory/{project}/research-chains/{id}` | Get full chain |
-| POST | `/api/memory/{project}/research-chains/{id}/step` | Add a step |
-| POST | `/api/memory/{project}/research-chains/{id}/complete` | Complete with synthesis |
-
 ### Agent Skills & Prompt Genealogy
 
 | Method | Endpoint | Description |
@@ -757,7 +746,6 @@ Tropelex/
 │   ├── adr_generator.py     # Living ADR generation (Nygard/MADR/Tropelex)
 │   ├── session_replay.py    # Session diffs, rollback, weekly summaries
 │   ├── knowledge_decay.py   # Confidence scoring, staleness detection
-│   ├── research_chains.py   # Multi-hop research chains
 │   ├── rag.py               # Memory RAG + Cross-Pollination
 │   ├── agent_skills.py      # Agent skill graph + Prompt genealogy
 │   ├── embeddings.py        # Vector embeddings for semantic search
@@ -795,7 +783,6 @@ Tropelex/
 ├── memory/                  # Runtime storage (gitignored)
 │   ├── tropebook/           # Citation/graph storage
 │   ├── replays/             # Session replay snapshots
-│   ├── research_chains/     # Research chain storage
 │   ├── agent_skills/        # Agent skill data
 │   └── prompt_genealogy/    # Compression outcome tracking
 ├── .env                     # API keys (gitignored)
@@ -826,9 +813,6 @@ memory/
 ├── replays/<project>/
 │   ├── index.json              # Session index
 │   └── <session-id>.json       # Full session snapshots + diffs
-├── research_chains/<project>/
-│   ├── index.json              # Chain index
-│   └── <chain-id>.json         # Research chain with steps + findings
 ├── agent_skills/
 │   └── <project>.json          # Skill scores per category
 ├── prompt_genealogy/
@@ -862,7 +846,6 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - Living ADRs: auto-generate Architecture Decision Records (Nygard/MADR/Tropelex formats)
 - Session replay: structured memory diffs, rollback support, weekly summaries
 - Knowledge decay: time-based confidence scoring with tier classification
-- Research chains: multi-hop knowledge building across search results
 - Memory RAG: semantic retrieval from project memory at query time
 - Cross-pollination: surface solutions from similar projects
 - Agent skills: track proficiency per work category
