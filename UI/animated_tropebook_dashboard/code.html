@@ -6389,25 +6389,70 @@ async function loadDecisionTimeline(project) {
         const score = d.confidence?.score;
         const tier = d.confidence?.tier || 'medium';
         const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
+        const hasRelationships = (d.incoming_relationships || []).length || (d.outgoing_relationships || []).length;
         const rels = (d.outgoing_relationships || []).map(r => `<span class="text-xs px-1.5 py-0.5 rounded bg-surface-high text-outline">${r.type}</span>`).join(' ');
         return `
-            <div class="flex items-start gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border fade-in">
-                <div class="flex flex-col items-center gap-1 min-w-[3rem]">
-                    ${score != null ? `<div class="text-sm font-mono font-bold" style="color: ${tierColors[tier]}">${Math.round(score * 100)}%</div>` : ''}
-                    <span class="text-xs px-1.5 py-0.5 rounded" style="background: ${sourceColors[d.source] || '#a580fa'}20; color: ${sourceColors[d.source] || '#a580fa'}">${d.source || 'manual'}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-on-surface">${escapeHtml(d.decision || '')}</p>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="text-xs text-outline">${(d.timestamp || '').slice(0, 10)}</span>
-                        ${rels}
+            <div class="timeline-item rounded-lg bg-surface-raised border border-glass-border fade-in ${hasRelationships ? 'cursor-pointer hover:border-accent-lavender/40' : ''}" data-id="${escapeAttr(d.id || '')}" data-project="${escapeAttr(project)}">
+                <div class="flex items-start gap-3 p-3">
+                    <div class="flex flex-col items-center gap-1 min-w-[3rem]">
+                        ${score != null ? `<div class="text-sm font-mono font-bold" style="color: ${tierColors[tier]}">${Math.round(score * 100)}%</div>` : ''}
+                        <span class="text-xs px-1.5 py-0.5 rounded" style="background: ${sourceColors[d.source] || '#a580fa'}20; color: ${sourceColors[d.source] || '#a580fa'}">${d.source || 'manual'}</span>
                     </div>
-                    ${d.rationale ? `<p class="text-xs text-accent-sky mt-1">${escapeHtml(d.rationale.slice(0, 120))}</p>` : ''}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-on-surface">${escapeHtml(d.decision || '')}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-outline">${(d.timestamp || '').slice(0, 10)}</span>
+                            ${rels}
+                            ${hasRelationships ? '<span class="text-xs text-accent-lavender ml-auto">view lineage</span>' : ''}
+                        </div>
+                        ${d.rationale ? `<p class="text-xs text-accent-sky mt-1">${escapeHtml(d.rationale.slice(0, 120))}</p>` : ''}
+                    </div>
                 </div>
+                <div class="timeline-lineage hidden px-3 pb-3 border-t border-glass-border/50 pt-2 mt-1"></div>
             </div>
         `;
     }).join('');
 }
+
+// Decision lineage — GET /decision-tree/{id} (ancestors via caused_by/
+// supersedes/reverts, descendants via any incoming edge) was fully built
+// but never called; the timeline only ever showed a decision's immediate
+// outgoing-relationship badges, not its causal chain in either direction.
+function renderDecisionLineage(panel, ancestors, descendants) {
+    const side = (title, items, emptyLabel) => {
+        if (!items.length) return `<div><h5 class="text-[10px] font-mono uppercase text-outline mb-1">${title}</h5><p class="text-xs text-outline">${emptyLabel}</p></div>`;
+        return `<div>
+            <h5 class="text-[10px] font-mono uppercase text-outline mb-1">${title}</h5>
+            <div class="space-y-1">${items.map(i => `
+                <div class="flex items-start gap-2 text-xs">
+                    <span class="px-1.5 py-0.5 rounded bg-surface-high text-accent-periwinkle shrink-0">${escapeHtml(i.relationship)}</span>
+                    <span class="text-on-surface truncate">${escapeHtml(i.decision?.decision || '')}</span>
+                </div>`).join('')}</div>
+        </div>`;
+    };
+    panel.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        ${side('Led here from', ancestors, 'No prior causes recorded.')}
+        ${side('Led to', descendants, 'Nothing downstream yet.')}
+    </div>`;
+}
+
+document.getElementById('decision-timeline').addEventListener('click', async (e) => {
+    const item = e.target.closest('.timeline-item');
+    if (!item || !item.classList.contains('cursor-pointer')) return;
+    const did = item.dataset.id;
+    const project = item.dataset.project;
+    const panel = item.querySelector('.timeline-lineage');
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    panel.innerHTML = '<p class="text-xs text-outline">Loading lineage...</p>';
+    const data = await api(`/memory/${encodeURIComponent(project)}/decision-tree/${encodeURIComponent(did)}`);
+    if (!data) { panel.innerHTML = '<p class="text-xs text-red-400">Failed to load lineage.</p>'; return; }
+    renderDecisionLineage(panel, data.ancestors || [], data.descendants || []);
+});
 
 // Decision Chains
 document.getElementById('btn-show-chains').addEventListener('click', async () => {
