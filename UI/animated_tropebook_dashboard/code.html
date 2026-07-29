@@ -3173,9 +3173,16 @@ void main() {
 
     <!-- Safety Reviews -->
     <div id="section-reviews" class="safety-tab-panel">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-yellow-400 text-2xl">rate_review</span>
-            <h2 class="font-mono text-xl text-yellow-400 uppercase tracking-wider">Safety Reviews</h2>
+        <div class="flex items-center justify-between gap-3 mb-6">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-yellow-400 text-2xl">rate_review</span>
+                <h2 class="font-mono text-xl text-yellow-400 uppercase tracking-wider">Safety Reviews</h2>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-outline uppercase">Reviewing as</span>
+                <input id="reviewer-name" type="text" placeholder="your name" maxlength="100"
+                    class="bg-surface-raised border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none w-32"/>
+            </div>
         </div>
         <p class="text-outline mb-6">Safety review workflow with approval/rejection tracking and mitigation suggestions.</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -7418,17 +7425,29 @@ async function loadReviews(project) {
     
     if (pending) {
         const pendingEl = document.getElementById('pending-reviews');
+        pendingEl.dataset.project = project;
         const reviews = pending.pending_reviews || [];
         if (reviews.length === 0) {
             pendingEl.innerHTML = '<p class="text-sm text-outline">No pending reviews.</p>';
         } else {
             pendingEl.innerHTML = reviews.map(r => `
-                <div class="flex items-center justify-between py-2 border-b border-glass-border">
-                    <div>
-                        <span class="text-sm">${escapeHtml(r.decision || '')}</span>
-                        <p class="text-xs text-outline">${r.risk_level} risk</p>
+                <div class="py-2 border-b border-glass-border" data-decision-id="${escapeAttr(r.id || '')}">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm">${escapeHtml(r.decision || '')}</span>
+                            <p class="text-xs text-outline">${r.risk_level} risk${r.escalation_reason ? ` — ${escapeHtml(r.escalation_reason)}` : ''}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs px-2 py-0.5 rounded ${r.risk_level === 'critical' ? 'bg-red-400/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}">${r.risk_level}</span>
+                            <button class="btn-approve-review px-2 py-1 rounded border border-accent-lime/30 text-accent-lime font-mono text-xs hover:bg-accent-lime/10 transition-all cursor-pointer">Approve</button>
+                            <button class="btn-reject-review px-2 py-1 rounded border border-red-400/30 text-red-400 font-mono text-xs hover:bg-red-400/10 transition-all cursor-pointer">Reject</button>
+                        </div>
                     </div>
-                    <span class="text-xs px-2 py-0.5 rounded ${r.risk_level === 'critical' ? 'bg-red-400/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}">${r.risk_level}</span>
+                    <div class="reject-reason-form hidden mt-2 flex items-center gap-2">
+                        <input type="text" class="reject-reason-input flex-1 bg-surface-raised border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-on-surface focus:border-red-400/40 focus:outline-none" placeholder="Reason for rejection..." maxlength="1000"/>
+                        <button class="btn-confirm-reject px-2 py-1 rounded bg-red-400/20 text-red-400 font-mono text-xs hover:bg-red-400/30 transition-all cursor-pointer">Confirm</button>
+                        <button class="btn-cancel-reject px-2 py-1 rounded border border-glass-border text-outline font-mono text-xs hover:text-on-surface transition-all cursor-pointer">Cancel</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -7452,6 +7471,42 @@ async function loadReviews(project) {
         }
     }
 }
+
+// Safety Reviews — Approve/Reject actions. GET /reviews/pending was fully
+// built and rendered read-only; POST .../approve and .../reject existed
+// with zero callers, so a flagged decision could never actually be cleared
+// without editing memory JSON by hand.
+const reviewerNameInput = document.getElementById('reviewer-name');
+reviewerNameInput.value = localStorage.getItem('tropelex-reviewer-name') || '';
+reviewerNameInput.addEventListener('change', () => {
+    localStorage.setItem('tropelex-reviewer-name', reviewerNameInput.value.trim());
+});
+
+document.getElementById('pending-reviews').addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-decision-id]');
+    if (!row) return;
+    const project = document.getElementById('pending-reviews').dataset.project;
+    const decisionId = row.dataset.decisionId;
+    const reviewer = reviewerNameInput.value.trim();
+
+    if (e.target.classList.contains('btn-approve-review')) {
+        if (!reviewer) { showToast('Enter your name in "Reviewing as" first'); return; }
+        await api(`/memory/${encodeURIComponent(project)}/decisions/${encodeURIComponent(decisionId)}/approve?reviewer=${encodeURIComponent(reviewer)}`, 'POST');
+        showToast('Decision approved');
+        loadReviews(project);
+    } else if (e.target.classList.contains('btn-reject-review')) {
+        if (!reviewer) { showToast('Enter your name in "Reviewing as" first'); return; }
+        row.querySelector('.reject-reason-form').classList.remove('hidden');
+        row.querySelector('.reject-reason-input').focus();
+    } else if (e.target.classList.contains('btn-cancel-reject')) {
+        row.querySelector('.reject-reason-form').classList.add('hidden');
+    } else if (e.target.classList.contains('btn-confirm-reject')) {
+        const reason = row.querySelector('.reject-reason-input').value.trim();
+        await api(`/memory/${encodeURIComponent(project)}/decisions/${encodeURIComponent(decisionId)}/reject?reviewer=${encodeURIComponent(reviewer)}&risk_assessment=${encodeURIComponent(reason)}`, 'POST');
+        showToast('Decision rejected');
+        loadReviews(project);
+    }
+});
 
 // Safety & Alignment: in-page tabs (Dashboard, Alignment, Governance,
 // Provenance, Reviews, Synthetic Data, Agent Audit) inside one section.
