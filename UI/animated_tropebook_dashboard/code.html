@@ -2991,6 +2991,14 @@ void main() {
             <div id="risk-heatmap" class="space-y-2"></div>
         </div>
         <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">hub</span>
+                System Impact &amp; Risk Propagation
+            </h3>
+            <div id="system-impact-summary" class="grid grid-cols-3 gap-3 mb-4"></div>
+            <div id="system-impact-list" class="space-y-2"></div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm text-outline uppercase mb-4">High Impact Decisions</h3>
             <div id="safety-high-impact" class="text-sm text-outline">No high impact decisions found.</div>
         </div>
@@ -6460,10 +6468,10 @@ async function loadDecisionTimeline(project) {
         const score = d.confidence?.score;
         const tier = d.confidence?.tier || 'medium';
         const tierColors = { high: '#98fa80', medium: '#80d5fa', low: '#ffa500', stale: '#ff4444' };
-        const hasRelationships = (d.incoming_relationships || []).length || (d.outgoing_relationships || []).length;
         const rels = (d.outgoing_relationships || []).map(r => `<span class="text-xs px-1.5 py-0.5 rounded bg-surface-high text-outline">${r.type}</span>`).join(' ');
+        const inspectable = !!d.id;
         return `
-            <div class="timeline-item rounded-lg bg-surface-raised border border-glass-border fade-in ${hasRelationships ? 'cursor-pointer hover:border-accent-lavender/40' : ''}" data-id="${escapeAttr(d.id || '')}" data-project="${escapeAttr(project)}">
+            <div class="timeline-item rounded-lg bg-surface-raised border border-glass-border fade-in ${inspectable ? 'cursor-pointer hover:border-accent-lavender/40' : ''}" data-id="${escapeAttr(d.id || '')}" data-project="${escapeAttr(project)}">
                 <div class="flex items-start gap-3 p-3">
                     <div class="flex flex-col items-center gap-1 min-w-[3rem]">
                         ${score != null ? `<div class="text-sm font-mono font-bold" style="color: ${tierColors[tier]}">${Math.round(score * 100)}%</div>` : ''}
@@ -6474,21 +6482,23 @@ async function loadDecisionTimeline(project) {
                         <div class="flex items-center gap-2 mt-1">
                             <span class="text-xs text-outline">${(d.timestamp || '').slice(0, 10)}</span>
                             ${rels}
-                            ${hasRelationships ? '<span class="text-xs text-accent-lavender ml-auto">view lineage</span>' : ''}
+                            ${inspectable ? '<span class="text-xs text-accent-lavender ml-auto">inspect</span>' : ''}
                         </div>
                         ${d.rationale ? `<p class="text-xs text-accent-sky mt-1">${escapeHtml(d.rationale.slice(0, 120))}</p>` : ''}
                     </div>
                 </div>
-                <div class="timeline-lineage hidden px-3 pb-3 border-t border-glass-border/50 pt-2 mt-1"></div>
+                <div class="timeline-lineage hidden px-3 pb-3 border-t border-glass-border/50 pt-2 mt-1 space-y-3"></div>
             </div>
         `;
     }).join('');
 }
 
-// Decision lineage — GET /decision-tree/{id} (ancestors via caused_by/
-// supersedes/reverts, descendants via any incoming edge) was fully built
-// but never called; the timeline only ever showed a decision's immediate
-// outgoing-relationship badges, not its causal chain in either direction.
+// Decision inspector — combines three endpoints that were fully built but
+// never called from anywhere: GET /decision-tree/{id} (causal lineage via
+// caused_by/supersedes/reverts edges), GET /interpretability/{id} (factor
+// breakdown + plain-language explanation), GET /decisions/{id}/versions
+// (edit history). Every decision has these, unlike outgoing-relationship
+// badges which only some decisions have, so every row is now inspectable.
 function renderDecisionLineage(panel, ancestors, descendants) {
     const side = (title, items, emptyLabel) => {
         if (!items.length) return `<div><h5 class="text-[10px] font-mono uppercase text-outline mb-1">${title}</h5><p class="text-xs text-outline">${emptyLabel}</p></div>`;
@@ -6507,6 +6517,30 @@ function renderDecisionLineage(panel, ancestors, descendants) {
     </div>`;
 }
 
+function renderInterpretability(panel, report) {
+    if (!report) { panel.innerHTML = '<p class="text-xs text-outline">No interpretability report.</p>'; return; }
+    const factors = report.factors || [];
+    panel.innerHTML = `
+        <p class="text-xs text-on-surface mb-2">${escapeHtml(report.explanation || '')}</p>
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] text-outline uppercase">Completeness</span>
+            <div class="w-20 h-1.5 bg-surface-high rounded-full overflow-hidden"><div class="h-full bg-accent-sky rounded-full" style="width:${(report.completeness_score ?? 0) * 100}%"></div></div>
+        </div>
+        ${factors.length ? `<div class="flex flex-wrap gap-1">${factors.map(f => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-high text-outline" title="${escapeAttr(String(f.value))}">${escapeHtml(f.factor)}</span>`).join('')}</div>` : ''}
+    `;
+}
+
+function renderVersionHistory(panel, versionData) {
+    const versions = versionData?.versions || [];
+    if (!versions.length) { panel.innerHTML = '<p class="text-xs text-outline">No edit history — original version.</p>'; return; }
+    panel.innerHTML = versions.map((v, i) => `
+        <div class="text-xs p-2 rounded bg-surface-high">
+            <span class="text-outline">v${i + 1}</span> · ${escapeHtml(v.timestamp || '')}
+            ${v.decision ? `<div class="text-on-surface mt-0.5 truncate">${escapeHtml(v.decision)}</div>` : ''}
+        </div>
+    `).join('');
+}
+
 document.getElementById('decision-timeline').addEventListener('click', async (e) => {
     const item = e.target.closest('.timeline-item');
     if (!item || !item.classList.contains('cursor-pointer')) return;
@@ -6519,10 +6553,29 @@ document.getElementById('decision-timeline').addEventListener('click', async (e)
         return;
     }
     panel.classList.remove('hidden');
-    panel.innerHTML = '<p class="text-xs text-outline">Loading lineage...</p>';
-    const data = await api(`/memory/${encodeURIComponent(project)}/decision-tree/${encodeURIComponent(did)}`);
-    if (!data) { panel.innerHTML = '<p class="text-xs text-red-400">Failed to load lineage.</p>'; return; }
-    renderDecisionLineage(panel, data.ancestors || [], data.descendants || []);
+    panel.innerHTML = '<p class="text-xs text-outline">Loading...</p>';
+    const [lineage, interp, versions] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/decision-tree/${encodeURIComponent(did)}`),
+        api(`/memory/${encodeURIComponent(project)}/interpretability/${encodeURIComponent(did)}`),
+        api(`/memory/${encodeURIComponent(project)}/decisions/${encodeURIComponent(did)}/versions`),
+    ]);
+    panel.innerHTML = `
+        <div>
+            <h5 class="text-[10px] font-mono uppercase text-outline mb-1">Lineage</h5>
+            <div id="lineage-${escapeAttr(did)}"></div>
+        </div>
+        <div>
+            <h5 class="text-[10px] font-mono uppercase text-outline mb-1">Interpretability</h5>
+            <div id="interp-${escapeAttr(did)}"></div>
+        </div>
+        <div>
+            <h5 class="text-[10px] font-mono uppercase text-outline mb-1">Version History</h5>
+            <div id="versions-${escapeAttr(did)}"></div>
+        </div>
+    `;
+    if (lineage) renderDecisionLineage(document.getElementById(`lineage-${did}`), lineage.ancestors || [], lineage.descendants || []);
+    renderInterpretability(document.getElementById(`interp-${did}`), interp?.report);
+    renderVersionHistory(document.getElementById(`versions-${did}`), versions);
 });
 
 // Decision Chains
@@ -6777,10 +6830,12 @@ document.getElementById('btn-refresh-insights').addEventListener('click', () => 
 // Safety Dashboard
 async function loadSafetyDashboard(project) {
     if (!project) return;
-    const [data, envelope, heatmap] = await Promise.all([
+    const [data, envelope, heatmap, stakeholderImpact, decisionImpact] = await Promise.all([
         api(`/memory/${encodeURIComponent(project)}/safety-dashboard`),
         api(`/memory/${encodeURIComponent(project)}/safety-envelope`),
         api(`/memory/${encodeURIComponent(project)}/risk-heatmap`),
+        api(`/memory/${encodeURIComponent(project)}/stakeholder-impact`),
+        api(`/memory/${encodeURIComponent(project)}/decision-impact`),
     ]);
     if (!data) return;
 
@@ -6834,6 +6889,49 @@ async function loadSafetyDashboard(project) {
     document.getElementById('safety-trend-legend').textContent = riskTrend.length ? `${riskTrend.length} months` : '';
     renderSafetyEnvelope(envelope);
     renderRiskHeatmap(document.getElementById('risk-heatmap'), heatmap);
+    renderSystemImpact(stakeholderImpact, decisionImpact);
+}
+
+// System Impact — merges GET /stakeholder-impact (per-system decision/
+// high-risk counts) with GET /decision-impact's risk_propagation (avg risk
+// score for systems touched by more than one decision). Both were fully
+// built and unused; kept as one panel rather than two near-duplicate ones
+// since they aggregate the same affected_systems data from different angles.
+function renderSystemImpact(stakeholderImpact, decisionImpact) {
+    const summaryEl = document.getElementById('system-impact-summary');
+    const listEl = document.getElementById('system-impact-list');
+    if (!stakeholderImpact) { listEl.innerHTML = '<p class="text-sm text-outline">Failed to load.</p>'; return; }
+    const s = stakeholderImpact.summary || {};
+    const critical = decisionImpact?.critical_systems || [];
+    summaryEl.innerHTML = `
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg text-accent-periwinkle">${s.total_systems ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Systems touched</div>
+        </div>
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg ${critical.length ? 'text-red-400' : 'text-accent-lime'}">${critical.length}</div>
+            <div class="text-[10px] text-outline uppercase">Critical (risk propagation)</div>
+        </div>
+        <div class="p-2 rounded bg-surface-raised text-center">
+            <div class="font-mono text-lg text-accent-sky">${s.total_decisions ?? 0}</div>
+            <div class="text-[10px] text-outline uppercase">Decisions</div>
+        </div>
+    `;
+    const matrix = stakeholderImpact.impact_matrix || {};
+    const criticalBySystem = Object.fromEntries(critical.map(c => [c.system, c]));
+    const systems = Object.entries(matrix).slice(0, 8);
+    listEl.innerHTML = systems.length ? systems.map(([system, data]) => {
+        const crit = criticalBySystem[system];
+        return `
+        <div class="flex items-center justify-between p-2 rounded bg-surface-raised">
+            <span class="text-sm truncate">${escapeHtml(system)}</span>
+            <div class="flex items-center gap-3 shrink-0">
+                <span class="text-xs text-outline">${data.decision_count} decision${data.decision_count > 1 ? 's' : ''}</span>
+                ${data.high_risk_count > 0 ? `<span class="text-xs text-red-400">${data.high_risk_count} high-risk</span>` : ''}
+                ${crit ? `<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">propagation risk ${crit.risk_score}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('') : '<p class="text-sm text-outline">No decisions with affected systems recorded yet.</p>';
 }
 
 // Line chart of monthly avg_risk (0-1) — built from GET /safety-dashboard's

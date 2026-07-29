@@ -1920,10 +1920,10 @@ async def get_decision_impact(project: str):
                         "decisions": [],
                         "risk_levels": [],
                         "categories": [],
-                }
-            system_dependencies[system]["decisions"].append(decision_id)
-            system_dependencies[system]["risk_levels"].append(risk_level)
-            system_dependencies[system]["categories"].append(safety.get("safety_category", "general"))
+                    }
+                system_dependencies[system]["decisions"].append(decision_id)
+                system_dependencies[system]["risk_levels"].append(risk_level)
+                system_dependencies[system]["categories"].append(safety.get("safety_category", "general"))
 
         # Analyze risk propagation (decisions affecting same systems)
         for system, data in system_dependencies.items():
@@ -2849,7 +2849,7 @@ def _generate_interpretability_report(decision: dict) -> dict:
     explanation_parts = [f"Decision: {decision.get('decision', 'Unknown')}"]
     if decision.get("context"):
         explanation_parts.append(f"Rationale: {decision['context']}")
-    if safety.get("risk_level") != "low":
+    if safety.get("risk_level", "low") != "low":
         explanation_parts.append(f"Risk Level: {safety['risk_level']}")
     if safety.get("requires_review"):
         explanation_parts.append("This decision requires safety review.")
