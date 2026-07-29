@@ -5473,13 +5473,22 @@ def _save_deep_research_index(runs: list[dict]) -> None:
     _atomic_write(_DEEP_RESEARCH_INDEX, json.dumps(runs, indent=2))
 
 
-def _save_deep_research_run(query: str, html: str, citations: list[dict]) -> dict:
-    """Persist a deep research run. Returns the run metadata."""
+def _save_deep_research_run(
+    query: str, html: str, citations: list[dict], engine: str = "last30days"
+) -> dict:
+    """Persist a deep research run. Returns the run metadata.
+
+    `engine` distinguishes which research mode produced the run
+    (last30days, citation-grade, or hybrid) so the shared history list
+    can show all three instead of only last30days runs.
+    """
     import uuid
     run_id = uuid.uuid4().hex[:12]
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    # Save HTML output
+    # Save HTML output (also used for markdown-producing engines — the
+    # field name predates citation-grade/hybrid support, but it's just a
+    # text blob written back out verbatim by GET /last30days/runs/{id}).
     html_file = _DEEP_RESEARCH_DIR / f"{run_id}.html"
     html_file.write_text(html, encoding="utf-8")
 
@@ -5489,6 +5498,7 @@ def _save_deep_research_run(query: str, html: str, citations: list[dict]) -> dic
         "query": query,
         "citations_count": len(citations),
         "html_file": f"{run_id}.html",
+        "engine": engine,
     }
 
     # Update index (prepend — newest first)
@@ -5571,6 +5581,7 @@ async def get_deep_research_run(run_id: str):
         "timestamp": run["timestamp"],
         "query": run["query"],
         "citations_count": run["citations_count"],
+        "engine": run.get("engine", "last30days"),
         "output": html_file.read_text(encoding="utf-8"),
     }
 

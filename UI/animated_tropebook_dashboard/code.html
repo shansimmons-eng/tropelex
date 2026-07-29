@@ -3997,9 +3997,10 @@ async function loadDeepResearchHistory() {
             return `
                 <div class="p-3 rounded-lg bg-surface-raised border border-glass-border cursor-pointer hover:border-accent-periwinkle/30 transition-all"
                      onclick="loadDeepResearchRun('${r.id}')">
-                    <div class="flex items-center justify-between">
-                        <span class="font-mono text-sm text-on-surface truncate max-w-[70%]">${escapeHtml(r.query)}</span>
-                        <span class="font-mono text-xs text-outline">${r.citations_count} citations</span>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-mono text-sm text-on-surface truncate max-w-[55%]">${escapeHtml(r.query)}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded-full bg-accent-sky/20 text-accent-sky shrink-0">${escapeHtml(r.engine || 'last30days')}</span>
+                        <span class="font-mono text-xs text-outline shrink-0">${r.citations_count} citations</span>
                     </div>
                     <div class="text-xs text-outline mt-1">${time}</div>
                 </div>
@@ -4018,19 +4019,29 @@ async function loadDeepResearchRun(runId) {
         if (!data) return;
         empty.classList.add('hidden');
         results.classList.remove('hidden');
-        results.innerHTML = `
-            <div class="glass-panel rounded-xl p-6 fade-in">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-mono text-sm text-accent-periwinkle uppercase tracking-wider">Research Report</h3>
-                    <div class="flex items-center gap-3">
-                        <span class="font-mono text-xs text-outline">${data.citations_count} citation(s)</span>
-                        <span class="font-mono text-xs text-outline">${new Date(data.timestamp).toLocaleString()}</span>
-                    </div>
+        const engine = data.engine || 'last30days';
+        const header = `
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-mono text-sm text-accent-periwinkle uppercase tracking-wider">Research Report</h3>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-accent-sky/20 text-accent-sky">${escapeHtml(engine)}</span>
+                    <span class="font-mono text-xs text-outline">${data.citations_count} citation(s)</span>
+                    <span class="font-mono text-xs text-outline">${new Date(data.timestamp).toLocaleString()}</span>
                 </div>
+            </div>`;
+        if (engine === 'last30days') {
+            // last30days emits real HTML — render it in a sandboxed iframe.
+            results.innerHTML = `<div class="glass-panel rounded-xl p-6 fade-in">${header}
                 <iframe id="deepresearch-frame" sandbox="" class="w-full rounded-lg border border-glass-border bg-white" style="height: 520px;"></iframe>
             </div>`;
-        const frame = document.getElementById('deepresearch-frame');
-        if (frame) frame.srcdoc = data.output || '<p style="font-family:monospace;padding:1rem;">No output returned.</p>';
+            const frame = document.getElementById('deepresearch-frame');
+            if (frame) frame.srcdoc = data.output || '<p style="font-family:monospace;padding:1rem;">No output returned.</p>';
+        } else {
+            // citation-grade / hybrid runs are stored as markdown, not HTML.
+            results.innerHTML = `<div class="glass-panel rounded-xl p-6 fade-in">${header}
+                <div class="glass-panel rounded-lg p-4 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.output || 'No output returned.')}</pre></div>
+            </div>`;
+        }
     } catch (e) {
         results.classList.remove('hidden');
         results.innerHTML = `<p class="error text-sm text-red-400 flex items-center gap-2"><span class="material-symbols-outlined text-sm">error</span> Failed to load run: ${escapeHtml(e.message)}</p>`;
@@ -8790,6 +8801,7 @@ document.getElementById('btn-run-webresearch')?.addEventListener('click', async 
         results.innerHTML = `<p class="text-xs text-outline mb-3">${data.steps_run} step(s) run · ${data.sources_found} source(s) found · ${data.sources_imported} imported into Tropebook</p>
             <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
         showToast(`Web research complete: ${data.sources_imported} sources imported`);
+        loadDeepResearchHistory();
     }
 });
 
@@ -8823,6 +8835,7 @@ document.getElementById('btn-run-hybrid')?.addEventListener('click', async () =>
                 </div>
             </details>`;
         showToast('Hybrid research complete');
+        loadDeepResearchHistory();
     }
 });
 

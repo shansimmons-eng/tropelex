@@ -64,6 +64,12 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
         sources, add_relationships=False, source_type=SourceType.WEB_RESEARCHER_MCP
     )
 
+    from core.tropebook.web.server import _save_deep_research_run
+
+    run = _save_deep_research_run(
+        body.topic, result["report_markdown"], sources, engine="citation-grade"
+    )
+
     return {
         "project": project,
         "topic": body.topic,
@@ -73,6 +79,8 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
         "report_markdown": result["report_markdown"],
         "sources_found": len(sources),
         "sources_imported": imported,
+        "run_id": run["id"],
+        "timestamp": run["timestamp"],
     }
 
 
@@ -129,6 +137,7 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
     # Import web-research's real, verifiable citations into the Tropebook
     # regardless of merge outcome — those don't depend on the LLM succeeding.
     sources_imported = 0
+    sources: list[dict[str, Any]] = []
     if web_ok:
         importer = DeepResearchImporter(_get_tropebook())
         sources = importer.parse_markdown_research(web_markdown)
@@ -137,6 +146,10 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
         )
 
     merged = await _merge_reports(body.query, l30d_markdown, web_markdown)
+
+    from core.tropebook.web.server import _save_deep_research_run
+
+    run = _save_deep_research_run(body.query, merged, sources, engine="hybrid")
 
     return {
         "project": project,
@@ -149,6 +162,8 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
         "last30days_markdown": l30d_markdown,
         "web_research_markdown": web_markdown,
         "merged_report": merged,
+        "run_id": run["id"],
+        "timestamp": run["timestamp"],
     }
 
 
