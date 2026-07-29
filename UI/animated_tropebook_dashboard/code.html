@@ -4203,6 +4203,9 @@ function renderCitations() {
             <div class="flex items-start justify-between mb-3">
                 <span class="text-xs font-mono text-outline">${c.source_type?.toUpperCase() || 'MANUAL'}</span>
                 <div class="flex gap-2">
+                    <button class="related-btn text-outline hover:text-accent-sky transition-colors cursor-pointer" data-id="${c.id || ''}" data-url="${escapeAttr(c.url || '')}" title="Find related citations">
+                        <span class="material-symbols-outlined text-lg">hub</span>
+                    </button>
                     <button class="bookmark-btn text-outline hover:text-accent-lavender transition-colors cursor-pointer" data-id="${c.id || ''}">
                         <span class="material-symbols-outlined text-lg">bookmark_border</span>
                     </button>
@@ -4219,9 +4222,34 @@ function renderCitations() {
             <a href="${safeUrl(c.url)}" target="_blank" rel="noopener noreferrer" class="text-xs font-mono text-accent-periwinkle hover:text-accent-lavender truncate block transition-colors">
                 ${escapeHtml(c.url)}
             </a>
+            <div class="related-panel hidden mt-3 pt-3 border-t border-glass-border/50" data-id="${c.id || ''}"></div>
         </article>
     `).join('');
     
+    // Related citations — GET /citations/{cid}/related was fully built
+    // (embedding similarity with a tag-overlap fallback) but never called
+    // from the UI. Toggle-expand per card, with a "Link" action that
+    // persists the connection via the also-unused POST /api/link, which
+    // then shows up as a real edge in the existing citation Graph view.
+    grid.querySelectorAll('.related-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const cid = btn.dataset.id;
+            const sourceUrl = btn.dataset.url;
+            const panel = grid.querySelector(`.related-panel[data-id="${CSS.escape(cid)}"]`);
+            if (!panel) return;
+            if (!panel.classList.contains('hidden')) {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+            panel.innerHTML = '<p class="text-xs text-outline">Searching...</p>';
+            const data = await api(`/citations/${cid}/related`);
+            renderRelatedPanel(panel, data?.related || [], sourceUrl);
+        });
+    });
+
     // Attach delete handlers
     grid.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -4260,6 +4288,50 @@ function renderCitations() {
     });
 }
 
+function renderRelatedPanel(panel, related, sourceUrl) {
+    if (!related.length) {
+        panel.innerHTML = '<p class="text-xs text-outline">No related citations found.</p>';
+        return;
+    }
+    panel.innerHTML = `<h4 class="text-xs font-mono uppercase text-accent-sky mb-2">Related</h4>` +
+        related.map(r => {
+            const other = state.citations.find(c => c.id === r.id);
+            const targetUrl = other?.url || r.meta?.url || '';
+            return `
+        <div class="flex items-center justify-between gap-2 py-1.5">
+            <div class="min-w-0 flex-1">
+                <div class="text-xs truncate">${escapeHtml(r.text || other?.title || '')}</div>
+                <div class="text-[10px] text-outline">score: ${typeof r.score === 'number' ? r.score.toFixed(2) : r.score}</div>
+            </div>
+            ${targetUrl ? `<button class="related-link-btn shrink-0 px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender text-[10px] font-mono hover:bg-accent-lavender/30 transition-all cursor-pointer" data-source-url="${escapeAttr(sourceUrl)}" data-target-url="${escapeAttr(targetUrl)}">Link</button>` : ''}
+        </div>`;
+        }).join('');
+}
+
+document.getElementById('citations-grid').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.related-link-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    if (btn.dataset.linked === 'true') return;
+    btn.disabled = true;
+    btn.textContent = 'Linking...';
+    const result = await api('/link', 'POST', {
+        source_url: btn.dataset.sourceUrl,
+        target_url: btn.dataset.targetUrl,
+        relationship: 'related_to',
+    });
+    if (result?.linked) {
+        btn.textContent = 'Linked';
+        btn.dataset.linked = 'true';
+        btn.classList.add('!bg-accent-lime/20', '!text-accent-lime');
+        updateStats();
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'Link';
+        showToast('Failed to link citations');
+    }
+});
+
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = String(str ?? '');
@@ -4280,8 +4352,12 @@ function safeUrl(url) {
 }
 
 // Update stats
-function updateStats() {
+async function updateStats() {
     document.getElementById('citation-count').textContent = state.citations.length;
+    const stats = await api('/stats');
+    if (!stats) return;
+    document.getElementById('entity-count').textContent = stats.total_entities ?? 0;
+    document.getElementById('relationship-count').textContent = stats.total_relationships ?? 0;
 }
 
 // Search
