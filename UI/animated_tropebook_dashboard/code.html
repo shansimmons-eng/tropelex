@@ -1733,6 +1733,9 @@ void main() {
                     <button id="btn-suggest-approaches" title="Search how similar projects solved this problem" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer shrink-0">
                         Suggest Approaches
                     </button>
+                    <button id="btn-copy-cross-pollinate-briefing" title="Copy a markdown briefing of cross-project knowledge for context injection" class="px-2 py-2 rounded-lg border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
                 </div>
                 <div id="suggested-approaches" class="space-y-2 mb-3"></div>
                 <div id="cross-pollinate-results" class="space-y-2">
@@ -6894,6 +6897,26 @@ document.getElementById('btn-suggest-approaches').addEventListener('click', asyn
     btn.disabled = false;
     btn.textContent = 'Suggest Approaches';
     renderSuggestedApproaches(data?.approaches || []);
+});
+
+// GET /cross-pollinate/briefing was fully built (a markdown digest of
+// find_transferable_knowledge, suitable for context injection) but never
+// called — the card only ever showed the same data as interactive cards,
+// with no way to grab a copy-pasteable summary.
+document.getElementById('btn-copy-cross-pollinate-briefing').addEventListener('click', async () => {
+    const project = getInsightsProject();
+    if (!project) { showToast('Select a project first'); return; }
+    const query = document.getElementById('cross-pollinate-query').value.trim();
+    const btn = document.getElementById('btn-copy-cross-pollinate-briefing');
+    const params = query ? `?query=${encodeURIComponent(query)}` : '';
+    const data = await api(`/memory/${encodeURIComponent(project)}/cross-pollinate/briefing${params}`);
+    if (!data?.briefing) { showToast('No transferable knowledge found to summarize'); return; }
+    navigator.clipboard.writeText(data.briefing).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span>';
+        btn.classList.add('!text-accent-lime', '!border-accent-lime/40');
+        setTimeout(() => { btn.innerHTML = original; btn.classList.remove('!text-accent-lime', '!border-accent-lime/40'); }, 1500);
+    }).catch(() => showToast('Copy failed — clipboard permission blocked'));
 });
 
 async function loadCrossPollinate(project) {
