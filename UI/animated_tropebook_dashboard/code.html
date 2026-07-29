@@ -1667,10 +1667,15 @@ void main() {
 
             <!-- Agent Skills -->
             <div class="glass-panel rounded-xl p-6">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">psychology</span>
-                    Agent Proficiency
-                </h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">psychology</span>
+                        Agent Proficiency
+                    </h3>
+                    <button id="btn-copy-skills-briefing" title="Copy a compact briefing for context injection" class="copy-btn hidden px-2 py-1 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button">
+                        <span class="material-symbols-outlined text-xs">content_copy</span>
+                    </button>
+                </div>
                 <div id="agent-skills-list" class="space-y-3">
                     <p class="text-sm text-outline">Select a project to view agent skills.</p>
                 </div>
@@ -6551,8 +6556,19 @@ document.getElementById('btn-apply-decay').addEventListener('click', async () =>
 // Agent Skills
 async function loadAgentSkills(project) {
     if (!project) return;
-    const data = await api(`/memory/${project}/agent-skills`);
+    const copyBtn = document.getElementById('btn-copy-skills-briefing');
+    const [data, briefingData] = await Promise.all([
+        api(`/memory/${project}/agent-skills`),
+        api(`/memory/${project}/agent-skills/briefing`),
+    ]);
     const el = document.getElementById('agent-skills-list');
+    const briefing = briefingData?.briefing || '';
+    if (briefing.includes('Strong at') || briefing.includes('Needs care')) {
+        copyBtn.classList.remove('hidden');
+        copyBtn.dataset.copyText = briefing;
+    } else {
+        copyBtn.classList.add('hidden');
+    }
     if (!data || data.skills.length === 0) {
         el.innerHTML = '<p class="text-sm text-outline">No skill data yet. Skills are learned from session outcomes.</p>';
         return;
@@ -6564,7 +6580,7 @@ async function loadAgentSkills(project) {
             <div class="flex-1">
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-medium capitalize">${s.skill}</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full" style="color: ${profColors[s.profurity]}; background: ${profColors[s.proficiency]}20">${s.proficiency}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full" style="color: ${profColors[s.proficiency]}; background: ${profColors[s.proficiency]}20">${s.proficiency}</span>
                 </div>
                 <div class="w-full bg-surface rounded-full h-1.5 mt-1">
                     <div class="h-1.5 rounded-full" style="width: ${s.score * 100}%; background: ${profColors[s.proficiency]}"></div>
