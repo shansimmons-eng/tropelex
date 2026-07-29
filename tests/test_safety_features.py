@@ -338,11 +338,31 @@ class TestDecisionImpactEndpoint:
 
     def test_impact_with_systems(self, client, project, sample_decision_with_safety):
         client.post(f"/api/memory/{project}/decisions", json=sample_decision_with_safety)
-        
+
         response = client.get(f"/api/memory/{project}/decision-impact")
         assert response.status_code == 200
         data = response.json()
         assert data["summary"]["total_systems"] >= 1
+
+    def test_impact_with_empty_affected_systems(self, client, project):
+        """Regression: a decision with affected_systems=[] used to 500 with
+        UnboundLocalError — three .append() calls meant to run once per system
+        were mis-indented outside their own `for system in systems:` loop, so
+        with an empty list `system` was never bound."""
+        client.post(
+            f"/api/memory/{project}/decisions",
+            json={
+                "decision": "Update internal docs",
+                "context": "No systems affected",
+                "safety_metadata": {"risk_level": "low", "affected_systems": []},
+            },
+        )
+
+        response = client.get(f"/api/memory/{project}/decision-impact")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["summary"]["total_decisions"] == 1
+        assert data["summary"]["total_systems"] == 0
 
 
 class TestDecisionImpactDetailEndpoint:

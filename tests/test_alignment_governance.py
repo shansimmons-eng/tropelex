@@ -194,3 +194,31 @@ class TestInterpretabilityEndpoint:
         assert "report" in data
         assert "factors" in data["report"]
         assert "explanation" in data["report"]
+
+    def test_missing_risk_level_key(self, client, project):
+        """Regression: a decision whose safety_metadata has no risk_level key
+        at all (vs. explicitly "low") used to 500 with KeyError. `safety.get(
+        "risk_level") != "low"` is True for both a missing key and a real
+        non-low value, but the branch then did a direct safety['risk_level']
+        bracket access. The public API always fills in a default via the
+        SafetyMetadata pydantic model, so this writes the decision directly
+        to reproduce the malformed shape that slipped through in practice."""
+        from core.tropebook.web.server import get_memory_manager
+
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        memory.setdefault("decisions", []).append(
+            {
+                "id": "no_risk_level_decision",
+                "timestamp": "2026-01-01T00:00:00+00:00",
+                "decision": "Legacy decision with no risk metadata",
+                "context": "",
+                "safety_metadata": {"affected_systems": []},
+            }
+        )
+        mm.save_project_memory(project, memory)
+
+        response = client.get(f"/api/memory/{project}/interpretability/no_risk_level_decision")
+        assert response.status_code == 200
+        data = response.json()
+        assert "report" in data
