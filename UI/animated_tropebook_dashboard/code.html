@@ -2715,6 +2715,14 @@ void main() {
             </div>
             <div id="cost-report-data" class="text-sm text-outline">Select a project to view cost data.</div>
         </div>
+        <div class="mt-6 glass-panel rounded-xl p-6 hidden" id="compounding-risk-panel">
+            <h3 class="font-mono text-sm text-outline uppercase mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">warning</span>
+                Compounding Risk
+            </h3>
+            <p class="text-xs text-outline mb-4">Decisions with real rework cost <em>and</em> poor Decision Market calibration in the same category — expensive to get wrong, and this team has a track record of getting it wrong there.</p>
+            <div id="compounding-risk-list" class="space-y-2"></div>
+        </div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="costs-empty">
             <span class="material-symbols-outlined text-4xl text-outline mb-3">payments</span>
             <p class="text-outline text-sm">No cost data yet. Cost events are recorded as agents make decisions.</p>
@@ -8737,7 +8745,33 @@ document.getElementById('btn-cost-report')?.addEventListener('click', async () =
         </div>
         ${(data.events || []).length ? '<div class="mt-4"><h4 class="font-mono text-xs text-outline uppercase mb-2">Recent Events</h4>' + data.events.slice(0, 10).map(e => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1 text-xs"><span class="text-outline">${escapeHtml(e.decision_id || e.type || 'event')}</span><span class="text-accent-lime">$${(e.cost_usd || 0).toFixed(4)}</span></div>`).join('') + '</div>' : ''}`;
     }
+    loadCompoundingRisk(state.currentProject);
 });
+
+// GET /cost/compounding-risk was fully built — it cross-references
+// CostTracker's rework cost against Decision Market's calibration scores
+// to find decisions that are both expensive to get wrong AND in a
+// category this team has a track record of misjudging — but had no UI.
+async function loadCompoundingRisk(project) {
+    const data = await api(`/memory/${encodeURIComponent(project)}/cost/compounding-risk`);
+    const panel = document.getElementById('compounding-risk-panel');
+    const el = document.getElementById('compounding-risk-list');
+    if (!data || !data.compounding_risk.length) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    el.innerHTML = data.compounding_risk.map(c => {
+        const cats = Object.entries(c.low_calibration_categories || {}).map(([cat, score]) =>
+            `<span class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">${escapeHtml(cat)} (${(score * 100).toFixed(0)}% calibrated)</span>`
+        ).join(' ');
+        return `
+        <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-red-500/40">
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-sm truncate">${escapeHtml(c.decision_text || '')}</span>
+                <span class="font-mono text-sm text-red-400 shrink-0">$${c.rework_cost_usd.toFixed(4)} rework</span>
+            </div>
+            <div class="flex flex-wrap gap-1 mt-1.5">${cats}</div>
+        </div>`;
+    }).join('');
+}
 
 // ── Web Research (web-researcher-mcp): Run ──
 document.getElementById('btn-run-webresearch')?.addEventListener('click', async () => {
