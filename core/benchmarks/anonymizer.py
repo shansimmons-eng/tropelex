@@ -1,4 +1,4 @@
-"""Federation anonymizer — pure functions that strip text, keep structural stats.
+"""Benchmarks anonymizer — pure functions that strip text, keep structural stats.
 
 All functions are deterministic, side-effect-free, and return Result types.
 """
@@ -21,8 +21,8 @@ _RISK_WEIGHTS = {"low": 0.0, "medium": 0.25, "high": 0.75, "critical": 1.0}
 def _safety_posture(decisions: list) -> tuple[float, dict[str, int]]:
     """Aggregate safety_metadata across decisions into (avg_safety_score,
     risk_level_distribution). Mirrors the weighting in the Safety Dashboard's
-    own score so federated benchmarks are comparable to what a project sees
-    locally, without importing server.py (would be circular).
+    own score so benchmarks are comparable to what a project sees locally,
+    without importing server.py (would be circular).
     """
     if not decisions:
         return 1.0, {}

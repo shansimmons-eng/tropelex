@@ -304,8 +304,8 @@ Repository integration and deep analysis:
 - **Sync** — extract decisions from conventional commits
 - **Deep Sync** — parse diffs, detect rationale, dependency changes, revert chains, structural patterns
 
-#### Federation
-Opt-in, privacy-preserving sharing of structural statistics (not decision text) across Tropelex installs, for aggregate benchmark comparisons.
+#### Benchmarks
+Opt-in, privacy-preserving comparison of structural statistics (not decision text) across projects. Sharing and aggregation are local to one install by default; Export/Import move a bundle of shared stats between installs as a plain JSON file (no networking) for true cross-machine comparison.
 
 #### Cost Ledger
 Tracks token/dollar cost per decision, including rework cost on reversals, to give ROI scoring a real denominator.
@@ -881,7 +881,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Path traversal protection**: Feed IDs validated against special characters
 - **XSS protection**: `escapeHtml()` on all user-facing data in UI
 - **SSRF protection**: URL scheme validation, private IP blocking in web scraper
-- **File locking**: `fcntl.flock` on embeddings, federation, alert storage
+- **File locking**: `fcntl.flock` on embeddings, benchmarks, alert storage
 - **Atomic memory writes**: Race condition prevention in MemoryManager
 - **Background scheduler**: Automatic periodic tasks with error recovery
 

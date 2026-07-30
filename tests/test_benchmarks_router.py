@@ -1,0 +1,131 @@
+"""Integration tests for core.benchmarks.router — export/import bundle
+mechanics and the memory/federation -> memory/benchmarks migration."""
+
+import json
+from pathlib import Path
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+import core.benchmarks.router as router_mod
+from core.benchmarks.router import benchmarks_router
+from core.memory.manager import MemoryManager
+
+
+def _make_client(tmp_path: Path) -> TestClient:
+    app = FastAPI()
+    app.include_router(benchmarks_router)
+
+    mm = MemoryManager(base_path=str(tmp_path))
+    router_mod._mm = mm
+    router_mod._BENCHMARKS_DIR = Path(mm.memory_dir) / "benchmarks"
+    router_mod._LEGACY_FEDERATION_DIR = Path(mm.memory_dir) / "federation"
+
+    return TestClient(app, raise_server_exceptions=False)
+
+
+@pytest.fixture()
+def client(tmp_path: Path) -> TestClient:
+    return _make_client(tmp_path)
+
+
+def _stat(hash_: str, decisions: int = 5) -> dict:
+    return {
+        "project_hash": hash_,
+        "tech_stack": ["Python"],
+        "decision_count": decisions,
+        "reversal_rate": 0.1,
+        "avg_confidence": 0.7,
+        "category_distribution": {"backend": 2},
+        "avg_safety_score": 0.9,
+        "risk_level_distribution": {"low": 2},
+    }
+
+
+class TestExport:
+    def test_empty_export(self, client: TestClient) -> None:
+        resp = client.get("/api/memory/benchmarks/export")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["count"] == 0
+        assert body["stats"] == []
+        assert "exported_at" in body
+
+    def test_export_reflects_shared_stats(self, client: TestClient) -> None:
+        router_mod._save_shared_stats("abc123", _stat("abc123"))
+        resp = client.get("/api/memory/benchmarks/export")
+        body = resp.json()
+        assert body["count"] == 1
+        assert body["stats"][0]["project_hash"] == "abc123"
+
+
+class TestImport:
+    def test_import_new_entries(self, client: TestClient) -> None:
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [_stat("h1"), _stat("h2")],
+            "source_label": "laptop-b",
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["imported"] == 2
+        assert body["skipped_existing"] == 0
+        assert body["skipped_invalid"] == 0
+        assert body["total_local_after_import"] == 2
+
+    def test_import_never_overwrites_existing_hash(self, client: TestClient) -> None:
+        router_mod._save_shared_stats("h1", _stat("h1", decisions=999))
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [_stat("h1", decisions=1)],
+        })
+        body = resp.json()
+        assert body["imported"] == 0
+        assert body["skipped_existing"] == 1
+        # local copy untouched
+        on_disk = json.loads((router_mod._BENCHMARKS_DIR / "h1.json").read_text())
+        assert on_disk["decision_count"] == 999
+
+    def test_import_skips_invalid_entries(self, client: TestClient) -> None:
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [{"not_a_valid": "entry"}, _stat("valid1")],
+        })
+        body = resp.json()
+        assert body["imported"] == 1
+        assert body["skipped_invalid"] == 1
+
+    def test_reimporting_same_bundle_is_idempotent(self, client: TestClient) -> None:
+        bundle = {"stats": [_stat("h1"), _stat("h2")]}
+        first = client.post("/api/memory/benchmarks/import", json=bundle).json()
+        second = client.post("/api/memory/benchmarks/import", json=bundle).json()
+        assert first["imported"] == 2
+        assert second["imported"] == 0
+        assert second["skipped_existing"] == 2
+
+    def test_imported_entries_feed_aggregate(self, client: TestClient) -> None:
+        client.post("/api/memory/benchmarks/import", json={"stats": [_stat("h1", decisions=10), _stat("h2", decisions=20)]})
+        resp = client.get("/api/memory/benchmarks/aggregate")
+        body = resp.json()
+        assert body["total_projects"] == 2
+        assert body["aggregate"]["decision_count"] == 30
+
+
+class TestLegacyMigration:
+    def test_migrates_old_federation_dir_on_first_access(self, tmp_path: Path) -> None:
+        mm = MemoryManager(base_path=str(tmp_path))
+        legacy_dir = Path(mm.memory_dir) / "federation"
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        (legacy_dir / "oldhash.json").write_text(json.dumps(_stat("oldhash")))
+
+        app = FastAPI()
+        app.include_router(benchmarks_router)
+        router_mod._mm = mm
+        router_mod._BENCHMARKS_DIR = Path(mm.memory_dir) / "benchmarks"
+        router_mod._LEGACY_FEDERATION_DIR = legacy_dir
+        client = TestClient(app, raise_server_exceptions=False)
+
+        resp = client.get("/api/memory/benchmarks/export")
+        body = resp.json()
+        assert body["count"] == 1
+        assert body["stats"][0]["project_hash"] == "oldhash"
+        assert not legacy_dir.exists()
+        assert (Path(mm.memory_dir) / "benchmarks" / "oldhash.json").exists()

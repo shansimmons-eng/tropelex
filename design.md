@@ -363,7 +363,7 @@ Tropelex integration with Tropebook research capabilities.
 - Private IP blocking (RFC 1918, loopback, link-local)
 - Bounded scrape depth to prevent cascading requests
 
-**File Locking** (`core/embeddings.py`, `core/federation/router.py`, `core/tropebook/alert_router.py`):
+**File Locking** (`core/embeddings.py`, `core/benchmarks/router.py`, `core/tropebook/alert_router.py`):
 - `fcntl.flock` for concurrent write protection
 - Atomic memory writes via `_modify_project_memory()`
 
@@ -538,7 +538,7 @@ See `wishlist.md` for detailed roadmap including:
 - [x] **Real-time collaboration** — WebSocket /ws/{room_id} with room-based broadcasting and heartbeat
 - [x] **Background scheduler** — Automatic periodic tasks (feeds, ghost scans, stale checks)
 - [x] **SSRF protection** — URL scheme validation, private IP blocking in web scraper
-- [x] **File locking** — fcntl.flock on embeddings, federation, alert storage
+- [x] **File locking** — fcntl.flock on embeddings, benchmarks, alert storage
 - [x] **Atomic memory writes** — Race condition prevention in MemoryManager
 
 ## UI

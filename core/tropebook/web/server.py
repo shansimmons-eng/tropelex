@@ -184,7 +184,7 @@ from core.slack.router import slack_router                  # noqa: E402
 from core.timetravel.router import timetravel_router        # noqa: E402
 from core.contradictions.router import contradiction_router  # noqa: E402
 from core.personas.router import persona_router            # noqa: E402
-from core.federation.router import federation_router        # noqa: E402
+from core.benchmarks.router import benchmarks_router        # noqa: E402
 from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
 from core.docmine.router import docmine_router                     # noqa: E402
 from core.agent_audit.router import agent_audit_router              # noqa: E402
@@ -220,7 +220,7 @@ app.include_router(slack_router)
 app.include_router(timetravel_router)
 app.include_router(contradiction_router)
 app.include_router(persona_router)
-app.include_router(federation_router)
+app.include_router(benchmarks_router)
 app.include_router(web_research_router)
 app.include_router(docmine_router)
 app.include_router(agent_audit_router)

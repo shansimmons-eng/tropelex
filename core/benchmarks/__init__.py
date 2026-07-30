@@ -1,4 +1,11 @@
-"""Federation — opt-in, privacy-preserving anonymized benchmarking across installs."""
+"""Benchmarks — opt-in, privacy-preserving anonymized comparison across installs.
+
+Local-only: no networking. An install shares anonymized structural stats into
+its own memory/benchmarks/ directory, and can export that directory as a
+portable JSON bundle to hand to another install (file transfer, no network
+call) — the other install imports it to compare against. See export/import
+in router.py for the actual cross-install mechanism.
+"""
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar, Union
 
@@ -22,8 +29,8 @@ class Err:
 Result = Union[Ok[T], Err]
 
 
-class FederationError(Exception):
-    """Base for federation errors."""
+class BenchmarkError(Exception):
+    """Base for benchmark errors."""
     def __init__(self, message: str, code: str = "UNKNOWN", details: dict | None = None):
         super().__init__(message)
         self.code = code
@@ -61,14 +68,8 @@ class AnonymizedStats:
 
 @dataclass(frozen=True)
 class BenchmarkComparison:
-    """How a project compares to the federated aggregate."""
+    """How a project compares to the aggregate benchmark."""
     project_hash: str
     compared_to_aggregate: AnonymizedStats
     deviation: dict[str, float]
     percentile: dict[str, float]
-
-
-@dataclass(frozen=True)
-class FederationRequest:
-    """Request payload for federation sharing."""
-    opt_in: bool = True

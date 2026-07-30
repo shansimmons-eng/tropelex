@@ -1,4 +1,4 @@
-"""Federation aggregator — pure functions for computing cross-install benchmarks.
+"""Benchmarks aggregator — pure functions for computing cross-install benchmarks.
 
 All functions are deterministic, side-effect-free, and return Result types.
 """

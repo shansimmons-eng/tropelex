@@ -837,8 +837,8 @@ void main() {
                 <button class="nav-item" data-section="git" title="Repository integration: tech stack, commit sync, deep diff analysis">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v7c0 1.1.9 2 2 2h7"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg> Git
                 </button>
-                <button class="nav-item" data-section="federation" title="Opt-in anonymized benchmarking across Tropelex installs">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Federation
+                <button class="nav-item" data-section="federation" title="Opt-in anonymized benchmarking, local by default — export/import to compare across installs">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Benchmarks
                 </button>
                 <button class="nav-item" data-section="costs" title="Tracks token/dollar cost per decision for ROI scoring">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="14.5" r="2.5"/><path d="M6 14.5h.01"/><path d="M18 14.5h.01"/></svg> Cost Ledger
@@ -1145,7 +1145,7 @@ void main() {
                 </div>
                 <div class="p-4 dash-card-body flex flex-wrap gap-2 items-start content-start">
                     <button id="btn-dash-personas" class="px-3 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
-                    <button id="btn-dash-federation" class="px-3 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Federation Benchmarks</button>
+                    <button id="btn-dash-federation" class="px-3 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Benchmarks</button>
                     <button id="btn-dash-compact" class="px-3 py-1.5 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
                     <button id="btn-dash-agent-audit" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-mono text-xs hover:bg-red-500/30 transition-all cursor-pointer">Agent Audit</button>
                     <div id="dash-triggers-result" class="w-full font-mono text-xs text-outline mt-1"></div>
@@ -2930,24 +2930,41 @@ void main() {
         </div>
     </section>
 
-    <!-- Federation -->
+    <!-- Benchmarks -->
     <section id="section-federation" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
         <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lime text-2xl">public</span>
-            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Federation</h2>
+            <span class="material-symbols-outlined text-accent-lime text-2xl">query_stats</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Benchmarks</h2>
         </div>
-        <p class="text-outline mb-6">Opt-in, privacy-preserving sharing of structural statistics across Tropelex installs.</p>
+        <p class="text-outline mb-6">Opt-in, privacy-preserving comparison of structural statistics across projects. Local by default — export/import moves data between installs via a plain file, no networking.</p>
         <div class="glass-panel rounded-xl p-6">
             <div class="flex items-center justify-between mb-4">
                 <span class="font-mono text-sm text-outline">Aggregate Benchmarks</span>
                 <button id="btn-federation" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Load Benchmarks</button>
             </div>
-            <div id="federation-data" class="text-sm text-outline">No federated data available yet.</div>
+            <div id="federation-data" class="text-sm text-outline">No benchmark data available yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">sync_alt</span>
+                Cross-Install Compare
+            </h3>
+            <p class="text-xs text-outline mb-4">Export this install's shared stats to a file, then import it on another machine (or vice versa) to compare across installs — no network call is made.</p>
+            <div class="flex flex-wrap gap-3 items-center">
+                <button id="btn-benchmarks-export" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm align-middle">download</span> Export Bundle
+                </button>
+                <label class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm align-middle">upload</span> Import Bundle
+                    <input type="file" id="benchmarks-import-file" accept="application/json" class="hidden"/>
+                </label>
+            </div>
+            <div id="benchmarks-import-result" class="text-xs text-outline mt-3"></div>
         </div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="federation-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">public</span>
-            <p class="text-outline text-sm">No federation data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
-            <a href="/guide#federation" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">query_stats</span>
+            <p class="text-outline text-sm">No benchmark data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
+            <a href="/guide#benchmarks" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
         </div>
     </section>
 
@@ -8602,11 +8619,11 @@ document.getElementById('btn-dash-personas')?.addEventListener('click', async ()
 });
 document.getElementById('btn-dash-federation')?.addEventListener('click', async () => {
     const el = document.getElementById('dash-triggers-result');
-    el.textContent = 'Loading federation benchmarks...';
-    const data = await api('/memory/federation/benchmarks');
+    el.textContent = 'Loading benchmarks...';
+    const data = await api('/memory/benchmarks/aggregate');
     el.textContent = data?.aggregate
-        ? `${data.total_projects} federated project(s) — avg reversal rate ${((data.aggregate.reversal_rate || 0) * 100).toFixed(1)}%`
-        : (data?.message || 'No federated data available yet');
+        ? `${data.total_projects} benchmarked project(s) — avg reversal rate ${((data.aggregate.reversal_rate || 0) * 100).toFixed(1)}%`
+        : (data?.message || 'No benchmark data available yet');
 });
 document.getElementById('btn-dash-compact')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
@@ -8981,26 +8998,65 @@ document.getElementById('btn-check-ghost')?.addEventListener('click', async () =
     }
 });
 
-// ── Federation: Load Benchmarks ──
+// ── Benchmarks: Load Aggregate ──
 document.getElementById('btn-federation')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-federation');
     btn.disabled = true; btn.textContent = 'Loading...';
-    const data = await api('/memory/federation/benchmarks');
+    const data = await api('/memory/benchmarks/aggregate');
     btn.disabled = false; btn.textContent = 'Load Benchmarks';
     if (data) {
         const el = document.getElementById('federation-data');
         if (!data.aggregate) {
-            el.innerHTML = `<p class="text-sm text-outline">${escapeHtml(data.message || 'No federated data available yet.')}</p>`;
+            el.innerHTML = `<p class="text-sm text-outline">${escapeHtml(data.message || 'No benchmark data available yet.')}</p>`;
             return;
         }
         document.getElementById('federation-empty')?.classList.add('hidden');
         const agg = data.aggregate;
         el.innerHTML = `<div class="space-y-2">
-            <div class="flex justify-between"><span class="text-outline">Federated Projects</span><span class="font-mono">${data.total_projects}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Benchmarked Projects</span><span class="font-mono">${data.total_projects}</span></div>
             <div class="flex justify-between"><span class="text-outline">Avg Decision Count</span><span class="font-mono">${agg.decision_count}</span></div>
             <div class="flex justify-between"><span class="text-outline">Avg Reversal Rate</span><span class="font-mono">${((agg.reversal_rate || 0) * 100).toFixed(1)}%</span></div>
             <div class="flex justify-between"><span class="text-outline">Avg Confidence</span><span class="font-mono">${((agg.avg_confidence || 0) * 100).toFixed(1)}%</span></div>
         </div>`;
+    }
+});
+
+// ── Benchmarks: Export bundle to a downloadable file ──
+document.getElementById('btn-benchmarks-export')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-benchmarks-export');
+    btn.disabled = true;
+    const data = await api('/memory/benchmarks/export');
+    btn.disabled = false;
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tropelex-benchmarks-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${data.count} project(s)`);
+});
+
+// ── Benchmarks: Import bundle from another install ──
+document.getElementById('benchmarks-import-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const resultEl = document.getElementById('benchmarks-import-result');
+    resultEl.textContent = 'Importing...';
+    try {
+        const parsed = JSON.parse(await file.text());
+        const stats = Array.isArray(parsed) ? parsed : (parsed.stats || []);
+        const data = await api('/memory/benchmarks/import', 'POST', { stats, source_label: file.name });
+        if (data) {
+            resultEl.textContent = `Imported ${data.imported}, skipped ${data.skipped_existing} existing + ${data.skipped_invalid} invalid — ${data.total_local_after_import} total locally.`;
+            document.getElementById('federation-empty')?.classList.add('hidden');
+        }
+    } catch (err) {
+        resultEl.textContent = `Import failed: not valid JSON (${err.message})`;
     }
 });
 

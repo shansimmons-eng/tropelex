@@ -1,21 +1,21 @@
 """
-Tests for Federation — anonymizer and aggregator pure functions.
+Tests for Benchmarks — anonymizer and aggregator pure functions.
 Covers: hash_project_name, extract_structural_stats, anonymize_project,
         aggregate_benchmarks, compute_percentiles, compare_to_aggregate.
 """
 
 import pytest
-from core.federation.anonymizer import (
+from core.benchmarks.anonymizer import (
     anonymize_project,
     extract_structural_stats,
     hash_project_name,
 )
-from core.federation.aggregator import (
+from core.benchmarks.aggregator import (
     aggregate_benchmarks,
     compare_to_aggregate,
     compute_percentiles,
 )
-from core.federation import AnonymizedStats, Ok, Err
+from core.benchmarks import AnonymizedStats, Ok, Err
 
 
 # ── hash_project_name ──────────────────────────────────────────────────────
