@@ -635,3 +635,421 @@ bbb5a07 feat: mine markdown files for drift, contradictions, and undocumented de
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-07-29 00:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:** 
+
+**Recent commits:**
+```
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+d9e6f31 feat: feed Alert Settings + Peak Periods (research feeds automation, item 7/9)
+c0c38df feat: related-citations discovery + linking (Tropebook research graph, item 6/9)
+ffb6758 feat: Suggest Approaches search (UI2 cross-pollination briefing, item 5/9)
+e76bfa0 feat: git deep-decision analysis panel (UI2 git-sync mockup, item 4/9)
+```
+
+**Files in play:** `session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 00:35 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 22 insertions(+)
+
+**Recent commits:**
+```
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+d9e6f31 feat: feed Alert Settings + Peak Periods (research feeds automation, item 7/9)
+c0c38df feat: related-citations discovery + linking (Tropebook research graph, item 6/9)
+ffb6758 feat: Suggest Approaches search (UI2 cross-pollination briefing, item 5/9)
+e76bfa0 feat: git deep-decision analysis panel (UI2 git-sync mockup, item 4/9)
+```
+
+**Files in play:** `SESSION_LOG.md session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 01:02 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 44 insertions(+)
+
+**Recent commits:**
+```
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+d9e6f31 feat: feed Alert Settings + Peak Periods (research feeds automation, item 7/9)
+c0c38df feat: related-citations discovery + linking (Tropebook research graph, item 6/9)
+ffb6758 feat: Suggest Approaches search (UI2 cross-pollination briefing, item 5/9)
+e76bfa0 feat: git deep-decision analysis panel (UI2 git-sync mockup, item 4/9)
+```
+
+**Files in play:** `SESSION_LOG.md session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 02:29 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 78 insertions(+)
+
+**Recent commits:**
+```
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+4514a92 feat: Governance tab wire-up — fairness audit, accountability, transparency
+0c5e82c feat: Alignment tab wire-up — radar chart, drift, corrigibility, safety check
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 02:43 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 100 insertions(+)
+
+**Recent commits:**
+```
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+4514a92 feat: Governance tab wire-up — fairness audit, accountability, transparency
+0c5e82c feat: Alignment tab wire-up — radar chart, drift, corrigibility, safety check
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 07:28 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 122 insertions(+)
+
+**Recent commits:**
+```
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+4514a92 feat: Governance tab wire-up — fairness audit, accountability, transparency
+0c5e82c feat: Alignment tab wire-up — radar chart, drift, corrigibility, safety check
+eb33330 feat: decision lineage view (UI2 decision-intelligence mockup, item 8/9)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 07:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 192 insertions(+)
+
+**Recent commits:**
+```
+7d59350 feat: Prompt Lab genealogy wiring — strategy rankings + outcome feedback
+3cee172 test: regression coverage for the two decision-impact/interpretability bugs
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+4514a92 feat: Governance tab wire-up — fairness audit, accountability, transparency
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 08:08 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 238 insertions(+)
+
+**Recent commits:**
+```
+2ff3e2f feat: Safety Reviews approve/reject actions
+7d59350 feat: Prompt Lab genealogy wiring — strategy rankings + outcome feedback
+3cee172 test: regression coverage for the two decision-impact/interpretability bugs
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 10:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 272 insertions(+)
+
+**Recent commits:**
+```
+2ff3e2f feat: Safety Reviews approve/reject actions
+7d59350 feat: Prompt Lab genealogy wiring — strategy rankings + outcome feedback
+3cee172 test: regression coverage for the two decision-impact/interpretability bugs
+ac0d8e4 feat: decision-level deep-dive endpoints + fix two real backend bugs
+cc44b84 feat: Safety Dashboard tab wire-up — trend chart, envelope, risk heatmap
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 19:29 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 342 insertions(+)
+
+**Recent commits:**
+```
+59d8ab3 fix: knowledge_decay.score_decision self-comparison used identity, not id
+4cf271c fix: Deep Research not persisting Hybrid/Citation-Grade runs
+9befb72 feat: wire Memory Lens into the VSCode extension
+2fea4e3 refactor: delete Research Chains — redundant with Deep Research/Feeds
+a4c2ba5 feat: wire up GET /cost/compounding-risk (single 5/5)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 20:30 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 388 insertions(+)
+
+**Recent commits:**
+```
+1f56a2b feat: rename Federation to Benchmarks, add real cross-install export/import
+6c67fc7 feat: guard git sync against wrong-repo contamination via fingerprint check
+59d8ab3 fix: knowledge_decay.score_decision self-comparison used identity, not id
+4cf271c fix: Deep Research not persisting Hybrid/Citation-Grade runs
+9befb72 feat: wire Memory Lens into the VSCode extension
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:19 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 506 insertions(+)
+
+**Recent commits:**
+```
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+1f56a2b feat: rename Federation to Benchmarks, add real cross-install export/import
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:23 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 530 insertions(+), 2 deletions(-)
+
+**Recent commits:**
+```
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+1f56a2b feat: rename Federation to Benchmarks, add real cross-install export/import
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:23 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 552 insertions(+), 2 deletions(-)
+
+**Recent commits:**
+```
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+1f56a2b feat: rename Federation to Benchmarks, add real cross-install export/import
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:42 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 574 insertions(+), 2 deletions(-)
+
+**Recent commits:**
+```
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+1f56a2b feat: rename Federation to Benchmarks, add real cross-install export/import
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:47 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 594 insertions(+)
+
+**Recent commits:**
+```
+a9fdcc7 feat: link logo to dashboard, add "The Rationale Engine" tagline
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-29 22:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 616 insertions(+)
+
+**Recent commits:**
+```
+a9fdcc7 feat: link logo to dashboard, add "The Rationale Engine" tagline
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+98f3a1c fix: account backup import silently dropped every citation; export leaked live credentials
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-30 12:53 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 686 insertions(+)
+
+**Recent commits:**
+```
+5cd81a8 feat: expand compression fallback + friction miner lexical coverage
+a9fdcc7 feat: link logo to dashboard, add "The Rationale Engine" tagline
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-07-30 12:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 708 insertions(+)
+
+**Recent commits:**
+```
+5cd81a8 feat: expand compression fallback + friction miner lexical coverage
+a9fdcc7 feat: link logo to dashboard, add "The Rationale Engine" tagline
+774151b docs: sweep .md docs for this session's changes + add fingerprint-guard tests
+3e918eb feat: add Decision Market clear-data endpoint; document agent naming
+353ee75 feat: Brave-alternative search fallback (Exa/Serper) + cost docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .self-eval-scores.jsonl memory/prompt_genealogy/ session-ses_06ad.md session-ses_095c.md session-ses_09d0.md `
+
+**Open questions / next steps:** <!-- fill in -->
+

@@ -1,0 +1,50 @@
+{
+  "project": "tropelex",
+  "prompts": [
+    {
+      "id": "2fc3db1088df",
+      "original_length": 198,
+      "compressed_length": 82,
+      "compression_ratio": 0.41414141414141414,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-07-29T15:36:07.466005+00:00",
+      "outcome": "good"
+    },
+    {
+      "id": "64a7daf2c345",
+      "original_length": 175,
+      "compressed_length": 93,
+      "compression_ratio": 0.5314285714285715,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-07-29T15:38:57.050724+00:00",
+      "outcome": "good"
+    },
+    {
+      "id": "6dca743aa9cb",
+      "original_length": 122,
+      "compressed_length": 107,
+      "compression_ratio": 0.8770491803278688,
+      "strategy": "client",
+      "timestamp": "2026-07-29T15:40:43.217160+00:00",
+      "outcome": null
+    },
+    {
+      "id": "f7ebd55f62c2",
+      "original_length": 194,
+      "compressed_length": 113,
+      "compression_ratio": 0.5824742268041238,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-07-29T15:43:36.584482+00:00",
+      "outcome": "good"
+    }
+  ],
+  "strategy_scores": {
+    "openai/gpt-4o-mini": {
+      "good": 3,
+      "rephrased": 0,
+      "failed": 0,
+      "total": 3
+    }
+  },
+  "created": "2026-07-29T15:36:07.465974+00:00"
+}
