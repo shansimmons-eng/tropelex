@@ -108,13 +108,21 @@ async def find_semantic_duplicates(
 async def auto_research(query: str, tropebook, max_results: int = 5) -> dict[str, Any]:
     """
     Search the web for a query and auto-add results as citations.
-    Uses DuckDuckGo (free) or Brave if key is configured.
+
+    Provider waterfall, first configured+successful tier wins: Brave -> Exa
+    -> Serper -> DuckDuckGo. DuckDuckGo needs no key and is always tried
+    last — it's free but rate-limits hard under repeated use, which is why
+    a paid tier ahead of it is worth configuring for anything beyond light,
+    occasional use. Exa and Serper reuse the same keys already accepted by
+    Settings and by the last30days deep-research engine (core/last30days/
+    lib/grounding.py has the same three-tier logic for that engine); this
+    was previously Brave-or-bust with nothing in between.
     """
     import os
 
     results = []
+    provider = None
 
-    # Try Brave first
     brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
     if brave_key:
         try:
@@ -140,10 +148,69 @@ async def auto_research(query: str, tropebook, max_results: int = 5) -> dict[str
                                 "summary": item.get("description", ""),
                             }
                         )
+                    if results:
+                        provider = "brave"
         except Exception as e:
             logger.warning("Brave search failed: %s", e)
 
-    # Fall back to DuckDuckGo
+    if not results:
+        exa_key = os.environ.get("EXA_API_KEY", "")
+        if exa_key:
+            try:
+                import httpx
+
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    r = await client.post(
+                        "https://api.exa.ai/search",
+                        headers={"x-api-key": exa_key},
+                        json={
+                            "query": query,
+                            "type": "auto",
+                            "numResults": max_results,
+                            "contents": {"text": {"maxCharacters": 2000}},
+                        },
+                    )
+                    if r.status_code == 200:
+                        for item in r.json().get("results", [])[:max_results]:
+                            results.append(
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("url", ""),
+                                    "summary": (item.get("text") or "")[:2000],
+                                }
+                            )
+                        if results:
+                            provider = "exa"
+            except Exception as e:
+                logger.warning("Exa search failed: %s", e)
+
+    if not results:
+        serper_key = os.environ.get("SERPER_API_KEY", "")
+        if serper_key:
+            try:
+                import httpx
+
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    r = await client.post(
+                        "https://google.serper.dev/search",
+                        headers={"X-API-KEY": serper_key},
+                        json={"q": query, "num": max_results},
+                    )
+                    if r.status_code == 200:
+                        for item in r.json().get("organic", [])[:max_results]:
+                            results.append(
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("link", ""),
+                                    "summary": item.get("snippet", ""),
+                                }
+                            )
+                        if results:
+                            provider = "serper"
+            except Exception as e:
+                logger.warning("Serper search failed: %s", e)
+
+    # Last resort: free, no key required, but rate-limits hard under repeated use.
     if not results:
         try:
             try:
@@ -160,9 +227,11 @@ async def auto_research(query: str, tropebook, max_results: int = 5) -> dict[str
                             "summary": r.get("body", ""),
                         }
                     )
+            if results:
+                provider = "duckduckgo"
         except Exception as e:
             logger.warning("DuckDuckGo search failed: %s", e)
-            return {"added": 0, "error": str(e), "results": []}
+            return {"added": 0, "error": str(e), "results": [], "provider": None}
 
     # Add to tropebook
     added = 0
@@ -179,7 +248,7 @@ async def auto_research(query: str, tropebook, max_results: int = 5) -> dict[str
             )
             added += 1
 
-    return {"added": added, "results": results, "query": query}
+    return {"added": added, "results": results, "query": query, "provider": provider}
 
 
 # ── Related Suggestions ───────────────────────────────────────────────────────

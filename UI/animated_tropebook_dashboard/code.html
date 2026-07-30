@@ -2357,7 +2357,7 @@ void main() {
                                     </button>
                                 </div>
                                 <div id="openai-key-status" class="hidden mt-2 font-mono text-xs"></div>
-                                <p class="text-xs text-outline mt-1">Used for AI-powered prompt compression. Key is stored in your <code class="text-accent-sky">.env</code> file — never sent to any third party except OpenAI.</p>
+                                <p class="text-xs text-outline mt-1">Used for AI-powered prompt compression (<code class="text-accent-sky">gpt-4o-mini</code>, $0.15/$0.60 per 1M input/output tokens) and semantic search embeddings (<code class="text-accent-sky">text-embedding-3-small</code>, $0.02/1M tokens). Both are OpenAI's cheapest tier — typical usage runs fractions of a cent per call. Key is stored in your <code class="text-accent-sky">.env</code> file — never sent to any third party except OpenAI.</p>
                             </div>
                             <div>
                                 <label class="block text-sm text-outline mb-2">Brave Search API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
@@ -2370,10 +2370,10 @@ void main() {
                                     </button>
                                 </div>
                                 <div id="brave-key-status" class="hidden mt-2 font-mono text-xs"></div>
-                                <p class="text-xs text-outline mt-1">Enhances web research in Tropebook. Falls back to DuckDuckGo (free) if not set.</p>
+                                <p class="text-xs text-outline mt-1"><strong class="text-yellow-400">Brave dropped its free tier in Feb 2026</strong> — it now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005/query with no spending cap. If that's a blocker, leave this unset: Tropelex tries Exa, then Serper, then DuckDuckGo automatically — see those two keys below for cheaper/free alternatives.</p>
                             </div>
                             <div>
-                                <label class="block text-sm text-outline mb-2">Exa API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <label class="block text-sm text-outline mb-2">Exa API Key <span class="text-outline font-mono text-xs">(optional — recommended Brave alternative)</span></label>
                                 <div class="relative">
                                     <input type="password" id="setting-exa-key" placeholder="Enter Exa API key for semantic search..."
                                         autocomplete="new-password" data-1p-ignore data-lpignore="true"
@@ -2383,10 +2383,10 @@ void main() {
                                     </button>
                                 </div>
                                 <div id="exa-key-status" class="hidden mt-2 font-mono text-xs"></div>
-                                <p class="text-xs text-outline mt-1">Semantic web search. Falls back to Brave/DuckDuckGo if not set.</p>
+                                <p class="text-xs text-outline mt-1">Semantic web search — free tier around 1,000 searches/month, then pay-as-you-go (roughly $0.003–$0.005/search). Used automatically if Brave isn't configured; falls back to Serper, then DuckDuckGo.</p>
                             </div>
                             <div>
-                                <label class="block text-sm text-outline mb-2">Serper API Key <span class="text-outline font-mono text-xs">(optional)</span></label>
+                                <label class="block text-sm text-outline mb-2">Serper API Key <span class="text-outline font-mono text-xs">(optional — recommended Brave alternative)</span></label>
                                 <div class="relative">
                                     <input type="password" id="setting-serper-key" placeholder="Enter Serper API key for Google search..."
                                         autocomplete="new-password" data-1p-ignore data-lpignore="true"
@@ -2396,8 +2396,10 @@ void main() {
                                     </button>
                                 </div>
                                 <div id="serper-key-status" class="hidden mt-2 font-mono text-xs"></div>
-                                <p class="text-xs text-outline mt-1">Google search results. Falls back to Brave/DuckDuckGo if not set.</p>
+                                <p class="text-xs text-outline mt-1">Google search results — 2,500 free queries up front (no card required), then from $50 for 50,000 queries ($1/1k, cheaper at higher volume). Used automatically if Brave and Exa aren't configured; falls back to DuckDuckGo.</p>
                             </div>
+                            <div class="p-3 rounded-lg bg-surface border border-glass-border text-xs text-outline">
+                                <span class="text-accent-sky font-mono">No key configured?</span> Tropelex falls back to DuckDuckGo — free, no signup, but rate-limits hard under repeated or automated use. Fine for occasional lookups; for anything more than light use, Exa's free tier or Serper's free queries above are more reliable at no cost. Pricing above is approximate and provider-set — it can change without notice (as Brave's did); check the provider's own pricing page before relying on it for budgeting.</div>
                             <div class="p-3 rounded-lg bg-surface border border-glass-border">
                                 <label class="block text-sm text-outline mb-2">Custom OpenAI-Compatible Provider <span class="text-outline font-mono text-xs">(optional)</span></label>
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -4603,7 +4605,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
         btn.disabled = false;
         
         if (web && web.added > 0) {
-            showToast(`Found ${web.added} results — added to Tropebook`);
+            showToast(`Found ${web.added} results via ${web.provider || 'web'} — added to Tropebook`);
             await loadCitations();
             const again = await api(`/search?q=${encodeURIComponent(query)}`);
             if (again?.results?.length > 0) {
@@ -4649,7 +4651,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     btn.disabled = false;
 
     if (web && web.added > 0) {
-        showToast(`Found ${web.added} results — added to Tropebook`);
+        showToast(`Found ${web.added} results via ${web.provider || 'web'} — added to Tropebook`);
         await loadCitations();
         // Now search local again to show the new results
         const again = await api(`/search?q=${encodeURIComponent(query)}`);

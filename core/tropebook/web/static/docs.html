@@ -91,9 +91,11 @@
         <h3>4. Configure API Keys (Optional)</h3>
         <p>For web research features, set these environment variables:</p>
         <ul>
-            <li><code>BRAVE_SEARCH_API_KEY</code> — for Brave Search (free tier available). Also used by citation-grade Deep Research when set, in preference to the free but more rate-limited DuckDuckGo default.</li>
-            <li><code>OPENAI_API_KEY</code> — for embeddings and LLM-backed features (query refinement, hybrid research merge, AI compression) — optional, dictionary/concatenation fallbacks exist</li>
+            <li><code>BRAVE_SEARCH_API_KEY</code> — Brave dropped its free tier in Feb 2026; it now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005/query. Also used by citation-grade Deep Research when set.</li>
+            <li><code>EXA_API_KEY</code> / <code>SERPER_API_KEY</code> — cheaper/free Brave alternatives. Exa has a free tier around 1,000 searches/month, then pay-as-you-go; Serper gives 2,500 free queries up front with no card, then from $50/50k queries. Auto-Research (<code>/api/research/auto</code>) and last30days Deep Research both try Brave → Exa → Serper → DuckDuckGo in that order, using whichever of these three is configured first.</li>
+            <li><code>OPENAI_API_KEY</code> — for embeddings (<code>text-embedding-3-small</code>, $0.02/1M tokens) and LLM-backed features (query refinement, hybrid research merge, AI compression via <code>gpt-4o-mini</code>, $0.15/$0.60 per 1M input/output tokens) — optional, dictionary/concatenation fallbacks exist. All of OpenAI's cheapest tier; typical usage is fractions of a cent per call.</li>
         </ul>
+        <p class="text-xs" style="opacity:0.7">Pricing above is approximate and provider-set — it can change without notice, as Brave's did. Check the provider's own pricing page before budgeting around it. With none of the three search keys set, everything falls back to DuckDuckGo: free, no signup, but it rate-limits hard under repeated or automated use — fine for occasional lookups, not for heavy use.</p>
 
         <h3>5. Pick your interface</h3>
         <p>This page describes the web dashboard, but it's one of five ways in — pick whichever fits how you work: the <a href="#mcp-server">MCP Server</a> (any MCP-capable agent), the <a href="#tui">Terminal UI</a> (tmux-first), <a href="#opencode">OpenCode</a> slash commands, the <a href="#cli">CLI</a>, or <a href="#emacs-integration">Emacs</a>. All five talk to the same running server and the same project memory — nothing is interface-specific.</p>
