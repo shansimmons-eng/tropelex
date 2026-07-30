@@ -116,9 +116,10 @@ def score_decision(decision: dict, all_decisions: list[dict] | None = None) -> d
     contra_count = 0
 
     if all_decisions:
+        my_id = decision.get("id")
         my_words = set(text.split()) - {"the", "a", "to", "and", "of", "in", "for", "is"}
         for other in all_decisions:
-            if other is decision:
+            if other is decision or (my_id is not None and other.get("id") == my_id):
                 continue
             other_text = other.get("decision", "").lower()
             other_words = set(other_text.split()) - {"the", "a", "to", "and", "of", "in", "for", "is"}
