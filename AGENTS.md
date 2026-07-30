@@ -58,7 +58,8 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 ### Git Integration (`core/git_integration.py`)
 - Auto-extracts decisions from conventional commits
 - Deep analysis: parses diffs, detects rationale, dependency changes, revert chains
-- `sync_repo_to_memory(repo_path, project, mm)` → syncs git history to memory
+- `sync_repo_to_memory(repo_path, project, mm, force=False)` → syncs git history to memory; blocks and returns `fingerprint_mismatch` if `repo_path` doesn't match the repo this project was previously synced from (guards against wrong-repo contamination), unless `force=True`
+- `get_repo_fingerprint(repo_path)` → stable repo identity (origin remote URL, falling back to root commit hash) used for the mismatch check above
 - `get_deep_repo_summary(repo_path)` → work categories, structural changes
 
 ### Decision Tree (`core/decision_tree.py`)
@@ -87,11 +88,6 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 - `MemoryRAG.retrieve(project, query)` → semantic retrieval from memory
 - `CrossPollinator.find_transferable_knowledge(project)` → solutions from similar projects
 - `CrossPollinator.suggest_approaches(project, problem)` → cross-project approaches
-
-### Research Chains (`core/research_chains.py`)
-- Multi-hop knowledge building: search → find gaps → search again → link
-- `ResearchChainManager.auto_research(project, goal)` → automated chain
-- Stores chains with steps, findings, links, synthesis
 
 ### Agent Skills & Prompt Genealogy (`core/agent_skills.py`)
 - `AgentSkillGraph` → tracks proficiency per category (ui, backend, testing, etc.)

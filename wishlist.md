@@ -723,8 +723,25 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - ✅ Cross-connect: Personas + Decision Market → Safety Review queue. A decision touching a category that's *both* a known persona weakness *and* has poor market calibration auto-escalates — neither signal alone is enough, since every project has some weak category and some mediocre bet.
 - ✅ Cross-connect: Cost Ledger ↔ Decision Market. New `GET /{project}/cost/compounding-risk` surfaces decisions with real rework cost *and* poor calibration in the same category — previously these lived in unconnected tabs.
 - ✅ Cross-connect: PR Bot → Safety & Alignment. PR comments now include a "Safety & Alignment" section for any relevant decision that's high/critical risk or flagged for review — previously PR Bot only surfaced ghost decisions and health scores.
-- ✅ Cross-connect: Federation → safety-posture benchmarking. `AnonymizedStats` gained `avg_safety_score` and `risk_level_distribution`, threaded through share/aggregate/compare — anonymized safety posture, not just structural stats like reversal rate.
+- ✅ Cross-connect: Federation (renamed Benchmarks) → safety-posture benchmarking. `AnonymizedStats` gained `avg_safety_score` and `risk_level_distribution`, threaded through share/aggregate/compare — anonymized safety posture, not just structural stats like reversal rate.
 - ✅ 66 new tests (1408 → 1474 total, all passing together)
+
+---
+
+### Phase 14: Integration Debt, Data Integrity & Search Resilience (Complete)
+- ✅ Wired 5 previously-built-but-orphaned endpoints into the dashboard: `handoff/roles`, `agent-skills/briefing`, `cross-pollinate/briefing`, `sessions/weekly-summary` (also fixed a real route-shadowing bug — it was registered after `/sessions/{session_id}` and so was permanently unreachable), and `cost/compounding-risk`.
+- ✅ Deleted Research Chains (`core/research_chains.py`) — redundant with Deep Research + Feeds, confirmed unused anywhere in the UI.
+- ✅ Wired Memory Lens into the VS Code extension (inline hover annotations, `tropelex.scanFileForDecisions` command).
+- ✅ Fixed Deep Research not persisting Hybrid/Citation-Grade runs (only `last30days` runs were ever saved) and a related bug where those runs would have rendered as raw unrendered markdown instead of HTML.
+- ✅ Fixed a real `knowledge_decay.score_decision` bug: self-comparison used object identity (`is`) instead of `id` equality, silently inflating every decision's confidence score whenever callers passed reconstructed objects (e.g. `DecisionTree` nodes) rather than the original list — this broke Memory Compaction's stale-chain detection universally, not just for test data.
+- ✅ Git sync repo-fingerprint safeguard: `sync_repo_to_memory` now fingerprints a repo (origin remote URL, falling back to root commit hash) and blocks a later sync from a different repo into the same project instead of silently mixing histories, with a `force` override. Root cause of an earlier real incident where a project's memory got contaminated with another repo's commits.
+- ✅ Renamed Federation → Benchmarks — the old name implied cross-machine networking it never had (confirmed zero networking code). Added genuine cross-install comparison via `GET /benchmarks/export` / `POST /benchmarks/import`: a portable JSON bundle handed between installs as a plain file, no network call.
+- ✅ Fixed Account Backup silently importing zero citations on every import, always — it iterated `tropebook.citations` (a dict keyed by ID) as if it were a list, so the `isinstance(citation, dict)` check that followed could never pass. New `Tropebook.import_bundle()` also preserves citation IDs so relationship-graph edges survive the round trip, which the old `add()`-based path could never have restored even once the iteration bug was fixed.
+- ✅ Fixed Account Backup export leaking live credentials: its secret-exclusion list only covered 6 of the 17 keys the Settings API treats as credentials, so `BSKY_APP_PASSWORD`, `CT0` (X/Twitter session cookie), and others were written into exported JSON despite the UI's claim that "API keys are excluded." Both lists now come from one shared `SECRET_ENV_KEYS` set.
+- ✅ Search fallback waterfall for Auto-Research (`/api/research/auto`): Brave → Exa → Serper → DuckDuckGo, matching the tiering `last30days` already had — previously this endpoint was Brave-or-DuckDuckGo only, with Exa/Serper keys accepted by Settings but never consulted here. Documented in `API_KEYS.md`/Settings/guide, including that Brave dropped its free tier in Feb 2026 (now $5 prepaid minimum, ~$0.003–$0.005/query).
+- ✅ Decision Market: added `DELETE /{project}/market/clear` (previously no way to wipe accumulated bet data short of hand-editing memory JSON) and documented `agent_name` naming conventions, including the caveat that Agent Skills tracks proficiency per-project, not per-agent, unlike Decision Market's genuinely per-agent calibration.
+- ✅ Removed 4 cross-project-contaminated decisions from a project's memory (verified via git hash cross-reference — they were verbatim Tropelex commits mined into an unrelated project).
+- ✅ ~32 new tests across this phase, full suite passing together (1434 total).
 
 ---
 
@@ -767,6 +784,6 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
-**Last Updated:** 2026-07-28
-**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13). #30 (Rationale Corroboration) removed 2026-07-28 — see its entry above.
+**Last Updated:** 2026-07-30
+**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14). #30 (Rationale Corroboration) removed 2026-07-28 — see its entry above.
 **Next Review:** 2026-08-15

@@ -19,9 +19,11 @@ from core.git_integration import (
     _summarize_commit_decision,
     extract_deep_decisions,
     extract_decisions_from_commits,
+    get_repo_fingerprint,
     get_repo_summary,
     detect_tech_stack,
     detect_tech_stack_changes,
+    sync_repo_to_memory,
 )
 
 
@@ -171,3 +173,112 @@ class TestDetectTechStackChanges:
             assert result["changed"] is True
             assert "React" in result["added"]
             assert "FastAPI" in result["removed"]
+
+
+def _make_repo(path: Path, commit_msg: str) -> None:
+    """Init a git repo at `path` with one commit."""
+    import subprocess
+
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init", "-q"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.name", "test"], cwd=path, check=True)
+    (path / "f.txt").write_text(commit_msg)
+    subprocess.run(["git", "add", "."], cwd=path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", commit_msg], cwd=path, check=True)
+
+
+class TestGetRepoFingerprint:
+    def test_fingerprint_falls_back_to_root_commit_without_remote(self, tmp_path):
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        fp = get_repo_fingerprint(str(repo))
+        assert fp is not None
+        assert len(fp) == 40  # a commit hash
+
+    def test_same_repo_same_fingerprint(self, tmp_path):
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        assert get_repo_fingerprint(str(repo)) == get_repo_fingerprint(str(repo))
+
+    def test_different_repos_different_fingerprints(self, tmp_path):
+        repo_a = tmp_path / "a"
+        repo_b = tmp_path / "b"
+        _make_repo(repo_a, "init a")
+        _make_repo(repo_b, "init b")
+        assert get_repo_fingerprint(str(repo_a)) != get_repo_fingerprint(str(repo_b))
+
+    def test_non_git_dir_returns_none(self, tmp_path):
+        empty = tmp_path / "not-a-repo"
+        empty.mkdir()
+        assert get_repo_fingerprint(str(empty)) is None
+
+
+class _FakeMemoryManager:
+    """Minimal in-memory stand-in for MemoryManager, scoped to one test."""
+
+    def __init__(self):
+        self.store: dict[str, dict] = {}
+
+    def get_project_memory(self, name: str) -> dict:
+        return self.store.setdefault(name, {})
+
+    def save_project_memory(self, name: str, mem: dict) -> None:
+        self.store[name] = mem
+
+
+class TestSyncRepoFingerprintGuard:
+    """Regression coverage for the contamination-prevention safeguard: a
+    project's git sync should refuse to silently mix in a different repo's
+    commit history once it's been synced from one repo before."""
+
+    @pytest.mark.asyncio
+    async def test_first_sync_stores_fingerprint_and_succeeds(self, tmp_path):
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        mm = _FakeMemoryManager()
+
+        result = await sync_repo_to_memory(str(repo), "proj", mm)
+
+        assert result["synced"] is True
+        assert mm.store["proj"]["git_repo_fingerprint"] == get_repo_fingerprint(str(repo))
+
+    @pytest.mark.asyncio
+    async def test_second_sync_same_repo_succeeds(self, tmp_path):
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        mm = _FakeMemoryManager()
+
+        await sync_repo_to_memory(str(repo), "proj", mm)
+        result = await sync_repo_to_memory(str(repo), "proj", mm)
+
+        assert result["synced"] is True
+
+    @pytest.mark.asyncio
+    async def test_sync_from_different_repo_is_blocked(self, tmp_path):
+        repo_a = tmp_path / "a"
+        repo_b = tmp_path / "b"
+        _make_repo(repo_a, "init a")
+        _make_repo(repo_b, "init b")
+        mm = _FakeMemoryManager()
+
+        await sync_repo_to_memory(str(repo_a), "proj", mm)
+        result = await sync_repo_to_memory(str(repo_b), "proj", mm)
+
+        assert result["synced"] is False
+        assert result["fingerprint_mismatch"] is True
+        assert result["previous_repo"] == get_repo_fingerprint(str(repo_a))
+        assert result["current_repo"] == get_repo_fingerprint(str(repo_b))
+
+    @pytest.mark.asyncio
+    async def test_force_overrides_mismatch(self, tmp_path):
+        repo_a = tmp_path / "a"
+        repo_b = tmp_path / "b"
+        _make_repo(repo_a, "init a")
+        _make_repo(repo_b, "init b")
+        mm = _FakeMemoryManager()
+
+        await sync_repo_to_memory(str(repo_a), "proj", mm)
+        result = await sync_repo_to_memory(str(repo_b), "proj", mm, force=True)
+
+        assert result["synced"] is True

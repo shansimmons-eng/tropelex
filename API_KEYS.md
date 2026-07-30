@@ -36,29 +36,43 @@ Compression uses `gpt-4o-mini` which is extremely cheap (~$0.00015 per prompt). 
 
 ---
 
-## Brave Search API Key
+## Web Search: Brave, Exa, Serper, DuckDuckGo
 
-**Optional — enhances web research in Tropebook.**
+**All optional — enhances web research in Tropebook and Auto-Research.**
 
-Without this key, Tropebook falls back to DuckDuckGo (free, no key needed, but rate-limited).
+Auto-Research (`POST /api/research/auto`) tries these in order, using whichever is configured first: **Brave → Exa → Serper → DuckDuckGo**. last30days Deep Research uses the same order but with a 4th paid tier, Parallel AI, between Serper and DuckDuckGo — see [Parallel AI](#parallel-ai) below. DuckDuckGo needs no key and is always available as the last resort, but it rate-limits hard under repeated or automated use — fine for occasional lookups, not for heavy use. Configuring any one of the other tiers avoids that.
 
-### Setup
+Pricing below is approximate and provider-set — it can change without notice (Brave's did, see below). Check each provider's own pricing page before relying on it for budgeting.
+
+### Brave Search API Key
 
 ```bash
-# .env file
 BRAVE_SEARCH_API_KEY=your-brave-key-here
-
-# Or environment
-export BRAVE_SEARCH_API_KEY=your-brave-key-here
 ```
 
-### Getting a key
-1. Go to https://api.search.brave.com/
-2. Sign up for a free or paid plan
-3. Copy your API key
+**⚠️ Brave dropped its free tier in February 2026.** It now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005 per query with no spending cap. If that's a blocker, skip it — Tropelex falls back to Exa, then Serper, then DuckDuckGo automatically.
 
-### Free tier limits
-The Brave free tier allows ~2,000 queries/month, which is more than enough for typical research use.
+**Getting a key:** https://api.search.brave.com/
+
+### Exa API Key
+
+```bash
+EXA_API_KEY=your-exa-key-here
+```
+
+Semantic web search. Free tier around 1,000 searches/month, then pay-as-you-go (roughly $0.003–$0.005/search) — a cheaper, free-to-start alternative to Brave.
+
+**Getting a key:** https://exa.ai/
+
+### Serper API Key
+
+```bash
+SERPER_API_KEY=your-serper-key-here
+```
+
+Google search results. 2,500 free queries up front with no credit card required, then paid tiers starting at $50 for 50,000 queries ($1/1k, cheaper at higher volume) — another free-to-start Brave alternative.
+
+**Getting a key:** https://serper.dev/
 
 ---
 
