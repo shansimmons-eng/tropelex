@@ -157,3 +157,62 @@ class TestMergeDuplicates:
 
         count = tb.merge_duplicates()
         assert count >= 1
+
+
+class TestImportBundle:
+    """import_bundle() is what account_import (server.py) calls to restore a
+    Tropebook from an export_json() bundle. It must preserve citation IDs
+    (unlike add(), which always mints a fresh one) so that graph edges —
+    which reference citations by ID — survive a round trip."""
+
+    def test_round_trip_preserves_citations_and_relationships(self, tb):
+        source = Tropebook(storage_path=str(tb.storage_path.parent / "source"))
+        cid_a = source.add("A", "https://a.com")
+        cid_b = source.add("B", "https://b.com")
+        source.link(cid_a, cid_b, "supports")
+
+        bundle = source.export_json()
+        result = tb.import_bundle(bundle["citations"], bundle["graph"])
+
+        assert result == {"citations_imported": 2, "citations_skipped": 0, "edges_added": 1}
+        assert tb.get(cid_a).title == "A"
+        assert tb.get(cid_b).title == "B"
+        assert any(e["from"] == cid_a and e["to"] == cid_b for e in tb.graph.edges)
+        assert f"{cid_b}:supports" in tb.get(cid_a).relationships
+
+    def test_reimporting_same_bundle_is_idempotent(self, tb):
+        source = Tropebook(storage_path=str(tb.storage_path.parent / "source2"))
+        cid_a = source.add("A", "https://a.com")
+        cid_b = source.add("B", "https://b.com")
+        source.link(cid_a, cid_b, "supports")
+        bundle = source.export_json()
+
+        first = tb.import_bundle(bundle["citations"], bundle["graph"])
+        second = tb.import_bundle(bundle["citations"], bundle["graph"])
+
+        assert first["citations_imported"] == 2
+        assert second["citations_imported"] == 0
+        assert second["citations_skipped"] == 2
+        assert second["edges_added"] == 0
+        assert len(tb.graph.edges) == 1  # not duplicated
+
+    def test_never_overwrites_existing_local_citation(self, tb):
+        cid = tb.add("Local version", "https://local.com")
+        result = tb.import_bundle({cid: {"title": "Incoming version", "url": "https://incoming.com"}})
+        assert result["citations_skipped"] == 1
+        assert tb.get(cid).title == "Local version"
+
+    def test_edge_dropped_if_endpoint_citation_missing(self, tb):
+        # Graph references a citation ID that isn't in the citations bundle —
+        # e.g. a partial/corrupted export. Must not crash or add a dangling edge.
+        result = tb.import_bundle(
+            {"real1": {"title": "Real", "url": "https://real.com"}},
+            {"edges": [{"from": "real1", "to": "ghost1", "relationship": "supports"}]},
+        )
+        assert result["citations_imported"] == 1
+        assert result["edges_added"] == 0
+        assert tb.graph.edges == []
+
+    def test_empty_bundle(self, tb):
+        result = tb.import_bundle({}, None)
+        assert result == {"citations_imported": 0, "citations_skipped": 0, "edges_added": 0}

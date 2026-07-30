@@ -6658,7 +6658,7 @@ async function loadDecisionTimeline(project) {
                         <div class="flex items-center gap-2 mt-1">
                             <span class="text-xs text-outline">${(d.timestamp || '').slice(0, 10)}</span>
                             ${rels}
-                            ${inspectable ? '<span class="text-xs text-accent-lavender ml-auto">inspect</span>' : ''}
+                            ${inspectable ? '<span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all"><span class="material-symbols-outlined text-xs">visibility</span>Inspect</span>' : ''}
                         </div>
                         ${d.rationale ? `<p class="text-xs text-accent-sky mt-1">${escapeHtml(d.rationale.slice(0, 120))}</p>` : ''}
                     </div>

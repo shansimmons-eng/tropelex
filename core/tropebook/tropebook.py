@@ -305,6 +305,57 @@ class Tropebook:
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 
+    def import_bundle(self, citations: dict[str, dict], graph: dict | None = None) -> dict:
+        """Merge an export_json() bundle back in, preserving citation IDs.
+
+        Unlike add(), which always mints a fresh ID, this keeps the IDs from
+        the bundle so that graph edges (which reference citations by ID)
+        stay valid — the whole point of a "knowledge graph" export is the
+        connections between citations, not just the citations themselves.
+        Existing local IDs are never overwritten, so re-importing the same
+        bundle twice is a no-op the second time.
+        """
+        citations_imported = 0
+        citations_skipped = 0
+        for cid, data in citations.items():
+            if cid in self.citations:
+                citations_skipped += 1
+                continue
+            try:
+                citation = Citation.from_dict(dict(data))
+            except TypeError:
+                citations_skipped += 1
+                continue
+            self.citations[cid] = citation
+            self.graph.add_node(cid, "citation", {"title": citation.title, "url": citation.url})
+            citations_imported += 1
+
+        edges_added = 0
+        existing_edges = {
+            (e.get("from"), e.get("to"), e.get("relationship")) for e in self.graph.edges
+        }
+        for edge in (graph or {}).get("edges", []):
+            key = (edge.get("from"), edge.get("to"), edge.get("relationship"))
+            if key in existing_edges:
+                continue
+            from_id, to_id = edge.get("from"), edge.get("to")
+            if from_id in self.citations and to_id in self.citations:
+                self.graph.edges.append(edge)
+                existing_edges.add(key)
+                if from_id in self.graph.nodes:
+                    self.graph.nodes[from_id].setdefault("connections", []).append(to_id)
+                if to_id in self.graph.nodes:
+                    self.graph.nodes[to_id].setdefault("connections", []).append(from_id)
+                edges_added += 1
+
+        self._build_index()
+        self._save()
+        return {
+            "citations_imported": citations_imported,
+            "citations_skipped": citations_skipped,
+            "edges_added": edges_added,
+        }
+
     def _save(self):
         with open(self.citations_file, "w") as f:
             json.dump({k: v.to_dict() for k, v in self.citations.items()}, f, indent=2)

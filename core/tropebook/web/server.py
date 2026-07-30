@@ -33,6 +33,22 @@ if _env_path.exists():
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tropelex")
 
+# Every .env key that holds a credential (API key, token, password, cookie).
+# Single source of truth for both the settings-write allowlist and the
+# account-export secret filter — account_export previously kept its own,
+# much shorter exclusion list that had drifted out of sync with this one
+# and was silently leaking BSKY_APP_PASSWORD, CT0, and other live
+# credentials into "Export All" backups.
+SECRET_ENV_KEYS = {
+    "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
+    "EXA_API_KEY", "SERPER_API_KEY",
+    "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
+    "XAI_API_KEY", "SCRAPECREATORS_API_KEY",
+    "BSKY_HANDLE", "BSKY_APP_PASSWORD",
+    "AUTH_TOKEN", "CT0", "PARALLEL_API_KEY",
+    "GOOGLE_API_KEY", "GEMINI_API_KEY",
+}
+
 # --- Background scheduler ---
 _scheduler = None
 
@@ -575,8 +591,7 @@ async def account_export():
                 if "=" in line and not line.startswith("#"):
                     k, v = line.split("=", 1)
                     k = k.strip()
-                    if k not in ("OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
-                                 "EXA_API_KEY", "SERPER_API_KEY", "CUSTOM_LLM_API_KEY"):
+                    if k not in SECRET_ENV_KEYS:
                         settings[k] = v.strip()
         return {
             "version": "1.0",
@@ -602,18 +617,17 @@ async def account_import(req: ImportRequest):
             proj_file = mm.memory_dir / f"{name}.json"
             proj_file.write_text(json.dumps(proj_data, indent=2))
             imported_counts["projects"] += 1
-        # Import tropebook citations
+        # Import tropebook citations + their relationship graph. Citations
+        # are keyed by ID in the export (see Tropebook.export_json), not a
+        # list — import_bundle() preserves those IDs so graph edges (which
+        # reference citations by ID) stay valid after import.
         tb = get_tropebook()
-        for citation in (data.get("tropebook", {}).get("citations") or []):
-            if isinstance(citation, dict) and citation.get("url"):
-                tb.add(
-                    title=citation.get("title", ""),
-                    url=citation["url"],
-                    summary=citation.get("summary", ""),
-                    tags=citation.get("tags", []),
-                    source_type=citation.get("source_type", "imported"),
-                )
-                imported_counts["citations"] += 1
+        tropebook_data = data.get("tropebook") or {}
+        bundle_result = tb.import_bundle(
+            tropebook_data.get("citations") or {},
+            tropebook_data.get("graph"),
+        )
+        imported_counts["citations"] = bundle_result["citations_imported"]
         # Import feeds
         fm = _get_feed_manager()
         for feed_data in (data.get("feeds") or []):
@@ -1143,19 +1157,7 @@ class ApiKeyRequest(BaseModel):
 @app.post("/api/settings/apikey")
 async def save_api_key(req: ApiKeyRequest):
     """Write an API key to the .env file (localhost only)."""
-    # Only allow known safe key names
-    ALLOWED_KEYS = {
-        "OPENAI_API_KEY", "BRAVE_SEARCH_API_KEY", "ANTHROPIC_API_KEY",
-        "EXA_API_KEY", "SERPER_API_KEY",
-        "CUSTOM_LLM_HOST", "CUSTOM_LLM_MODEL", "CUSTOM_LLM_API_KEY",
-        # Deep research (last30days engine) sources
-        "XAI_API_KEY", "SCRAPECREATORS_API_KEY",
-        "BSKY_HANDLE", "BSKY_APP_PASSWORD",
-        "AUTH_TOKEN", "CT0", "PARALLEL_API_KEY",
-        # Gemini (last30days engine planning + reranking)
-        "GOOGLE_API_KEY", "GEMINI_API_KEY",
-    }
-    if req.key not in ALLOWED_KEYS:
+    if req.key not in SECRET_ENV_KEYS:
         raise HTTPException(status_code=400, detail=f"Key '{req.key}' not allowed")
 
     env_path = BASE_DIR / ".env"
