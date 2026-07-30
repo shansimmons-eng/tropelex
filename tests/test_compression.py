@@ -182,3 +182,48 @@ class TestSummarizeLongText:
         assert "First" in result
         assert "Last" in result
         assert len(result) < len(text)
+
+
+class TestShortenedNotDeleted:
+    """Phrases that look like filler but carry real meaning: shortened to a
+    compact form that preserves the signal, never dropped to "" outright.
+    Regression coverage for a correction — an earlier pass wrongly excluded
+    these instead of shortening them."""
+
+    def test_uncertainty_marker_preserved(self):
+        result = _apply_phrases("Not sure which approach to take")
+        assert "unsure" in result.lower()
+        assert "which" in result
+
+    def test_urgency_signal_preserved_as_canonical_marker(self):
+        result = _apply_phrases("This is a huge deal for the client")
+        assert "high priority" in result
+        assert "for the client" in result
+
+    def test_time_pressure_signal_preserved(self):
+        result = _apply_phrases("I'm running out of time on this")
+        assert "time-limited" in result
+
+    def test_past_tense_question_uses_contraction_not_broken_grammar(self):
+        result = _apply_phrases("How did we end up with two auth systems")
+        assert result == "how'd we end up with two auth systems"
+
+    def test_how_do_we_preserves_process_question_not_action_request(self):
+        # "how do we deploy this" asks for a method; must not collapse to
+        # "deploy this" (an instruction), which would change the meaning.
+        result = _apply_phrases("How do we deploy this safely")
+        assert "how to deploy this safely" == result.lower()
+
+    def test_is_it_possible_to_strips_opener_keeps_verb(self):
+        result = _apply_compact("Is it possible to add retry logic")
+        assert "is it possible to" not in result.lower()
+        assert "add retry logic" in result
+
+    def test_did_you_strips_opener_keeps_verb(self):
+        result = _apply_compact("Did you find the missing config")
+        assert "did you" not in result.lower()
+        assert "find the missing config" in result
+
+    def test_critically_important_shortens_to_critical(self):
+        result = _apply_phrases("Critically important that we test this")
+        assert result == "critical that we test this"

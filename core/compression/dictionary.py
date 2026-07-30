@@ -280,6 +280,81 @@ PHRASE_REMAPS = {
     "sorry to be a pain": "",
     "my apologies": "",
     "my bad": "",
+    # ── Uncertainty markers — shortened, not deleted: the compressed form
+    # must still signal "user hasn't decided," or the agent reading it will
+    # wrongly treat an open question as a settled instruction ──
+    "not sure which": "unsure which",
+    "not sure about that": "unsure about that",
+    "i'm not sure": "unsure",
+    "i'm not certain": "uncertain",
+    "i don't know yet": "TBD",
+    "i have no idea": "no idea",
+    "i have no clue": "no clue",
+    "i don't know about that": "unsure about that",
+    "i don't know what to do next": "next steps unclear",
+    "any ideas about": "ideas on",
+    "what do you suggest": "suggestions",
+    "what would you suggest": "suggestions",
+    "how would you go about": "how to",
+    "how should i go about": "how to",
+    "not able to recall": "can't recall",
+    "i can't remember": "can't remember",
+    "i don't remember": "don't remember",
+    "i don't have access": "no access",
+    "i can't find": "can't find",
+    "i have no preference": "no preference",
+    "it's your call": "your call",
+    # ── Real questions — shortened, kept as questions. "how do we"/"is
+    # there a way to" collapse to "how to" (still asks for a method, not
+    # an action — different from "can you", which asks for the action
+    # itself). Contractions preserve the past-tense auxiliary that a
+    # blind strip of "did" would break ("how did we" -> "how we" is
+    # ungrammatical; "how'd we" isn't). ──
+    "how do we": "how to",
+    "is there a way to": "how to",
+    "how did we": "how'd we",
+    "when did we": "when'd we",
+    "what did we": "what'd we",
+    "what do you think": "thoughts",
+    "what are your thoughts": "thoughts",
+    "when's a good time": "best time",
+    "when is a good time": "best time",
+    "tell me a good time": "best time",
+    "tell me when it's best": "best time",
+    "find me some": "find",
+    "give me details on": "details on",
+    "what's the status": "status",
+    "what is the status": "status",
+    # ── Substantive descriptors — trimmed, meaning intact ──
+    "a key factor": "key factor",
+    "a big part of": "big part of",
+    "critically important": "critical",
+    "the one thing": "one thing",
+    "more than i can handle": "too much",
+    # ── Task-framing context — compressed to a short label instead of a
+    # full sentence, not deleted (the fact that it's a boss request or a
+    # new task is real information) ──
+    "my boss asked for": "boss wants",
+    "i have a new task": "new task",
+    "i have a new assignment": "new assignment",
+    "i have a new request": "new request",
+    "help with an assignment": "assignment help",
+    # ── Urgency / deadline-pressure — canonicalized to a short marker
+    # rather than deleted. This is a real priority signal; collapsing five
+    # different phrasings ("this is a big deal"/"this is huge"/"this is a
+    # huge deal"/"this is massive") to one consistent marker is arguably
+    # better than the original, since an agent parsing many compressed
+    # prompts sees one recognizable flag instead of five variants ──
+    "this is urgent": "urgent",
+    "this is a big deal": "high priority",
+    "this is huge": "high priority",
+    "this is a huge deal": "high priority",
+    "this is massive": "high priority",
+    "i don't have much time": "time-limited",
+    "i do not have much time": "time-limited",
+    "i'm running out of time": "time-limited",
+    "i've run out of time": "out of time",
+    "i have run out of time": "out of time",
 }
 
 META_COMMANDS = {
@@ -325,6 +400,12 @@ COMPACT_PATTERNS = {
     r"\bi have got to\b": "",
     r"\bbe able to\b": "",
     r"\bi wonder if (?:you|we)\b": "",
+    r"\bis it possible to\b": "",
+    r"\bwould it be possible to\b": "",
+    r"\bdid you\b": "",
+    r"\bi need help\b": "",
+    r"\bi was hoping you(?:'d| could)\b": "",
+    r"\bhoping you(?:'d| could)\b": "",
 }
 
 

@@ -2,7 +2,13 @@ REMAP LIST — lexical coverage for the compression fallback + friction miner
 Reviewed and wired into code 2026-07-30. Source: your original ~400-line list.
 Code touched: core/compression/dictionary.py (PHRASE_REMAPS, COMPACT_PATTERNS),
 core/friction/miner.py (_ESCALATION_PATTERNS). Tests: tests/test_compression.py,
-tests/test_friction.py. Full suite: 1447 passing.
+tests/test_friction.py. Full suite: 1455 passing.
+
+Revision note: the first pass wrongly excluded ~40 phrases outright instead
+of shortening them, on the assumption "content-bearing" meant "don't touch."
+Corrected — every phrase below either got mapped to a shorter form that
+preserves its meaning, or (for the small remainder) is documented as
+already about as short as it can safely get.
 
 =============================================================================
 WHERE THINGS GO — the two systems this list feeds
@@ -12,17 +18,16 @@ WHERE THINGS GO — the two systems this list feeds
    rule-based prompt compressor used when no OPENAI_API_KEY is configured.
    Two tiers:
      - PHRASE_REMAPS: exact phrase -> replacement, always applied (level 1+).
-       For idioms that collapse to one fixed meaning ("in order to" -> "to")
-       or pure filler that's safe to delete regardless of what follows
-       ("much appreciated" -> "").
+       For idioms/fillers/questions that collapse to one fixed shorter form.
      - COMPACT_PATTERNS: word-boundary regex, applied at level 2+ only. For
-       REQUEST OPENERS ("can you", "would you") where deleting the whole
-       phrase would also delete the verb that follows — these strip just
-       the opener so "can you find the file" -> "find the file", not "".
-   Rule of thumb used throughout: if the phrase's meaning is fully separable
-   from whatever follows it, it's a PHRASE_REMAPS candidate. If deleting the
-   whole phrase would eat a real verb/request, it's a COMPACT_PATTERNS
-   opener-strip instead, or excluded entirely.
+       REQUEST OPENERS ("can you", "would you", "is it possible to") where
+       the phrase and the verb that follows are separable — strip just the
+       opener so "can you find the file" -> "find the file", not "".
+   Rule of thumb: if the phrase's meaning is fully separable from whatever
+   follows, it collapses in PHRASE_REMAPS or gets an opener-strip in
+   COMPACT_PATTERNS. If the phrase itself carries a distinct meaning that a
+   generic replacement would erase (uncertainty, urgency, "how" vs "what"),
+   it gets a shorter phrase that keeps that meaning — never a blind delete.
 
 2. Friction miner (core/friction/miner.py) — detects frustration/escalation
    signals in transcripts. Most of your profanity block (fuck, shit, wtf,
@@ -31,13 +36,12 @@ WHERE THINGS GO — the two systems this list feeds
    and "piss/pissed".
 
 =============================================================================
-ADDED — PHRASE_REMAPS (phrase -> replacement, always applied)
+PHRASE_REMAPS — phrase -> shorter phrase (meaning preserved)
 =============================================================================
 
 Contraction coverage for hedges already in the dict:
-  i'd like to -> (deleted)      i'd like -> (deleted)
-  i'd prefer -> (deleted)       i would prefer -> (deleted)
-  i'd be -> (deleted)           i would be -> (deleted)
+  i'd like to / i'd like / i'd prefer / i would prefer / i'd be / i would be
+    -> (deleted — pure hedge, nothing left to preserve)
 
 Purpose/time connectors:
   so as to -> to                 so that -> so
@@ -45,80 +49,124 @@ Purpose/time connectors:
   just in case -> in case         in spite of that / this -> still
   in regards to -> about          in relation to -> about
 
-Preamble / throat-clearing:
-  you probably recall -> (deleted)     if you recall -> (deleted)
-  i forgot to -> forgot to             just to clarify -> clarify
-  for clarity's sake -> for clarity    one thing i noticed -> noticed
-  i noticed that -> noticed            thought i'd let you know -> (deleted)
-  once we get to that point / once you get toward -> (deleted)
-  as we move towards / toward -> (deleted)
+Preamble / throat-clearing (deleted — no content):
+  you probably recall, if you recall, thought i'd let you know,
+  once we get to that point, once you get toward,
+  as we move towards / toward
+  i forgot to -> forgot to        just to clarify -> clarify
+  for clarity's sake -> for clarity
+  one thing i noticed / i noticed that -> noticed
 
-Wishes/preferences with no decision content:
-  i wish we could / you'd / you would -> (deleted)
+Wishes/preferences with no decision content (deleted):
+  i wish we could / you'd / you would
   i would love it if / like it if -> if
   i'm leaning toward(s) / i am leaning toward(s) -> leaning toward(s)
 
 Politeness directives (verb-preserving):
   please take into account -> consider
-  please be aware -> note
-  please remember -> remember
+  please be aware -> note              please remember -> remember
   kindly -> (deleted)
 
 Completion timing:
   once you're done / when you finish / when that's complete -> once done
 
-Deadline framing (compresses the wind-up, keeps the actual date that follows):
-  i have to get this done by -> due by
-  i have to get this done before -> due before
-  i have to complete this by / fix this by / do this by / turn this in by
-    -> due by
-  get this done by -> due by
-  the deadline is -> deadline
-  this is due by -> due by     this is due -> due
+Deadline framing (keeps the actual due date that follows):
+  i have to get this done by/before, complete/fix/do this by,
+    turn this in by, get this done by -> due by / due before
+  the deadline is -> deadline      this is due (by) -> due (by)
 
-Gratitude / sign-offs (pure social nicety):
-  much appreciated, can't thank you enough, i am so grateful -> (deleted)
-  i'd/i would (really) appreciate it/that (if) -> (deleted)
+Gratitude / sign-offs (deleted — pure social nicety):
+  much appreciated, can't thank you enough, i am so grateful,
+  i'd/i would (really) appreciate it/that (if)
   thanks for all (of) your/the help -> thanks
 
-Greetings / small talk / affirmations (zero task content):
+Greetings / small talk / affirmations (deleted — zero task content):
   let's take a break, let's stop here, it's bedtime, good morning,
-  hello sir, yes sir, yessir -> (deleted)
+  hello sir, yes sir, yessir
   you bet ya, sure thing, hell yeah, hell yes -> yes
 
-Bare interjections (emotional emphasis, no informational content):
-  good lord, oh my god, ohmygod, omg -> (deleted)
+Bare interjections (deleted — emotional emphasis, no information):
+  good lord, oh my god, ohmygod, omg
 
-New phrases I added beyond your list (same "zero semantic payload" bar):
+Additional filler I added beyond your list (same bar — zero payload, or a
+canonical short replacement):
   if it's not too much trouble, when you get a chance, no rush,
-  whenever you have a moment, if you don't mind -> (deleted)
+  whenever you have a moment, if you don't mind, real quick,
+  for what it's worth, just so you know, to be honest,
+  if i'm being honest / honest, sorry to bother you, sorry to be a pain,
+  my apologies, my bad -> (deleted)
   at your earliest convenience -> when you can
   just a heads up -> heads up      quick question -> question
-  real quick -> (deleted)
-  to make a long story short / long story short / to cut to the chase
-    -> in short
+  long story short (+ variants) -> in short
   the bottom line is -> bottom line
   at the end of the day / when all is said and done -> ultimately
-  for what it's worth, just so you know -> (deleted)
   just so we're clear -> to clarify
-  to be honest, if i'm being honest, if i'm honest -> (deleted)
-  sorry to bother you, sorry to be a pain, my apologies, my bad -> (deleted)
+
+--- Corrected this round: shortened, not deleted ---
+
+Uncertainty markers (still signal "not decided" — an agent reading the
+compressed form must not think this is a settled instruction):
+  not sure which / about that -> unsure which / about that
+  i'm not sure -> unsure          i'm not certain -> uncertain
+  i don't know yet -> TBD         i have no idea / clue -> no idea / clue
+  i don't know about that -> unsure about that
+  i don't know what to do next -> next steps unclear
+  any ideas about -> ideas on
+  what do you suggest / what would you suggest -> suggestions
+  how would you go about / how should i go about -> how to
+  not able to recall -> can't recall
+  i can't remember -> can't remember    i don't remember -> don't remember
+  i don't have access -> no access      i can't find -> can't find
+  i have no preference -> no preference  it's your call -> your call
+
+Real questions — shortened, kept as questions:
+  how do we / is there a way to -> how to   (still asks for a METHOD, not
+    an action — different from "can you", which asks for the action)
+  how did we / when did we / what did we -> how'd / when'd / what'd we
+    (contraction preserves the past-tense auxiliary a blind "did" strip
+    would break — "how we decide" is ungrammatical, "how'd we" isn't)
+  what do you think / what are your thoughts -> thoughts
+  when's a good time / when is a good time / tell me a good time /
+    tell me when it's best -> best time
+  what's the status / what is the status -> status
+  find me some -> find            give me details on -> details on
+
+Substantive descriptors — trimmed, meaning intact:
+  a key factor -> key factor      a big part of -> big part of
+  critically important -> critical   the one thing -> one thing
+  more than i can handle -> too much
+
+Task-framing context — compressed to a short label, not deleted (the fact
+that it's a boss request or a new task is real information):
+  my boss asked for -> boss wants
+  i have a new task / assignment / request -> new task / assignment / request
+  help with an assignment -> assignment help
+
+Urgency / deadline-pressure — canonicalized to one consistent marker rather
+than deleted. This is a real priority signal; collapsing five phrasings
+("this is a big deal"/"huge"/"a huge deal"/"massive") to one marker is
+arguably an improvement, since an agent parsing many compressed prompts
+sees one recognizable flag instead of five variants:
+  this is urgent -> urgent
+  this is a big deal / huge / a huge deal / massive -> high priority
+  i don't/do not have much time / i'm running out of time -> time-limited
+  i've/i have run out of time -> out of time
 
 =============================================================================
-ADDED — COMPACT_PATTERNS (opener-strip only, level 2+, verb survives)
+COMPACT_PATTERNS — opener-strip only, level 2+, verb survives
 =============================================================================
 
   can we, will you, would you, could you, may i
-  i have to, i need to, i've got to / i have got to
-  be able to   (fixes "would you be able to X" -> just "X",
-                see BUGS FOUND below for why this needed its own entry)
+  i have to, i need to, i've got to / i have got to, i need help
+  be able to   (fixes "would you be able to X" -> just "X" — see BUGS below)
   i wonder if you / we
+  is it possible to, would it be possible to
+  did you       (so "did you find/check/see X" -> "find/check/see X")
+  hoping you'd / hoping you could, i was hoping you'd / could
 
-Note: "can you find" etc. were NOT added as PHRASE_REMAPS — that would
-delete "find" along with the opener. "can you" alone was already a
-COMPACT_PATTERNS opener-strip, so "can you find the file" already correctly
-became "find the file". Same logic kept "will you tell me", "could you
-give me", etc. off the list — the opener strips already handle them.
+Note: "can you find", "will you tell me", "could you give me" etc. don't
+need their own entries — the bare opener strips above already handle them,
+leaving the real verb ("find", "tell me", "give me") intact.
 
 =============================================================================
 ADDED — friction miner escalation patterns (core/friction/miner.py)
@@ -129,46 +177,25 @@ ADDED — friction miner escalation patterns (core/friction/miner.py)
 
 Deliberately did NOT add bare "damn" or bare "hell" as standalone triggers —
 both are common non-frustration intensifiers ("damn good", "hard as hell")
-and would false-positive constantly. Verified the fix doesn't false-trigger
-on legitimate uses of "dam" (as in a dam holding back water).
+and would false-positive constantly.
 
 =============================================================================
-EXCLUDED — kept out of both systems, with why
+GENUINELY LEFT AS-IS — no safe mechanical compression found, or already
+short enough that shortening further isn't worth the risk
 =============================================================================
 
-These looked like filler at a glance but actually carry real meaning that a
-blind delete/strip would destroy. Grouped by why:
-
-UNCERTAINTY MARKERS — deleting these makes the agent think the user has
-decided something when they haven't:
-  not sure which / not sure about that, i'm not sure / not certain,
-  i don't know yet, i have no idea / no clue, i don't know about that,
-  i don't know what to do next, any ideas about, what do you suggest,
-  what would you do, how would you go about, how should i go about
-
-REAL QUESTIONS — these are the actual ask, not a preamble to it:
-  what do you think, what are your thoughts, how did we, when did we,
-  what did we, did you find, is it possible to, would it be possible to,
-  how do we, is there a way to, tell me about, find me some,
-  what's the status, how soon can you, when's a good time,
-  tell me when it's best
-
-SUBSTANTIVE DESCRIPTORS — these state real content (importance, difficulty),
-not politeness:
-  a key factor, a big part of, critically important, several factors,
-  too complex, more than i can handle
-
-TASK-FRAMING CONTEXT — real information about what kind of help is needed:
-  help with an assignment, help completing, help debugging,
-  my boss asked for, i have a new task/assignment/request
-
-URGENCY / DEADLINE-PRESSURE SIGNALS — real priority information that a
-compressor shouldn't silently discard. Candidates for a future dedicated
-"urgency" friction-miner category (not built — bigger scope than a wordlist
-addition, needs a new FrictionSignal type), left alone for now rather than
-compressed away:
-  this is urgent, this is a big/huge deal, this is massive,
-  i don't have much time, i'm running out of time, i've run out of time
+  what would you do          — any short-form ("your approach?") reads
+                                badly mid-sentence as a straight substring
+                                swap; left alone rather than force it
+  tell me about               — already a compact imperative
+  how soon can you            — no dedicated entry needed: the existing
+                                bare "can you" opener-strip already reduces
+                                it to "how soon <verb>", which is imperfect
+                                grammar but preserves both the urgency
+                                ("how soon") and the verb
+  several factors, too complex, help completing, help debugging,
+  i need for you to           — already 2-4 words, shortening further
+                                would cost more clarity than it saves
 
 =============================================================================
 BUGS FOUND ALONG THE WAY (fixed, not just noted)
@@ -177,37 +204,34 @@ BUGS FOUND ALONG THE WAY (fixed, not just noted)
 - "would you be able to convert this" only stripped "would you", leaving
   "be able to convert this" — the compound phrase never fired because the
   shorter "would you" pattern (earlier in dict iteration order) consumed
-  its own text first. Fixed by adding a standalone "be able to" strip
-  instead of trying to out-order it.
+  its own text first. Fixed by adding a standalone "be able to" strip.
 
 - "you betcha" got corrupted to "you b...ha" — the pre-existing bare "etc"
   entry has no word boundary and matches inside ANY word containing that
-  substring (also affects "fetch", "sketch", etc. — a real, general,
-  pre-existing bug, not something specific to what I added). Fixed at the
-  root: _apply_phrases now anchors every phrase with a leading \b, so
-  short entries can't match mid-word. Full suite still passes (1447/1447)
-  after this change.
+  substring (also affects "fetch", "sketch" — a real, general, pre-existing
+  bug, not specific to what I added). Fixed at the root: _apply_phrases now
+  anchors every phrase with a leading \b, so short entries can't match
+  mid-word. Full suite still passes after this change.
 
-- "i can't thank you enough" left a dangling "i " behind — "can't thank
-  you enough" (no leading "i") was defined earlier in the dict and matched
-  first as a substring. Fixed by ordering the longer phrase first.
+- "i can't thank you enough" left a dangling "i " behind, and separately
+  "to make a long story short" was getting cut mid-phrase by the shorter
+  "long story short" entry, producing "To make a in short,, it broke" —
+  both were phrase-ordering bugs (a shorter phrase defined earlier matched
+  as a substring of a longer one defined later). Fixed by ordering longer
+  phrases first, and by dropping trailing commas/colons/question-marks from
+  several replacement values ("ultimately," -> "ultimately", "thoughts?"
+  -> "thoughts") after finding they double up with punctuation already in
+  the source text ("At the end of the day, we ship" -> "ultimately,, we
+  ship", "What do you think? Now what" -> "thoughts?? Now what"). One
+  pre-existing entry has this same cosmetic issue and predates this pass —
+  "just to be clear" -> "clarify:" — left alone since it's not something
+  this pass introduced, flagged here in case you want it cleaned up too.
 
-- Same bug, different phrase: "to make a long story short" was getting
-  cut mid-phrase by the shorter "long story short" entry, producing
-  "To make a in short,, it broke". Fixed the same way, and also dropped
-  trailing commas/colons from several new replacement values ("ultimately,"
-  -> "ultimately", "note:" -> "note", etc.) after finding they double up
-  with a comma already in the source text ("At the end of the day, we
-  ship" -> "ultimately,, we ship"). One pre-existing entry has this same
-  cosmetic issue and predates this pass — "just to be clear" -> "clarify:"
-  — left alone since it's not something this pass introduced, flagging it
-  here in case you want it cleaned up too.
-
-- Several new entries were silently dead code — defined but unreachable
-  because a shorter, more general phrase earlier in the dict always fired
-  first and consumed the text (e.g. "i need to get this completed by" was
-  shadowed by the pre-existing bare "i need to"). Removed rather than left
-  in as misleading no-ops. Not bugs (output was still correct, just less
-  polished than intended), but worth knowing the dict has this ordering
-  sensitivity — anything you add later should be checked against what's
-  already there for the same kind of shadowing.
+- A handful of new entries were silently dead code — defined but
+  unreachable because a shorter, more general phrase earlier in the dict
+  always fired first (e.g. "i need to get this completed by" was shadowed
+  by the pre-existing bare "i need to"). Removed rather than left in as
+  misleading no-ops. Not correctness bugs (output was still fine, just
+  less polished than intended), but worth knowing the dict has this
+  ordering sensitivity — check anything you add later against what's
+  already there.
