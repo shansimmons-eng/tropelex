@@ -679,8 +679,9 @@ void main() {
 <aside id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <div class="flex items-center gap-2">
-            <span class="logo-wrap"><img src="/images/tl.png" alt="Tropelex" class="h-14 w-auto" /></span>
+            <a href="#" onclick="switchSectionWithGraph('dashboard'); return false;" class="logo-wrap cursor-pointer" title="Go to Dashboard"><img src="/images/tl.png" alt="Tropelex" class="h-14 w-auto" /></a>
         </div>
+        <p class="font-mono text-[10px] text-outline uppercase tracking-wider mt-1 ml-1">The Rationale Engine</p>
     </div>
     <div class="sidebar-nav">
         <!-- Content -->
@@ -897,7 +898,7 @@ void main() {
             <button class="md:hidden text-accent-lavender" id="mobile-menu-btn" onclick="toggleSidebar()">
                 <span class="material-symbols-outlined">menu</span>
             </button>
-            <span class="logo-wrap"><img src="/images/tl.png" alt="Tropelex" class="h-10 w-auto hidden md:block" /></span>
+            <a href="#" onclick="switchSectionWithGraph('dashboard'); return false;" class="logo-wrap cursor-pointer hidden md:block" title="Go to Dashboard"><img src="/images/tl.png" alt="Tropelex" class="h-10 w-auto" /></a>
             <span class="text-outline mx-1 hidden md:block">·</span>
             <span class="font-mono text-xs text-outline uppercase tracking-wider" id="current-section-label">Tropebook</span>
         </div>
