@@ -232,13 +232,17 @@
         <p>Generate readable prose from the decision graph. Audience presets: new hire, investor, product manager.</p>
 
         <h4 id="decision-market">Decision Market <span class="badge badge-new">NEW</span></h4>
-        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty.</p>
+        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty. <code>agent_name</code> is free text you choose when placing a bet — see <a href="#agent-naming">Agent Naming</a> for how to pick one consistently.</p>
 
         <h4 id="slack-capture">Slack Capture <span class="badge badge-new">NEW</span></h4>
         <p>Capture decisions from chat messages and extract implicit decisions from threads.</p>
 
         <h4 id="personas">Personas <span class="badge badge-new">NEW</span></h4>
-        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows."</p>
+        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows." See <a href="#agent-naming">Agent Naming</a> for an important caveat: Agent Skills data is tracked per-project, not per-agent, so two different agent names on the same project currently produce the same underlying numbers.</p>
+
+        <h4 id="agent-naming">Agent Naming</h4>
+        <p><code>agent_name</code> shows up in two places — Decision Market bets and <code>/personas/{agent}</code> — and neither enforces a format, so it's worth being deliberate. Pick one stable identifier per agent/model and reuse it everywhere: a model slug (<code>claude-sonnet-5</code>, <code>gpt-4o</code>) works better than a role or session label (<code>reviewer</code>, <code>session-42</code>), since roles and sessions change but the underlying agent identity is what calibration and proficiency tracking are meant to follow over time. For a human placing bets manually, a stable handle like <code>human-shan</code> keeps them distinguishable on the leaderboard from any AI agents.</p>
+        <p><strong>Caveat:</strong> Agent Skills (<code>core/agent_skills.py</code>) currently records proficiency per <em>project</em>, not per agent — <code>record_session_outcome()</code> has no agent parameter at all. <code>/personas/{agent}</code> takes whatever name you pass and labels the project's skill data with it, but doesn't actually filter by agent underneath. In practice: naming is consistent and free, but true per-agent skill segmentation (so Claude's and GPT's proficiency on the same project are tracked separately) isn't built yet. Decision Market's calibration, by contrast, genuinely is per-agent — bets are stored and scored per <code>agent_name</code>, so a consistent naming scheme pays off there immediately.</p>
 
         <h3 class="group" id="group-integrations">Integrations &amp; Ops</h3>
 

@@ -13,21 +13,31 @@ from core.benchmarks.router import benchmarks_router
 from core.memory.manager import MemoryManager
 
 
-def _make_client(tmp_path: Path) -> TestClient:
-    app = FastAPI()
-    app.include_router(benchmarks_router)
-
+def _point_router_at(tmp_path: Path) -> MemoryManager:
     mm = MemoryManager(base_path=str(tmp_path))
     router_mod._mm = mm
     router_mod._BENCHMARKS_DIR = Path(mm.memory_dir) / "benchmarks"
     router_mod._LEGACY_FEDERATION_DIR = Path(mm.memory_dir) / "federation"
-
-    return TestClient(app, raise_server_exceptions=False)
+    return mm
 
 
 @pytest.fixture()
 def client(tmp_path: Path) -> TestClient:
-    return _make_client(tmp_path)
+    """router_mod._mm/_BENCHMARKS_DIR/_LEGACY_FEDERATION_DIR are shared
+    module-level singletons — core.tropebook.web.server mounts the same
+    benchmarks_router instance, so leaving them pointed at a tmp dir after
+    this fixture tears down would silently break the real app's benchmarks
+    endpoints for any test that runs afterward. Always restore them.
+    """
+    app = FastAPI()
+    app.include_router(benchmarks_router)
+
+    original = (router_mod._mm, router_mod._BENCHMARKS_DIR, router_mod._LEGACY_FEDERATION_DIR)
+    _point_router_at(tmp_path)
+
+    yield TestClient(app, raise_server_exceptions=False)
+
+    router_mod._mm, router_mod._BENCHMARKS_DIR, router_mod._LEGACY_FEDERATION_DIR = original
 
 
 def _stat(hash_: str, decisions: int = 5) -> dict:
@@ -110,22 +120,17 @@ class TestImport:
 
 
 class TestLegacyMigration:
-    def test_migrates_old_federation_dir_on_first_access(self, tmp_path: Path) -> None:
-        mm = MemoryManager(base_path=str(tmp_path))
-        legacy_dir = Path(mm.memory_dir) / "federation"
+    def test_migrates_old_federation_dir_on_first_access(self, client: TestClient, tmp_path: Path) -> None:
+        # The `client` fixture already pointed router_mod at tmp_path; seed a
+        # pre-migration federation/ dir under that same memory dir before
+        # the first request triggers _ensure_benchmarks_dir()'s migration.
+        legacy_dir = router_mod._LEGACY_FEDERATION_DIR
         legacy_dir.mkdir(parents=True, exist_ok=True)
         (legacy_dir / "oldhash.json").write_text(json.dumps(_stat("oldhash")))
-
-        app = FastAPI()
-        app.include_router(benchmarks_router)
-        router_mod._mm = mm
-        router_mod._BENCHMARKS_DIR = Path(mm.memory_dir) / "benchmarks"
-        router_mod._LEGACY_FEDERATION_DIR = legacy_dir
-        client = TestClient(app, raise_server_exceptions=False)
 
         resp = client.get("/api/memory/benchmarks/export")
         body = resp.json()
         assert body["count"] == 1
         assert body["stats"][0]["project_hash"] == "oldhash"
         assert not legacy_dir.exists()
-        assert (Path(mm.memory_dir) / "benchmarks" / "oldhash.json").exists()
+        assert (router_mod._BENCHMARKS_DIR / "oldhash.json").exists()

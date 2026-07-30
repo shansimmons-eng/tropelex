@@ -2789,7 +2789,10 @@ void main() {
         <div class="glass-panel rounded-xl p-6">
             <div class="flex items-center justify-between mb-4">
                 <span class="font-mono text-sm text-outline">Leaderboard</span>
-                <button id="btn-market-leaderboard" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Refresh</button>
+                <div class="flex gap-2">
+                    <button id="btn-market-leaderboard" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Refresh</button>
+                    <button id="btn-market-clear" class="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 font-mono text-sm hover:bg-red-900/50 transition-all cursor-pointer">Clear Data</button>
+                </div>
             </div>
             <div id="market-leaderboard" class="text-sm text-outline">No bets placed yet.</div>
         </div>
@@ -8712,6 +8715,18 @@ document.getElementById('btn-market-leaderboard')?.addEventListener('click', asy
         if (bets.length === 0) { el.innerHTML = '<p class="text-sm text-outline">No bets placed yet.</p>'; return; }
         el.innerHTML = bets.map(b => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1"><span class="font-mono text-xs">${escapeHtml(b.agent_name || b.decision_id || 'unknown')}</span><span class="font-mono text-xs text-accent-sky">${b.confidence ?? '--'}</span></div>`).join('');
         document.getElementById('market-empty')?.classList.add('hidden');
+    }
+});
+
+// ── Clear Market Data ──
+document.getElementById('btn-market-clear')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    if (!confirm(`Clear all Decision Market bets for "${state.currentProject}"? This cannot be undone.`)) return;
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/market/clear`, 'DELETE');
+    if (data) {
+        showToast(`Cleared ${data.bets_removed} bet(s)`);
+        document.getElementById('market-leaderboard').innerHTML = '<p class="text-sm text-outline">No bets placed yet.</p>';
+        document.getElementById('market-empty')?.classList.remove('hidden');
     }
 });
 

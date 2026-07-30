@@ -209,6 +209,28 @@ async def get_calibration(project: str, agent: str) -> CalibrationResponse:
     )
 
 
+@market_router.delete("/{project}/market/clear")
+async def clear_market(project: str) -> dict[str, Any]:
+    """Clear all decision-market bets for a project. Irreversible."""
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("market clear load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    bets_removed = len(_get_bets(memory))
+    _set_bets(memory, [])
+    try:
+        _save_memory(project, memory)
+    except Exception as exc:
+        logger.error("market clear save failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"cleared": True, "bets_removed": bets_removed}
+
+
 @market_router.get("/{project}/market/leaderboard")
 async def get_leaderboard(project: str) -> dict[str, Any]:
     """Get the calibration leaderboard ranked by accuracy."""
