@@ -158,6 +158,128 @@ PHRASE_REMAPS = {
     "etc": "...",
     "asap": "immediately",
     "fyi": "",
+    # ── Contraction/variant coverage for existing hedges above ──
+    "i'd like to": "",
+    "i'd like": "",
+    "i'd prefer": "",
+    "i would prefer": "",
+    "i'd be": "",
+    "i would be": "",
+    # ── Purpose/time connectors ──
+    "so as to": "to",
+    "so that": "so",
+    "right now": "now",
+    "for the moment": "now",
+    "just in case": "in case",
+    "in spite of that": "still",
+    "in spite of this": "still",
+    "in regards to": "about",
+    "in relation to": "about",
+    # ── Preamble / throat-clearing ──
+    "you probably recall": "",
+    "if you recall": "",
+    "i forgot to": "forgot to",
+    "just to clarify": "clarify",
+    "for clarity's sake": "for clarity",
+    "one thing i noticed": "noticed",
+    "i noticed that": "noticed",
+    "thought i'd let you know": "",
+    "once we get to that point": "",
+    "once you get toward": "",
+    "as we move towards": "",
+    "as we move toward": "",
+    # ── Wishes/preferences that add no decision content ──
+    "i wish we could": "",
+    "i wish you'd": "",
+    "i wish you would": "",
+    "i would love it if": "if",
+    "i would like it if": "if",
+    "i'm leaning toward": "leaning toward",
+    "i am leaning toward": "leaning toward",
+    "i'm leaning towards": "leaning towards",
+    "i am leaning towards": "leaning towards",
+    # ── Politeness directives (verb-preserving) ──
+    "please take into account": "consider",
+    "please be aware": "note",
+    "please remember": "remember",
+    "kindly": "",
+    # ── Completion timing ──
+    "once you're done": "once done",
+    "when you finish": "once done",
+    "when that's complete": "once done",
+    # ── Deadline framing — compresses the wind-up, keeps the actual due date/time that follows ──
+    "i have to get this done by": "due by",
+    "i have to get this done before": "due before",
+    "i have to complete this by": "due by",
+    "i have to fix this by": "due by",
+    "i have to do this by": "due by",
+    "i have to turn this in by": "due by",
+    "get this done by": "due by",
+    "the deadline is": "deadline",
+    "this is due by": "due by",
+    "this is due": "due",
+    # ── Gratitude / sign-offs (pure social nicety, safe regardless of context) ──
+    "much appreciated": "",
+    "i can't thank you enough": "",
+    "can't thank you enough": "",
+    "i am so grateful": "",
+    "i'd really appreciate it if": "",
+    "i would really appreciate it if": "",
+    "i'd really appreciate it": "",
+    "i would really appreciate it": "",
+    "i'd really appreciate that": "",
+    "i would really appreciate that": "",
+    "i'd appreciate it if": "",
+    "i would appreciate it if": "",
+    "i'd appreciate that": "",
+    "i would appreciate that": "",
+    "thanks for all of your help": "thanks",
+    "thanks for all your help": "thanks",
+    "thanks for all the help": "thanks",
+    # ── Greetings / small talk / affirmations — zero task content ──
+    "let's take a break": "",
+    "let's stop here": "",
+    "it's bedtime": "",
+    "good morning": "",
+    "hello sir": "",
+    "yes sir": "",
+    "yessir": "",
+    "you bet ya": "yes",
+    "sure thing": "yes",
+    "hell yeah": "yes",
+    "hell yes": "yes",
+    # ── Bare interjections — emotional emphasis, no informational content ──
+    "good lord": "",
+    "oh my god": "",
+    "ohmygod": "",
+    "omg": "",
+    # ── Additional filler not in the original set — same "zero semantic
+    # payload" bar as everything above ──
+    "if it's not too much trouble": "",
+    "when you get a chance": "",
+    "no rush": "",
+    "at your earliest convenience": "when you can",
+    "whenever you have a moment": "",
+    "if you don't mind": "",
+    "just a heads up": "heads up",
+    "quick question": "question",
+    "real quick": "",
+    "to make a long story short": "in short",
+    "long story short": "in short",
+    "to cut to the chase": "in short",
+    "the bottom line is": "bottom line",
+    "at the end of the day": "ultimately",
+    "when all is said and done": "ultimately",
+    "for what it's worth": "",
+    "just so you know": "",
+    "just so we're clear": "to clarify",
+    "to be honest": "",
+    "if i'm being honest": "",
+    "if i'm honest": "",
+    "sorry to bother you": "",
+    "sorry to be a pain": "",
+    "my apologies": "",
+    "my bad": "",
 }
 
 META_COMMANDS = {
@@ -187,6 +309,22 @@ COMPACT_PATTERNS = {
     r"\bkind of\b": "",
     r"\bsort of\b": "",
     r"\bdefinitely\b": "",
+    # ── Request-opener strips: word-boundary only, so the real verb that
+    # follows ("...find the file", "...convert this") survives intact.
+    # Whole-phrase entries like "can you find" belong in PHRASE_REMAPS only
+    # when the entire phrase is disposable — these aren't, since "find"/
+    # "convert"/etc. carry the actual request. ──
+    r"\bcan we\b": "",
+    r"\bwill you\b": "",
+    r"\bwould you\b": "",
+    r"\bcould you\b": "",
+    r"\bmay i\b": "",
+    r"\bi have to\b": "",
+    r"\bi need to\b": "",
+    r"\bi've got to\b": "",
+    r"\bi have got to\b": "",
+    r"\bbe able to\b": "",
+    r"\bi wonder if (?:you|we)\b": "",
 }
 
 
@@ -251,8 +389,15 @@ def _strip_stop_words(text: str, aggressive: bool = False) -> str:
 
 def _apply_phrases(text: str) -> str:
     for phrase, replacement in PHRASE_REMAPS.items():
-        # Case-insensitive whole-phrase replace
-        text = re.sub(re.escape(phrase), replacement, text, flags=re.IGNORECASE)
+        # Case-insensitive whole-phrase replace. Leading \b only (not
+        # trailing) — every phrase here starts with a word character, so a
+        # leading boundary is always safe and stops short entries like
+        # "etc" from matching mid-word (e.g. inside "betcha", "sketch").
+        # A trailing \b isn't added: phrases ending in punctuation (e.g.
+        # "etc.") would never match real prose, where "etc. " is followed
+        # by whitespace — both sides of that boundary are non-word, so \b
+        # can't match there at all.
+        text = re.sub(r"\b" + re.escape(phrase), replacement, text, flags=re.IGNORECASE)
     return text
 
 

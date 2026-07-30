@@ -337,6 +337,49 @@ class TestDetectEscalation:
         escalation = [s for s in result.value if s.type == "escalation"]
         assert len(escalation) >= 1
 
+    def test_detect_escalation_bare_dammit(self):
+        """'dammit'/'damnit'/'damn it' (no 'god' prefix) trigger escalation —
+        previously only the 'goddamn(it)' family was covered."""
+        transcript = _long_transcript(
+            "Deploy the new build",
+            "dammit, this broke again",
+            "Third line here for word count needs",
+        )
+
+        result = detect_friction_signals(transcript)
+
+        assert isinstance(result, Ok)
+        escalation = [s for s in result.value if s.type == "escalation"]
+        assert len(escalation) >= 1
+
+    def test_detect_escalation_piss(self):
+        """'piss'/'pissed' triggers escalation."""
+        transcript = _long_transcript(
+            "Run the deploy script",
+            "pissed off that this keeps happening",
+            "Third line here for word count needs",
+        )
+
+        result = detect_friction_signals(transcript)
+
+        assert isinstance(result, Ok)
+        escalation = [s for s in result.value if s.type == "escalation"]
+        assert len(escalation) >= 1
+
+    def test_dam_alone_does_not_trigger_escalation(self):
+        """Bare 'dam' (e.g. discussing a real dam) must not false-positive."""
+        transcript = _long_transcript(
+            "Research hydroelectric dam levels",
+            "the dam release schedule looks fine",
+            "Third line here for word count needs",
+        )
+
+        result = detect_friction_signals(transcript)
+
+        assert isinstance(result, Ok)
+        escalation = [s for s in result.value if s.type == "escalation"]
+        assert len(escalation) == 0
+
 
 # ===========================================================================
 #  5. detect_friction_signals — mixed signals

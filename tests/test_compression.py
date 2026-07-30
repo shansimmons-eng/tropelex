@@ -55,6 +55,43 @@ class TestPhraseRemaps:
         result = _apply_phrases("could you please send the file")
         assert "could you please" not in result
 
+    def test_id_like_to_contraction(self):
+        result = _apply_phrases("i'd like to refactor the auth module")
+        assert "i'd like to" not in result
+        assert "refactor" in result
+
+    def test_deadline_phrase_preserves_the_actual_date(self):
+        result = _apply_phrases("I have to get this done by Friday")
+        assert result == "due by Friday"
+
+    def test_leaning_towards_not_mangled_by_shorter_leaning_toward_entry(self):
+        # "i'm leaning toward" is a literal prefix of "i'm leaning towards" —
+        # regression test for the trailing "s" surviving intact.
+        result = _apply_phrases("i'm leaning towards option B")
+        assert result == "leaning towards option B"
+
+    def test_gratitude_phrase_with_leading_i_not_left_dangling(self):
+        # Regression: "can't thank you enough" is a substring of "i can't
+        # thank you enough" — the shorter entry must not fire first and
+        # leave a dangling "i " behind.
+        result = _apply_phrases("I can't thank you enough for the help")
+        assert result.strip() not in ("I", "i")
+        assert "can't thank you enough" not in result.lower()
+
+    def test_you_betcha_not_corrupted_by_bare_etc_entry(self):
+        # Regression: the bare "etc" entry has no word boundaries and is a
+        # literal substring of "betcha" (b-ETC-ha) — must not mangle it.
+        result = _apply_phrases("you betcha")
+        assert "..." not in result
+
+    def test_thank_you_for_all_help_variant_still_collapses(self):
+        # No dedicated "thank you for all X help" entry exists (removed as
+        # dead code — shadowed by the earlier bare "thank you for" entry),
+        # but the two-step cascade through "thanks for all X help" -> "thanks"
+        # must still fully collapse it.
+        result = _apply_phrases("Thank you for all of your help")
+        assert result == "thanks"
+
 
 class TestCompactPatterns:
     def test_removes_can_you(self):
@@ -64,6 +101,29 @@ class TestCompactPatterns:
     def test_removes_please(self):
         result = _apply_compact("please help")
         assert "please" not in result
+
+    def test_removes_would_you_preserves_verb(self):
+        result = _apply_compact("would you convert this file")
+        assert "would you" not in result
+        assert "convert" in result
+
+    def test_removes_could_you(self):
+        result = _apply_compact("could you check the logs")
+        assert "could you" not in result
+        assert "check" in result
+
+    def test_be_able_to_fixes_would_you_be_able_to_compound(self):
+        # Regression: "would you" alone stripped first would leave a
+        # dangling "be able to" — "be able to" must also be stripped so the
+        # whole opener collapses down to just the verb.
+        result = _apply_compact("would you be able to convert this to JSON")
+        assert "be able to" not in result
+        assert "convert" in result
+
+    def test_removes_i_have_to_preserves_verb(self):
+        result = _apply_compact("i have to fix this bug")
+        assert "i have to" not in result
+        assert "fix" in result
 
 
 class TestStopWords:

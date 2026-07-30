@@ -86,13 +86,14 @@ _ESCALATION_PATTERNS: list[re.Pattern] = [
         r"\b(?:"
         r"wtf|omg|oh my god|"
         r"goddamn?|god ?dam(?:n|mit)?|"
+        r"dam(?:n it|mit|nit)|"
         r"what (?:the (?:hell|fuck)|are you doing|were you thinking|would you do|on earth)\b"
         r")",
         re.IGNORECASE,
     ),
     re.compile(
         r"\b(?:"
-        r"fuck(?:ing|ed)?|shit|crap|cluster\s*?fuck|"
+        r"fuck(?:ing|ed)?|shit|crap|piss(?:ed)?|cluster\s*?fuck|"
         r"screw(?:ed|ing)?|botch(?:ed|ing)?|"
         r"how the hell|what the hell"
         r")\b",
