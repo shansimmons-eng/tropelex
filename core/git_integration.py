@@ -115,6 +115,31 @@ def is_git_repo(path: str) -> bool:
     return _run(["git", "rev-parse", "--git-dir"], path) is not None
 
 
+def get_repo_fingerprint(repo_path: str) -> str | None:
+    """Return a stable identifier for the repo at `repo_path`.
+
+    Prefers the `origin` remote URL (survives local moves/renames of the
+    checkout); falls back to the root commit hash for remote-less repos
+    (a fresh clone of the same remote still shares the root commit even
+    if `origin` is missing or renamed).
+
+    Used to detect when a project's git sync is pointed at a different
+    repo than it was previously synced from — e.g. a stale/mistyped
+    project-name field paired with the wrong repo_path, which otherwise
+    silently mixes one repo's commit history into another project's
+    memory with no warning.
+    """
+    remote = _run(["git", "remote", "get-url", "origin"], repo_path)
+    if remote:
+        return remote.strip()
+    root_commit = _run(["git", "rev-list", "--max-parents=0", "HEAD"], repo_path)
+    if root_commit:
+        # A repo can have multiple roots (merged histories); take the first
+        # deterministically rather than an arbitrary one from git's output order.
+        return root_commit.splitlines()[0].strip()
+    return None
+
+
 def get_recent_commits(repo_path: str, limit: int = 20) -> list[dict[str, str]]:
     """Return recent commits as [{hash, subject, author, date}]."""
     fmt = "%H|||%s|||%an|||%ai"
@@ -579,7 +604,7 @@ def get_deep_repo_summary(repo_path: str, max_commits: int = 15) -> dict[str, An
 
 
 async def sync_repo_to_memory(
-    repo_path: str, project_name: str, memory_manager
+    repo_path: str, project_name: str, memory_manager, force: bool = False
 ) -> dict[str, Any]:
     """
     Pull git history into Tropelex memory for a project.
@@ -587,16 +612,41 @@ async def sync_repo_to_memory(
     - Records new decisions from commits (shallow + deep)
     - Tracks revert chains
     - Returns summary of what was synced
+
+    Guards against syncing the wrong repo into a project: on first sync,
+    the repo's fingerprint (remote URL or root commit) is stored on the
+    project. On every later sync, a fingerprint mismatch means repo_path
+    points somewhere different than last time — returns synced=False with
+    fingerprint_mismatch details instead of silently mixing that repo's
+    commits into this project's memory, unless `force=True`.
     """
     if not is_git_repo(repo_path):
         return {"synced": False, "error": "Not a git repository"}
+
+    memory = memory_manager.get_project_memory(project_name)
+
+    fingerprint = get_repo_fingerprint(repo_path)
+    existing_fingerprint = memory.get("git_repo_fingerprint")
+    if fingerprint and existing_fingerprint and fingerprint != existing_fingerprint and not force:
+        return {
+            "synced": False,
+            "fingerprint_mismatch": True,
+            "error": (
+                f"Project '{project_name}' was previously synced from a different repo "
+                f"({existing_fingerprint}), but repo_path resolves to ({fingerprint}). "
+                "Pass force=true to sync anyway if this is intentional."
+            ),
+            "previous_repo": existing_fingerprint,
+            "current_repo": fingerprint,
+        }
 
     commits = get_recent_commits(repo_path, 50)
     shallow_decisions = extract_decisions_from_commits(commits)
     deep_decisions = extract_deep_decisions(repo_path, commits, 25)
     stack = detect_tech_stack(repo_path)
 
-    memory = memory_manager.get_project_memory(project_name)
+    if fingerprint and not existing_fingerprint:
+        memory["git_repo_fingerprint"] = fingerprint
 
     # Tech stack change detection
     existing_stack = memory.get("tech_stack", [])

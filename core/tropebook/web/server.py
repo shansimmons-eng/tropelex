@@ -1395,6 +1395,7 @@ async def embed_all_citations():
 class GitSyncRequest(BaseModel):
     repo_path: str = Field(..., max_length=500)
     project: str = Field(..., max_length=100)
+    force: bool = False
 
 
 @app.post("/api/git/sync")
@@ -1407,7 +1408,7 @@ async def git_sync(req: GitSyncRequest):
         # Sanitize inputs
         repo_path = req.repo_path.strip()[:500]
         project = _sanitise_project(req.project)
-        result = await sync_repo_to_memory(repo_path, project, mm)
+        result = await sync_repo_to_memory(repo_path, project, mm, force=req.force)
         return result
     except Exception as e:
         logger.error("git_sync failed: %s", e)
@@ -1447,7 +1448,7 @@ async def git_sync_deep(req: GitSyncRequest):
 
     mm = get_memory_manager()
     result = await sync_repo_to_memory(
-        req.repo_path, _sanitise_project(req.project), mm
+        req.repo_path, _sanitise_project(req.project), mm, force=req.force
     )
     return result
 

@@ -8003,37 +8003,53 @@ function renderGitDeepDecisions(decisions) {
 }
 
 // Git Sync
-document.getElementById('btn-git-sync').addEventListener('click', async () => {
+async function runGitSync(endpoint, btnId, btnIcon, btnLabel, force) {
     const repoPath = document.getElementById('git-repo-path').value.trim();
     const projectName = document.getElementById('git-project-name').value.trim();
     if (!repoPath || !projectName) return showToast('Enter repo path and project name');
-    const btn = document.getElementById('btn-git-sync');
+    const btn = document.getElementById(btnId);
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span>';
-    const data = await api('/git/sync', 'POST', { repo_path: repoPath, project: projectName });
+    const data = await api(endpoint, 'POST', { repo_path: repoPath, project: projectName, force: !!force });
     btn.disabled = false;
-    btn.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">sync</span> Sync';
-    renderGitSyncResult(data);
+    btn.innerHTML = `<span class="material-symbols-outlined text-sm align-middle">${btnIcon}</span> ${btnLabel}`;
+    renderGitSyncResult(data, endpoint);
+    if (data?.synced && endpoint === '/git/sync-deep') loadProjects();
+}
+
+document.getElementById('btn-git-sync').addEventListener('click', () => {
+    runGitSync('/git/sync', 'btn-git-sync', 'sync', 'Sync', false);
 });
 
 // Git Deep Sync
-document.getElementById('btn-git-deep-sync').addEventListener('click', async () => {
-    const repoPath = document.getElementById('git-repo-path').value.trim();
-    const projectName = document.getElementById('git-project-name').value.trim();
-    if (!repoPath || !projectName) return showToast('Enter repo path and project name');
-    const btn = document.getElementById('btn-git-deep-sync');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span>';
-    const data = await api('/git/sync-deep', 'POST', { repo_path: repoPath, project: projectName });
-    btn.disabled = false;
-    btn.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">biotech</span> Deep Sync';
-    renderGitSyncResult(data);
-    if (data?.synced) loadProjects();
+document.getElementById('btn-git-deep-sync').addEventListener('click', () => {
+    runGitSync('/git/sync-deep', 'btn-git-deep-sync', 'biotech', 'Deep Sync', false);
 });
 
-function renderGitSyncResult(data) {
+function renderGitSyncResult(data, endpoint) {
     const el = document.getElementById('git-sync-output');
     if (!data) return;
+    if (data.fingerprint_mismatch) {
+        el.innerHTML = `
+            <div class="p-3 rounded-lg bg-yellow-500/10 border-yellow-500/20 border">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-sm text-yellow-400">warning</span>
+                    <span class="font-mono text-sm text-yellow-400">Repo mismatch — sync blocked</span>
+                </div>
+                <p class="text-xs text-outline">This project was previously synced from a different repository. Syncing anyway will mix both repos' commit history into this project's memory.</p>
+                <p class="text-xs text-outline mt-2"><span class="text-outline/70">Previously:</span> <span class="font-mono">${escapeHtml(data.previous_repo || '')}</span></p>
+                <p class="text-xs text-outline"><span class="text-outline/70">Now:</span> <span class="font-mono">${escapeHtml(data.current_repo || '')}</span></p>
+                <button id="btn-git-sync-force" class="mt-3 px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-400 font-mono text-xs hover:bg-yellow-500/30 transition-all cursor-pointer">
+                    Sync Anyway
+                </button>
+            </div>
+        `;
+        document.getElementById('btn-git-sync-force').addEventListener('click', () => {
+            const isDeep = endpoint === '/git/sync-deep';
+            runGitSync(endpoint, isDeep ? 'btn-git-deep-sync' : 'btn-git-sync', isDeep ? 'biotech' : 'sync', isDeep ? 'Deep Sync' : 'Sync', true);
+        });
+        return;
+    }
     if (data.error) { el.innerHTML = `<p class="text-sm text-red-400">${escapeHtml(data.error)}</p>`; return; }
     const stackChanges = data.stack_changes || {};
     const categories = data.work_categories || {};
