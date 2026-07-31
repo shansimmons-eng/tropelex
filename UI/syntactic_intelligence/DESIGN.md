@@ -130,7 +130,7 @@ The palette is anchored in a near-black navy (`#010515`) to provide maximum cont
 
 - **Primary & Secondary:** Lavender and Sky are used for primary actions, active states, and focus indicators.
 - **Data Accents:** Lime-green is reserved for "learning" events, successful completions, and positive pattern matching. Periwinkle is used for secondary data attributes and metadata.
-- **Glass Effects:** Overlays and modals utilize semi-transparent versions of the background with thin, 1px borders using `glass-border` to maintain structural definition without heavy solid fills.
+- **Glass Effects:** Overlays and modals use semi-transparent versions of the background with thin, 1px borders using `glass-border` to maintain structural definition without heavy solid fills.
 - **High-Contrast Logic:** All text must meet a minimum 7:1 contrast ratio against the deep navy background to ensure legibility in high-density data views.
 
 ## Typography

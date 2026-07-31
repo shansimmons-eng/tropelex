@@ -444,7 +444,7 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 | **Safety Metadata** | | |
 | POST | `/api/memory/{project}/decisions` | Add decision with optional `safety_metadata` (risk_level, reversibility, affected_systems, safety_category, requires_review) |
 | GET | `/api/memory/{project}/safety-stats` | Aggregated safety statistics (risk distribution, safety score) |
-| GET | `/api/memory/{project}/safety-dashboard` | Comprehensive safety metrics with trends and system exposure |
+| GET | `/api/memory/{project}/safety-dashboard` | Safety metrics with trends and system exposure |
 | GET | `/api/memory/{project}/safety-trend` | Time-series risk data for charting |
 | **Decision Impact** | | |
 | GET | `/api/memory/{project}/decision-impact` | System-wide impact analysis with dependency graph and risk propagation |

@@ -4,7 +4,7 @@ Tropelex is built as a persistent decision-memory system for AI coding agents. T
 
 This document names those properties explicitly, for anyone evaluating Tropelex as safety-relevant infrastructure rather than just a productivity tool. Every mechanism described below is implemented and tested in this repository today — nothing here is a roadmap item. See [`wishlist.md`](wishlist.md) for what's still planned.
 
-**Scope note:** none of this is a formal alignment guarantee. It's infrastructure that makes certain failure modes — silent objective drift, unresolved conflicting decisions, context loss across agent handoffs — visible and checkable rather than invisible by default. Treat it as a foundation to build evaluations and guardrails on, not as a proof of anything on its own.
+**Scope note:** none of this is a formal alignment guarantee. It's infrastructure that makes certain failure modes — silent objective drift, unresolved conflicting decisions, context loss across agent handoffs — visible and checkable rather than invisible by default. Treat it as a foundation to build evaluations and guardrails on.
 
 ---
 
@@ -30,7 +30,7 @@ Scans code changes for keyword/topic overlap against recorded decisions and flag
 
 **Mechanism:** Preventive Ghost Checks (`core/ghost/preventive.py`, `core/ghost/preventive_router.py`)
 
-Runs the same drift-detection logic *before* a diff is committed, not after — `POST /api/memory/{project}/ghost-check` takes a proposed unified diff and returns severity-scored warnings against every active decision it touches. Designed as a literal pre-write hook: call it before finalizing a change, not as a postmortem tool.
+Runs the same drift-detection logic *before* a diff is committed, not after — `POST /api/memory/{project}/ghost-check` takes a proposed unified diff and returns severity-scored warnings against every active decision it touches. Designed as a literal pre-write hook: call it before finalizing a change.
 
 ## Conflicting-Objective Surfacing
 
@@ -70,4 +70,4 @@ Reconstructs project memory as it existed as of any past date, replaying recorde
 - **Not a guarantee of correct behavior.** Every mechanism above surfaces information (a contradiction, a drift warning, a calibration score) — none of them can force an agent to act on it. The value is in making failure modes checkable, not in preventing them outright.
 - **A general-purpose MCP server exists** ([`mcp_server/`](mcp_server/)) exposing decision capture, contradiction checks, context bundling, agent handoff packets, and calibration data as MCP tools — so any MCP-capable agent (not just Tropelex's own editor integrations) can read and write this infrastructure directly. Currently a curated subset of the full REST API; see `mcp_server/README.md` for the tool list.
 
-If you're evaluating Tropelex for a grant, fellowship, or collaboration and want more detail on any of the above, the relevant source files are linked next to each mechanism — everything described here is real, shipped, and tested, not a proposal.
+If you're evaluating Tropelex for a grant, fellowship, or collaboration and want more detail on any of the above, the relevant source files are linked next to each mechanism — everything described here is real, shipped, and tested.

@@ -351,7 +351,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 19. Session Replay with AI Analysis
 **Purpose:** AI-generated insights from session diffs.
 
-**Why:** Session diffs are raw data. AI analysis would extract actionable insights.
+**Why:** Session diffs are raw data. AI analysis would extract concrete insights.
 
 **Features:**
 - Auto-summarize session changes
