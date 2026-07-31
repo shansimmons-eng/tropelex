@@ -204,6 +204,7 @@ from core.benchmarks.router import benchmarks_router        # noqa: E402
 from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
 from core.docmine.router import docmine_router                     # noqa: E402
 from core.agent_audit.router import agent_audit_router              # noqa: E402
+from core.telemetry import telemetry_router, _emit_telemetry        # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -240,6 +241,7 @@ app.include_router(benchmarks_router)
 app.include_router(web_research_router)
 app.include_router(docmine_router)
 app.include_router(agent_audit_router)
+app.include_router(telemetry_router)
 
 
 # --- Request body models ---
@@ -907,6 +909,7 @@ async def add_decision(project: str, data: DecisionCreate):
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
     mm.save_project_memory(project, memory)
+    _emit_telemetry("OK", f"Decision captured in {project}")
     return {"added": True, "decision": decision_entry}
 
 
@@ -4895,6 +4898,7 @@ async def record_session(project: str, req: SessionRecordRequest):
         summary=req.summary,
         session_type=req.session_type,
     )
+    _emit_telemetry("OK", f"Session recorded for {project}")
     return result
 
 
@@ -4972,6 +4976,7 @@ async def apply_decay(project: str):
     memory = apply_decay_to_memory(memory)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
     mm.save_project_memory(project, memory)
+    _emit_telemetry("DECAY", f"Confidence scores re-evaluated for {project}")
 
     return {"applied": True, "summary": memory.get("confidence_summary", {})}
 
@@ -5661,6 +5666,7 @@ async def run_feed_now(feed_id: str):
         raise HTTPException(404, "Feed not found")
     scheduler = _get_feed_scheduler()
     run = scheduler.run_feed(feed)
+    _emit_telemetry("RESEARCH", f"Feed '{feed.name}' ingested ({run.results_count} new)")
     return run.to_dict()
 
 

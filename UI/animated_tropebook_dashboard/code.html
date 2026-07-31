@@ -1877,6 +1877,7 @@ void main() {
             <button class="explainability-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="explain" onclick="switchGenericTab('explainability', 'explain')">Why Do We...?</button>
             <button class="explainability-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="prefetch" onclick="switchGenericTab('explainability', 'prefetch')">Context Prefetch</button>
             <button class="explainability-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="docmine" onclick="switchGenericTab('explainability', 'docmine')">Doc Mining</button>
+            <button class="explainability-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="lineage" onclick="switchGenericTab('explainability', 'lineage')">Decision Lineage</button>
         </div>
 
         <div id="explainability-explain" class="explainability-tab-panel active">
@@ -1951,6 +1952,48 @@ void main() {
             <span class="material-symbols-outlined text-4xl text-outline mb-3">difference</span>
             <p class="text-outline text-sm">No scan yet. Click "Scan Markdown Files" to mine the repo's docs.</p>
             <a href="/guide#docmine" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="explainability-lineage" class="explainability-tab-panel" style="display: none;">
+<div class="glass-panel rounded-xl p-6 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-accent-lavender text-2xl">account_tree</span>
+                    <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Decision Lineage</h2>
+                    <span id="lineage-project-indicator" class="font-mono text-xs text-outline px-2 py-1 rounded bg-surface-raised"></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="lineage-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1.5 font-mono text-sm text-on-surface cursor-pointer">
+                        <option value="">Select project...</option>
+                    </select>
+                    <span class="font-mono text-xs text-outline" id="lineage-graph-stats">0 nodes · 0 edges</span>
+                    <select id="lineage-adr-format" class="bg-surface-raised border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-on-surface cursor-pointer focus:outline-none">
+                        <option value="tropelex">Tropelex</option>
+                        <option value="nygard">Nygard</option>
+                        <option value="madr">MADR</option>
+                    </select>
+                    <button id="lineage-reset-zoom" class="px-3 py-1 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-accent-lavender transition-colors">Reset</button>
+                    <button id="lineage-export-adrs" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Export ADRs</button>
+                </div>
+            </div>
+            <p class="text-outline text-sm mb-4">Shows only parentage relationships between decisions — supersedes, caused_by, reverts.</p>
+            <div id="lineage-graph-container" class="relative w-full rounded-xl overflow-hidden" style="height:520px; background:rgba(1,5,21,0.8); border:1px solid rgba(165,128,250,0.1);">
+                <svg id="lineage-graph-svg" width="100%" height="100%"></svg>
+                <div id="lineage-graph-tooltip" class="hidden absolute pointer-events-none glass-panel rounded-lg p-3 max-w-xs z-10">
+                    <p class="font-mono text-xs text-accent-lavender" id="lineage-tooltip-title"></p>
+                    <p class="text-xs text-outline mt-1" id="lineage-tooltip-url"></p>
+                    <p class="text-xs text-on-surface mt-1" id="lineage-tooltip-summary"></p>
+                </div>
+                <div id="lineage-graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline">
+                    <span class="material-symbols-outlined text-5xl mb-3">account_tree</span>
+                    <p class="font-mono text-sm">Select a project to see decision parentage</p>
+                </div>
+            </div>
+        </div>
+        <div id="lineage-adr-output" class="hidden glass-panel rounded-xl p-6">
+            <h4 class="font-mono text-xs uppercase text-accent-lime mb-2">Generated ADRs</h4>
+            <div id="lineage-adr-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
         </div>
         </div>
 
@@ -3710,6 +3753,31 @@ void main() {
     <span id="toast-message" class="font-mono text-sm"></span>
 </div>
 
+<!-- Command Palette -->
+<div id="cmdk-modal" class="fixed inset-0 z-50 hidden items-start justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-panel rounded-xl w-full max-w-xl mx-4 mt-[12vh] fade-in overflow-hidden">
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-glass-border">
+            <span class="material-symbols-outlined text-outline text-lg">search</span>
+            <input id="cmdk-input" type="text" autocomplete="off"
+                placeholder="Search decisions, jump to a tab, switch project..."
+                class="flex-1 bg-transparent font-mono text-sm text-on-surface placeholder-outline focus:outline-none"/>
+            <kbd class="text-xs text-outline font-mono border border-glass-border rounded px-1.5 py-0.5">Esc</kbd>
+        </div>
+        <div id="cmdk-results" class="max-h-96 overflow-y-auto p-2"></div>
+    </div>
+</div>
+
+<!-- Live Telemetry Drawer -->
+<div id="telemetry-drawer" class="fixed left-0 right-0 md:left-[240px] z-30" style="bottom:28px;">
+    <button id="telemetry-toggle" class="flex items-center gap-2 px-3 h-6 bg-surface-raised border-t border-glass-border font-mono text-xs text-outline hover:text-accent-lavender w-full md:w-auto cursor-pointer">
+        <span class="material-symbols-outlined text-sm">terminal</span> Telemetry
+        <span id="telemetry-unread" class="hidden ml-1 px-1.5 rounded-full bg-accent-lavender/20 text-accent-lavender">0</span>
+    </button>
+    <div id="telemetry-log-wrap" class="hidden glass-panel border-t border-glass-border" style="height:200px;">
+        <pre id="telemetry-log" class="font-mono text-xs text-outline whitespace-pre-wrap p-3 h-full overflow-y-auto"></pre>
+    </div>
+</div>
+
 <script>
 // State
 const state = {
@@ -3717,7 +3785,8 @@ const state = {
     currentProject: localStorage.getItem('tropelex-current-project') || null,
     citations: [],
     projects: [],
-    patterns: []
+    patterns: [],
+    decisions: []
 };
 window.state = state;
 
@@ -3755,9 +3824,10 @@ const _PERSIST_RESULT_IDS = [
 ];
 
 const GLOBAL_PROJECT_INPUT_IDS = new Set([
-    'global-project-select', 'project-select', 'insights-project-select', 
-    'health-project-select', 'impact-project-select', 'ghost-project-select', 
-    'explain-project-select', 'handoff-project-select', 'git-project-name'
+    'global-project-select', 'project-select', 'insights-project-select',
+    'health-project-select', 'impact-project-select', 'ghost-project-select',
+    'explain-project-select', 'handoff-project-select', 'git-project-name',
+    'lineage-project-select'
 ]);
 
 function saveSectionState(sectionId) {
@@ -3885,6 +3955,7 @@ const LEAF_TO_GROUP = {
     ghost: 'quality', preventive: 'quality', friction: 'quality',
     contradictions: 'quality',
     explain: 'explainability', prefetch: 'explainability', docmine: 'explainability',
+    lineage: 'explainability',
     timetravel: 'lifecycle', compaction: 'lifecycle',
     feeds: 'research', deepresearch: 'research',
     handoff: 'team', prbot: 'team', narrative: 'team',
@@ -4002,6 +4073,7 @@ function switchGenericTab(parent, tab) {
     if (tab === 'prefetch' && typeof loadPrefetch === 'function') loadPrefetch();
     if (tab === 'docmine' && typeof syncDocmineProject === 'function') syncDocmineProject();
     if (tab === 'git' && typeof syncGitProject === 'function') syncGitProject();
+    if (tab === 'lineage' && typeof loadLineageGraph === 'function') { syncLineageProject(); loadLineageGraph(); }
 }
 
 
@@ -4629,6 +4701,190 @@ document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('cancel-add').addEventListener('click', closeModal);
 document.getElementById('add-modal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('add-modal')) closeModal();
+});
+
+// --- Command Palette (Ctrl/Cmd+K) ---
+
+let cmdkTabIndex = null;
+let cmdkFlatResults = [];
+let cmdkActiveIdx = 0;
+
+function buildCmdkTabIndex() {
+    const tabs = [];
+    Object.entries(LEAF_TO_GROUP).forEach(([leaf, parent]) => {
+        const btn = document.querySelector(`.${parent}-tab-btn[data-tab="${leaf}"]`);
+        const label = btn ? btn.textContent.trim() : leaf.charAt(0).toUpperCase() + leaf.slice(1);
+        tabs.push({ kind: 'tab', id: leaf, parent, label });
+    });
+    document.querySelectorAll('.sidebar .nav-item[data-section]').forEach(btn => {
+        const id = btn.dataset.section;
+        if (id === 'onboarding' || id === 'settings') return;
+        tabs.push({ kind: 'section', id, label: btn.textContent.trim() });
+    });
+    return tabs;
+}
+
+function fuzzyScore(query, text) {
+    if (!query) return 0;
+    const q = query.toLowerCase();
+    const t = (text || '').toLowerCase();
+    let qi = 0, score = 0, run = 0;
+    for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+        if (t[ti] === q[qi]) {
+            run += 1;
+            score += 1 + run * 0.5;
+            qi += 1;
+        } else {
+            run = 0;
+        }
+    }
+    if (qi < q.length) return 0;
+    if (t.includes(q)) score += 10;
+    return score;
+}
+
+function cmdkSearch(query) {
+    if (!cmdkTabIndex) cmdkTabIndex = buildCmdkTabIndex();
+
+    let tabs, projects, decisions = [];
+
+    if (!query) {
+        // No query yet: show a default list rather than nothing.
+        tabs = cmdkTabIndex.slice(0, 6);
+        projects = state.projects.slice(0, 5).map(p => ({ name: p.name || p }));
+    } else {
+        tabs = cmdkTabIndex
+            .map(item => ({ item, score: fuzzyScore(query, item.label) }))
+            .filter(x => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 6)
+            .map(x => x.item);
+
+        projects = state.projects
+            .map(p => ({ name: p.name || p }))
+            .map(item => ({ item, score: fuzzyScore(query, item.name) }))
+            .filter(x => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map(x => x.item);
+
+        decisions = state.decisions
+            .map(d => ({ item: d, score: fuzzyScore(query, d.decision) }))
+            .filter(x => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map(x => x.item);
+    }
+
+    return { tabs, projects, decisions };
+}
+
+function updateCmdkActiveRow() {
+    cmdkFlatResults.forEach((_, i) => {
+        const row = document.getElementById(`cmdk-result-${i}`);
+        if (!row) return;
+        row.classList.toggle('bg-surface-raised', i === cmdkActiveIdx);
+        row.classList.toggle('text-accent-lavender', i === cmdkActiveIdx);
+    });
+    const active = document.getElementById(`cmdk-result-${cmdkActiveIdx}`);
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function renderCmdkResults(query) {
+    const { tabs, projects, decisions } = cmdkSearch(query);
+    cmdkFlatResults = [];
+    let flatIdx = 0;
+
+    const group = (label, items, renderRow) => {
+        if (!items.length) return '';
+        const rows = items.map(item => {
+            const idx = flatIdx++;
+            cmdkFlatResults.push(item);
+            return `<div id="cmdk-result-${idx}" data-idx="${idx}"
+                class="px-3 py-2 rounded-lg cursor-pointer font-mono text-sm flex items-center gap-2 hover:bg-surface-raised"
+                onclick="selectCmdkResult(cmdkFlatResults[${idx}])">${renderRow(item)}</div>`;
+        }).join('');
+        return `<div class="px-2 pt-2 pb-1 font-mono text-xs text-outline uppercase tracking-wider">${label}</div>${rows}`;
+    };
+
+    const html =
+        group('Jump to', tabs, item => item.kind === 'section'
+            ? `<span class="material-symbols-outlined text-sm text-accent-periwinkle">folder</span> ${escapeHtml(item.label)}`
+            : `<span class="material-symbols-outlined text-sm text-accent-sky">tab</span> ${escapeHtml(item.label)}`) +
+        group('Projects', projects, item =>
+            `<span class="material-symbols-outlined text-sm text-accent-lime">work</span> ${escapeHtml(item.name)}`) +
+        group('Decisions', decisions, item =>
+            `<span class="material-symbols-outlined text-sm text-accent-lavender">bolt</span> ${escapeHtml((item.decision || '').slice(0, 80))}`);
+
+    const results = document.getElementById('cmdk-results');
+    results.innerHTML = html || `<div class="px-3 py-6 text-center text-sm text-outline">No matches</div>`;
+    cmdkActiveIdx = 0;
+    updateCmdkActiveRow();
+}
+
+function selectCmdkResult(item) {
+    if (!item) return;
+    closeCmdk();
+    if (item.kind === 'section') {
+        switchSection(item.id);
+    } else if (item.kind === 'tab') {
+        switchSection(item.parent);
+        switchGenericTab(item.parent, item.id);
+    } else if (item.name !== undefined) {
+        selectProject(item.name);
+    } else if (item.decision !== undefined) {
+        switchSection('content');
+        switchGenericTab('content', 'memory');
+        showToast(item.decision.slice(0, 140));
+    }
+}
+
+function openCmdk() {
+    const modal = document.getElementById('cmdk-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const input = document.getElementById('cmdk-input');
+    input.value = '';
+    renderCmdkResults('');
+    input.focus();
+}
+
+function closeCmdk() {
+    const modal = document.getElementById('cmdk-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('cmdk-input').blur();
+}
+
+document.getElementById('cmdk-input').addEventListener('input', e => renderCmdkResults(e.target.value));
+document.getElementById('cmdk-modal').addEventListener('click', e => {
+    if (e.target.id === 'cmdk-modal') closeCmdk();
+});
+
+document.addEventListener('keydown', e => {
+    const modal = document.getElementById('cmdk-modal');
+    const isOpen = !modal.classList.contains('hidden');
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        isOpen ? closeCmdk() : openCmdk();
+        return;
+    }
+    if (!isOpen) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCmdk();
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        cmdkActiveIdx = Math.min(cmdkActiveIdx + 1, cmdkFlatResults.length - 1);
+        updateCmdkActiveRow();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        cmdkActiveIdx = Math.max(cmdkActiveIdx - 1, 0);
+        updateCmdkActiveRow();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (cmdkFlatResults[cmdkActiveIdx]) selectCmdkResult(cmdkFlatResults[cmdkActiveIdx]);
+    }
 });
 
 // API calls
@@ -5262,6 +5518,8 @@ function updateGlobalProjectSelector() {
     if (explainSel) explainSel.innerHTML = '<option value="">Select project...</option>';
     const handoffSel = document.getElementById('handoff-project-select');
     if (handoffSel) handoffSel.innerHTML = '<option value="">Select project...</option>';
+    const lineageSel = document.getElementById('lineage-project-select');
+    if (lineageSel) lineageSel.innerHTML = '<option value="">Select project...</option>';
     state.projects.forEach(proj => {
         const pName = proj.name || proj;
         const opt = document.createElement('option');
@@ -5276,6 +5534,7 @@ function updateGlobalProjectSelector() {
         if (ghostSel) ghostSel.appendChild(opt.cloneNode(true));
         if (explainSel) explainSel.appendChild(opt.cloneNode(true));
         if (handoffSel) handoffSel.appendChild(opt.cloneNode(true));
+        if (lineageSel) lineageSel.appendChild(opt.cloneNode(true));
     });
 }
 
@@ -5346,7 +5605,8 @@ async function selectProject(name) {
             </div>
             <p class="text-sm">${escapeHtml(data.description || 'No description')}</p>
         `;
-        renderDecisions(data.decisions || []);
+        state.decisions = data.decisions || [];
+        renderDecisions(state.decisions);
         renderSessions(data.session_history || []);
     }
     renderProjects();
@@ -6640,9 +6900,18 @@ function renderGraph(nodes, edges) {
 }
 
 // Decision graph renderer — confidence-sized nodes, relationship-colored edges
-function renderDecisionGraph(nodes, edges) {
-    const container = document.getElementById('graph-container');
-    const svg = d3.select('#graph-svg');
+function renderDecisionGraph(nodes, edges, opts = {}) {
+    const {
+        containerId = 'graph-container',
+        svgId = 'graph-svg',
+        resetZoomId = 'graph-reset-zoom',
+        tooltipId = 'graph-tooltip',
+        tooltipTitleId = 'tooltip-title',
+        tooltipUrlId = 'tooltip-url',
+        tooltipSummaryId = 'tooltip-summary',
+    } = opts;
+    const container = document.getElementById(containerId);
+    const svg = d3.select(`#${svgId}`);
     svg.selectAll('*').remove();
     if (graphSimulation) graphSimulation.stop();
 
@@ -6653,7 +6922,7 @@ function renderDecisionGraph(nodes, edges) {
     // Zoom
     const zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', e => g.attr('transform', e.transform));
     svg.call(zoom);
-    document.getElementById('graph-reset-zoom').onclick = () =>
+    document.getElementById(resetZoomId).onclick = () =>
         svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
 
     // Arrow markers per relationship type
@@ -6733,11 +7002,11 @@ function renderDecisionGraph(nodes, edges) {
         .text(d => d.title.length > 24 ? d.title.slice(0, 22) + '…' : d.title);
 
     // Tooltip
-    const tooltip = document.getElementById('graph-tooltip');
+    const tooltip = document.getElementById(tooltipId);
     node.on('mouseover', (e, d) => {
-        document.getElementById('tooltip-title').textContent = d.fullText || d.title;
-        document.getElementById('tooltip-url').textContent = `${d.tier} confidence · ${d.source}`;
-        document.getElementById('tooltip-summary').textContent = d.context?.slice(0, 120) || '';
+        document.getElementById(tooltipTitleId).textContent = d.fullText || d.title;
+        document.getElementById(tooltipUrlId).textContent = `${d.tier} confidence · ${d.source}`;
+        document.getElementById(tooltipSummaryId).textContent = d.context?.slice(0, 120) || '';
         tooltip.classList.remove('hidden');
     }).on('mousemove', e => {
         const rect = container.getBoundingClientRect();
@@ -6753,6 +7022,91 @@ function renderDecisionGraph(nodes, edges) {
         node.attr('transform', d => `translate(${d.x},${d.y})`);
     });
 }
+
+// --- Decision Lineage (Explainability) ---
+
+function syncLineageProject() {
+    const sel = document.getElementById('lineage-project-select');
+    if (sel) sel.value = state.currentProject || '';
+}
+
+async function loadLineageGraph() {
+    const project = document.getElementById('lineage-project-select')?.value || state.currentProject;
+    const indicator = document.getElementById('lineage-project-indicator');
+    if (!project) {
+        document.getElementById('lineage-graph-empty').style.display = 'flex';
+        document.getElementById('lineage-graph-stats').textContent = 'Select a project';
+        if (indicator) indicator.style.display = 'none';
+        return;
+    }
+    if (indicator) {
+        indicator.textContent = `Project: ${project}`;
+        indicator.style.display = 'inline';
+    }
+
+    const data = await api(`/memory/${project}/graph`);
+    if (!data) return;
+
+    const parentageRel = ['supersedes', 'caused_by', 'reverts'];
+    const nodes = data.nodes.map(n => ({
+        id: n.id,
+        title: n.label,
+        fullText: n.full_text,
+        context: n.context,
+        confidence: n.confidence,
+        tier: n.tier,
+        timestamp: n.timestamp,
+        source: n.source,
+        categories: n.categories || [],
+        type: 'decision',
+    }));
+    const edges = data.edges
+        .filter(e => parentageRel.includes(e.relationship))
+        .map(e => ({ source: e.source, target: e.target, label: e.relationship }));
+
+    document.getElementById('lineage-graph-stats').textContent =
+        `${nodes.length} node${nodes.length !== 1 ? 's' : ''} · ${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
+    document.getElementById('lineage-graph-empty').style.display = edges.length === 0 ? 'flex' : 'none';
+    renderDecisionGraph(nodes, edges, {
+        containerId: 'lineage-graph-container',
+        svgId: 'lineage-graph-svg',
+        resetZoomId: 'lineage-reset-zoom',
+        tooltipId: 'lineage-graph-tooltip',
+        tooltipTitleId: 'lineage-tooltip-title',
+        tooltipUrlId: 'lineage-tooltip-url',
+        tooltipSummaryId: 'lineage-tooltip-summary',
+    });
+}
+
+document.getElementById('lineage-project-select')?.addEventListener('change', () => {
+    state.currentProject = document.getElementById('lineage-project-select').value;
+    loadLineageGraph();
+});
+
+document.getElementById('lineage-export-adrs')?.addEventListener('click', async () => {
+    const project = document.getElementById('lineage-project-select')?.value || state.currentProject;
+    if (!project) return showToast('Select a project first');
+    const format = document.getElementById('lineage-adr-format').value;
+    const data = await api(`/memory/${project}/adrs?format=${format}&only_significant=true`);
+    const container = document.getElementById('lineage-adr-output');
+    const list = document.getElementById('lineage-adr-list');
+    container.classList.toggle('hidden', !data || data.adrs.length === 0);
+    if (!data || data.adrs.length === 0) {
+        list.innerHTML = '<p class="text-xs text-outline">No significant decisions to generate ADRs from.</p>';
+        return;
+    }
+    list.innerHTML = data.adrs.map(adr => `
+        <details class="p-3 rounded bg-surface border border-glass-border">
+            <summary class="text-sm font-medium cursor-pointer hover:text-accent-lavender">${escapeHtml(adr.filename)}</summary>
+            <div class="relative code-copy-wrap mt-2">
+                <button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button>
+                <pre class="text-xs text-on-surface/80 whitespace-pre-wrap max-h-48 overflow-y-auto pt-6">${escapeHtml(adr.content)}</pre>
+            </div>
+        </details>
+    `).join('');
+    showToast(`Generated ${data.adrs.length} ADRs (${format})`);
+});
+
 document.getElementById('semantic-search-btn').addEventListener('click', async () => {
     const query = document.getElementById('semantic-query').value.trim();
     if (!query) return;
@@ -9503,7 +9857,7 @@ async function init() {
     await loadPatterns();
     await loadFeeds();
     loadAlertConfig();
-    await loadDashboard();
+    try { await loadDashboard(); } catch (e) { console.error('Dashboard load failed:', e); }
     loadDeepResearchHistory();
     
     // Initialize all project indicators to "No project"
@@ -9526,6 +9880,10 @@ async function init() {
 
     // Poll health every 30s
     setInterval(checkHealth, 30000);
+
+    // Poll telemetry every 5s
+    pollTelemetry();
+    setInterval(pollTelemetry, 5000);
 }
 
 // ── Compaction button ──
@@ -9553,6 +9911,47 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
     btn.disabled = false;
     btn.textContent = 'Run Compaction';
 });
+
+// --- Live Telemetry Drawer ---
+
+let telemetryLatestId = 0;
+let telemetryUnread = 0;
+
+function toggleTelemetryDrawer() {
+    const wrap = document.getElementById('telemetry-log-wrap');
+    const wasHidden = wrap.classList.contains('hidden');
+    wrap.classList.toggle('hidden');
+    if (wasHidden) {
+        telemetryUnread = 0;
+        const badge = document.getElementById('telemetry-unread');
+        badge.textContent = '0';
+        badge.classList.add('hidden');
+        const log = document.getElementById('telemetry-log');
+        log.scrollTop = log.scrollHeight;
+    }
+}
+document.getElementById('telemetry-toggle').addEventListener('click', toggleTelemetryDrawer);
+
+async function pollTelemetry() {
+    const data = await api(`/telemetry/recent?since_id=${telemetryLatestId}`);
+    if (!data || !data.events.length) return;
+    telemetryLatestId = data.latest_id;
+
+    const log = document.getElementById('telemetry-log');
+    data.events.forEach(e => {
+        log.textContent += `${e.timestamp.slice(11, 19)} ${e.message}\n`;
+    });
+    const lines = log.textContent.split('\n');
+    if (lines.length > 200) log.textContent = lines.slice(-200).join('\n');
+    log.scrollTop = log.scrollHeight;
+
+    if (document.getElementById('telemetry-log-wrap').classList.contains('hidden')) {
+        telemetryUnread += data.events.length;
+        const badge = document.getElementById('telemetry-unread');
+        badge.textContent = telemetryUnread;
+        badge.classList.remove('hidden');
+    }
+}
 
 </script>
 

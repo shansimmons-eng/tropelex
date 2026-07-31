@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
+from core.telemetry import _emit_telemetry
 
 logger = logging.getLogger("tropelex.ghost.preventive")
 
@@ -71,6 +72,8 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
             severity_dist[sev] += 1
 
     recommendations = list({w["recommendation"] for w in warnings if w.get("recommendation")})
+
+    _emit_telemetry("GHOST", f"Drift check run for {project} ({len(warnings)} warning(s))")
 
     return {
         "project": project,
