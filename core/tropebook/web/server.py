@@ -2522,12 +2522,21 @@ async def evaluate_alignment(project: str):
             passing = 0
             failing = 0
 
-        # Category breakdown
+        # Category breakdown: average each category's own criterion score,
+        # not the decision's overall blended alignment_score (every decision
+        # is evaluated against all 5 categories, so filtering evaluations by
+        # "has this category" always matched everything and collapsed all
+        # five categories to the same number).
         category_scores = {}
         for cat in ["interpretability", "safety", "fairness", "robustness", "governance"]:
-            cat_evals = [e for e in evaluations if any(c["category"] == cat for c in e["criteria_evaluated"])]
-            if cat_evals:
-                category_scores[cat] = sum(e["alignment_score"] for e in cat_evals) / len(cat_evals)
+            cat_criterion_scores = [
+                c["score"]
+                for e in evaluations
+                for c in e["criteria_evaluated"]
+                if c["category"] == cat
+            ]
+            if cat_criterion_scores:
+                category_scores[cat] = round(sum(cat_criterion_scores) / len(cat_criterion_scores), 3)
             else:
                 category_scores[cat] = 1.0
 
