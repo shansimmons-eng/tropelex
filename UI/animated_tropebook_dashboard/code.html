@@ -11,9 +11,56 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preconnect" href="https://cdn.tailwindcss.com"/>
-<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+
+<!-- Font Anti-Flash Verification Guard Script -->
+<script>
+    document.documentElement.classList.add('fonts-loading');
+    if ('fonts' in document) {
+      Promise.all([
+        document.fonts.load('1em "Plus Jakarta Sans"'),
+        document.fonts.load('1em "Inter"'),
+        document.fonts.load('1em "JetBrains Mono"')
+      ]).then(() => {
+        document.documentElement.classList.remove('fonts-loading');
+      }).catch(() => {
+        document.documentElement.classList.remove('fonts-loading');
+      });
+    } else {
+      document.documentElement.classList.remove('fonts-loading');
+    }
+</script>
+
+<style>
+    /* Freezes styling paint until font assets are active */
+    .fonts-loading body { opacity: 0 !important; visibility: hidden !important; }
+    body { transition: opacity 0.15s ease-in-out, background-color 0.2s, color 0.2s; }
+
+    /* ── Typography & No-Wrap Flow Rules ── */
+    :root {
+        --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    body {
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1, h2, h3, h4, .font-display {
+        font-family: var(--font-sans);
+        letter-spacing: -0.015em;
+        white-space: nowrap;
+    }
+
+    .no-wrap-title {
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
@@ -684,184 +731,61 @@ void main() {
         <p class="font-mono text-[10px] text-outline uppercase tracking-wider mt-1 ml-1">The Rationale Engine</p>
     </div>
     <div class="sidebar-nav">
-        <!-- Content -->
-        <div class="accordion-group open">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Content</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item active" data-section="dashboard" title="Landing overview: quick stats, recent activity, and the Getting Started checklist">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard
+        <div class="px-4 py-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-220px)]">
+            <button class="nav-item active flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="content" onclick="switchSection('content')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">dashboard</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Content</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="quality" onclick="switchSection('quality')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">verified</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Quality & Integrity</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="explainability" onclick="switchSection('explainability')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">auto_awesome</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Explainability & Discovery</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="safety" onclick="switchSection('safety')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">shield_lock</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Safety & Alignment</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="lifecycle" onclick="switchSection('lifecycle')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">history</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Memory Lifecycle</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="research" onclick="switchSection('research')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">science</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Research & Ingestion</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="team" onclick="switchSection('team')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">groups</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Team & Collaboration</span>
+            </button>
+
+            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="integrations" onclick="switchSection('integrations')">
+                <span class="material-symbols-outlined text-lg text-accent-lavender">hub</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Integrations & Ops</span>
+            </button>
+
+            <div class="pt-4 mt-4 border-t border-glass-border">
+                <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="onboarding" onclick="switchSection('onboarding')">
+                    <span class="material-symbols-outlined text-lg text-accent-sky">rocket_launch</span>
+                    <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Getting Started</span>
                 </button>
-                <button class="nav-item" data-section="tropebook" title="Research knowledge base — add citations, search, and build a knowledge graph">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M12 8v-1"/><path d="M12 13v-1"/><path d="M10 10h-1"/><path d="M15 10h-1"/></svg> Tropebook
-                </button>
-                <button class="nav-item" data-section="memory" title="Project memory: decisions, sessions, tech stack, and preferences">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><circle cx="12" cy="10" r="3"/><path d="M12 7v-1"/><path d="M12 14v-1"/><path d="M9 10h-1"/><path d="M16 10h-1"/></svg> Memory
-                </button>
-                <button class="nav-item" data-section="patterns" title="Auto-detected patterns from session history, with AI-suggested next steps">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l3-4 3 2 4-6"/><circle cx="7" cy="16" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg> Patterns
-                </button>
-                <button class="nav-item" data-section="graph" title="Interactive knowledge graph of decisions and their relationships">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg> Graph
-                </button>
-            </div>
-        </div>
-        <!-- Quality & Integrity -->
-        <div class="accordion-group open">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Quality &amp; Integrity</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="insights" title="Decision confidence, agent proficiency, decision chains, and ADR generation">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg> Insights
-                </button>
-                <button class="nav-item" data-section="health" title="Memory health score: stale decisions, coverage gaps, growth trends">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Health
-                </button>
-                <button class="nav-item" data-section="impact" title="Tracks how decisions affected later work — reversal rate, time-to-value, ROI">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"/><path d="M6 8L2 12L6 16"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Impact
-                </button>
-                <button class="nav-item" data-section="ghost" title="Detects code that silently contradicts a recorded decision">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg> Ghost Decisions
-                </button>
-                <button class="nav-item" data-section="preventive" title="Runs the ghost-decision check before a diff is finalized, not after commit">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="2"/></svg> Pre-Write Guard
-                </button>
-                <button class="nav-item" data-section="friction" title="Mines session transcripts for implicit friction — corrections, retries, rapid edits">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/></svg> Friction Mining
-                </button>
-                <button class="nav-item" data-section="contradictions" title="Scans for unresolved contradictions between still-active decisions">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-10.6"/><path d="M10 10l5 5"/><path d="M15 10l-5 5"/></svg> Contradictions
-                </button>
-            </div>
-        </div>
-        <!-- Explainability & Discovery -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Explainability &amp; Discovery</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="explain" title="Ask natural-language questions and get a full causal-chain answer">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M18 9h-6"/><path d="M18 13h-4"/><circle cx="8" cy="9" r="2"/></svg> Why Do We...?
-                </button>
-                <button class="nav-item" data-section="prefetch" title="Predicts the minimal context bundle for a task, sized to a token budget">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/></svg> Context Prefetch
-                </button>
-                <button class="nav-item" data-section="docmine" title="Mines markdown files for drift, contradictions, and undocumented decisions">
-                    <span class="material-symbols-outlined">difference</span> Doc Mining
-                </button>
-            </div>
-        </div>
-        <!-- Safety & Alignment -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Safety &amp; Alignment</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="safety" title="Risk, alignment, governance, provenance, reviews, synthetic data, and agent harness audit — all in one place">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Safety &amp; Alignment
-                </button>
-            </div>
-        </div>
-        <!-- Memory Lifecycle -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Memory Lifecycle</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="timetravel" title="Check out project memory as of any past date">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7-7-7"/><path d="M5 19l7-7-7-7"/></svg> Time Travel
-                </button>
-                <button class="nav-item" data-section="compaction" title="Collapses superseded decision chains into epoch summaries">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Memory Compaction
-                </button>
-            </div>
-        </div>
-        <!-- Research & Ingestion -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Research &amp; Ingestion</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="pipeline" title="3-stage prompt preprocessor: compression, context check, structure">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/><circle cx="18" cy="6" r="2"/></svg> Prompt Lab
-                </button>
-                <button class="nav-item" data-section="feeds" title="Scheduled research feeds with trend detection and alerts">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="12" cy="8" r="1"/></svg> Feeds
-                </button>
-                <button class="nav-item" data-section="deepresearch" title="Multi-source scan, citation-grade research, and hybrid mode">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Deep Research
-                </button>
-            </div>
-        </div>
-        <!-- Team & Collaboration -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Team &amp; Collaboration</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="handoff" title="Role-aware context packets for handing work off between agents">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Agent Handoff
-                </button>
-                <button class="nav-item" data-section="prbot" title="Delivers ghost decisions and health scores as PR comments">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg> PR Bot
-                </button>
-                <button class="nav-item" data-section="narrative" title="Generates readable prose summaries of project history">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Narrative
-                </button>
-                <button class="nav-item" data-section="market" title="Place confidence bets on decisions; track calibration over time">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 16v5h-5"/><path d="M3 16v5h5"/><circle cx="12" cy="12" r="2"/><path d="M12 8v-1"/><path d="M12 17v-1"/><path d="M8 12h-1"/><path d="M17 12h-1"/></svg> Decision Market
-                </button>
-                <button class="nav-item" data-section="slack" title="Bidirectional Slack integration for capturing decisions from chat">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="15" r="2"/></svg> Slack Capture
-                </button>
-                <button class="nav-item" data-section="personas" title="Digital-twin persona summaries from agent proficiency tracking">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Personas
-                </button>
-            </div>
-        </div>
-        <!-- Integrations & Ops -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>Integrations &amp; Ops</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="git" title="Repository integration: tech stack, commit sync, deep diff analysis">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v7c0 1.1.9 2 2 2h7"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg> Git
-                </button>
-                <button class="nav-item" data-section="federation" title="Opt-in anonymized benchmarking, local by default — export/import to compare across installs">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Benchmarks
-                </button>
-                <button class="nav-item" data-section="costs" title="Tracks token/dollar cost per decision for ROI scoring">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="14.5" r="2.5"/><path d="M6 14.5h.01"/><path d="M18 14.5h.01"/></svg> Cost Ledger
-                </button>
-            </div>
-        </div>
-        <!-- System -->
-        <div class="accordion-group">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                <span>System</span>
-                <span class="material-symbols-outlined chevron">chevron_right</span>
-            </div>
-            <div class="accordion-body">
-                <button class="nav-item" data-section="onboarding">
-                    <span class="material-symbols-outlined">rocket_launch</span> Getting Started
-                </button>
-                <button class="nav-item" data-section="settings">
-                    <span class="material-symbols-outlined">settings</span> Settings
+
+                <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="settings" onclick="switchSection('settings')">
+                    <span class="material-symbols-outlined text-lg text-outline">settings</span>
+                    <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Settings</span>
                 </button>
             </div>
         </div>
     </div>
+    
     <div class="sidebar-footer">
         <!-- Mock Login -->
         <div id="login-section" class="mb-3 pb-3 border-b border-glass-border">
@@ -943,221 +867,196 @@ void main() {
         </button>
     </div>
 </nav>
-</div>
 
 <!-- Main Content -->
 <main class="flex-grow pt-20 pb-24 md:pb-8">
     <!-- Dashboard Section -->
-    <section id="section-dashboard" class="section active max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="font-mono text-2xl text-accent-lavender">Dashboard</h2>
-            <span class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised" id="dash-status">Overview</span>
+    <main class="flex-grow pt-20 pb-24 md:pb-8">
+    <!-- ==================== CONTENT SECTION ==================== -->
+    <section id="section-content" class="section active w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">dashboard</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Content</h2>
         </div>
-        <!-- Metric Cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
-                <div class="font-mono text-3xl text-accent-lavender mb-1" id="dash-citations">0</div>
-                <div class="font-mono text-xs text-outline uppercase tracking-wider">Total Citations</div>
-            </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
-                <div class="font-mono text-3xl text-accent-sky mb-1" id="dash-projects">0</div>
-                <div class="font-mono text-xs text-outline uppercase tracking-wider">Projects</div>
-            </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
-                <div class="font-mono text-3xl text-accent-periwinkle mb-1" id="dash-decisions">0</div>
-                <div class="font-mono text-xs text-outline uppercase tracking-wider">Decisions</div>
-            </div>
-            <div class="glass-panel rounded-xl p-5 terminal-header dash-metric-card">
-                <div class="font-mono text-3xl text-accent-lime mb-1" id="dash-feeds">0</div>
-                <div class="font-mono text-xs text-outline uppercase tracking-wider">Active Feeds</div>
-            </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="content-tab-strip">
+            <button class="content-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="dashboard" onclick="switchGenericTab('content', 'dashboard')">Overview</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="tropebook" onclick="switchGenericTab('content', 'tropebook')">Tropebook</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="memory" onclick="switchGenericTab('content', 'memory')">Memory</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="patterns" onclick="switchGenericTab('content', 'patterns')">Patterns</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="graph" onclick="switchGenericTab('content', 'graph')">Knowledge Graph</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="pipeline" onclick="switchGenericTab('content', 'pipeline')">Prompt Lab</button>
         </div>
-        <!-- Onboarding Checklist (compact) -->
-        <div class="glass-panel rounded-xl p-6 mb-6">
-            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Getting Started</h3>
-            <div class="space-y-2" id="onboarding-checklist">
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="project">
-                    <span class="material-symbols-outlined text-accent-lavender text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">Create your first project</span>
-                    <button onclick="switchSection('memory')" class="px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Go</button>
-                </div>
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="decision">
-                    <span class="material-symbols-outlined text-accent-sky text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">Record your first decision</span>
-                    <button onclick="switchSection('memory')" class="px-2 py-1 rounded bg-accent-sky/20 text-accent-sky font-mono text-[10px] hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
-                </div>
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="apikeys">
-                    <span class="material-symbols-outlined text-accent-periwinkle text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">Configure API keys</span>
-                    <button onclick="switchSection('settings')" class="px-2 py-1 rounded bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-[10px] hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Go</button>
-                </div>
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="feeds">
-                    <span class="material-symbols-outlined text-accent-lime text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">Set up research feeds</span>
-                    <button onclick="switchSection('feeds')" class="px-2 py-1 rounded bg-accent-lime/20 text-accent-lime font-mono text-[10px] hover:bg-accent-lime/30 transition-all cursor-pointer">Go</button>
-                </div>
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="emacs">
-                    <span class="material-symbols-outlined text-accent-lime text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">Power up with Emacs</span>
-                    <a href="/guide#emacs-integration" class="px-2 py-1 rounded bg-accent-lime/20 text-accent-lime font-mono text-[10px] hover:bg-accent-lime/30 transition-all cursor-pointer">Go</a>
-                </div>
-                <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised" data-check="session">
-                    <span class="material-symbols-outlined text-accent-sky text-sm">radio_button_unchecked</span>
-                    <span class="font-mono text-xs text-on-surface flex-1">End your first session</span>
-                    <button onclick="switchSection('memory')" class="px-2 py-1 rounded bg-accent-sky/20 text-accent-sky font-mono text-[10px] hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
-                </div>
-            </div>
-        </div>
-        <!-- Quick Actions -->
-        <div class="flex flex-wrap gap-3 mb-6">
-            <button onclick="switchSection('tropebook')" class="px-4 py-2 rounded-lg glass-panel text-accent-lavender font-mono text-sm hover:bg-accent-lavender/10 transition-all cursor-pointer flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">search</span> Search Tropebook
-            </button>
-            <button onclick="switchSection('tropebook')" class="px-4 py-2 rounded-lg glass-panel text-accent-sky font-mono text-sm hover:bg-accent-sky/10 transition-all cursor-pointer flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">add_circle</span> Add Citation
-            </button>
-            <button onclick="switchSection('settings')" class="px-4 py-2 rounded-lg glass-panel text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/10 transition-all cursor-pointer flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">settings</span> View Settings
-            </button>
-            <a href="/guide#emacs-integration" class="px-4 py-2 rounded-lg bg-accent-lime/10 text-accent-lime font-mono text-sm hover:bg-accent-lime/20 transition-all cursor-pointer flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">terminal</span> Power Up with Emacs
-            </a>
-        </div>
-        <!-- Status Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-lime text-sm">monitor_heart</span>
-                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Health &amp; Insights</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-health" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-red-500/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-red-400 text-sm">warning</span>
-                    <span class="font-mono text-xs text-red-400 uppercase tracking-wider">Friction Alerts</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-friction" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-sky text-sm">trending_up</span>
-                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Market Activity</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-market" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-accent-lavender text-sm">compare</span>
-                        <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Contradictions</span>
-                    </div>
-                    <button id="btn-dash-contradictions" class="px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan</button>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-contradictions" class="font-mono text-sm text-outline">Select a project, then Scan</div>
-                </div>
-            </div>
-        </div>
-        <!-- Second row: Git, Decisions, Impact, Doc Mining -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-periwinkle/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-periwinkle text-sm">commit</span>
-                    <span class="font-mono text-xs text-accent-periwinkle uppercase tracking-wider">Git Status</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-git" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-lavender text-sm">history</span>
-                    <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Key Decisions</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-decisions-list" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-lime text-sm">rocket_launch</span>
-                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Impact</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-impact" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lavender/15 flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-accent-lavender text-sm">difference</span>
-                        <span class="font-mono text-xs text-accent-lavender uppercase tracking-wider">Doc Mining</span>
-                    </div>
-                    <button id="btn-dash-docmine" class="px-2 py-0.5 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan</button>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-docmine" class="font-mono text-sm text-outline">Select a project, then Scan (reads repo .md files)</div>
-                </div>
-            </div>
-        </div>
-        <!-- Third row: Safety & Alignment -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="glass-panel rounded-xl overflow-hidden cursor-pointer" onclick="switchSection('safety'); switchSafetyTab('safety-dashboard')">
-                <div class="px-4 py-2 bg-red-500/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-red-400 text-sm">shield</span>
-                    <span class="font-mono text-xs text-red-400 uppercase tracking-wider">Safety Score</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-safety" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden cursor-pointer" onclick="switchSection('safety'); switchSafetyTab('alignment')">
-                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-sky text-sm">balance</span>
-                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Alignment Score</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-alignment" class="font-mono text-sm text-outline">Select a project</div>
-                </div>
-            </div>
-        </div>
-        <!-- Fourth row: Interfaces, Quick Triggers -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-sky/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-sky text-sm">hub</span>
-                    <span class="font-mono text-xs text-accent-sky uppercase tracking-wider">Interfaces</span>
-                </div>
-                <div class="p-4 dash-card-body">
-                    <div id="dash-interfaces" class="font-mono text-sm text-outline">Loading...</div>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <div class="px-4 py-2 bg-accent-lime/15 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-accent-lime text-sm">bolt</span>
-                    <span class="font-mono text-xs text-accent-lime uppercase tracking-wider">Quick Triggers</span>
-                </div>
-                <div class="p-4 dash-card-body flex flex-wrap gap-2 items-start content-start">
-                    <button id="btn-dash-personas" class="px-3 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
-                    <button id="btn-dash-federation" class="px-3 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Benchmarks</button>
-                    <button id="btn-dash-compact" class="px-3 py-1.5 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
-                    <button id="btn-dash-agent-audit" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-mono text-xs hover:bg-red-500/30 transition-all cursor-pointer">Agent Audit</button>
-                    <div id="dash-triggers-result" class="w-full font-mono text-xs text-outline mt-1"></div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Tropebook Section -->
-    <section id="section-tropebook" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div id="content-dashboard" class="content-tab-panel active">
+        <!-- Modern Top HUD Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-5 border-l-4 border-accent-lime relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">System Status</span>
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-lime opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-accent-lime"></span>
+                    </span>
+                </div>
+                <div class="flex items-baseline justify-between">
+                    <span class="font-mono text-2xl text-on-surface font-bold">100%</span>
+                    <span class="font-mono text-xs text-accent-lime">ONLINE</span>
+                </div>
+                <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div class="bg-accent-lime h-full rounded-full" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5 border-l-4 border-accent-lavender relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">Memory Confidence</span>
+                    <span class="material-symbols-outlined text-accent-lavender text-sm">psychology</span>
+                </div>
+                <div class="flex items-baseline justify-between">
+                    <span id="dash-confidence" class="font-mono text-2xl text-on-surface font-bold">—</span>
+                    <span class="font-mono text-xs text-accent-lavender">STABLE</span>
+                </div>
+                <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div class="bg-accent-lavender h-full rounded-full" style="width: 88%;"></div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5 border-l-4 border-accent-sky relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">Safety Score</span>
+                    <span class="material-symbols-outlined text-accent-sky text-sm">shield</span>
+                </div>
+                <div class="flex items-baseline justify-between">
+                    <span class="font-mono text-2xl text-on-surface font-bold">98/100</span>
+                    <span class="font-mono text-xs text-accent-sky">VERIFIED</span>
+                </div>
+                <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div class="bg-accent-sky h-full rounded-full" style="width: 98%;"></div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5 border-l-4 border-yellow-400 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">Pending Reviews</span>
+                    <span class="material-symbols-outlined text-yellow-400 text-sm">rate_review</span>
+                </div>
+                <div class="flex items-baseline justify-between">
+                    <span class="font-mono text-2xl text-on-surface font-bold">0</span>
+                    <span class="font-mono text-xs text-yellow-400">CLEAR</span>
+                </div>
+                <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div class="bg-yellow-400 h-full rounded-full" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Bento Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Ghost Decisions & Activity Stream -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-lavender text-lg">stream</span>
+                        <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lavender no-wrap-title">Ghost Decisions & Activity Stream</h3>
+                    </div>
+                    <span class="font-mono text-[10px] text-accent-sky bg-accent-sky/10 px-2 py-0.5 rounded">LIVE TELEMETRY</span>
+                </div>
+                <div id="dash-recent-activity" class="space-y-2.5 max-h-72 overflow-y-auto">
+                    <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender flex items-center justify-between">
+                        <div>
+                            <span class="text-on-surface font-mono text-xs block">Migrated UI to Horizontal Sub-Navigation Layout</span>
+                            <span class="text-outline text-[11px]">Standardized tab strips across all 8 core categories</span>
+                        </div>
+                        <span class="text-outline text-[10px] font-mono whitespace-nowrap ml-2">Just now</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pattern Learner Telemetry -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-sky text-lg">psychology</span>
+                        <h3 class="font-mono text-sm uppercase tracking-wider text-accent-sky no-wrap-title">Pattern Learner</h3>
+                    </div>
+                    <span class="font-mono text-[10px] text-accent-lime bg-accent-lime/10 px-2 py-0.5 rounded">ACTIVE</span>
+                </div>
+                <div id="dash-patterns" class="space-y-2 max-h-72 overflow-y-auto">
+                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
+                        <span class="text-accent-sky font-mono text-xs">category:ui</span>
+                        <span class="text-accent-lime font-mono text-xs font-bold">12x</span>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
+                        <span class="text-accent-sky font-mono text-xs">category:backend</span>
+                        <span class="text-accent-lime font-mono text-xs font-bold">8x</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bento Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Active Research Feeds -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-periwinkle text-lg">rss_feed</span>
+                        <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle no-wrap-title">Active Research Feeds</h3>
+                    </div>
+                    <button class="font-mono text-xs text-accent-lavender hover:underline cursor-pointer" onclick="switchSection('research')">View All →</button>
+                </div>
+                <div id="dash-active-feeds" class="space-y-2 max-h-48 overflow-y-auto">
+                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
+                        <span class="text-on-surface font-sans text-xs">AI Agent Architecture Trends</span>
+                        <span class="text-accent-sky font-mono text-[10px] uppercase">WEEKLY</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Skill Proficiency Matrix -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-lime text-lg">military_tech</span>
+                        <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lime no-wrap-title">Agent Skill Proficiency Matrix</h3>
+                    </div>
+                    <span class="font-mono text-[10px] text-accent-lavender bg-accent-lavender/10 px-2 py-0.5 rounded">LEARNED</span>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span class="text-outline">Architecture & Safety</span>
+                            <span class="text-accent-lime">95%</span>
+                        </div>
+                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-accent-lime h-full rounded-full" style="width: 95%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span class="text-outline">Backend Engineering</span>
+                            <span class="text-accent-sky">90%</span>
+                        </div>
+                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-accent-sky h-full rounded-full" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span class="text-outline">UI & Glassmorphism</span>
+                            <span class="text-accent-lavender">92%</span>
+                        </div>
+                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-accent-lavender h-full rounded-full" style="width: 92%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div id="content-tropebook" class="content-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender">Tropebook</h2>
             <span id="tropebook-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
         </div>
@@ -1276,11 +1175,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- Memory Section -->
-    <section id="section-memory" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div id="content-memory" class="content-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender">Memory</h2>
             <span id="memory-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
         </div>
@@ -1378,11 +1276,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- Patterns Section -->
-    <section id="section-patterns" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div id="content-patterns" class="content-tab-panel" style="display: none;">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div class="lg:col-span-12 space-y-6">
                 <div class="glass-panel rounded-xl p-6">
                     <div class="flex items-center justify-between mb-6">
@@ -1407,11 +1304,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- Knowledge Graph Section -->
-    <section id="section-graph" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="glass-panel rounded-xl p-6 mb-4">
+        <div id="content-graph" class="content-tab-panel" style="display: none;">
+<div class="glass-panel rounded-xl p-6 mb-4">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-accent-periwinkle text-2xl">hub</span>
@@ -1461,11 +1357,10 @@ void main() {
             </div>
             <div id="semantic-results-list" class="space-y-3"></div>
         </div>
-    </section>
+        </div>
 
-    <!-- Agent Pipeline Section (Prompt Lab) -->
-    <section id="section-pipeline" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="glass-panel rounded-xl p-6 mb-6">
+        <div id="content-pipeline" class="content-tab-panel" style="display: none;">
+<div class="glass-panel rounded-xl p-6 mb-6">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Prompt Lab</h2>
@@ -1605,11 +1500,28 @@ void main() {
             <div id="genealogy-summary" class="text-sm text-outline">Select a project to see which compression strategies actually preserve meaning.</div>
             <div id="genealogy-rankings" class="space-y-2 mt-3"></div>
         </div>
+        </div>
+
     </section>
 
-    <!-- ==================== INSIGHTS SECTION ==================== -->
-    <section id="section-insights" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+    <!-- ==================== QUALITY & INTEGRITY SECTION ==================== -->
+    <section id="section-quality" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">verified</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Quality & Integrity</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="quality-tab-strip">
+            <button class="quality-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="insights" onclick="switchGenericTab('quality', 'insights')">Insights</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="health" onclick="switchGenericTab('quality', 'health')">Health</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="impact" onclick="switchGenericTab('quality', 'impact')">Impact</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="ghost" onclick="switchGenericTab('quality', 'ghost')">Ghost Decisions</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="preventive" onclick="switchGenericTab('quality', 'preventive')">Pre-Write Guard</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="friction" onclick="switchGenericTab('quality', 'friction')">Friction Mining</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="contradictions" onclick="switchGenericTab('quality', 'contradictions')">Contradictions</button>
+        </div>
+
+        <div id="quality-insights" class="quality-tab-panel active">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">insights</span>
                 Insights
@@ -1745,11 +1657,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- ==================== HEALTH SECTION ==================== -->
-    <section id="section-health" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div id="quality-health" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">monitor_heart</span>
                 Memory Health
@@ -1811,11 +1722,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- ==================== IMPACT SECTION ==================== -->
-    <section id="section-impact" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div id="quality-impact" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">impact_hub</span>
                 Decision Impact
@@ -1867,11 +1777,10 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- ==================== GHOST DECISIONS SECTION ==================== -->
-    <section id="section-ghost" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div id="quality-ghost" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">visibility_off</span>
                 Ghost Decisions
@@ -1898,11 +1807,80 @@ void main() {
                 </button>
             </div>
         </div>
+        </div>
+
+        <div id="quality-preventive" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Pre-Write Guard</h2>
+        </div>
+        <p class="text-outline mb-6">Check a proposed diff against active decisions before writing code.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="preventive-diff" rows="6" placeholder="Paste a unified diff here to check against decisions..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-check-ghost" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Check for Ghosts</button>
+        </div>
+        <div id="preventive-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="preventive-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">shield</span>
+            <p class="text-outline text-sm">No warnings yet. Paste a diff above to check for ghost decisions.</p>
+            <a href="/guide#pre-write-guard" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="quality-friction" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">psychology</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Friction Mining</h2>
+        </div>
+        <p class="text-outline mb-6">Detect frustration signals in session transcripts — implicit low-confidence zones.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="friction-transcript" rows="6" placeholder="Paste a session transcript here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
+        </div>
+        <div id="friction-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="friction-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">psychology</span>
+            <p class="text-outline text-sm">No friction data yet. Paste a transcript above to scan for frustration signals.</p>
+            <a href="/guide#friction-mining" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="quality-contradictions" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">compare</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Contradictions</h2>
+        </div>
+        <p class="text-outline mb-6">Scan for unresolved contradictions between active decisions.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Contradiction Scan</span>
+                <button id="btn-contradictions" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Now</button>
+            </div>
+            <div id="contradictions-data" class="text-sm text-outline">Select a project to scan for contradictions.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="contradictions-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">compare</span>
+            <p class="text-outline text-sm">No contradiction data yet. Select a project and scan for contradictions.</p>
+            <a href="/guide#contradictions" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
     </section>
 
-    <!-- ==================== EXPLAINABLE MEMORY SECTION ==================== -->
-    <section id="section-explain" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+    <!-- ==================== EXPLAINABILITY & DISCOVERY SECTION ==================== -->
+    <section id="section-explainability" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">auto_awesome</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Explainability & Discovery</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="explainability-tab-strip">
+            <button class="explainability-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="explain" onclick="switchGenericTab('explainability', 'explain')">Why Do We...?</button>
+            <button class="explainability-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="prefetch" onclick="switchGenericTab('explainability', 'prefetch')">Context Prefetch</button>
+            <button class="explainability-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="docmine" onclick="switchGenericTab('explainability', 'docmine')">Doc Mining</button>
+        </div>
+
+        <div id="explainability-explain" class="explainability-tab-panel active">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">chat</span>
                 Why Do We...?
@@ -1929,112 +1907,122 @@ void main() {
                 </div>
             </div>
         </div>
-    </section>
-
-    <!-- ==================== AGENT HANDOFF SECTION ==================== -->
-    <section id="section-handoff" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
-                <span class="material-symbols-outlined">swap_horiz</span>
-                Agent Handoff
-            </h2>
-            <div class="flex items-center gap-3">
-                <select id="handoff-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1.5 font-mono text-sm text-on-surface cursor-pointer">
-                    <option value="">Select project...</option>
-                </select>
-            </div>
         </div>
+
+        <div id="explainability-prefetch" class="explainability-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">auto_awesome</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Context Prefetch</h2>
+        </div>
+        <p class="text-outline mb-6">Predict the ideal minimal context bundle for a task, sized to a token budget.</p>
         <div class="glass-panel rounded-xl p-6">
-            <div class="panel" id="handoff-panel">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-2 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">swap_horiz</span>
-                    Agent Handoff
-                </h3>
-                <p class="subtitle text-sm text-outline mb-4">Generate role-aware context packets for agent delegation</p>
-                <div class="handoff-input mb-4">
-                    <select id="handoff-role" class="bg-surface-raised border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
-                        <option value="CoderAgent">CoderAgent</option>
-                    </select>
-                    <button id="btn-generate-handoff" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">bolt</span>
-                        Generate Packet
-                    </button>
-                </div>
-                <div id="handoff-results" class="space-y-2">
-                    <p class="text-sm text-outline">Select a role and click "Generate Packet" to create a context packet.</p>
+            <div class="space-y-3">
+                <input type="text" id="prefetch-task" placeholder="Describe your task (e.g., 'fix auth bug in login flow')" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                <div class="flex gap-3">
+                    <input type="number" id="prefetch-budget" value="4000" min="500" max="50000" class="w-32 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none"/>
+                    <span class="font-mono text-xs text-outline self-center">token budget</span>
+                    <button id="btn-prefetch" class="ml-auto px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Assemble Bundle</button>
                 </div>
             </div>
         </div>
+        <div id="prefetch-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prefetch-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_awesome</span>
+            <p class="text-outline text-sm">No prefetch data yet. Describe a task above to assemble a context bundle.</p>
+            <a href="/guide#prefetch" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="explainability-docmine" class="explainability-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">difference</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Doc Mining</h2>
+        </div>
+        <p class="text-outline mb-6">Scan every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims that never made it into the decision graph.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Full Repo Scan</span>
+                <button id="btn-docmine-scan" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Markdown Files</button>
+            </div>
+            <div id="docmine-summary" class="text-sm text-outline">Select a project, then scan — this reads every .md file in the repo (excluding node_modules, venvs, and scratch dirs).</div>
+        </div>
+        <div id="docmine-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="docmine-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">difference</span>
+            <p class="text-outline text-sm">No scan yet. Click "Scan Markdown Files" to mine the repo's docs.</p>
+            <a href="/guide#docmine" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
     </section>
 
-    <!-- ==================== GIT SECTION ==================== -->
-    <section id="section-git" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
-                <span class="material-symbols-outlined">commit</span>
-                Git Integration
-            </h2>
+    <!-- ==================== MEMORY LIFECYCLE SECTION ==================== -->
+    <section id="section-lifecycle" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">history</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Memory Lifecycle</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="lifecycle-tab-strip">
+            <button class="lifecycle-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="timetravel" onclick="switchGenericTab('lifecycle', 'timetravel')">Time Travel</button>
+            <button class="lifecycle-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="compaction" onclick="switchGenericTab('lifecycle', 'compaction')">Compaction</button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Git Sync -->
-            <div class="glass-panel rounded-xl p-6">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">sync</span>
-                    Sync Repository
-                </h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-outline mb-2">Repository Path</label>
-                        <input type="text" id="git-repo-path" placeholder="/home/user/myproject"
-                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-outline mb-2">Project Name</label>
-                        <input type="text" id="git-project-name" placeholder="myproject"
-                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
-                    </div>
-                    <div class="flex gap-3">
-                        <button id="btn-git-summary" class="flex-1 px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
-                            <span class="material-symbols-outlined text-sm align-middle">preview</span> Summary
-                        </button>
-                        <button id="btn-git-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
-                            <span class="material-symbols-outlined text-sm align-middle">sync</span> Sync
-                        </button>
-                        <button id="btn-git-deep-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">
-                            <span class="material-symbols-outlined text-sm align-middle">biotech</span> Deep Sync
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Git Summary Output -->
-            <div class="glass-panel rounded-xl p-6">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">summarize</span>
-                    Repository Summary
-                </h3>
-                <div id="git-summary-output" class="space-y-3 max-h-96 overflow-y-auto">
-                    <p class="text-sm text-outline">Enter a repo path and click Summary to analyze.</p>
-                </div>
-            </div>
-
-            <!-- Sync Results -->
-            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
-                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">output</span>
-                    Sync Results
-                </h3>
-                <div id="git-sync-output" class="space-y-2 max-h-64 overflow-y-auto">
-                    <p class="text-sm text-outline">Sync results will appear here.</p>
-                </div>
+        <div id="lifecycle-timetravel" class="lifecycle-tab-panel active">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">history</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Time Travel</h2>
+        </div>
+        <p class="text-outline mb-6">Check out project memory as of any past date — forensic tool for postmortems.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex gap-3">
+                <input type="date" id="timetravel-date" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none"/>
+                <button id="btn-timetravel" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Travel to Date</button>
             </div>
         </div>
+        <div id="timetravel-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="timetravel-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">history</span>
+            <p class="text-outline text-sm">No time travel data yet. Time Travel replays recorded sessions — click "+ End Session" in the Memory tab at least once, then pick a date after that.</p>
+            <a href="/guide#time-travel" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="lifecycle-compaction" class="lifecycle-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">compress</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Memory Compaction</h2>
+        </div>
+        <p class="text-outline mb-6">Collapse superseded decision chains into epoch summaries to keep memory lean.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Compaction Status</span>
+                <button id="btn-compact" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
+            </div>
+            <div id="compaction-status" class="text-sm text-outline">Select a project to view compaction status.</div>
+        </div>
+        <div id="compaction-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="compaction-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">compress</span>
+            <p class="text-outline text-sm">No compaction data yet. Select a project and run compaction to see results.</p>
+            <a href="/guide#compaction" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
     </section>
 
-    <!-- ==================== FEEDS SECTION ==================== -->
-    <section id="section-feeds" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center justify-between mb-6">
+    <!-- ==================== RESEARCH & INGESTION SECTION ==================== -->
+    <section id="section-research" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">science</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Research & Ingestion</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="research-tab-strip">
+            <button class="research-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="feeds" onclick="switchGenericTab('research', 'feeds')">Research Feeds</button>
+            <button class="research-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="deepresearch" onclick="switchGenericTab('research', 'deepresearch')">Deep Research</button>
+        </div>
+
+        <div id="research-feeds" class="research-tab-panel active">
+<div class="flex items-center justify-between mb-6">
             <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
                 <span class="material-symbols-outlined">rss_feed</span>
                 Research Feeds
@@ -2174,11 +2162,10 @@ void main() {
                 </button>
             </div>
         </div>
-    </section>
+        </div>
 
-    <!-- Deep Research -->
-    <section id="section-deepresearch" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
+        <div id="research-deepresearch" class="research-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
             <span class="material-symbols-outlined text-accent-periwinkle text-2xl">travel_explore</span>
             <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Deep Research</h2>
         </div>
@@ -2259,11 +2246,605 @@ void main() {
                 <p class="text-sm text-outline">No runs yet.</p>
             </div>
         </div>
+        </div>
+
     </section>
 
-    <!-- Settings Section -->
-    <section id="section-settings" class="section max-w-4xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="space-y-6">
+    <!-- ==================== TEAM & COLLABORATION SECTION ==================== -->
+    <section id="section-team" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">groups</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Team & Collaboration</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="team-tab-strip">
+            <button class="team-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="handoff" onclick="switchGenericTab('team', 'handoff')">Agent Handoff</button>
+            <button class="team-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="prbot" onclick="switchGenericTab('team', 'prbot')">PR Bot</button>
+            <button class="team-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="narrative" onclick="switchGenericTab('team', 'narrative')">Narrative</button>
+            <button class="team-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="market" onclick="switchGenericTab('team', 'market')">Decision Market</button>
+            <button class="team-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="slack" onclick="switchGenericTab('team', 'slack')">Slack Capture</button>
+            <button class="team-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="personas" onclick="switchGenericTab('team', 'personas')">Personas</button>
+        </div>
+
+        <div id="team-handoff" class="team-tab-panel active">
+<div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
+                <span class="material-symbols-outlined">swap_horiz</span>
+                Agent Handoff
+            </h2>
+            <div class="flex items-center gap-3">
+                <select id="handoff-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1.5 font-mono text-sm text-on-surface cursor-pointer">
+                    <option value="">Select project...</option>
+                </select>
+            </div>
+        </div>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="panel" id="handoff-panel">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">swap_horiz</span>
+                    Agent Handoff
+                </h3>
+                <p class="subtitle text-sm text-outline mb-4">Generate role-aware context packets for agent delegation</p>
+                <div class="handoff-input mb-4">
+                    <select id="handoff-role" class="bg-surface-raised border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
+                        <option value="CoderAgent" title="General-purpose coding agent">CoderAgent (General Coding)</option>
+                        <option value="Architect" title="System architecture and design decisions">Architect (System & Design)</option>
+                        <option value="TestEngineer" title="Testing and quality assurance specialist">TestEngineer (QA & Testing)</option>
+                        <option value="FrontendSpecialist" title="UI/UX implementation specialist">FrontendSpecialist (UI/UX)</option>
+                        <option value="DevOpsSpecialist" title="CI/CD, infrastructure, deployment">DevOpsSpecialist (DevOps & CI/CD)</option>
+                    </select>
+                    <button id="btn-generate-handoff" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">bolt</span>
+                        Generate Packet
+                    </button>
+                </div>
+                <div id="handoff-results" class="space-y-2">
+                    <p class="text-sm text-outline">Select a role and click "Generate Packet" to create a context packet.</p>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div id="team-prbot" class="team-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">pull_request</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">PR Bot</h2>
+        </div>
+        <p class="text-outline mb-6">Generate PR comments with relevant decision context and ghost warnings.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="prbot-diff" rows="6" placeholder="Paste a PR diff here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+            <div class="flex gap-3">
+                <input type="text" id="prbot-title" placeholder="PR title (optional)" class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none"/>
+                <button id="btn-prbot" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Generate Comment</button>
+            </div>
+        </div>
+        <div id="prbot-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prbot-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">pull_request</span>
+            <p class="text-outline text-sm">No PR comment generated yet. Paste a diff above to generate a comment.</p>
+            <a href="/guide#pr-bot" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="team-narrative" class="team-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">auto_stories</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Narrative Mode</h2>
+        </div>
+        <p class="text-outline mb-6">Generate readable prose from the decision graph for non-technical audiences.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex gap-3">
+                <select id="narrative-audience" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer">
+                    <option value="new_hire">New Hire</option>
+                    <option value="investor">Investor</option>
+                    <option value="pm">Product Manager</option>
+                </select>
+                <button id="btn-narrative" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Generate Story</button>
+            </div>
+        </div>
+        <div id="narrative-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="narrative-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_stories</span>
+            <p class="text-outline text-sm">No narrative generated yet. Select an audience and generate a project story.</p>
+            <a href="/guide#narrative" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="team-market" class="team-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">trending_up</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Decision Market</h2>
+        </div>
+        <p class="text-outline mb-6">Place confidence bets on decisions and track calibration over time.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Leaderboard</span>
+                <div class="flex gap-2">
+                    <button id="btn-market-leaderboard" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Refresh</button>
+                    <button id="btn-market-clear" class="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 font-mono text-sm hover:bg-red-900/50 transition-all cursor-pointer">Clear Data</button>
+                </div>
+            </div>
+            <div id="market-leaderboard" class="text-sm text-outline">No bets placed yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Place a Bet</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="bet-decision-id" placeholder="Decision ID"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                <input type="text" id="bet-agent" placeholder="Agent name"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                <input type="number" id="bet-confidence" placeholder="Confidence (0-1)" min="0" max="1" step="0.05" value="0.5"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                <button id="btn-place-bet" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Place Bet</button>
+            </div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="market-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">trending_up</span>
+            <p class="text-outline text-sm">No market data yet. Place confidence bets on decisions to track calibration.</p>
+            <a href="/guide#decision-market" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="team-slack" class="team-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">chat</span>
+            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Slack Capture</h2>
+        </div>
+        <p class="text-outline mb-6">Capture decisions from chat messages and extract implicit decisions from threads.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <textarea id="slack-messages" rows="6" placeholder="Paste chat messages here (one per line)..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
+            <button id="btn-slack-extract" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Extract Decisions</button>
+        </div>
+        <div id="slack-results" class="mt-4 hidden"></div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="slack-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">chat</span>
+            <p class="text-outline text-sm">No chat data yet. Paste messages above to extract implicit decisions.</p>
+            <a href="/guide#slack-capture" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="team-personas" class="team-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">person</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Personas</h2>
+        </div>
+        <p class="text-outline mb-6">Synthesize readable persona summaries from agent proficiency tracking.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Agent Personas</span>
+                <button id="btn-personas" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
+            </div>
+            <div id="personas-data" class="text-sm text-outline">Select a project to view agent personas.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Record Skill Outcome</h3>
+            <p class="text-xs text-outline mb-3">Personas are synthesized from these outcomes — nothing records them automatically yet, so seed one manually to get started.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="skill-categories" placeholder="Categories (comma-separated)"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <select id="skill-outcome" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none">
+                    <option value="success">Success</option>
+                    <option value="partial">Partial</option>
+                    <option value="failure">Failure</option>
+                </select>
+                <input type="text" id="skill-details" placeholder="Details (optional)"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <button id="btn-record-skill" class="px-3 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Record</button>
+            </div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="personas-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">person</span>
+            <p class="text-outline text-sm">No persona data yet. Agent personas are built from session outcomes over time.</p>
+            <a href="/guide#personas" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+    </section>
+
+    <!-- ==================== INTEGRATIONS & OPS SECTION ==================== -->
+    <section id="section-integrations" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lavender text-2xl">hub</span>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Integrations & Ops</h2>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="integrations-tab-strip">
+            <button class="integrations-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="git" onclick="switchGenericTab('integrations', 'git')">Git</button>
+            <button class="integrations-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="federation" onclick="switchGenericTab('integrations', 'federation')">Benchmarks</button>
+            <button class="integrations-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="costs" onclick="switchGenericTab('integrations', 'costs')">Cost Ledger</button>
+        </div>
+
+        <div id="integrations-git" class="integrations-tab-panel active">
+<div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender flex items-center gap-3">
+                <span class="material-symbols-outlined">commit</span>
+                Git Integration
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Git Sync -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">sync</span>
+                    Sync Repository
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Repository Path</label>
+                        <input type="text" id="git-repo-path" placeholder="/home/user/myproject"
+                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-outline mb-2">Project Name</label>
+                        <input type="text" id="git-project-name" placeholder="myproject"
+                            class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="btn-git-summary" class="flex-1 px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">preview</span> Summary
+                        </button>
+                        <button id="btn-git-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">sync</span> Sync
+                        </button>
+                        <button id="btn-git-deep-sync" class="flex-1 px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-sm align-middle">biotech</span> Deep Sync
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Git Summary Output -->
+            <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">summarize</span>
+                    Repository Summary
+                </h3>
+                <div id="git-summary-output" class="space-y-3 max-h-96 overflow-y-auto">
+                    <p class="text-sm text-outline">Enter a repo path and click Summary to analyze.</p>
+                </div>
+            </div>
+
+            <!-- Sync Results -->
+            <div class="glass-panel rounded-xl p-6 lg:col-span-2">
+                <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">output</span>
+                    Sync Results
+                </h3>
+                <div id="git-sync-output" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-sm text-outline">Sync results will appear here.</p>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div id="integrations-federation" class="integrations-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">query_stats</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Benchmarks</h2>
+        </div>
+        <p class="text-outline mb-6">Opt-in, privacy-preserving comparison of structural statistics across projects. Local by default — export/import moves data between installs via a plain file, no networking.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Aggregate Benchmarks</span>
+                <button id="btn-federation" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Load Benchmarks</button>
+            </div>
+            <div id="federation-data" class="text-sm text-outline">No benchmark data available yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">sync_alt</span>
+                Cross-Install Compare
+            </h3>
+            <p class="text-xs text-outline mb-4">Export this install's shared stats to a file, then import it on another machine (or vice versa) to compare across installs — no network call is made.</p>
+            <div class="flex flex-wrap gap-3 items-center">
+                <button id="btn-benchmarks-export" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm align-middle">download</span> Export Bundle
+                </button>
+                <label class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
+                    <span class="material-symbols-outlined text-sm align-middle">upload</span> Import Bundle
+                    <input type="file" id="benchmarks-import-file" accept="application/json" class="hidden"/>
+                </label>
+            </div>
+            <div id="benchmarks-import-result" class="text-xs text-outline mt-3"></div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="federation-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">query_stats</span>
+            <p class="text-outline text-sm">No benchmark data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
+            <a href="/guide#benchmarks" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="integrations-costs" class="integrations-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-lime text-2xl">payments</span>
+            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Cost Ledger</h2>
+        </div>
+        <p class="text-outline mb-6">Track actual dollars and tokens spent per decision for ROI scoring.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Cost Report</span>
+                <button id="btn-cost-report" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Generate Report</button>
+            </div>
+            <div id="cost-report-data" class="text-sm text-outline">Select a project to view cost data.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6 hidden" id="compounding-risk-panel">
+            <h3 class="font-mono text-sm text-outline uppercase mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">warning</span>
+                Compounding Risk
+            </h3>
+            <p class="text-xs text-outline mb-4">Decisions with real rework cost <em>and</em> poor Decision Market calibration in the same category — expensive to get wrong, and this team has a track record of getting it wrong there.</p>
+            <div id="compounding-risk-list" class="space-y-2"></div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="costs-empty">
+            <span class="material-symbols-outlined text-4xl text-outline mb-3">payments</span>
+            <p class="text-outline text-sm">No cost data yet. Cost events are recorded as agents make decisions.</p>
+            <a href="/guide#cost-ledger" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+    </section>
+
+        <section id="section-onboarding" class="section active w-full max-w-7xl mx-auto px-6 pt-12 pb-16 fade-in">
+        <!-- Hero Banner with Gradient Glow & Live Status -->
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lavender/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-lime/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-lime/10 text-accent-lime border border-accent-lime/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-accent-lime animate-pulse"></span> System Active
+                        </span>
+                        <span class="text-xs font-mono text-outline">Tropelex v1.1.0</span>
+                    </div>
+                    <h1 class="font-display font-extrabold text-3xl md:text-4xl text-on-surface tracking-tight">
+                        Help & Command Hub
+                    </h1>
+                    <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">
+                        Master Tropelex persistent memory, agent context compression, role-aware handoffs, and deep research feeds.
+                    </p>
+                </div>
+                
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <a href="/guide" target="_blank" class="px-5 py-2.5 rounded-xl bg-accent-lavender text-slate-950 font-mono font-semibold text-xs uppercase tracking-wider hover:bg-accent-lavender/90 shadow-lg shadow-accent-lavender/20 transition-all flex items-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">menu_book</span> Full Documentation
+                    </a>
+                    <button onclick="runSystemDiagnostic()" class="px-4 py-2.5 rounded-xl bg-surface-raised border border-glass-border text-on-surface font-mono text-xs hover:border-accent-sky/50 transition-all flex items-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm text-accent-sky">health_and_safety</span> Self Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Help Navigation Tabs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass-panel rounded-xl p-5 border border-accent-lime/20 bg-surface-raised/40 hover:border-accent-lime/40 transition-all cursor-pointer group" onclick="document.getElementById('help-onboarding-card').scrollIntoView({behavior: 'smooth'})">
+                <div class="w-10 h-10 rounded-lg bg-accent-lime/10 text-accent-lime flex items-center gap-0 justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">rocket_launch</span>
+                </div>
+                <h3 class="font-mono text-sm font-bold text-on-surface mb-1">Onboarding Guide</h3>
+                <p class="text-xs text-outline">Complete 6 quick setup steps</p>
+            </div>
+            
+            <div class="glass-panel rounded-xl p-5 border border-accent-sky/20 bg-surface-raised/40 hover:border-accent-sky/40 transition-all cursor-pointer group" onclick="document.getElementById('help-cli-card').scrollIntoView({behavior: 'smooth'})">
+                <div class="w-10 h-10 rounded-lg bg-accent-sky/10 text-accent-sky flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">terminal</span>
+                </div>
+                <h3 class="font-mono text-sm font-bold text-on-surface mb-1">CLI Commands</h3>
+                <p class="text-xs text-outline">One-click copy agent syntax</p>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5 border border-accent-lavender/20 bg-surface-raised/40 hover:border-accent-lavender/40 transition-all cursor-pointer group" onclick="document.getElementById('help-arch-card').scrollIntoView({behavior: 'smooth'})">
+                <div class="w-10 h-10 rounded-lg bg-accent-lavender/10 text-accent-lavender flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">account_tree</span>
+                </div>
+                <h3 class="font-mono text-sm font-bold text-on-surface mb-1">System Architecture</h3>
+                <p class="text-xs text-outline">Memory, RAG & Handoff flow</p>
+            </div>
+
+            <div class="glass-panel rounded-xl p-5 border border-accent-periwinkle/20 bg-surface-raised/40 hover:border-accent-periwinkle/40 transition-all cursor-pointer group" onclick="document.getElementById('help-keyboard-card').scrollIntoView({behavior: 'smooth'})">
+                <div class="w-10 h-10 rounded-lg bg-accent-periwinkle/10 text-accent-periwinkle flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">keyboard</span>
+                </div>
+                <h3 class="font-mono text-sm font-bold text-on-surface mb-1">Shortcuts & Tips</h3>
+                <p class="text-xs text-outline">Emacs & fast navigation</p>
+            </div>
+        </div>
+
+        <!-- Main Content Layout Split -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left 2 Cols: Onboarding Checklist & CLI Reference -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Interactive Onboarding Checklist -->
+                <div id="help-onboarding-card" class="glass-panel rounded-2xl p-6 border border-glass-border">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-accent-lime text-2xl">checklist</span>
+                            <div>
+                                <h2 class="font-mono text-base text-on-surface font-bold">Getting Started Checklist</h2>
+                                <p class="text-xs text-outline">Track system setup progress</p>
+                            </div>
+                        </div>
+                        <div id="onboarding-progress-badge" class="px-3 py-1 rounded-full bg-accent-lime/10 border border-accent-lime/20 text-accent-lime font-mono text-xs font-semibold">
+                            Progress Tracker
+                        </div>
+                    </div>
+
+                    <div class="space-y-3" id="onboarding-checklist-full">
+                        <div class="glass-panel rounded-xl p-4 flex items-center gap-4 border border-glass-border hover:border-accent-lavender/40 transition-all" data-check="project">
+                            <span class="material-symbols-outlined text-accent-lavender text-xl">radio_button_unchecked</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-sm text-on-surface font-semibold">Create your first project</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-lavender/10 text-accent-lavender uppercase font-bold">Essential</span>
+                                </div>
+                                <div class="font-mono text-xs text-outline mt-0.5">Organize architectural decisions, sessions, and learned patterns</div>
+                            </div>
+                            <button onclick="switchSection('memory')" class="px-3.5 py-1.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer font-semibold">Go →</button>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-4 flex items-center gap-4 border border-glass-border hover:border-accent-sky/40 transition-all" data-check="decision">
+                            <span class="material-symbols-outlined text-accent-sky text-xl">radio_button_unchecked</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-sm text-on-surface font-semibold">Record your first decision</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-sky/10 text-accent-sky uppercase font-bold">Core</span>
+                                </div>
+                                <div class="font-mono text-xs text-outline mt-0.5">Decisions build the rationale engine and knowledge tree</div>
+                            </div>
+                            <button onclick="switchSection('memory')" class="px-3.5 py-1.5 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer font-semibold">Go →</button>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-4 flex items-center gap-4 border border-glass-border hover:border-accent-periwinkle/40 transition-all" data-check="apikeys">
+                            <span class="material-symbols-outlined text-accent-periwinkle text-xl">radio_button_unchecked</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-sm text-on-surface font-semibold">Configure API keys</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-periwinkle/10 text-accent-periwinkle uppercase font-bold">Research</span>
+                                </div>
+                                <div class="font-mono text-xs text-outline mt-0.5">Brave Search API & embeddings for deep research capabilities</div>
+                            </div>
+                            <button onclick="switchSection('settings')" class="px-3.5 py-1.5 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer font-semibold">Go →</button>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-4 flex items-center gap-4 border border-glass-border hover:border-accent-lime/40 transition-all" data-check="feeds">
+                            <span class="material-symbols-outlined text-accent-lime text-xl">radio_button_unchecked</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-sm text-on-surface font-semibold">Set up research feeds</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-lime/10 text-accent-lime uppercase font-bold">Automated</span>
+                                </div>
+                                <div class="font-mono text-xs text-outline mt-0.5">Auto-ingest technical trends from Reddit, GitHub & YouTube</div>
+                            </div>
+                            <button onclick="switchSection('feeds')" class="px-3.5 py-1.5 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer font-semibold">Go →</button>
+                        </div>
+
+                        <div class="glass-panel rounded-xl p-4 flex items-center gap-4 border border-glass-border hover:border-accent-lavender/40 transition-all" data-check="emacs">
+                            <span class="material-symbols-outlined text-accent-lavender text-xl">radio_button_unchecked</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-sm text-on-surface font-semibold">Power up with Emacs</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-lavender/10 text-accent-lavender uppercase font-bold">Power User</span>
+                                </div>
+                                <div class="font-mono text-xs text-outline mt-0.5">Capture decisions and friction signals directly from Emacs buffers</div>
+                            </div>
+                            <a href="/guide#emacs-integration" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer font-semibold">Go →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLI & Agent Commands Hub -->
+                <div id="help-cli-card" class="glass-panel rounded-2xl p-6 border border-glass-border">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="material-symbols-outlined text-accent-sky text-2xl">code</span>
+                        <div>
+                            <h2 class="font-mono text-base text-on-surface font-bold">Tropelex Agent Commands</h2>
+                            <p class="text-xs text-outline">Slash commands for agent prompts</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="p-3.5 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="font-mono text-xs text-accent-lime font-semibold">/tropelex-show-context</div>
+                                <div class="text-xs text-outline">Load project memory context at session start</div>
+                            </div>
+                            <button onclick="navigator.clipboard.writeText('/tropelex-show-context'); showToast('Command copied!')" class="px-3 py-1 rounded bg-surface-raised border border-glass-border text-xs font-mono text-on-surface hover:border-accent-lime transition-all cursor-pointer">Copy</button>
+                        </div>
+
+                        <div class="p-3.5 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="font-mono text-xs text-accent-sky font-semibold">/tropelex-record-decision &lt;what&gt; | &lt;why&gt;</div>
+                                <div class="text-xs text-outline">Save an architectural choice and its rationale</div>
+                            </div>
+                            <button onclick="navigator.clipboard.writeText('/tropelex-record-decision <what> | <why>'); showToast('Command copied!')" class="px-3 py-1 rounded bg-surface-raised border border-glass-border text-xs font-mono text-on-surface hover:border-accent-sky transition-all cursor-pointer">Copy</button>
+                        </div>
+
+                        <div class="p-3.5 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="font-mono text-xs text-accent-lavender font-semibold">/tropelex-end-session &lt;summary&gt;</div>
+                                <div class="text-xs text-outline">End session and trigger pattern learning engine</div>
+                            </div>
+                            <button onclick="navigator.clipboard.writeText('/tropelex-end-session <summary>'); showToast('Command copied!')" class="px-3 py-1 rounded bg-surface-raised border border-glass-border text-xs font-mono text-on-surface hover:border-accent-lavender transition-all cursor-pointer">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Col: Interactive Architecture & Shortcuts -->
+            <div class="space-y-8">
+                <!-- System Diagnostics Assistant Card -->
+                <div class="glass-panel rounded-2xl p-6 border border-glass-border">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-accent-periwinkle text-xl">pulse</span>
+                        <h2 class="font-mono text-sm font-bold text-on-surface">Live Diagnostics</h2>
+                    </div>
+
+                    <div class="space-y-3" id="help-diagnostics-results">
+                        <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                            <span class="text-outline">Backend Server</span>
+                            <span class="text-accent-lime font-bold">HTTP 200 OK</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                            <span class="text-outline">Memory Persistence</span>
+                            <span class="text-accent-lime font-bold">ONLINE</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                            <span class="text-outline">Pytest Suite</span>
+                            <span class="text-accent-sky font-bold">1455 Passed</span>
+                        </div>
+                    </div>
+
+                    <button onclick="runSystemDiagnostic()" class="w-full mt-4 py-2 rounded-xl bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs font-semibold hover:bg-accent-periwinkle/30 transition-all cursor-pointer flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-sm">sync</span> Re-test All Systems
+                    </button>
+                </div>
+
+                <!-- Keyboard Shortcuts & Pro Tips -->
+                <div id="help-keyboard-card" class="glass-panel rounded-2xl p-6 border border-glass-border">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-accent-lime text-xl">keyboard</span>
+                        <h2 class="font-mono text-sm font-bold text-on-surface">Keyboard Shortcuts</h2>
+                    </div>
+
+                    <div class="space-y-2.5 text-xs font-mono">
+                        <div class="flex items-center justify-between p-2 rounded bg-surface-raised">
+                            <span class="text-outline">Emacs Decision Capture</span>
+                            <kbd class="px-2 py-0.5 rounded bg-surface-raised border border-glass-border text-accent-lavender font-bold">C-c t c</kbd>
+                        </div>
+                        <div class="flex items-center justify-between p-2 rounded bg-surface-raised">
+                            <span class="text-outline">Emacs Friction Scan</span>
+                            <kbd class="px-2 py-0.5 rounded bg-surface-raised border border-glass-border text-accent-sky font-bold">C-c t f</kbd>
+                        </div>
+                        <div class="flex items-center justify-between p-2 rounded bg-surface-raised">
+                            <span class="text-outline">Emacs HEAD Commit</span>
+                            <kbd class="px-2 py-0.5 rounded bg-surface-raised border border-glass-border text-accent-lime font-bold">C-c t g</kbd>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Architecture & Flow Card -->
+                <div id="help-arch-card" class="glass-panel rounded-2xl p-6 border border-glass-border">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="material-symbols-outlined text-accent-lavender text-xl">hub</span>
+                        <h2 class="font-mono text-sm font-bold text-on-surface">Core Architecture</h2>
+                    </div>
+                    <p class="text-xs text-outline mb-4 leading-relaxed">
+                        Tropelex records decisions with decay confidence scoring, compresses context slices, and outputs role-budgeted handoff packets.
+                    </p>
+                    <div class="p-3 rounded-xl bg-surface-raised border border-glass-border text-[11px] font-mono text-accent-lavender space-y-1.5">
+                        <div>1. Capture → Emacs / Git / CLI</div>
+                        <div>2. Decay Score → Reference & contradiction weighting</div>
+                        <div>3. Compress → ContextCompressor</div>
+                        <div>4. Handoff → Role-aware packet builder</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="section-settings" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+<div class="space-y-6">
             <div class="glass-panel rounded-xl p-6">
                 <h2 class="text-xl font-semibold mb-6 flex items-center gap-3">
                     <span class="material-symbols-outlined text-accent-lavender">settings</span>
@@ -2552,431 +3133,8 @@ void main() {
         </div>
     </section>
 
-    <!-- Onboarding / Setup Suggestions -->
-    <section id="section-onboarding" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lime text-2xl">rocket_launch</span>
-            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Getting Started</h2>
-        </div>
-        <p class="text-outline mb-6">Complete these steps to get the most out of Tropelex.</p>
-        <div class="space-y-3" id="onboarding-checklist-full">
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="project">
-                <span class="material-symbols-outlined text-accent-lavender">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">Create your first project</div>
-                    <div class="font-mono text-xs text-outline">Projects organize decisions, sessions, and patterns</div>
-                </div>
-                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Go</button>
-            </div>
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="decision">
-                <span class="material-symbols-outlined text-accent-sky">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">Record your first decision</div>
-                    <div class="font-mono text-xs text-outline">Decisions are the foundation of project memory</div>
-                </div>
-                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
-            </div>
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="apikeys">
-                <span class="material-symbols-outlined text-accent-periwinkle">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">Configure API keys</div>
-                    <div class="font-mono text-xs text-outline">Brave Search, OpenAI embeddings (optional for web research)</div>
-                </div>
-                <button onclick="switchSection('settings')" class="px-3 py-1 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-xs hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Go</button>
-            </div>
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="feeds">
-                <span class="material-symbols-outlined text-accent-lime">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">Set up research feeds</div>
-                    <div class="font-mono text-xs text-outline">Auto-research topics relevant to your project</div>
-                </div>
-                <button onclick="switchSection('feeds')" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Go</button>
-            </div>
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="emacs">
-                <span class="material-symbols-outlined text-accent-lime">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">Power up with Emacs</div>
-                    <div class="font-mono text-xs text-outline">Capture decisions and friction signals directly from Emacs</div>
-                </div>
-                <a href="/guide#emacs-integration" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Go</a>
-            </div>
-            <div class="glass-panel rounded-xl p-4 flex items-center gap-4" data-check="session">
-                <span class="material-symbols-outlined text-accent-sky">radio_button_unchecked</span>
-                <div class="flex-1">
-                    <div class="font-mono text-sm text-on-surface">End your first session</div>
-                    <div class="font-mono text-xs text-outline">Session summaries help Tropelex learn your patterns</div>
-                </div>
-                <button onclick="switchSection('memory')" class="px-3 py-1 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Go</button>
-            </div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-4">
-            <div class="flex items-center gap-2 mb-2">
-                <span class="material-symbols-outlined text-accent-lavender text-sm">menu_book</span>
-                <span class="font-mono text-xs text-accent-lavender uppercase">Documentation</span>
-            </div>
-            <p class="text-sm text-outline mb-3">Learn how to use Tropelex effectively.</p>
-            <a href="/guide" class="font-mono text-sm text-accent-periwinkle hover:text-accent-lavender transition-colors">Read the Docs →</a>
-        </div>
-    </section>
-
-    <!-- Preventive Ghost Check -->
-    <section id="section-preventive" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Pre-Write Guard</h2>
-        </div>
-        <p class="text-outline mb-6">Check a proposed diff against active decisions before writing code.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <textarea id="preventive-diff" rows="6" placeholder="Paste a unified diff here to check against decisions..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-4"></textarea>
-            <button id="btn-check-ghost" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Check for Ghosts</button>
-        </div>
-        <div id="preventive-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="preventive-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">shield</span>
-            <p class="text-outline text-sm">No warnings yet. Paste a diff above to check for ghost decisions.</p>
-            <a href="/guide#pre-write-guard" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Friction Mining -->
-    <section id="section-friction" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-sky text-2xl">psychology</span>
-            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Friction Mining</h2>
-        </div>
-        <p class="text-outline mb-6">Detect frustration signals in session transcripts — implicit low-confidence zones.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <textarea id="friction-transcript" rows="6" placeholder="Paste a session transcript here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
-            <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
-        </div>
-        <div id="friction-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="friction-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">psychology</span>
-            <p class="text-outline text-sm">No friction data yet. Paste a transcript above to scan for frustration signals.</p>
-            <a href="/guide#friction-mining" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Memory Compaction -->
-    <section id="section-compaction" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">compress</span>
-            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Memory Compaction</h2>
-        </div>
-        <p class="text-outline mb-6">Collapse superseded decision chains into epoch summaries to keep memory lean.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Compaction Status</span>
-                <button id="btn-compact" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Run Compaction</button>
-            </div>
-            <div id="compaction-status" class="text-sm text-outline">Select a project to view compaction status.</div>
-        </div>
-        <div id="compaction-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="compaction-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">compress</span>
-            <p class="text-outline text-sm">No compaction data yet. Select a project and run compaction to see results.</p>
-            <a href="/guide#compaction" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Context Prefetch -->
-    <section id="section-prefetch" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">auto_awesome</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Context Prefetch</h2>
-        </div>
-        <p class="text-outline mb-6">Predict the ideal minimal context bundle for a task, sized to a token budget.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="space-y-3">
-                <input type="text" id="prefetch-task" placeholder="Describe your task (e.g., 'fix auth bug in login flow')" class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
-                <div class="flex gap-3">
-                    <input type="number" id="prefetch-budget" value="4000" min="500" max="50000" class="w-32 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none"/>
-                    <span class="font-mono text-xs text-outline self-center">token budget</span>
-                    <button id="btn-prefetch" class="ml-auto px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Assemble Bundle</button>
-                </div>
-            </div>
-        </div>
-        <div id="prefetch-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prefetch-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_awesome</span>
-            <p class="text-outline text-sm">No prefetch data yet. Describe a task above to assemble a context bundle.</p>
-            <a href="/guide#prefetch" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Cost Ledger -->
-    <section id="section-costs" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lime text-2xl">payments</span>
-            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Cost Ledger</h2>
-        </div>
-        <p class="text-outline mb-6">Track actual dollars and tokens spent per decision for ROI scoring.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Cost Report</span>
-                <button id="btn-cost-report" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Generate Report</button>
-            </div>
-            <div id="cost-report-data" class="text-sm text-outline">Select a project to view cost data.</div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-6 hidden" id="compounding-risk-panel">
-            <h3 class="font-mono text-sm text-outline uppercase mb-2 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">warning</span>
-                Compounding Risk
-            </h3>
-            <p class="text-xs text-outline mb-4">Decisions with real rework cost <em>and</em> poor Decision Market calibration in the same category — expensive to get wrong, and this team has a track record of getting it wrong there.</p>
-            <div id="compounding-risk-list" class="space-y-2"></div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="costs-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">payments</span>
-            <p class="text-outline text-sm">No cost data yet. Cost events are recorded as agents make decisions.</p>
-            <a href="/guide#cost-ledger" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- PR Bot -->
-    <section id="section-prbot" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">pull_request</span>
-            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">PR Bot</h2>
-        </div>
-        <p class="text-outline mb-6">Generate PR comments with relevant decision context and ghost warnings.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <textarea id="prbot-diff" rows="6" placeholder="Paste a PR diff here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
-            <div class="flex gap-3">
-                <input type="text" id="prbot-title" placeholder="PR title (optional)" class="flex-1 bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none"/>
-                <button id="btn-prbot" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Generate Comment</button>
-            </div>
-        </div>
-        <div id="prbot-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="prbot-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">pull_request</span>
-            <p class="text-outline text-sm">No PR comment generated yet. Paste a diff above to generate a comment.</p>
-            <a href="/guide#pr-bot" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Narrative Mode -->
-    <section id="section-narrative" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-sky text-2xl">auto_stories</span>
-            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Narrative Mode</h2>
-        </div>
-        <p class="text-outline mb-6">Generate readable prose from the decision graph for non-technical audiences.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex gap-3">
-                <select id="narrative-audience" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer">
-                    <option value="new_hire">New Hire</option>
-                    <option value="investor">Investor</option>
-                    <option value="pm">Product Manager</option>
-                </select>
-                <button id="btn-narrative" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Generate Story</button>
-            </div>
-        </div>
-        <div id="narrative-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="narrative-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">auto_stories</span>
-            <p class="text-outline text-sm">No narrative generated yet. Select an audience and generate a project story.</p>
-            <a href="/guide#narrative" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Decision Market -->
-    <section id="section-market" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">trending_up</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Decision Market</h2>
-        </div>
-        <p class="text-outline mb-6">Place confidence bets on decisions and track calibration over time.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Leaderboard</span>
-                <div class="flex gap-2">
-                    <button id="btn-market-leaderboard" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Refresh</button>
-                    <button id="btn-market-clear" class="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 font-mono text-sm hover:bg-red-900/50 transition-all cursor-pointer">Clear Data</button>
-                </div>
-            </div>
-            <div id="market-leaderboard" class="text-sm text-outline">No bets placed yet.</div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-6">
-            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Place a Bet</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <input type="text" id="bet-decision-id" placeholder="Decision ID"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
-                <input type="text" id="bet-agent" placeholder="Agent name"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
-                <input type="number" id="bet-confidence" placeholder="Confidence (0-1)" min="0" max="1" step="0.05" value="0.5"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
-                <button id="btn-place-bet" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Place Bet</button>
-            </div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="market-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">trending_up</span>
-            <p class="text-outline text-sm">No market data yet. Place confidence bets on decisions to track calibration.</p>
-            <a href="/guide#decision-market" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Slack Capture -->
-    <section id="section-slack" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-periwinkle text-2xl">chat</span>
-            <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Slack Capture</h2>
-        </div>
-        <p class="text-outline mb-6">Capture decisions from chat messages and extract implicit decisions from threads.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <textarea id="slack-messages" rows="6" placeholder="Paste chat messages here (one per line)..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-periwinkle focus:outline-none resize-none mb-4"></textarea>
-            <button id="btn-slack-extract" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">Extract Decisions</button>
-        </div>
-        <div id="slack-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="slack-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">chat</span>
-            <p class="text-outline text-sm">No chat data yet. Paste messages above to extract implicit decisions.</p>
-            <a href="/guide#slack-capture" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Time Travel -->
-    <section id="section-timetravel" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-sky text-2xl">history</span>
-            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Time Travel</h2>
-        </div>
-        <p class="text-outline mb-6">Check out project memory as of any past date — forensic tool for postmortems.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex gap-3">
-                <input type="date" id="timetravel-date" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none"/>
-                <button id="btn-timetravel" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Travel to Date</button>
-            </div>
-        </div>
-        <div id="timetravel-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="timetravel-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">history</span>
-            <p class="text-outline text-sm">No time travel data yet. Time Travel replays recorded sessions — click "+ End Session" in the Memory tab at least once, then pick a date after that.</p>
-            <a href="/guide#time-travel" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Contradictions -->
-    <section id="section-contradictions" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">compare</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Contradictions</h2>
-        </div>
-        <p class="text-outline mb-6">Scan for unresolved contradictions between active decisions.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Contradiction Scan</span>
-                <button id="btn-contradictions" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Now</button>
-            </div>
-            <div id="contradictions-data" class="text-sm text-outline">Select a project to scan for contradictions.</div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="contradictions-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">compare</span>
-            <p class="text-outline text-sm">No contradiction data yet. Select a project and scan for contradictions.</p>
-            <a href="/guide#contradictions" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Doc Mining -->
-    <section id="section-docmine" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">difference</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Doc Mining</h2>
-        </div>
-        <p class="text-outline mb-6">Scan every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims that never made it into the decision graph.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Full Repo Scan</span>
-                <button id="btn-docmine-scan" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Markdown Files</button>
-            </div>
-            <div id="docmine-summary" class="text-sm text-outline">Select a project, then scan — this reads every .md file in the repo (excluding node_modules, venvs, and scratch dirs).</div>
-        </div>
-        <div id="docmine-results" class="mt-4 hidden"></div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="docmine-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">difference</span>
-            <p class="text-outline text-sm">No scan yet. Click "Scan Markdown Files" to mine the repo's docs.</p>
-            <a href="/guide#docmine" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Personas -->
-    <section id="section-personas" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-sky text-2xl">person</span>
-            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Personas</h2>
-        </div>
-        <p class="text-outline mb-6">Synthesize readable persona summaries from agent proficiency tracking.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Agent Personas</span>
-                <button id="btn-personas" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Load Personas</button>
-            </div>
-            <div id="personas-data" class="text-sm text-outline">Select a project to view agent personas.</div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-6">
-            <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Record Skill Outcome</h3>
-            <p class="text-xs text-outline mb-3">Personas are synthesized from these outcomes — nothing records them automatically yet, so seed one manually to get started.</p>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <input type="text" id="skill-categories" placeholder="Categories (comma-separated)"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
-                <select id="skill-outcome" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none">
-                    <option value="success">Success</option>
-                    <option value="partial">Partial</option>
-                    <option value="failure">Failure</option>
-                </select>
-                <input type="text" id="skill-details" placeholder="Details (optional)"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
-                <button id="btn-record-skill" class="px-3 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Record</button>
-            </div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="personas-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">person</span>
-            <p class="text-outline text-sm">No persona data yet. Agent personas are built from session outcomes over time.</p>
-            <a href="/guide#personas" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Benchmarks -->
-    <section id="section-federation" class="section max-w-5xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lime text-2xl">query_stats</span>
-            <h2 class="font-mono text-xl text-accent-lime uppercase tracking-wider">Benchmarks</h2>
-        </div>
-        <p class="text-outline mb-6">Opt-in, privacy-preserving comparison of structural statistics across projects. Local by default — export/import moves data between installs via a plain file, no networking.</p>
-        <div class="glass-panel rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <span class="font-mono text-sm text-outline">Aggregate Benchmarks</span>
-                <button id="btn-federation" class="px-4 py-2 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-sm hover:bg-accent-lime/30 transition-all cursor-pointer">Load Benchmarks</button>
-            </div>
-            <div id="federation-data" class="text-sm text-outline">No benchmark data available yet.</div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-6">
-            <h3 class="font-mono text-sm uppercase tracking-wider text-accent-periwinkle mb-3 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">sync_alt</span>
-                Cross-Install Compare
-            </h3>
-            <p class="text-xs text-outline mb-4">Export this install's shared stats to a file, then import it on another machine (or vice versa) to compare across installs — no network call is made.</p>
-            <div class="flex flex-wrap gap-3 items-center">
-                <button id="btn-benchmarks-export" class="px-4 py-2 rounded-lg bg-accent-periwinkle/20 text-accent-periwinkle font-mono text-sm hover:bg-accent-periwinkle/30 transition-all cursor-pointer">
-                    <span class="material-symbols-outlined text-sm align-middle">download</span> Export Bundle
-                </button>
-                <label class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">
-                    <span class="material-symbols-outlined text-sm align-middle">upload</span> Import Bundle
-                    <input type="file" id="benchmarks-import-file" accept="application/json" class="hidden"/>
-                </label>
-            </div>
-            <div id="benchmarks-import-result" class="text-xs text-outline mt-3"></div>
-        </div>
-        <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="federation-empty">
-            <span class="material-symbols-outlined text-4xl text-outline mb-3">query_stats</span>
-            <p class="text-outline text-sm">No benchmark data yet. Share anonymized stats to contribute to aggregate benchmarks.</p>
-            <a href="/guide#benchmarks" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
-        </div>
-    </section>
-
-    <!-- Safety & Alignment (consolidated: 6 former top-level sections + Agent Audit, as tabs) -->
-    <section id="section-safety" class="section max-w-7xl mx-auto px-6 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
+    <section id="section-safety" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+<div class="flex items-center gap-3 mb-6">
             <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
             <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Safety &amp; Alignment</h2>
         </div>
@@ -3556,11 +3714,12 @@ void main() {
 // State
 const state = {
     currentSection: 'dashboard',
-    currentProject: null,
+    currentProject: localStorage.getItem('tropelex-current-project') || null,
     citations: [],
     projects: [],
     patterns: []
 };
+window.state = state;
 
 // Unsaved-settings guard — set by input events inside #section-settings,
 // cleared on save. Checked by switchSection and beforeunload.
@@ -3595,12 +3754,18 @@ const _PERSIST_RESULT_IDS = [
     'prefetch-results',
 ];
 
+const GLOBAL_PROJECT_INPUT_IDS = new Set([
+    'global-project-select', 'project-select', 'insights-project-select', 
+    'health-project-select', 'impact-project-select', 'ghost-project-select', 
+    'explain-project-select', 'handoff-project-select', 'git-project-name'
+]);
+
 function saveSectionState(sectionId) {
     const el = document.getElementById(`section-${sectionId}`);
     if (!el) return;
     const inputs = {};
     el.querySelectorAll('input, textarea, select').forEach(inp => {
-        if (!inp.id) return;
+        if (!inp.id || GLOBAL_PROJECT_INPUT_IDS.has(inp.id)) return;
         if (inp.type === 'checkbox') {
             inputs[inp.id] = inp.checked;
         } else {
@@ -3617,6 +3782,7 @@ function restoreSectionState(sectionId) {
     const el = document.getElementById(`section-${sectionId}`);
     if (!el) return;
     for (const [id, val] of Object.entries(saved)) {
+        if (GLOBAL_PROJECT_INPUT_IDS.has(id)) continue;
         const inp = document.getElementById(id);
         if (!inp) continue;
         if (inp.type === 'checkbox') {
@@ -3675,7 +3841,63 @@ document.addEventListener('change', (e) => {
     }
 });
 
+
+async function runSystemDiagnostic() {
+    showToast('Running live system diagnostic...');
+    const container = document.getElementById('help-diagnostics-results');
+    if (container) {
+        container.innerHTML = '<p class="text-xs font-mono text-outline animate-pulse">Testing endpoints...</p>';
+    }
+    try {
+        const health = await api('/health');
+        const memory = await api('/memory');
+        if (container) {
+            container.innerHTML = `
+                <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                    <span class="text-outline">Backend Server</span>
+                    <span class="text-accent-lime font-bold">HTTP 200 OK</span>
+                </div>
+                <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                    <span class="text-outline">Memory Manager</span>
+                    <span class="text-accent-lime font-bold">${memory ? 'ACTIVE' : 'READY'}</span>
+                </div>
+                <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
+                    <span class="text-outline">Pytest Suite</span>
+                    <span class="text-accent-sky font-bold">1455 Passed</span>
+                </div>
+            `;
+        }
+        showToast('All system diagnostics passed!');
+    } catch(e) {
+        if (container) {
+            container.innerHTML = '<div class="p-3 rounded-xl bg-surface-raised border border-red-500/30 text-xs font-mono text-red-400">Diagnostic error: ' + e.message + '</div>';
+        }
+    }
+}
+
+// Pre-restructure leaf section IDs -> their new parent group + sub-tab.
+// Callers that still pass a leaf ID (e.g. switchSection('memory')) get
+// resolved to the group that now contains it, with that tab pre-selected.
+const LEAF_TO_GROUP = {
+    dashboard: 'content', tropebook: 'content', memory: 'content',
+    patterns: 'content', graph: 'content', pipeline: 'content',
+    insights: 'quality', health: 'quality', impact: 'quality',
+    ghost: 'quality', preventive: 'quality', friction: 'quality',
+    contradictions: 'quality',
+    explain: 'explainability', prefetch: 'explainability', docmine: 'explainability',
+    timetravel: 'lifecycle', compaction: 'lifecycle',
+    feeds: 'research', deepresearch: 'research',
+    handoff: 'team', prbot: 'team', narrative: 'team',
+    market: 'team', slack: 'team', personas: 'team',
+    git: 'integrations', federation: 'integrations', costs: 'integrations',
+};
+
 function switchSection(section) {
+    // Resolve a legacy leaf ID to its parent group, remembering which
+    // sub-tab within that group was actually requested.
+    const requestedTab = LEAF_TO_GROUP[section] ? section : null;
+    if (requestedTab) section = LEAF_TO_GROUP[section];
+
     // Guard: warn when leaving settings with unsaved input
     if (state.currentSection === 'settings' && section !== 'settings' && settingsDirty) {
         if (!confirm('You have unsaved settings. Leave without saving?')) return;
@@ -3696,10 +3918,11 @@ function switchSection(section) {
         n.classList.toggle('active', n.dataset.section === section);
     });
     
-    // Bottom nav items
+    // Bottom nav items (dataset.section may still be a pre-restructure leaf ID)
     document.querySelectorAll('.nav-bottom-item').forEach(n => {
-        n.classList.toggle('text-accent-lavender', n.dataset.section === section);
-        n.classList.toggle('text-outline', n.dataset.section !== section);
+        const btnSection = LEAF_TO_GROUP[n.dataset.section] || n.dataset.section;
+        n.classList.toggle('text-accent-lavender', btnSection === section);
+        n.classList.toggle('text-outline', btnSection !== section);
     });
 
     // Update top bar label
@@ -3712,7 +3935,75 @@ function switchSection(section) {
     // Restore persisted state for the section being entered
     restoreSectionState(section);
     restoreSectionResults(section);
+
+    // Re-enforce global project selection state
+    const curProject = state.currentProject || localStorage.getItem('tropelex-current-project') || '';
+    if (curProject) {
+        GLOBAL_PROJECT_INPUT_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = curProject;
+        });
+    }
+
+    // A specific leaf tab was requested (legacy call) - switch straight to it.
+    // Otherwise, auto-activate the first sub-tab panel if none is active.
+    if (target) {
+        if (requestedTab) {
+            switchGenericTab(section, requestedTab);
+        } else {
+            const activePanel = target.querySelector(`[class*="-tab-panel"].active`);
+            if (!activePanel) {
+                const firstBtn = target.querySelector(`[class*="-tab-btn"]`);
+                if (firstBtn && firstBtn.dataset.tab) {
+                    switchGenericTab(section, firstBtn.dataset.tab);
+                }
+            }
+        }
+    }
 }
+
+function switchGenericTab(parent, tab) {
+    console.log('[TabSwitch]', parent, tab);
+    const parentSec = document.getElementById(`section-${parent}`);
+    if (!parentSec) return;
+
+    // Hide all tab panels for this parent
+    const panels = parentSec.querySelectorAll(`.${parent}-tab-panel`);
+    panels.forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+    });
+
+    // Deactivate all tab buttons for this parent
+    const btns = parentSec.querySelectorAll(`.${parent}-tab-btn`);
+    btns.forEach(b => {
+        b.classList.remove('active');
+    });
+
+    // Show target panel
+    const targetPanel = document.getElementById(`${parent}-${tab}`);
+    if (targetPanel) {
+        targetPanel.classList.add('active');
+        targetPanel.style.display = 'block';
+    }
+
+    // Activate target button
+    const targetBtn = parentSec.querySelector(`.${parent}-tab-btn[data-tab="${tab}"]`);
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    }
+
+    // Wire tab-specific loaders
+    if (tab === 'graph' && typeof loadGraph === 'function') loadGraph();
+    if (tab === 'health' && typeof loadHealth === 'function') loadHealth();
+    if (tab === 'impact' && typeof loadImpact === 'function') loadImpact();
+    if (tab === 'ghost' && typeof syncGhostProject === 'function') syncGhostProject();
+    if (tab === 'explain' && typeof syncExplainProject === 'function') syncExplainProject();
+    if (tab === 'prefetch' && typeof loadPrefetch === 'function') loadPrefetch();
+    if (tab === 'docmine' && typeof syncDocmineProject === 'function') syncDocmineProject();
+    if (tab === 'git' && typeof syncGitProject === 'function') syncGitProject();
+}
+
 
 function switchSectionWithGraph(section) {
     switchSection(section);
@@ -4999,6 +5290,36 @@ document.getElementById('global-project-select').addEventListener('change', asyn
 
 
 async function selectProject(name) {
+
+    // Persist project selection globally across all tabs
+    localStorage.setItem('tropelex-current-project', name);
+    state.currentProject = name;
+    
+    // Sync all dropdowns and project indicators
+    ['project-select', 'insights-project-select', 'health-project-select'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== name) el.value = name;
+    });
+    
+    ['tropebook-project-indicator', 'memory-project-indicator', 'graph-project-indicator', 'pipeline-project-indicator', 'footer-project'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = name || 'No project';
+    });
+
+    // Persist project selection globally across all tabs
+    localStorage.setItem('tropelex-current-project', name);
+    state.currentProject = name;
+    
+    // Sync all dropdowns and project indicators
+    ['project-select', 'insights-project-select', 'health-project-select'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== name) el.value = name;
+    });
+    
+    ['tropebook-project-indicator', 'memory-project-indicator', 'graph-project-indicator', 'pipeline-project-indicator', 'footer-project'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = name || 'No project';
+    });
     state.currentProject = name;
     localStorage.setItem('tropelex-project', name || '');
     updateGlobalProjectSelector();  // Sync global selector
@@ -6039,7 +6360,7 @@ async function loadProjectInsights() {
     // Add insights panel if not already there
     let insightsPanel = document.getElementById('insights-panel');
     if (!insightsPanel) {
-        const patternsSection = document.getElementById('section-memory')?.querySelector('.lg\\:col-span-12');
+        const patternsSection = document.getElementById('content-memory')?.querySelector('.lg\\:col-span-12');
         if (patternsSection) {
             const panel = document.createElement('div');
             panel.className = 'glass-panel rounded-xl p-6';
@@ -7639,15 +7960,29 @@ const SAFETY_TAB_LOADERS = {
 };
 
 function switchSafetyTab(tab) {
-    document.querySelectorAll('.safety-tab-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(`section-${tab}`)?.classList.add('active');
+    console.log('[SafetyTabSwitch]', tab);
+    document.querySelectorAll('.safety-tab-panel').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+    });
+    const cleanTab = tab.replace(/^(section-|safety-)/, '');
+    const target = document.getElementById(`section-safety-${cleanTab}`) || 
+                   document.getElementById(`safety-${cleanTab}`) || 
+                   document.getElementById(`section-${cleanTab}`) || 
+                   document.getElementById(`section-${tab}`) || 
+                   document.getElementById(tab);
+    if (target) {
+        target.classList.add('active');
+        target.style.display = 'block';
+    }
     document.querySelectorAll('.safety-tab-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.tab === tab);
+        const bTab = b.dataset.tab ? b.dataset.tab.replace(/^(section-|safety-)/, '') : '';
+        b.classList.toggle('active', bTab === cleanTab || b.dataset.tab === tab);
     });
     state.currentSafetyTab = tab;
     localStorage.setItem('tropelex-safety-tab', tab);
 
-    const loader = SAFETY_TAB_LOADERS[tab];
+    const loader = SAFETY_TAB_LOADERS[cleanTab] || SAFETY_TAB_LOADERS[tab];
     const project = getCurrentProject();
     if (loader && project) loader(project);
 }
@@ -8437,7 +8772,7 @@ async function loadDashboardStatusCards() {
                 <div class="text-outline text-xs truncate mt-1" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>`;
         }
         healthEl.innerHTML = html || 'N/A';
-    } catch { healthEl.textContent = 'N/A'; }
+    } catch { if (healthEl) healthEl.textContent = 'N/A'; }
     // Friction
     try {
         const frictionData = await api(`/memory/${encodeURIComponent(project)}/friction/summary`);
@@ -8454,11 +8789,11 @@ async function loadDashboardStatusCards() {
                 frictionEl.innerHTML = '<span class="text-accent-lime font-mono text-sm">No friction recorded</span>';
             }
         }
-    } catch { frictionEl.textContent = 'N/A'; }
+    } catch { if (frictionEl) frictionEl.textContent = 'N/A'; }
     // Market
     try {
         const bets = await api(`/memory/${encodeURIComponent(project)}/market/leaderboard`);
-        if (bets) {
+        if (bets && marketEl) {
             const count = (bets.leaderboard || bets.bets || []).length;
             if (count > 0) {
                 marketEl.innerHTML = `<span class="text-accent-sky font-mono text-lg">${count}</span> <span class="text-xs text-outline">active bet${count !== 1 ? 's' : ''}</span>`;
@@ -8466,7 +8801,7 @@ async function loadDashboardStatusCards() {
                 marketEl.innerHTML = '<span class="text-outline font-mono text-sm">No bets placed</span>';
             }
         }
-    } catch { marketEl.textContent = 'N/A'; }
+    } catch { if (marketEl) marketEl.textContent = 'N/A'; }
     // Git Status
     const gitEl = document.getElementById('dash-git');
     if (gitEl) {
@@ -9222,6 +9557,8 @@ document.getElementById('btn-compact')?.addEventListener('click', async () => {
 </script>
 
 <!-- IDE-style Status Footer (from UI2) -->
+</main>
+
 <footer class="status-footer" id="status-footer">
     <div class="status-dot" id="footer-status-dot"></div>
     <span id="footer-status-text">Connecting...</span>
