@@ -3983,7 +3983,14 @@ function switchSection(section) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(`section-${section}`);
     if (target) target.classList.add('active');
-    
+
+    // The Content/Overview landing page intentionally shows the Help &
+    // Command Hub banner below it too - re-activate it every time so it
+    // doesn't silently drop out after navigating away and back.
+    if (section === 'content') {
+        document.getElementById('section-onboarding')?.classList.add('active');
+    }
+
     // Sidebar nav items
     document.querySelectorAll('.sidebar .nav-item').forEach(n => {
         n.classList.toggle('active', n.dataset.section === section);
@@ -4674,17 +4681,26 @@ function openModal(mode = 'citation') {
     const feedFields = document.getElementById('feed-fields');
     const title = modal.querySelector('h3');
     const submitBtn = document.getElementById('submit-add');
-    
+    const feedName = document.getElementById('feed-name');
+    const feedQuery = document.getElementById('feed-query');
+
     if (mode === 'feed') {
         citationFields.classList.add('hidden');
         feedFields.classList.remove('hidden');
         title.textContent = 'Create Research Feed';
         submitBtn.textContent = 'Create Feed';
+        feedName.required = true;
+        feedQuery.required = true;
     } else {
         citationFields.classList.remove('hidden');
         feedFields.classList.add('hidden');
         title.textContent = 'Add Citation';
         submitBtn.textContent = 'Add Citation';
+        // Hidden required fields still block form submission in Chrome unless
+        // explicitly un-required, since display:none on an ancestor doesn't
+        // exempt a descendant from constraint validation.
+        feedName.required = false;
+        feedQuery.required = false;
     }
 }
 function closeModal() {
@@ -4695,8 +4711,8 @@ function closeModal() {
     form.dataset.mode = '';
 }
 
-document.getElementById('btn-add-citation').addEventListener('click', openModal);
-document.getElementById('btn-add-first').addEventListener('click', openModal);
+document.getElementById('btn-add-citation').addEventListener('click', () => openModal());
+document.getElementById('btn-add-first').addEventListener('click', () => openModal());
 document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('cancel-add').addEventListener('click', closeModal);
 document.getElementById('add-modal').addEventListener('click', (e) => {
