@@ -19,6 +19,29 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _apply_outcome(bucket: dict, category: str, outcome: str) -> None:
+    """Update a single category's running counters in place for one outcome.
+
+    Shared by the project-wide "skills" aggregate and each agent's entry in
+    "skills_by_agent" so both stay in lockstep, computed the same way.
+    """
+    skill = bucket.setdefault(category, {
+        "attempts": 0,
+        "successes": 0,
+        "failures": 0,
+        "score": 0.0,
+        "first_seen": _now(),
+        "last_seen": _now(),
+    })
+    skill["attempts"] += 1
+    if outcome == "success":
+        skill["successes"] += 1
+    elif outcome == "failure":
+        skill["failures"] += 1
+    skill["score"] = skill["successes"] / max(skill["attempts"], 1)
+    skill["last_seen"] = _now()
+
+
 class AgentSkillGraph:
     """
     Tracks agent proficiency per project.
@@ -69,34 +92,24 @@ class AgentSkillGraph:
         categories: list[str],
         outcome: str = "success",
         details: str = "",
+        agent_name: str = "unspecified",
     ) -> None:
         """
         Record the outcome of a session to update skill scores.
 
         outcome: "success" (user continued), "partial" (some rephrasing),
                  "failure" (user gave up or rephrased completely)
+        agent_name: freeform identifier for which AI agent did the work
+                    (e.g. "Claude", "Gemini"). Updates both the project-wide
+                    "skills" aggregate (unchanged behavior) and a per-agent
+                    breakdown under "skills_by_agent".
         """
+        agent_name = (agent_name or "").strip() or "unspecified"
         data = self._load(project_name)
 
-        # Update skill scores
-        score_delta = {"success": 1, "partial": 0, "failure": -1}.get(outcome, 0)
-
         for cat in categories:
-            skill = data["skills"].setdefault(cat, {
-                "attempts": 0,
-                "successes": 0,
-                "failures": 0,
-                "score": 0.0,
-                "first_seen": _now(),
-                "last_seen": _now(),
-            })
-            skill["attempts"] += 1
-            if outcome == "success":
-                skill["successes"] += 1
-            elif outcome == "failure":
-                skill["failures"] += 1
-            skill["score"] = skill["successes"] / max(skill["attempts"], 1)
-            skill["last_seen"] = _now()
+            _apply_outcome(data["skills"], cat, outcome)
+            _apply_outcome(data.setdefault("skills_by_agent", {}).setdefault(agent_name, {}), cat, outcome)
 
         # Record session
         data["sessions"].append({
@@ -105,6 +118,7 @@ class AgentSkillGraph:
             "categories": categories,
             "outcome": outcome,
             "details": details[:200],
+            "agent": agent_name,
         })
 
         # Keep last 100 sessions
@@ -113,11 +127,21 @@ class AgentSkillGraph:
 
         self._save(project_name, data)
 
-    def get_skills(self, project_name: str) -> list[dict]:
-        """Get all skills for a project, sorted by score."""
+    def get_skills(self, project_name: str, agent_name: str | None = None) -> list[dict]:
+        """Get skills for a project, sorted by score.
+
+        agent_name=None (default) returns the project-wide aggregate across
+        all agents, unchanged from before per-agent tracking existed. Pass a
+        name to get that agent's own breakdown.
+        """
         data = self._load(project_name)
+        bucket = (
+            data.get("skills", {})
+            if agent_name is None
+            else data.get("skills_by_agent", {}).get(agent_name, {})
+        )
         skills = []
-        for name, info in data.get("skills", {}).items():
+        for name, info in bucket.items():
             skills.append({
                 "skill": name,
                 "score": round(info.get("score", 0), 3),
@@ -129,24 +153,24 @@ class AgentSkillGraph:
         skills.sort(key=lambda x: x["score"], reverse=True)
         return skills
 
-    def get_strengths(self, project_name: str, min_score: float = 0.7) -> list[str]:
+    def get_strengths(self, project_name: str, min_score: float = 0.7, agent_name: str | None = None) -> list[str]:
         """Get skills where the agent is proficient."""
-        skills = self.get_skills(project_name)
+        skills = self.get_skills(project_name, agent_name=agent_name)
         return [s["skill"] for s in skills if s["score"] >= min_score and s["attempts"] >= 3]
 
-    def get_weaknesses(self, project_name: str, max_score: float = 0.4) -> list[str]:
+    def get_weaknesses(self, project_name: str, max_score: float = 0.4, agent_name: str | None = None) -> list[str]:
         """Get skills where the agent struggles."""
-        skills = self.get_skills(project_name)
+        skills = self.get_skills(project_name, agent_name=agent_name)
         return [s["skill"] for s in skills if s["score"] <= max_score and s["attempts"] >= 3]
 
-    def get_briefing(self, project_name: str) -> str:
+    def get_briefing(self, project_name: str, agent_name: str | None = None) -> str:
         """Generate a briefing of agent skills for context injection."""
-        skills = self.get_skills(project_name)
+        skills = self.get_skills(project_name, agent_name=agent_name)
         if not skills:
             return ""
 
-        strengths = self.get_strengths(project_name)
-        weaknesses = self.get_weaknesses(project_name)
+        strengths = self.get_strengths(project_name, agent_name=agent_name)
+        weaknesses = self.get_weaknesses(project_name, agent_name=agent_name)
 
         lines = ["## Agent Proficiency", ""]
         if strengths:
@@ -155,6 +179,14 @@ class AgentSkillGraph:
             lines.append(f"Needs care: {', '.join(weaknesses)}")
 
         return "\n".join(lines)
+
+    def list_agents(self, project_name: str) -> list[str]:
+        """Distinct agent names ever recorded for this project (for autocomplete)."""
+        data = self._load(project_name)
+        names = set(data.get("skills_by_agent", {}).keys())
+        names |= {s.get("agent") for s in data.get("sessions", []) if s.get("agent")}
+        names.discard("unspecified")
+        return sorted(names)
 
 
 def _proficiency_label(score: float) -> str:

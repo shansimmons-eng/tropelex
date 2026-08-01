@@ -359,6 +359,32 @@ def compute_friction_score(signals: list[FrictionSignal]) -> float:
     return round(min(raw + density_bonus, 1.0), 3)
 
 
+def compute_friction_by_agent(history: list[dict], agent: str) -> dict:
+    """Filter a project's friction_history down to one agent and aggregate.
+
+    Mirrors core/market/calibration.py's filter-then-aggregate pattern:
+    history is a flat list of scan records (each already tagged with
+    agent_name), never restructured — just filtered per call.
+    """
+    agent = (agent or "").strip() or "unspecified"
+    entries = [h for h in history if h.get("agent_name", "unspecified") == agent]
+    if not entries:
+        return {"agent_name": agent, "total_scans": 0, "avg_friction_score": 0.0, "severity_totals": {}}
+
+    avg = round(sum(h.get("friction_score", 0.0) for h in entries) / len(entries), 3)
+    severity_totals: dict[str, int] = {}
+    for h in entries:
+        for sev, n in h.get("severity_distribution", {}).items():
+            severity_totals[sev] = severity_totals.get(sev, 0) + n
+
+    return {
+        "agent_name": agent,
+        "total_scans": len(entries),
+        "avg_friction_score": avg,
+        "severity_totals": severity_totals,
+    }
+
+
 def group_signals_by_zone(signals: list[FrictionSignal]) -> list[FrictionZone]:
     """Group nearby signals (within 5 lines) into friction zones."""
     if not signals:

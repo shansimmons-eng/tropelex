@@ -166,6 +166,7 @@ class SessionReplay:
         memory_after: dict,
         summary: str = "",
         session_type: str = "manual",
+        agent: str = "unspecified",
     ) -> dict[str, Any]:
         """
         Record a session's memory changes.
@@ -174,6 +175,7 @@ class SessionReplay:
         session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{_snapshot_id(memory_after)[:6]}"
 
         changes = _deep_diff(memory_before, memory_after)
+        agent = (agent or "").strip() or "unspecified"
 
         record = {
             "session_id": session_id,
@@ -181,6 +183,7 @@ class SessionReplay:
             "timestamp": _now(),
             "session_type": session_type,
             "summary": summary,
+            "agent": agent,
             "snapshot_id_before": _snapshot_id(memory_before),
             "snapshot_id_after": _snapshot_id(memory_after),
             "changes": changes,
@@ -228,6 +231,7 @@ class SessionReplay:
             "session_type": record["session_type"],
             "summary": record["summary"],
             "change_count": record["change_count"],
+            "agent": record.get("agent", "unspecified"),
         })
 
         # Keep last 100 sessions in index
@@ -254,6 +258,12 @@ class SessionReplay:
             logger.warning("Failed to read session index for %s: %s", project_name, exc)
             return []
         return list(reversed(index[-limit:]))
+
+    def list_agents(self, project_name: str) -> list[str]:
+        """Distinct agent names ever recorded for this project (for autocomplete)."""
+        sessions = self.get_sessions(project_name, limit=1000)
+        names = {s.get("agent") for s in sessions if s.get("agent") and s.get("agent") != "unspecified"}
+        return sorted(names)
 
     def get_session(self, project_name: str, session_id: str) -> dict[str, Any] | None:
         """Get full session record including snapshots."""

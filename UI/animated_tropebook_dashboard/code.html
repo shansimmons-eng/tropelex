@@ -830,6 +830,10 @@ void main() {
             <select id="global-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer hover:border-accent-lavender/50 transition-colors">
                 <option value="">Select project...</option>
             </select>
+            <input list="global-agent-names" id="global-agent-input" placeholder="Agent (e.g. Claude)..."
+                title="Which AI agent is doing this work — attributes skills, friction, and sessions to it"
+                class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface w-36 focus:border-accent-lavender focus:outline-none placeholder-outline"/>
+            <datalist id="global-agent-names"></datalist>
             <button id="btn-new-project-header" class="px-2 py-1 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all flex items-center gap-1" title="New Project">
                 <span class="material-symbols-outlined text-sm">add</span>
                 <span class="hidden sm:inline">New</span>
@@ -995,7 +999,7 @@ void main() {
         </div>
 
         <!-- Bottom Bento Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6">
             <!-- Active Research Feeds -->
             <div class="glass-panel rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -1009,46 +1013,6 @@ void main() {
                     <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
                         <span class="text-on-surface font-sans text-xs">AI Agent Architecture Trends</span>
                         <span class="text-accent-sky font-mono text-[10px] uppercase">WEEKLY</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Agent Skill Proficiency Matrix -->
-            <div class="glass-panel rounded-xl p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-accent-lime text-lg">military_tech</span>
-                        <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lime no-wrap-title">Agent Skill Proficiency Matrix</h3>
-                    </div>
-                    <span class="font-mono text-[10px] text-accent-lavender bg-accent-lavender/10 px-2 py-0.5 rounded">LEARNED</span>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <div class="flex justify-between text-xs font-mono mb-1">
-                            <span class="text-outline">Architecture & Safety</span>
-                            <span class="text-accent-lime">95%</span>
-                        </div>
-                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-accent-lime h-full rounded-full" style="width: 95%;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs font-mono mb-1">
-                            <span class="text-outline">Backend Engineering</span>
-                            <span class="text-accent-sky">90%</span>
-                        </div>
-                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-accent-sky h-full rounded-full" style="width: 90%;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs font-mono mb-1">
-                            <span class="text-outline">UI & Glassmorphism</span>
-                            <span class="text-accent-lavender">92%</span>
-                        </div>
-                        <div class="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-accent-lavender h-full rounded-full" style="width: 92%;"></div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1585,9 +1549,14 @@ void main() {
                         <span class="material-symbols-outlined text-sm">psychology</span>
                         Agent Proficiency
                     </h3>
-                    <button id="btn-copy-skills-briefing" title="Copy a compact briefing for context injection" class="copy-btn hidden px-2 py-1 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button">
-                        <span class="material-symbols-outlined text-xs">content_copy</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <select id="agent-skills-agent-select" class="bg-surface-raised border border-glass-border rounded-lg px-2 py-1 font-mono text-xs text-on-surface cursor-pointer focus:outline-none">
+                            <option value="">All agents</option>
+                        </select>
+                        <button id="btn-copy-skills-briefing" title="Copy a compact briefing for context injection" class="copy-btn hidden px-2 py-1 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer" type="button">
+                            <span class="material-symbols-outlined text-xs">content_copy</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="agent-skills-list" class="space-y-3">
                     <p class="text-sm text-outline">Select a project to view agent skills.</p>
@@ -1835,7 +1804,11 @@ void main() {
         <p class="text-outline mb-6">Detect frustration signals in session transcripts — implicit low-confidence zones.</p>
         <div class="glass-panel rounded-xl p-6">
             <textarea id="friction-transcript" rows="6" placeholder="Paste a session transcript here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
-            <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
+            <div class="flex items-center gap-3">
+                <input list="global-agent-names" type="text" id="friction-agent" placeholder="Agent"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-40"/>
+                <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
+            </div>
         </div>
         <div id="friction-results" class="mt-4 hidden"></div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="friction-empty">
@@ -2461,8 +2434,10 @@ void main() {
         <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Record Skill Outcome</h3>
             <p class="text-xs text-outline mb-3">Personas are synthesized from these outcomes — nothing records them automatically yet, so seed one manually to get started.</p>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
                 <input type="text" id="skill-categories" placeholder="Categories (comma-separated)"
+                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <input list="global-agent-names" type="text" id="skill-agent" placeholder="Agent"
                     class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
                 <select id="skill-outcome" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none">
                     <option value="success">Success</option>
@@ -3783,6 +3758,7 @@ void main() {
 const state = {
     currentSection: 'dashboard',
     currentProject: localStorage.getItem('tropelex-current-project') || null,
+    currentAgent: localStorage.getItem('tropelex-current-agent') || '',
     citations: [],
     projects: [],
     patterns: [],
@@ -3830,12 +3806,17 @@ const GLOBAL_PROJECT_INPUT_IDS = new Set([
     'lineage-project-select'
 ]);
 
+// The one globally-synced agent input (per-form agent inputs like
+// #skill-agent/#friction-agent are ordinary form fields, persisted the same
+// way as any other input in their section — no exclusion needed).
+const GLOBAL_AGENT_INPUT_IDS = new Set(['global-agent-input']);
+
 function saveSectionState(sectionId) {
     const el = document.getElementById(`section-${sectionId}`);
     if (!el) return;
     const inputs = {};
     el.querySelectorAll('input, textarea, select').forEach(inp => {
-        if (!inp.id || GLOBAL_PROJECT_INPUT_IDS.has(inp.id)) return;
+        if (!inp.id || GLOBAL_PROJECT_INPUT_IDS.has(inp.id) || GLOBAL_AGENT_INPUT_IDS.has(inp.id)) return;
         if (inp.type === 'checkbox') {
             inputs[inp.id] = inp.checked;
         } else {
@@ -3852,7 +3833,7 @@ function restoreSectionState(sectionId) {
     const el = document.getElementById(`section-${sectionId}`);
     if (!el) return;
     for (const [id, val] of Object.entries(saved)) {
-        if (GLOBAL_PROJECT_INPUT_IDS.has(id)) continue;
+        if (GLOBAL_PROJECT_INPUT_IDS.has(id) || GLOBAL_AGENT_INPUT_IDS.has(id)) continue;
         const inp = document.getElementById(id);
         if (!inp) continue;
         if (inp.type === 'checkbox') {
@@ -4301,6 +4282,7 @@ async function scanFriction() {
         showToast('Select a project first');
         return;
     }
+    const agentName = document.getElementById('friction-agent').value.trim() || state.currentAgent || 'unspecified';
     const btn = document.getElementById('btn-scan-friction');
     const results = document.getElementById('friction-results');
     const empty = document.getElementById('friction-empty');
@@ -4310,7 +4292,7 @@ async function scanFriction() {
         const res = await fetch(`/api/memory/${encodeURIComponent(project)}/friction/scan`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({transcript})
+            body: JSON.stringify({transcript, agent_name: agentName})
         });
         const data = await res.json();
         if (!res.ok) {
@@ -5562,6 +5544,27 @@ document.getElementById('global-project-select').addEventListener('change', asyn
     }
 });
 
+// --- Agent identity ---
+
+async function loadAgentNames(project) {
+    if (!project) return;
+    const data = await api(`/memory/${encodeURIComponent(project)}/agents`);
+    if (!data) return;
+    const datalist = document.getElementById('global-agent-names');
+    datalist.innerHTML = data.agents.map(a => `<option value="${escapeHtml(a)}"></option>`).join('');
+}
+
+function setCurrentAgent(name) {
+    name = (name || '').trim();
+    state.currentAgent = name;
+    localStorage.setItem('tropelex-current-agent', name);
+    const input = document.getElementById('global-agent-input');
+    if (input && input.value !== name) input.value = name;
+}
+
+document.getElementById('global-agent-input').value = state.currentAgent;
+document.getElementById('global-agent-input').addEventListener('change', (e) => setCurrentAgent(e.target.value));
+
 
 
 async function selectProject(name) {
@@ -5640,6 +5643,7 @@ async function selectProject(name) {
     // Refresh dashboard status cards and onboarding checklist
     try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards failed:', e); }
     try { await updateOnboarding(); } catch(e) { console.error('Onboarding failed:', e); }
+    loadAgentNames(name);
 }
 
 function renderDecisions(decisions) {
@@ -7291,27 +7295,52 @@ document.getElementById('btn-apply-decay').addEventListener('click', async () =>
 });
 
 // Agent Skills
-async function loadAgentSkills(project) {
+async function populateAgentSkillsSelector(project) {
+    const sel = document.getElementById('agent-skills-agent-select');
+    const current = sel.value;
+    const data = await api(`/memory/${project}/agents`);
+    sel.innerHTML = '<option value="">All agents</option>' +
+        (data?.agents || []).map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+    if (data?.agents?.includes(current)) sel.value = current;
+}
+
+async function loadAgentSkills(project, agent = '') {
     if (!project) return;
     const copyBtn = document.getElementById('btn-copy-skills-briefing');
-    const [data, briefingData] = await Promise.all([
-        api(`/memory/${project}/agent-skills`),
-        api(`/memory/${project}/agent-skills/briefing`),
-    ]);
     const el = document.getElementById('agent-skills-list');
-    const briefing = briefingData?.briefing || '';
+
+    if (!agent) {
+        await populateAgentSkillsSelector(project);
+    }
+
+    let skills, briefing;
+    if (agent) {
+        const summary = await api(`/memory/${project}/agents/${encodeURIComponent(agent)}/summary`);
+        skills = summary?.skills || [];
+        briefing = '';  // per-agent briefing text isn't built yet — copy button stays hidden for a specific agent
+    } else {
+        const [data, briefingData] = await Promise.all([
+            api(`/memory/${project}/agent-skills`),
+            api(`/memory/${project}/agent-skills/briefing`),
+        ]);
+        skills = data?.skills || [];
+        briefing = briefingData?.briefing || '';
+    }
+
     if (briefing.includes('Strong at') || briefing.includes('Needs care')) {
         copyBtn.classList.remove('hidden');
         copyBtn.dataset.copyText = briefing;
     } else {
         copyBtn.classList.add('hidden');
     }
-    if (!data || data.skills.length === 0) {
-        el.innerHTML = '<p class="text-sm text-outline">No skill data yet. Skills are learned from session outcomes.</p>';
+    if (!skills.length) {
+        el.innerHTML = agent
+            ? `<p class="text-sm text-outline">No skill data yet for ${escapeHtml(agent)}.</p>`
+            : '<p class="text-sm text-outline">No skill data yet. Skills are learned from session outcomes.</p>';
         return;
     }
     const profColors = { expert: '#98fa80', proficient: '#80d5fa', competent: '#8098fa', learning: '#ffa500', novice: '#ff4444' };
-    el.innerHTML = data.skills.map(s => `
+    el.innerHTML = skills.map(s => `
         <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised">
             <div class="w-12 text-right font-mono text-xs font-bold" style="color: ${profColors[s.proficiency] || '#958e9e'}">${Math.round(s.score * 100)}%</div>
             <div class="flex-1">
@@ -7326,6 +7355,10 @@ async function loadAgentSkills(project) {
         </div>
     `).join('');
 }
+
+document.getElementById('agent-skills-agent-select').addEventListener('change', (e) => {
+    loadAgentSkills(getInsightsProject(), e.target.value);
+});
 
 // Decision Timeline
 async function loadDecisionTimeline(project) {
@@ -7727,6 +7760,7 @@ async function loadAllInsights(project) {
         loadDecisionTimeline(project),
         loadSessions(project),
         loadCrossPollinate(project),
+        loadAgentNames(project),
     ]);
 }
 
@@ -9789,15 +9823,17 @@ document.getElementById('btn-record-skill')?.addEventListener('click', async () 
     const categories = document.getElementById('skill-categories').value.split(',').map(c => c.trim()).filter(Boolean);
     const outcome = document.getElementById('skill-outcome').value;
     const details = document.getElementById('skill-details').value.trim();
+    const agentName = document.getElementById('skill-agent').value.trim() || state.currentAgent || 'unspecified';
     if (!categories.length) { showToast('Enter at least one category'); return; }
     const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/agent-skills/record`, 'POST', {
-        session_type: 'manual', categories, outcome, details
+        session_type: 'manual', categories, outcome, details, agent_name: agentName
     });
     if (data) {
-        showToast('Skill outcome recorded');
+        showToast(`Skill outcome recorded for ${agentName}`);
         document.getElementById('skill-categories').value = '';
         document.getElementById('skill-details').value = '';
         document.getElementById('btn-personas')?.click();
+        loadAgentNames(state.currentProject);
     }
 });
 

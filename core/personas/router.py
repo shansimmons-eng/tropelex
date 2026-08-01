@@ -63,8 +63,13 @@ class PersonaDetailResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _load_agent_skills(project: str) -> dict[str, Any]:
-    """Load agent skill data for a project, or raise 404."""
+def _load_agent_skills(project: str, agent: str | None = None) -> dict[str, Any]:
+    """Load agent skill data for a project, or raise 404.
+
+    agent=None returns the project-wide aggregate (unchanged behavior). Pass
+    a real agent name to scope "skills"/"sessions" down to that agent's own
+    data only, so distinct agents actually get distinct personas.
+    """
     from core.agent_skills import AgentSkillGraph
 
     graph = AgentSkillGraph(str(BASE_DIR))
@@ -74,7 +79,14 @@ def _load_agent_skills(project: str) -> dict[str, Any]:
             status_code=404,
             detail=f"No skill data found for project '{project}'",
         )
-    return graph._load(project)
+    data = graph._load(project)
+    if agent is None:
+        return data
+    return {
+        **data,
+        "skills": data.get("skills_by_agent", {}).get(agent, {}),
+        "sessions": [s for s in data.get("sessions", []) if s.get("agent", "unspecified") == agent],
+    }
 
 
 def _persona_to_response(persona: PersonaSummary) -> PersonaResponse:
@@ -103,7 +115,7 @@ async def get_agent_persona(project: str, agent: str) -> dict[str, Any]:
     preferred categories, and a human-readable summary.
     """
     try:
-        agent_skills = _load_agent_skills(project)
+        agent_skills = _load_agent_skills(project, agent=agent)
     except HTTPException:
         raise
     except PersonaError as exc:

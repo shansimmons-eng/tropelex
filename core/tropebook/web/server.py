@@ -4873,6 +4873,7 @@ async def get_session_changes(project: str, session_id: str):
 class SessionRecordRequest(BaseModel):
     summary: str = Field("", max_length=2000)
     session_type: str = Field("manual", max_length=50)
+    agent_name: str = Field("unspecified", max_length=100)
 
 
 @app.post("/api/memory/{project}/sessions/record")
@@ -4897,6 +4898,7 @@ async def record_session(project: str, req: SessionRecordRequest):
         project, before, current,
         summary=req.summary,
         session_type=req.session_type,
+        agent=req.agent_name.strip() or "unspecified",
     )
     _emit_telemetry("OK", f"Session recorded for {project}")
     return result
@@ -5070,11 +5072,12 @@ class SkillRecordRequest(BaseModel):
     categories: list[str] = Field(default_factory=list, max_length=10)
     outcome: str = Field("success", pattern=r"^(success|partial|failure)$")
     details: str = Field("", max_length=500)
+    agent_name: str = Field("unspecified", max_length=100)
 
 
 @app.get("/api/memory/{project}/agent-skills")
 async def get_agent_skills(project: str):
-    """Get agent skill scores for a project."""
+    """Get agent skill scores for a project (aggregate across all agents)."""
     project = _sanitise_project(project)
     from core.agent_skills import AgentSkillGraph
 
@@ -5091,9 +5094,9 @@ async def record_agent_skill(project: str, req: SkillRecordRequest):
 
     graph = AgentSkillGraph(str(BASE_DIR))
     graph.record_session_outcome(
-        project, req.session_type, req.categories, req.outcome, req.details
+        project, req.session_type, req.categories, req.outcome, req.details, req.agent_name
     )
-    return {"recorded": True, "categories": req.categories}
+    return {"recorded": True, "categories": req.categories, "agent_name": req.agent_name}
 
 
 @app.get("/api/memory/{project}/agent-skills/briefing")
@@ -5105,6 +5108,55 @@ async def get_agent_briefing(project: str):
     graph = AgentSkillGraph(str(BASE_DIR))
     briefing = graph.get_briefing(project)
     return {"briefing": briefing, "project": project}
+
+
+@app.get("/api/memory/{project}/agents")
+async def list_project_agents(project: str):
+    """Distinct agent names ever recorded for this project, across skills,
+    sessions, and friction scans. Feeds the UI's agent-name autocomplete."""
+    project = _sanitise_project(project)
+    from core.agent_skills import AgentSkillGraph
+    from core.session_replay import SessionReplay
+
+    graph = AgentSkillGraph(str(BASE_DIR))
+    replay = SessionReplay(str(BASE_DIR))
+    memory = get_memory_manager().get_project_memory(project)
+    friction_agents = {
+        h.get("agent_name") for h in memory.get("friction_history", [])
+        if h.get("agent_name") and h.get("agent_name") != "unspecified"
+    }
+    names = sorted(set(graph.list_agents(project)) | set(replay.list_agents(project)) | friction_agents)
+    return {"agents": names, "count": len(names)}
+
+
+@app.get("/api/memory/{project}/agents/{agent}/summary")
+async def get_agent_summary(project: str, agent: str):
+    """Aggregate skill, friction, and session stats for one agent within a project."""
+    project = _sanitise_project(project)
+    from core.agent_skills import AgentSkillGraph
+    from core.friction.miner import compute_friction_by_agent
+    from core.session_replay import SessionReplay
+
+    graph = AgentSkillGraph(str(BASE_DIR))
+    replay = SessionReplay(str(BASE_DIR))
+    memory = get_memory_manager().get_project_memory(project)
+
+    skills = graph.get_skills(project, agent_name=agent)
+    sessions = [s for s in replay.get_sessions(project, limit=1000) if s.get("agent", "unspecified") == agent]
+    friction = compute_friction_by_agent(memory.get("friction_history", []), agent)
+    session_types = {s.get("session_type") for s in sessions}
+
+    return {
+        "agent_name": agent,
+        "skills": skills,
+        "strengths": graph.get_strengths(project, agent_name=agent),
+        "weaknesses": graph.get_weaknesses(project, agent_name=agent),
+        "friction": friction,
+        "sessions": {
+            "total": len(sessions),
+            "by_type": {t: sum(1 for s in sessions if s.get("session_type") == t) for t in session_types},
+        },
+    }
 
 
 class PromptRecordRequest(BaseModel):

@@ -39,6 +39,7 @@ class FrictionScanRequest(BaseModel):
     """Body for the friction/scan endpoint."""
 
     transcript: str = Field(..., min_length=1, max_length=50000, description="Session transcript text")
+    agent_name: str = Field("unspecified", min_length=1, max_length=100, description="Which AI agent produced this transcript")
 
 
 def _load_memory(project: str) -> dict[str, Any]:
@@ -102,6 +103,7 @@ async def friction_scan(project: str, body: FrictionScanRequest) -> dict[str, An
     # trends, not just the single scan just run. Previously this only
     # returned results — friction_summary read from friction_history, but
     # nothing ever wrote to it.
+    agent_name = (body.agent_name or "").strip() or "unspecified"
     memory = _load_memory(project)
     history = memory.setdefault("friction_history", [])
     history.append({
@@ -109,6 +111,7 @@ async def friction_scan(project: str, body: FrictionScanRequest) -> dict[str, An
         "friction_score": friction_score,
         "total_signals": len(signals),
         "severity_distribution": severity_distribution,
+        "agent_name": agent_name,
     })
     memory["friction_history"] = history[-50:]  # bounded — most recent 50 scans
     _mm.save_project_memory(project, memory)
@@ -157,3 +160,23 @@ async def friction_summary(project: str) -> dict[str, Any]:
         "total_scans": len(friction_history),
         "history": friction_history,
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/memory/{project}/friction/summary/{agent}
+# ---------------------------------------------------------------------------
+
+@friction_router.get("/{project}/friction/summary/{agent}")
+async def friction_summary_by_agent(project: str, agent: str) -> dict[str, Any]:
+    """Return friction history filtered down to a single agent."""
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("friction-summary-by-agent load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    from core.friction.miner import compute_friction_by_agent
+
+    return compute_friction_by_agent(memory.get("friction_history", []), agent)
