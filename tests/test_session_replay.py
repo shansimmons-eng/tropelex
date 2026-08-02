@@ -147,3 +147,52 @@ class TestSessionReplay:
     def test_empty_project(self, replay):
         assert replay.get_sessions("empty-project") == []
         assert replay.get_weekly_summary("empty-project")["sessions"] == 0
+
+
+class TestSessionReplayAgent:
+    """agent field on record_session — added when session tracking became
+    multi-agent aware, mirroring the same convention in agent_skills/friction."""
+
+    @pytest.fixture
+    def replay(self, tmp_path):
+        return SessionReplay(str(tmp_path))
+
+    def _sess(self, replay, agent=None, **kwargs):
+        before = {"project_name": "test", "decisions": []}
+        after = {"project_name": "test", "decisions": [{"decision": "x"}]}
+        if agent is None:
+            return replay.record_session("proj", before, after, **kwargs)
+        return replay.record_session("proj", before, after, agent=agent, **kwargs)
+
+    def test_default_agent_is_unspecified(self, replay):
+        self._sess(replay)
+        sessions = replay.get_sessions("proj")
+        assert sessions[0]["agent"] == "unspecified"
+
+    def test_agent_is_recorded_on_full_record(self, replay):
+        result = self._sess(replay, agent="Claude")
+        full = replay.get_session("proj", result["session_id"])
+        assert full["agent"] == "Claude"
+
+    def test_agent_is_recorded_on_index_entry(self, replay):
+        """The lightweight index (what get_sessions reads) must carry agent
+        too — it's a separate, smaller record than the full session file."""
+        self._sess(replay, agent="Gemini")
+        sessions = replay.get_sessions("proj")
+        assert sessions[0]["agent"] == "Gemini"
+
+    def test_agent_is_stripped_and_blank_falls_back(self, replay):
+        self._sess(replay, agent="  Claude  ")
+        self._sess(replay, agent="   ")
+        agents = [s["agent"] for s in replay.get_sessions("proj")]
+        assert "Claude" in agents
+        assert "unspecified" in agents
+
+    def test_list_agents_excludes_unspecified_and_sorts(self, replay):
+        self._sess(replay, agent="Gemini")
+        self._sess(replay, agent="Claude")
+        self._sess(replay)  # default -> unspecified
+        assert replay.list_agents("proj") == ["Claude", "Gemini"]
+
+    def test_list_agents_empty_project(self, replay):
+        assert replay.list_agents("empty-project") == []

@@ -23,6 +23,7 @@ from core.friction.miner import (
     _detect_rapid_edits,
     _detect_retries,
     _detect_rephrasing,
+    compute_friction_by_agent,
     compute_friction_score,
     detect_friction_signals,
     group_signals_by_zone,
@@ -683,6 +684,61 @@ class TestBuildZone:
 
 
 # ===========================================================================
+#  9.5. compute_friction_by_agent — pure filter/aggregate over friction_history
+# ===========================================================================
+
+
+class TestComputeFrictionByAgent:
+    def test_no_history_for_agent(self):
+        result = compute_friction_by_agent([], "Claude")
+        assert result == {
+            "agent_name": "Claude",
+            "total_scans": 0,
+            "avg_friction_score": 0.0,
+            "severity_totals": {},
+        }
+
+    def test_filters_to_one_agent_only(self):
+        history = [
+            {"friction_score": 0.5, "severity_distribution": {"medium": 1}, "agent_name": "Claude"},
+            {"friction_score": 0.9, "severity_distribution": {"high": 2}, "agent_name": "Gemini"},
+        ]
+        result = compute_friction_by_agent(history, "Claude")
+        assert result["total_scans"] == 1
+        assert result["avg_friction_score"] == 0.5
+        assert result["severity_totals"] == {"medium": 1}
+
+    def test_averages_across_multiple_scans_for_same_agent(self):
+        history = [
+            {"friction_score": 0.2, "severity_distribution": {}, "agent_name": "Claude"},
+            {"friction_score": 0.8, "severity_distribution": {}, "agent_name": "Claude"},
+        ]
+        result = compute_friction_by_agent(history, "Claude")
+        assert result["total_scans"] == 2
+        assert result["avg_friction_score"] == 0.5
+
+    def test_severity_totals_summed_across_scans(self):
+        history = [
+            {"friction_score": 0.3, "severity_distribution": {"low": 1, "medium": 1}, "agent_name": "Claude"},
+            {"friction_score": 0.3, "severity_distribution": {"medium": 2}, "agent_name": "Claude"},
+        ]
+        result = compute_friction_by_agent(history, "Claude")
+        assert result["severity_totals"] == {"low": 1, "medium": 3}
+
+    def test_entries_missing_agent_name_bucket_as_unspecified(self):
+        """Pre-agent-identity history entries never had agent_name at all —
+        must not crash, and must be treated as 'unspecified'."""
+        history = [{"friction_score": 0.4, "severity_distribution": {}}]
+        assert compute_friction_by_agent(history, "unspecified")["total_scans"] == 1
+        assert compute_friction_by_agent(history, "Claude")["total_scans"] == 0
+
+    def test_blank_agent_normalises_to_unspecified(self):
+        history = [{"friction_score": 0.4, "severity_distribution": {}, "agent_name": "unspecified"}]
+        assert compute_friction_by_agent(history, "  ")["total_scans"] == 1
+        assert compute_friction_by_agent(history, "")["total_scans"] == 1
+
+
+# ===========================================================================
 #  10. Router — POST /api/memory/{project}/friction/scan
 # ===========================================================================
 
@@ -815,6 +871,128 @@ class TestFrictionRouterScan:
 
         # Assert
         assert resp.status_code == 422
+
+    def test_router_scan_persists_agent_name(self):
+        """agent_name in the request body is normalised and stored on the
+        friction_history entry the scan writes."""
+        mock_memory = {"decisions": []}
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory") as mock_save:
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": "no thats wrong, try again", "agent_name": "  Claude  "},
+                    )
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        saved_memory = mock_save.call_args[0][1]
+        assert saved_memory["friction_history"][-1]["agent_name"] == "Claude"
+
+    def test_router_scan_defaults_agent_name_to_unspecified(self):
+        """No agent_name in the request body → stored as 'unspecified', not omitted."""
+        mock_memory = {"decisions": []}
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory") as mock_save:
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": "no thats wrong, try again"},
+                    )
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        saved_memory = mock_save.call_args[0][1]
+        assert saved_memory["friction_history"][-1]["agent_name"] == "unspecified"
+
+    def test_router_scan_empty_agent_name_falls_back_gracefully(self):
+        """Explicit agent_name="" must default to 'unspecified' like an
+        omitted field, not 422 — consistent with SkillRecordRequest and
+        SessionRecordRequest, neither of which requires min_length."""
+        mock_memory = {"decisions": []}
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory") as mock_save:
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": "no thats wrong, try again", "agent_name": ""},
+                    )
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        saved_memory = mock_save.call_args[0][1]
+        assert saved_memory["friction_history"][-1]["agent_name"] == "unspecified"
+
+
+# ===========================================================================
+#  10.5. Router — GET /api/memory/{project}/friction/summary/{agent}
+# ===========================================================================
+
+
+class TestFrictionSummaryByAgentRouter:
+    def test_summary_scoped_to_one_agent(self):
+        mock_memory = {
+            "friction_history": [
+                {"friction_score": 0.5, "severity_distribution": {"medium": 1}, "agent_name": "Claude"},
+                {"friction_score": 0.9, "severity_distribution": {"high": 1}, "agent_name": "Gemini"},
+            ]
+        }
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.get("/api/memory/test-project/friction/summary/Claude")
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["agent_name"] == "Claude"
+        assert body["total_scans"] == 1
+        assert body["avg_friction_score"] == 0.5
+
+    def test_summary_unknown_agent_returns_zeroed_result_not_404(self):
+        mock_memory = {"friction_history": []}
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.get("/api/memory/test-project/friction/summary/NoSuchAgent")
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        assert resp.json()["total_scans"] == 0
+
+    def test_summary_404_missing_project(self):
+        from fastapi import HTTPException
+
+        def _raise_404(project):
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+
+        with patch("core.friction.router._load_memory", side_effect=_raise_404):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.get("/api/memory/nonexistent/friction/summary/Claude")
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 404
 
 
 # ===========================================================================

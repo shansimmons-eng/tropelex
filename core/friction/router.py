@@ -39,7 +39,7 @@ class FrictionScanRequest(BaseModel):
     """Body for the friction/scan endpoint."""
 
     transcript: str = Field(..., min_length=1, max_length=50000, description="Session transcript text")
-    agent_name: str = Field("unspecified", min_length=1, max_length=100, description="Which AI agent produced this transcript")
+    agent_name: str = Field("unspecified", max_length=100, description="Which AI agent produced this transcript")
 
 
 def _load_memory(project: str) -> dict[str, Any]:

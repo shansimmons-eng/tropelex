@@ -4,7 +4,11 @@ Covers: identify_strengths, identify_weaknesses, build_persona,
         generate_summary_text, suggest_review_focus.
 """
 
+import uuid
+
 import pytest
+from fastapi.testclient import TestClient
+
 from core.personas.persona_builder import (
     build_persona,
     generate_summary_text,
@@ -13,6 +17,8 @@ from core.personas.persona_builder import (
     suggest_review_focus,
 )
 from core.personas import Ok, Err, PersonaSummary
+from core.personas.router import _load_agent_skills
+from core.tropebook.web.server import app
 
 
 # ── identify_strengths ─────────────────────────────────────────────────────
@@ -171,3 +177,89 @@ class TestSuggestReviewFocus:
         )
         result = suggest_review_focus(persona)
         assert "api" in result.focus_areas or "db" in result.focus_areas
+
+
+# ── _load_agent_skills — agent scoping (regression: router.py bug fix) ──────
+#
+# GET /{project}/personas/{agent} took a real `agent` path param but
+# _load_agent_skills(project) ignored it, so every agent requested got back
+# the identical project-wide persona. Fixed by giving _load_agent_skills an
+# `agent` arg that filters skills_by_agent/sessions down to that agent only.
+
+class TestLoadAgentSkillsAgentScoping:
+    @pytest.fixture
+    def project(self, tmp_path, monkeypatch):
+        from core.agent_skills import AgentSkillGraph
+        import core.personas.router as router_module
+
+        monkeypatch.setattr(router_module, "BASE_DIR", tmp_path)
+        graph = AgentSkillGraph(str(tmp_path))
+        graph.record_session_outcome("proj", "manual", ["ui"], "success", agent_name="Claude")
+        graph.record_session_outcome("proj", "manual", ["ui"], "failure", agent_name="Gemini")
+        return "proj"
+
+    def test_agent_none_returns_full_aggregate(self, project):
+        data = _load_agent_skills(project, agent=None)
+        assert data["skills"]["ui"]["attempts"] == 2
+
+    def test_agent_given_scopes_to_that_agent_only(self, project):
+        claude_data = _load_agent_skills(project, agent="Claude")
+        gemini_data = _load_agent_skills(project, agent="Gemini")
+        assert claude_data["skills"]["ui"]["score"] == 1.0
+        assert gemini_data["skills"]["ui"]["score"] == 0.0
+
+    def test_agent_scoping_filters_sessions_too(self, project):
+        claude_data = _load_agent_skills(project, agent="Claude")
+        assert len(claude_data["sessions"]) == 1
+        assert claude_data["sessions"][0]["agent"] == "Claude"
+
+    def test_unknown_agent_returns_empty_skills_not_error(self, project):
+        data = _load_agent_skills(project, agent="NoSuchAgent")
+        assert data["skills"] == {}
+        assert data["sessions"] == []
+
+
+# ── Router regression: GET /{project}/personas/{agent} distinguishes agents ─
+
+class TestPersonaRouterAgentRegression:
+    @pytest.fixture
+    def client(self):
+        return TestClient(app)
+
+    @pytest.fixture
+    def project(self):
+        return f"test_personas_{uuid.uuid4().hex[:8]}"
+
+    def _record_skill(self, client, project, agent, outcome):
+        res = client.post(
+            f"/api/memory/{project}/agent-skills/record",
+            json={"session_type": "manual", "categories": ["ui"], "outcome": outcome, "agent_name": agent},
+        )
+        assert res.status_code == 200, res.text
+
+    def test_distinct_agents_get_distinct_personas(self, client, project):
+        self._record_skill(client, project, "Claude", "success")
+        self._record_skill(client, project, "Gemini", "failure")
+
+        claude = client.get(f"/api/memory/{project}/personas/Claude")
+        gemini = client.get(f"/api/memory/{project}/personas/Gemini")
+        assert claude.status_code == 200
+        assert gemini.status_code == 200
+
+        claude_accuracy = claude.json()["persona"]["accuracy_by_category"]
+        gemini_accuracy = gemini.json()["persona"]["accuracy_by_category"]
+        assert claude_accuracy != gemini_accuracy
+        assert claude_accuracy["ui"] == 1.0
+        assert gemini_accuracy["ui"] == 0.0
+
+    def test_all_personas_endpoint_stays_project_wide(self, client, project):
+        """GET /{project}/personas (no agent) is the intentional aggregate
+        rollup and must not be affected by the per-agent fix."""
+        self._record_skill(client, project, "Claude", "success")
+        self._record_skill(client, project, "Gemini", "failure")
+
+        res = client.get(f"/api/memory/{project}/personas")
+        assert res.status_code == 200
+        personas = res.json()["personas"]
+        assert len(personas) == 1
+        assert personas[0]["persona"]["accuracy_by_category"]["ui"] == 0.5
