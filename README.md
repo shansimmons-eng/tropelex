@@ -148,7 +148,7 @@ Visit **http://localhost:8766/hijacker** — paste any verbose prompt and get it
 
 The dashboard sidebar groups 32 sections into 9 categories — the same grouping used in `wishlist.md` for the feature backlog. Within a category, sections are ordered as they appear in the sidebar. Safety & Alignment is a single sidebar entry that opens onto seven in-page tabs (listed below) rather than seven separate sidebar entries, since those seven are all facets of one thing.
 
-### Content
+### Engine Core
 Browsing and visualizing what's stored.
 
 #### Dashboard

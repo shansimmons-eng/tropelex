@@ -6,7 +6,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
-## Content
+## Engine Core
 
 ### 3. Knowledge Graph Visualization
 **Purpose:** Interactive graph showing decisions, relationships, and confidence.
@@ -441,6 +441,22 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - Prompt templates from high-performing examples
 - Automatic prompt refinement suggestions
 - Context-aware prompt selection
+
+---
+
+### 39. Auto-Import Sessions from External Coding Tools
+**Purpose:** Automatically pull session/conversation history from the major AI coding tools (Claude Code, Cursor, GitHub Copilot Chat, Windsurf, Cline, Aider, and similar) into Tropelex on a schedule, instead of requiring a manual paste into the friction-scan or session-record forms.
+
+**Why:** The agent-identity work (skills, friction, session tracking, all now taggable per `agent_name`) is only as rich as what actually gets recorded, and today that requires a human to manually capture and tag every session. Raw transcripts are the highest-signal data Tropelex could have — they're the actual record of what an agent did and how the human reacted — and almost nobody currently working with multiple coding agents has a way to compare them side by side on real usage rather than benchmarks. Automating the capture is what would make the per-agent skill/friction breakdown genuinely comprehensive instead of only reflecting whatever the user remembers to log by hand.
+
+**Features (needs feasibility research first — this is not yet scoped):**
+- Survey where each target tool actually stores session/transcript data locally (formats and locations are largely undocumented and tool-specific — e.g. flat JSONL transcripts vs. an app's internal SQLite/LevelDB storage vs. plain-text chat history files — and can change without notice between tool versions)
+- Determine which tools expose anything stable enough to build against (a documented export, a local file format worth committing to, or neither)
+- Design the "which agent produced this" tagging so it maps cleanly onto the existing freeform `agent_name` convention (`core/market/calibration.py`'s pattern, now shared by skills/friction/sessions)
+- Work out consent/scope: this reads potentially sensitive local conversation history, so opt-in per tool and a clear picture of what leaves the machine (nothing should, by default) matters as much as the technical import path
+- Scheduling/dedup: avoid re-importing the same session on every run
+
+**Status:** Idea — needs feasibility research before it can be scoped as a real feature. Worth prioritizing early since the answer ("which tools are even feasible") determines whether this is buildable at all.
 
 ---
 

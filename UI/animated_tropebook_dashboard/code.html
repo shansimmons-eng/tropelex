@@ -734,7 +734,7 @@ void main() {
         <div class="px-4 py-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-220px)]">
             <button class="nav-item active flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="content" onclick="switchSection('content')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">dashboard</span>
-                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Content</span>
+                <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Engine Core</span>
             </button>
 
             <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="quality" onclick="switchSection('quality')">
@@ -880,7 +880,7 @@ void main() {
     <section id="section-content" class="section active w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
         <div class="flex items-center gap-3 mb-6">
             <span class="material-symbols-outlined text-accent-lavender text-2xl">dashboard</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Content</h2>
+            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Engine Core</h2>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="content-tab-strip">
             <button class="content-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="dashboard" onclick="switchGenericTab('content', 'dashboard')">Overview</button>
@@ -3944,6 +3944,10 @@ const LEAF_TO_GROUP = {
     git: 'integrations', federation: 'integrations', costs: 'integrations',
 };
 
+// Top-bar breadcrumb text, for groups whose display name isn't just their
+// internal id with the first letter capitalized (the fallback below).
+const SECTION_BREADCRUMB_LABELS = { content: 'Engine Core' };
+
 function switchSection(section) {
     // Resolve a legacy leaf ID to its parent group, remembering which
     // sub-tab within that group was actually requested.
@@ -3986,7 +3990,9 @@ function switchSection(section) {
 
     // Update top bar label
     const label = document.getElementById('current-section-label');
-    if (label) label.textContent = section.charAt(0).toUpperCase() + section.slice(1);
+    if (label) {
+        label.textContent = SECTION_BREADCRUMB_LABELS[section] || (section.charAt(0).toUpperCase() + section.slice(1));
+    }
 
     // Close mobile sidebar
     document.getElementById('sidebar').classList.remove('open');
