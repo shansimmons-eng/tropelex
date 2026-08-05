@@ -190,6 +190,44 @@ class TestParseDiffHunks:
         # Assert
         assert hunks[0]["file"] == "src/utils.py"
 
+    def test_parse_diff_hunks_does_not_mistake_content_for_file_header(self):
+        """An added line whose text starts with '++' (raw diff '+++...') --
+        e.g. a pre-increment statement or a TOML frontmatter delimiter --
+        must not be mistaken for a "+++ b/path" file header. Real headers
+        always have a trailing space; content lines don't."""
+        # Arrange
+        diff = (
+            "--- a/src/counter.cpp\n+++ b/src/counter.cpp\n"
+            "@@ -10,3 +10,4 @@\nvoid tick() {\n+++i;\n}"
+        )
+
+        # Act
+        hunks = parse_diff_hunks(diff)
+
+        # Assert
+        addition = next(h for h in hunks if h["content"] == "++i;")
+        assert addition["file"] == "src/counter.cpp"
+        assert addition["is_addition"] is True
+
+    def test_parse_diff_hunks_does_not_mistake_deleted_content_for_removal_header(self):
+        """Same bug class on the deletion side: a removed line whose
+        original content started with '--' (raw diff '---...') -- e.g. a
+        markdown horizontal rule -- must not be mistaken for a "--- a/path"
+        removal header."""
+        # Arrange
+        diff = (
+            "--- a/README.md\n+++ b/README.md\n"
+            "@@ -1,3 +1,2 @@\nTitle\n---\nBody"
+        )
+
+        # Act
+        hunks = parse_diff_hunks(diff)
+
+        # Assert
+        deletion = next(h for h in hunks if h["content"] == "--")
+        assert deletion["file"] == "README.md"
+        assert deletion["is_deletion"] is True
+
     def test_parse_diff_hunks_extracts_line_numbers(self):
         """Hunk headers set the starting line number for subsequent lines."""
         # Arrange

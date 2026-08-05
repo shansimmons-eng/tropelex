@@ -89,9 +89,13 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
 
     for raw_line in diff_text.splitlines():
         # "+++ b/path/to/file" carries the new filename — everything else
-        # under _DIFF_FILE_RE ("---"/"+++") is just skipped.
-        if raw_line.startswith("+++"):
-            path = raw_line[len("+++"):].strip()
+        # under _DIFF_FILE_RE ("---"/"+++") is just skipped. Requires the
+        # trailing space real diff headers always have, so an added content
+        # line that happens to start with "++" (raw diff "+++i;" for a
+        # pre-increment statement, or a TOML frontmatter "+++" delimiter)
+        # isn't mistaken for a header.
+        if raw_line.startswith("+++ "):
+            path = raw_line[len("+++ "):].strip()
             if path and path != "/dev/null":
                 current_file = path[2:] if path[:2] in ("a/", "b/") else path
             continue
@@ -104,12 +108,11 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
             current_line = int(hunk_match.group(1))
             continue
 
-        # Skip "---" line that has no match (standalone removal header)
-        if raw_line.startswith("---"):
-            continue
-
-        # Process content lines
-        if raw_line.startswith("+") and not raw_line.startswith("+++"):
+        # Process content lines. The real "+++ "/"--- " headers (with
+        # trailing space) already matched and continue'd above, so any
+        # "+++"/"---"-without-space line reaching here is content, not a
+        # header -- must not be excluded the same way.
+        if raw_line.startswith("+") and not raw_line.startswith("+++ "):
             hunks.append({
                 "file": current_file,
                 "line_number": current_line,
@@ -118,7 +121,7 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
                 "is_deletion": False,
             })
             current_line += 1
-        elif raw_line.startswith("-") and not raw_line.startswith("---"):
+        elif raw_line.startswith("-") and not raw_line.startswith("--- "):
             # Deletions tracked but content excluded from keyword matching
             hunks.append({
                 "file": current_file,

@@ -69,12 +69,28 @@ def _record_usage_best_effort(
     project: str | None, usage: dict, model: str, description: str,
 ) -> None:
     """Record a real cost event from an OpenAI usage block. Never raises --
-    a cost-tracking failure must never break the actual LLM call."""
+    a cost-tracking failure must never break the actual LLM call.
+
+    Skips recording entirely when there's no project (e.g. the standalone
+    /hijacker page, which has no project context at all) rather than
+    falling back to a synthetic "_global" project -- that used to write a
+    real memory/_global.json file, which then showed up as a selectable
+    project in the dashboard dropdown via the same list_projects() every
+    router uses for existence checks, so filtering it out there would have
+    made real tracked data 404 everywhere else too. Still logged, just not
+    persisted as a fake project.
+    """
+    if not project:
+        logger.info(
+            "LLM usage with no project context (%s): %s prompt + %s completion tokens, model=%s",
+            description, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), model,
+        )
+        return
     try:
         from core.cost.tracker import record_llm_cost
 
         record_llm_cost(
-            project or "_global",
+            project,
             prompt_tokens=usage.get("prompt_tokens", 0),
             completion_tokens=usage.get("completion_tokens", 0),
             model=model,

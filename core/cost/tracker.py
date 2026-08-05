@@ -402,4 +402,12 @@ def record_llm_cost(
         recorded = tracker.record_cost_event(project, event)
     except CostError as exc:
         return Err(error=str(exc), code=exc.code, details=exc.details)
+    except ValueError as exc:
+        # record_cost_event's call to get_project_memory() runs before its
+        # own try/except (which only wraps the save), so an invalid project
+        # name (or a corrupt memory file -- json.JSONDecodeError is a
+        # ValueError subclass) surfaces here instead of as a CostError.
+        return Err(error=str(exc), code="VALIDATION_ERROR", details={"project": project})
+    except OSError as exc:
+        return Err(error=str(exc), code="IO_ERROR", details={"project": project})
     return Ok(value=recorded)

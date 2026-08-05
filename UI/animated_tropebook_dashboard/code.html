@@ -4386,12 +4386,17 @@ async function syncGitProject() {
     const pathField = document.getElementById('git-repo-path');
     const summaryEl = document.getElementById('git-summary-output');
     if (!pathField || pathField.value || !summaryEl || summaryEl.dataset.autoLoaded) return;
-    summaryEl.dataset.autoLoaded = '1';
 
     // No repo_path -- the backend defaults to this Tropelex instance's own
     // repo root, same convention Agent Audit already uses.
     const data = await api('/git/summary');
     if (!data || data.error) return;
+    // Only mark as loaded once we actually have something to show -- if
+    // this were set before the fetch, a transient failure (backend hiccup,
+    // network blip) would permanently suppress every retry for the rest of
+    // the session, since dataset.autoLoaded never gets cleared. The manual
+    // "Summary" button remains the fallback either way.
+    summaryEl.dataset.autoLoaded = '1';
     renderGitLightSummary(summaryEl, data);
     saveSectionResults('integrations');
 }

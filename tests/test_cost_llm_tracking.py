@@ -68,6 +68,17 @@ class TestRecordLlmCostPricing:
         assert isinstance(result, Err)
         assert result.code == "UNKNOWN_MODEL"
 
+    def test_invalid_project_name_returns_err_not_raise(self):
+        """The docstring promises "Never raises." get_project_memory() (via
+        _safe_path) raises ValueError for a project name outside
+        [a-zA-Z0-9_-]+, and that call happens before record_cost_event's own
+        try/except -- must not escape record_llm_cost."""
+        result = record_llm_cost(
+            "not a valid name!", prompt_tokens=10, completion_tokens=5, model="gpt-4o-mini",
+        )
+        assert isinstance(result, Err)
+        assert result.code == "VALIDATION_ERROR"
+
     def test_defaults_to_general_decision_id(self):
         project = _project()
         result = record_llm_cost(project, prompt_tokens=10, completion_tokens=5, model="gpt-4o-mini")
@@ -128,15 +139,18 @@ class TestOpenAiChatRecordsRealCost:
         assert events[0]["amount"] == pytest.approx(0.00015, abs=1e-8)
 
     @pytest.mark.asyncio
-    async def test_no_project_falls_back_to_global_bucket(self, monkeypatch, tmp_path):
+    async def test_no_project_is_skipped_not_recorded_as_a_fake_project(self, monkeypatch, tmp_path):
+        """A synthetic "_global" project used to get written to disk for
+        calls with no project context (e.g. the standalone /hijacker page),
+        which then leaked into the dashboard's project dropdown via the
+        same list_projects() every router uses for existence checks. No
+        project context now means the call is logged but not persisted as
+        a fake project -- confirmed here by checking no file was created."""
         import core.llm as llm_mod
         import core.cost.tracker as tracker_mod
 
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
         monkeypatch.setattr(llm_mod, "_ollama_available", AsyncMock(return_value=False))
-        # "_global" isn't a test_*-prefixed name, so it isn't covered by
-        # conftest's autouse cleanup -- isolate this test to a tmp memory
-        # dir instead of touching the real repo's memory/_global.json.
         isolated_mm = MemoryManager(base_path=str(tmp_path))
         monkeypatch.setattr(tracker_mod, "MemoryManager", lambda *a, **kw: isolated_mm)
 
@@ -146,11 +160,11 @@ class TestOpenAiChatRecordsRealCost:
         })
 
         with patch("httpx.AsyncClient", _fake_async_client(resp)):
-            await llm_mod.compress("hi", project=None)
+            result = await llm_mod.compress("hi", project=None)
 
-        memory = isolated_mm.get_project_memory("_global")
-        events = memory.get("cost_events", [])
-        assert any(e["metadata"]["prompt_tokens"] == 10 for e in events)
+        assert result["compressed"] == "x"
+        assert not (tmp_path / "memory" / "_global.json").exists()
+        assert isolated_mm.list_projects() == []
 
     @pytest.mark.asyncio
     async def test_ollama_path_never_records_a_cost_event(self, monkeypatch):
