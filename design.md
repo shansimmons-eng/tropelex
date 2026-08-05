@@ -115,12 +115,12 @@
 **Purpose:** Builds a graph of decisions with relationships to track evolution and rationale.
 
 **Relationship Types:**
-- `supersedes` — A replaces/overrides B
-- `caused_by` — A happened because of B
-- `related_to` — A and B are thematically similar
-- `reverts` — A reverts B
-- `depends_on` — A requires B to be valid
-- `evolves` — A is a refinement of B
+- `supersedes` → A replaces/overrides B
+- `caused_by` → A happened because of B
+- `related_to` ↔ A and B are thematically similar
+- `reverts` → A reverts B
+- `depends_on` → A requires B to be valid
+- `evolves` → A is a refinement of B
 
 **Key Methods:**
 - `DecisionTree.from_decisions(decisions)` → Auto-detects relationships via keyword overlap
@@ -148,9 +148,9 @@ score = (base_decay + reference_boost) * contradiction_penalty
 **Purpose:** Auto-generates Architecture Decision Records from project memory.
 
 **Formats:**
-- **Nygard** — Michael Nygard's original format (Status/Context/Decision)
-- **MADR** — Markdown Any Decision Records (with metadata table)
-- **Tropelex** — Enhanced format with decision tree lineage, confidence scores
+- **Nygard**: Michael Nygard's original format (Status/Context/Decision)
+- **MADR**: Markdown Any Decision Records (with metadata table)
+- **Tropelex**: Enhanced format with decision tree lineage, confidence scores
 
 ### 8. Session Replay (`core/session_replay.py`)
 
@@ -260,20 +260,20 @@ python -m core.tropebook.cli link url1 url2 relationship
 
 ### 19. Safety & Alignment Framework (`core/tropebook/web/server.py`)
 
-**Purpose:** Risk classification, review workflow, alignment/governance scoring, and tamper-evidence for the decision graph — see [`SAFETY.md`](SAFETY.md) for the broader framing.
+**Purpose:** Risk classification, review workflow, alignment/governance scoring, and tamper-evidence for the decision graph. See [`SAFETY.md`](SAFETY.md) for the broader framing.
 
 **Components:**
-- **Safety Metadata** — `risk_level`, `reversibility`, `affected_systems`, `safety_category`, `requires_review` attached to any decision at creation
-- **Safety Dashboard** — aggregated risk stats, trend time-series, system exposure (`/safety-stats`, `/safety-dashboard`, `/safety-trend`)
-- **Decision Impact** — dependency graph + risk propagation, per-decision and system-wide (`/decision-impact`)
-- **Safety Review Workflow** — pending queue, approve/reject, reviewer accountability (`/reviews/*`, `/decisions/{id}/review|approve|reject`)
-- **Alignment & Governance** — 5-category alignment scoring, organizational-values check, drift detection, corrigibility tracking, EU AI Act / NIST / ISO 42001 compliance reports (`/alignment/*`, `/governance/*`, `/compliance/report`)
-- **Fairness, Accountability, Robustness, Transparency** — bias audit, reviewer accountability, single-point-of-failure detection, human-readable reports (`/fairness/audit`, `/accountability/report`, `/robustness/test`, `/transparency/report`)
-- **Provenance & Integrity** — cryptographic hash chain of decision history, hash/timestamp verification, tamper detection, immutable security audit log (`/provenance/chain`, `/integrity/verify`, `/tamper-detection`, `/security/audit-log`)
-- **Decision Versioning** — version snapshots and rollback (`/decisions/{id}/version|versions|rollback/{v}`)
-- **Synthetic Data Policy** — EU AI Act Art. 10 & 50 "nutritional label" for synthetic datasets: fidelity, privacy (ε/δ), bias audit, adversarial testing, blocking-gate compliance check (`/synthetic-data-policies*`)
+- **Safety Metadata**: `risk_level`, `reversibility`, `affected_systems`, `safety_category`, `requires_review` attached to any decision at creation
+- **Safety Dashboard**: aggregated risk stats, trend time-series, system exposure (`/safety-stats`, `/safety-dashboard`, `/safety-trend`)
+- **Decision Impact**: dependency graph + risk propagation, per-decision and system-wide (`/decision-impact`)
+- **Safety Review Workflow**: pending queue, approve/reject, reviewer accountability (`/reviews/*`, `/decisions/{id}/review|approve|reject`)
+- **Alignment & Governance**: 5-category alignment scoring, organizational-values check, drift detection, corrigibility tracking, EU AI Act / NIST / ISO 42001 compliance reports (`/alignment/*`, `/governance/*`, `/compliance/report`)
+- **Fairness, Accountability, Robustness, Transparency**: bias audit, reviewer accountability, single-point-of-failure detection, human-readable reports (`/fairness/audit`, `/accountability/report`, `/robustness/test`, `/transparency/report`)
+- **Provenance & Integrity**: cryptographic hash chain of decision history, hash/timestamp verification, tamper detection, immutable security audit log (`/provenance/chain`, `/integrity/verify`, `/tamper-detection`, `/security/audit-log`)
+- **Decision Versioning**: version snapshots and rollback (`/decisions/{id}/version|versions|rollback/{v}`)
+- **Synthetic Data Policy**: EU AI Act Art. 10 & 50 "nutritional label" for synthetic datasets: fidelity, privacy (ε/δ), bias audit, adversarial testing, blocking-gate compliance check (`/synthetic-data-policies*`)
 
-**Architecture note:** unlike every other feature in this file, this one has no dedicated `core/<name>/` module — it's implemented inline in `web/server.py` (~3,200 lines). Every other feature here self-mounts a router from its own subpackage; this is the one exception and a candidate for extraction into `core/safety/` + `core/governance/` to match the rest of the codebase.
+**Architecture note:** unlike every other feature in this file, this one has no dedicated `core/<name>/` module: it's implemented inline in `web/server.py` (~3,200 lines). Every other feature here self-mounts a router from its own subpackage; this is the one exception and a candidate for extraction into `core/safety/` + `core/governance/` to match the rest of the codebase.
 
 **Tests:** `tests/test_safety_features.py`, `tests/test_alignment_governance.py`, `tests/test_synthetic_data_policy.py`, `tests/test_far_cais_sff.py`
 
@@ -346,15 +346,15 @@ Tropelex integration with Tropebook research capabilities.
 **Purpose:** Capture decisions and friction signals directly from Emacs.
 
 **Components:**
-- `tropelex-capture-decision` — interactive command, auto-detects file/project/mode context
-- `tropelex-capture-region` — capture selected code as decision context
-- `tropelex-friction-scan` — scan buffer for friction signals
-- `tropelex--track-save` — `after-save-hook` that detects rapid save patterns (5+ in 5 seconds)
-- `tropelex--compilation-finished` — `compilation-finish-functions` hook that auto-scans compilation output for friction
+- `tropelex-capture-decision`: interactive command, auto-detects file/project/mode context
+- `tropelex-capture-region`: capture selected code as decision context
+- `tropelex-friction-scan`: scan buffer for friction signals
+- `tropelex--track-save`: `after-save-hook` that detects rapid save patterns (5+ in 5 seconds)
+- `tropelex--compilation-finished`: `compilation-finish-functions` hook that auto-scans compilation output for friction
 
 **Project Detection:** projectile → `vc-root-dir` → directory name fallback
 
-**Dependencies:** None — uses only built-in `json.el` and `url.el` (synchronous HTTP to localhost)
+**Dependencies:** None; uses only built-in `json.el` and `url.el` (synchronous HTTP to localhost)
 
 ### 17. Security Features
 
@@ -371,7 +371,7 @@ Tropelex integration with Tropebook research capabilities.
 - Regex sanitization of repo names
 - Resolved path validation under base directory
 
-**Fixed — cross-test state leak:** `_rate_limits` in `web/server.py` (the rate limiter's in-memory, per-IP request log) is module-level and was never reset between tests. FastAPI's `TestClient` reports its host as `"testclient"`, which the middleware does *not* exempt (only `127.0.0.1`/`::1` are), so every test file's requests accumulated in the same dict entry within the 60s window. Once the cumulative count crossed `RATE_LIMIT_MAX` (120), later-running files — `test_security.py`, `test_synthetic_data_policy.py` — started getting 429s on unrelated requests. Fixed with an autouse `_reset_rate_limits` fixture in `tests/conftest.py` that clears `_rate_limits` before/after every test. All 1408 tests pass together as of this fix.
+**Fixed: cross-test state leak.** `_rate_limits` in `web/server.py` (the rate limiter's in-memory, per-IP request log) is module-level and was never reset between tests. FastAPI's `TestClient` reports its host as `"testclient"`, which the middleware does *not* exempt (only `127.0.0.1`/`::1` are), so every test file's requests accumulated in the same dict entry within the 60s window. Once the cumulative count crossed `RATE_LIMIT_MAX` (120), later-running files (`test_security.py`, `test_synthetic_data_policy.py`) started getting 429s on unrelated requests. Fixed with an autouse `_reset_rate_limits` fixture in `tests/conftest.py` that clears `_rate_limits` before/after every test. All 1408 tests pass together as of this fix.
 
 ## Data Flow
 
@@ -507,9 +507,9 @@ Tropelex/
 ## Anti-Patterns
 
 ### Don't Skip Updates Because:
-- "This session was small" — small sessions still teach patterns
-- "I'll remember it" — you won't, but Tropelex will
-- "It's too much overhead" — one function call at session end is not overhead
+- "This session was small" → small sessions still teach patterns
+- "I'll remember it" → you won't, but Tropelex will
+- "It's too much overhead" → one function call at session end is not overhead
 
 ## Future Considerations
 
@@ -530,18 +530,23 @@ See `wishlist.md` for detailed roadmap including:
 - Session Replay with AI Analysis
 
 ### Quick Wins (Implemented)
-- [x] **Webhook-based git hooks** — POST /api/webhooks/git with HMAC-SHA256 verification, idempotency, GitHub/GitLab support
-- [x] **Sync across devices** — GET/POST /api/sync/* for gzip-compressed memory export/import with schema validation
-- [x] **Plugin system** — HookRegistry with before/after hooks, manifest-based discovery, example plugin
-- [x] **VS Code extension** — TypeScript extension with TreeView, Webview panel, and commands
-- [x] **Multi-user support** — JWT auth (HS256), User model with RBAC roles, FastAPI auth middleware
-- [x] **Real-time collaboration** — WebSocket /ws/{room_id} with room-based broadcasting and heartbeat
-- [x] **Background scheduler** — Automatic periodic tasks (feeds, ghost scans, stale checks)
-- [x] **SSRF protection** — URL scheme validation, private IP blocking in web scraper
-- [x] **File locking** — fcntl.flock on embeddings, benchmarks, alert storage
-- [x] **Atomic memory writes** — Race condition prevention in MemoryManager
+- [x] **Webhook-based git hooks**: POST /api/webhooks/git with HMAC-SHA256 verification, idempotency, GitHub/GitLab support
+- [x] **Sync across devices**: GET/POST /api/sync/* for gzip-compressed memory export/import with schema validation
+- [x] **Plugin system**: HookRegistry with before/after hooks, manifest-based discovery, example plugin
+- [x] **VS Code extension**: TypeScript extension with TreeView, Webview panel, and commands
+- [x] **Multi-user support**: JWT auth (HS256), User model with RBAC roles, FastAPI auth middleware
+- [x] **Real-time collaboration**: WebSocket /ws/{room_id} with room-based broadcasting and heartbeat
+- [x] **Background scheduler**: Automatic periodic tasks (feeds, ghost scans, stale checks)
+- [x] **SSRF protection**: URL scheme validation, private IP blocking in web scraper
+- [x] **File locking**: fcntl.flock on embeddings, benchmarks, alert storage
+- [x] **Atomic memory writes**: Race condition prevention in MemoryManager
 
 ## UI
+### Architecture (Horizontal Sub-Navigation)
+- **Primary Layout Structure:** To prevent sidebar horizontal text overflow and reduce cognitive overload, the left sidebar is strictly reserved for top-level taxonomy categories (e.g., Content, Quality & Integrity, Explainability & Discovery).
+- **Sub-Feature Tabs:** All individual features (e.g., Ghost Decisions, Friction Mining, Agent Audit) exist as horizontal tabs within the main content area of their parent category.
+- **Benefits:** This provides infinite horizontal space for long feature names without truncation or tooltips, and standardizes the navigation structure globally.
+
 ### Pallette
 
 Accents

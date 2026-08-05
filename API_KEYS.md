@@ -6,30 +6,30 @@ Tropelex uses environment variables for API keys. Keys are never committed to th
 
 ## OpenAI API Key
 
-**Optional — enables AI-powered prompt compression.**
+**Optional: enables AI-powered prompt compression.**
 
 The compression feature sends prompts to `gpt-4o-mini` to strip filler, fix typos, and rewrite prompts as concise imperatives. Without this key, compression falls back to dictionary-based rules only.
 
 ### Setup
 
-**Option 1 — `.env` file (recommended):**
+**Option 1 · `.env` file (recommended):**
 ```bash
 # Create .env in the project root
 echo 'OPENAI_API_KEY=sk-your-key-here' > .env
 ```
 
-**Option 2 — Environment variable:**
+**Option 2 · Environment variable:**
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
 ```
 
-**Option 3 — Via the Settings UI:**
+**Option 3 · Via the Settings UI:**
 Open http://localhost:8766, go to **Settings → API Keys**, paste your key and click **Save Settings**. The key is written to `.env` and applied immediately without a server restart.
 
 ### Getting a key
 1. Go to https://platform.openai.com/api-keys
 2. Create a new secret key
-3. Copy the `sk-...` value — it's only shown once
+3. Copy the `sk-...` value (it's only shown once)
 
 ### Cost
 Compression uses `gpt-4o-mini` which is extremely cheap (~$0.00015 per prompt). A thousand compressions costs less than $0.15.
@@ -38,11 +38,11 @@ Compression uses `gpt-4o-mini` which is extremely cheap (~$0.00015 per prompt). 
 
 ## Web Search: Brave, Exa, Serper, DuckDuckGo
 
-**All optional — enhances web research in Tropebook and Auto-Research.**
+**All optional: enhances web research in Tropebook and Auto-Research.**
 
-Auto-Research (`POST /api/research/auto`) tries these in order, using whichever is configured first: **Brave → Exa → Serper → DuckDuckGo**. last30days Deep Research uses the same order but with a 4th paid tier, Parallel AI, between Serper and DuckDuckGo — see [Parallel AI](#parallel-ai) below. DuckDuckGo needs no key and is always available as the last resort, but it rate-limits hard under repeated or automated use — fine for occasional lookups, not for heavy use. Configuring any one of the other tiers avoids that.
+Auto-Research (`POST /api/research/auto`) tries these in order, using whichever is configured first: **Brave → Exa → Serper → DuckDuckGo**. last30days Deep Research uses the same order but with a 4th paid tier, Parallel AI, between Serper and DuckDuckGo, see [Parallel AI](#parallel-ai) below. DuckDuckGo needs no key and is always available as the last resort, but it rate-limits hard under repeated or automated use; fine for occasional lookups, not for heavy use. Configuring any one of the other tiers avoids that.
 
-Pricing below is approximate and provider-set — it can change without notice (Brave's did, see below). Check each provider's own pricing page before relying on it for budgeting.
+Pricing below is approximate and provider-set, and it can change without notice (Brave's did, see below). Check each provider's own pricing page before relying on it for budgeting.
 
 ### Brave Search API Key
 
@@ -50,7 +50,7 @@ Pricing below is approximate and provider-set — it can change without notice (
 BRAVE_SEARCH_API_KEY=your-brave-key-here
 ```
 
-**⚠️ Brave dropped its free tier in February 2026.** It now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005 per query with no spending cap. If that's a blocker, skip it — Tropelex falls back to Exa, then Serper, then DuckDuckGo automatically.
+**⚠️ Brave dropped its free tier in February 2026.** It now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005 per query with no spending cap. If that's a blocker, skip it: Tropelex falls back to Exa → Serper → DuckDuckGo automatically.
 
 **Getting a key:** https://api.search.brave.com/
 
@@ -60,7 +60,7 @@ BRAVE_SEARCH_API_KEY=your-brave-key-here
 EXA_API_KEY=your-exa-key-here
 ```
 
-Semantic web search. Free tier around 1,000 searches/month, then pay-as-you-go (roughly $0.003–$0.005/search) — a cheaper, free-to-start alternative to Brave.
+Semantic web search. Free tier around 1,000 searches/month, then pay-as-you-go (roughly $0.003–$0.005/search), a cheaper, free-to-start alternative to Brave.
 
 **Getting a key:** https://exa.ai/
 
@@ -70,7 +70,7 @@ Semantic web search. Free tier around 1,000 searches/month, then pay-as-you-go (
 SERPER_API_KEY=your-serper-key-here
 ```
 
-Google search results. 2,500 free queries up front with no credit card required, then paid tiers starting at $50 for 50,000 queries ($1/1k, cheaper at higher volume) — another free-to-start Brave alternative.
+Google search results. 2,500 free queries up front with no credit card required, then paid tiers starting at $50 for 50,000 queries ($1/1k, cheaper at higher volume), another free-to-start Brave alternative.
 
 **Getting a key:** https://serper.dev/
 
@@ -78,9 +78,9 @@ Google search results. 2,500 free queries up front with no credit card required,
 
 ## Deep Research Sources (last30days engine)
 
-**Optional — expands Deep Research coverage.**
+**Optional: expands Deep Research coverage.**
 
-The Deep Research feature uses the last30days engine to search Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding. Some sources require API keys; others work without any. The engine degrades gracefully — missing sources are skipped.
+The Deep Research feature uses the last30days engine to search Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding. Some sources require API keys; others work without any. The engine degrades gracefully; missing sources are skipped.
 
 ### xAI API Key
 
@@ -152,21 +152,21 @@ PARALLEL_API_KEY=your-parallel-key
 ### Free sources (no keys needed)
 
 These sources work without any configuration:
-- **HackerNews** — Algolia API (free)
-- **GitHub** — public API (free, rate-limited)
-- **Polymarket** — Gamma API (free)
-- **YouTube** — via yt-dlp (free, must be installed)
-- **Reddit** — keyless RSS tiers (limited, may return 403s)
+- **HackerNews**: Algolia API (free)
+- **GitHub**: public API (free, rate-limited)
+- **Polymarket**: Gamma API (free)
+- **YouTube**: via yt-dlp (free, must be installed)
+- **Reddit**: keyless RSS tiers (limited, may return 403s)
 
 ---
 
 ## Security
 
-- **Never commit `.env` to git** — it's in `.gitignore`
+- **Never commit `.env` to git**: it's in `.gitignore`
 - Keys written via the Settings UI go only to your local `.env` file
 - The server only accepts keys for explicitly whitelisted names: `OPENAI_API_KEY`, `BRAVE_SEARCH_API_KEY`, `ANTHROPIC_API_KEY`, `EXA_API_KEY`, `SERPER_API_KEY`, `XAI_API_KEY`, `SCRAPECREATORS_API_KEY`, `BSKY_HANDLE`, `BSKY_APP_PASSWORD`, `AUTH_TOKEN`, `CT0`, `PARALLEL_API_KEY`
 - All secret keys are masked in `GET /api/settings` responses
-- The server binds to `127.0.0.1` only — not accessible from other machines on your network
+- The server binds to `127.0.0.1` only; not accessible from other machines on your network
 - CORS is restricted to `localhost:8766`
 
 ---

@@ -101,7 +101,7 @@ for (let i = 0; i < users.length; i++) {
 - **Variables**: descriptive (userCount not uc), const by default
 - **Constants**: UPPER_SNAKE_CASE
 
-## Error Handling (CRITICAL — enforced on all new code)
+## Error Handling (CRITICAL, enforced on all new code)
 
 **Philosophy**: Errors are data, not control flow. Every function that can fail must communicate failure explicitly. Never silently swallow exceptions.
 
@@ -137,7 +137,7 @@ def analyze_decision(decision: dict, tree: DecisionTree) -> Result:
 
 ### Exception Hierarchy (For infrastructure/IO boundaries)
 ```python
-# ✅ Define domain exceptions — never raise bare Exception/RuntimeError
+# ✅ Define domain exceptions: never raise bare Exception/RuntimeError
 class TropelexError(Exception):
     """Base for all Tropelex errors."""
     def __init__(self, message: str, code: str = "UNKNOWN", details: dict | None = None):
@@ -165,7 +165,7 @@ def load_memory(path: Path) -> dict:
 ```python
 from fastapi import HTTPException
 
-# ✅ Routers translate domain errors to HTTP — business logic never knows about HTTP
+# ✅ Routers translate domain errors to HTTP: business logic never knows about HTTP
 @router.get("/api/memory/{project}/ghost-decisions")
 async def get_ghost_decisions(project: str):
     result = detect_ghosts(project)
@@ -187,7 +187,7 @@ async def tropelex_error_handler(request, exc: TropelexError):
 
 ### Defensive Programming Rules
 ```python
-# ✅ Guard clauses — fail fast, fail clearly
+# ✅ Guard clauses: fail fast, fail clearly
 def process_decision(decision: dict | None) -> Result:
     if decision is None:
         return Err(error="Decision cannot be None", code="VALIDATION_ERROR")

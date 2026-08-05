@@ -102,7 +102,7 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 - Safety metadata (risk_level, reversibility, affected_systems, safety_category) attachable to any decision
 - Safety Dashboard, Review Workflow, Alignment/Governance scoring, Provenance/Integrity chain, Synthetic Data Policy compliance gates
 - See [`SAFETY.md`](SAFETY.md) for the full framing and [`design.md`](design.md) §19 for the API surface
-- **Note for agents touching this area:** unlike every other `core/` feature, this one is implemented inline in `web/server.py` rather than its own module — don't assume `core/safety/` exists
+- **Note for agents touching this area:** unlike every other `core/` feature, this one is implemented inline in `web/server.py` rather than its own module: don't assume `core/safety/` exists
 
 ## Usage
 
@@ -127,7 +127,7 @@ adapter.summarize_session("sovereign-mirror", session_summary_text)
 
 ## Project Memory Files
 
-Located in `memory/*.json` — one per project. Structure:
+Located in `memory/*.json`, one per project. Structure:
 ```json
 {
   "project_name": "sovereign-mirror",
@@ -145,9 +145,9 @@ Located in `memory/*.json` — one per project. Structure:
 ## Anti-Rationalization
 
 Do not skip Tropelex updates because:
-- "This session was small" — small sessions still teach patterns
-- "I'll remember it" — you won't, but Tropelex will
-- "It's too much overhead" — one function call at session end is not overhead
+- "This session was small" → small sessions still teach patterns
+- "I'll remember it" → you won't, but Tropelex will
+- "It's too much overhead" → one function call at session end is not overhead
 
 ## Testing Mandate
 
@@ -163,10 +163,10 @@ Rules:
 Exception: last30days engine tests must be mocked (use `@pytest.mark.last30days` marker) to avoid consuming API tokens. Run `pytest -m last30days` explicitly when needed.
 
 Do not skip tests because:
-- "It's just a small change" — small changes break things too
-- "I'll add tests later" — you won't
-- "The existing tests cover it" — they don't cover the new code
-- "It's hard to test" — mock the hard parts, test the logic
+- "It's just a small change" → small changes break things too
+- "I'll add tests later" → you won't
+- "The existing tests cover it" → they don't cover the new code
+- "It's hard to test" → mock the hard parts, test the logic
 
 ## Tropebook (`core/tropebook/`)
 
@@ -215,9 +215,9 @@ python -m core.tropebook.web.server
 Multi-source research engine that searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief.
 
 ### Components
-- `last30days.py` — The main research engine (60+ source modules in `lib/`)
-- `synthesize_run.py` — Pipeline + LLM synthesis + HTML render in one pass
-- `runner.py` — Subprocess wrapper (bridges BRAVE_SEARCH_API_KEY → BRAVE_API_KEY)
+- `last30days.py`: The main research engine (60+ source modules in `lib/`)
+- `synthesize_run.py`: Pipeline + LLM synthesis + HTML render in one pass
+- `runner.py`: Subprocess wrapper (bridges BRAVE_SEARCH_API_KEY → BRAVE_API_KEY)
 
 ### Usage
 
@@ -242,7 +242,7 @@ curl -X POST http://localhost:8766/api/research-feeds \
 Deep research takes 1–3 minutes per query (multi-source parallel search + LLM synthesis). This is expected. The UI shows a loading state during the request.
 
 ### Key Configuration
-See `API_KEYS.md` for source keys. The engine degrades gracefully — missing sources are skipped. Free sources (HackerNews, GitHub, Polymarket, YouTube) work without any keys.
+See `API_KEYS.md` for source keys. The engine degrades gracefully; missing sources are skipped. Free sources (HackerNews, GitHub, Polymarket, YouTube) work without any keys.
 
 ## Emacs Integration (`emacs/tropelex-capture.el`)
 
@@ -256,12 +256,12 @@ Capture decisions, friction signals, and git commits directly from Emacs.
 ```
 
 ### Commands
-- `C-c t c` — Capture a decision (auto-detects file, project, mode, code context)
-- `C-c t r` — Capture region as decision context
-- `C-c t f` — Scan buffer for friction signals
-- `C-c t g` — Capture current HEAD commit as a decision
-- `C-c t s` — Check server status
-- `C-c t p` — Set project name
+- `C-c t c`: Capture a decision (auto-detects file, project, mode, code context)
+- `C-c t r`: Capture region as decision context
+- `C-c t f`: Scan buffer for friction signals
+- `C-c t g`: Capture current HEAD commit as a decision
+- `C-c t s`: Check server status
+- `C-c t p`: Set project name
 
 ### Automatic Capture
 - **Compilation errors** → auto-scan for friction when compilation fails

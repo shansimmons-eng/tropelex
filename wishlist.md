@@ -2,7 +2,7 @@
 
 **Novel features and improvements planned for future development.**
 
-Grouped by function (what the feature is *for*), not by build priority or chronology — mirrors the dashboard sidebar's category structure. See `## Implementation Roadmap` below for the phase-by-phase build history.
+Grouped by function (what the feature is *for*), not by build priority or chronology, mirroring the dashboard sidebar's category structure. See `## Implementation Roadmap` below for the phase-by-phase build history.
 
 ---
 
@@ -58,15 +58,15 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
-### 6. Ghost Decisions — Silent Drift Detection
+### 6. Ghost Decisions: Silent Drift Detection
 **Purpose:** Detect when code quietly contradicts recorded decisions without anyone saying so.
 
-**Why:** The #1 real failure mode in every team's architecture docs — docs say X, code does Y, nobody notices for months. Tropelex records decisions and detects when a new decision supersedes an old one, but has no idea when code silently drifts from documented decisions.
+**Why:** The #1 real failure mode in every team's architecture docs: docs say X, code does Y, nobody notices for months. Tropelex records decisions and detects when a new decision supersedes an old one, but has no idea when code silently drifts from documented decisions.
 
 **Features:**
 - Diff incoming commits against the decision corpus
 - Pattern-match decision text against diff hunks (e.g., "snake_case" vs camelCase in code)
-- Flag silent decision drift as "ghost decisions" — contradictions nobody documented
+- Flag silent decision drift as "ghost decisions": contradictions nobody documented
 - Surface drift in Health Dashboard alongside stale decisions
 - Confidence scoring based on diff severity and decision confidence
 
@@ -141,7 +141,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 28. Friction Mining (Implicit Signal Capture)
 **Purpose:** Auto-detect friction from session transcripts without anyone explicitly logging decisions.
 
-**Why:** Everything currently depends on explicit recording. Real friction — agent getting corrected, human retyping with growing annoyance, repeated reverts — never gets captured. This is the data source current tools (Continue, Cursor, mem0, Zep) don't touch.
+**Why:** Everything currently depends on explicit recording. Real friction (agent getting corrected, human retyping with growing annoyance, repeated reverts) never gets captured. This is the data source current tools (Continue, Cursor, mem0, Zep) don't touch.
 
 **Features:**
 - Transcript pattern detection (rephrasing, "no that's wrong", rapid edits)
@@ -185,16 +185,16 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - Confidence adjustment based on corroboration
 - Integration with Knowledge Decay scoring
 
-**Status:** ❌ Removed (2026-07-28). Web-search-based keyword matching was a poor fit for most real decisions: anything self-referential to the project's own architecture/tests has no public source to corroborate against, so results were consistently irrelevant regardless of query-quality fixes (narration-verb stripping, rationale-only queries, etc. — see git history on `core/corroboration/` before removal). Removed rather than kept as a feature that mostly produced noise.
+**Status:** ❌ Removed (2026-07-28). Web-search-based keyword matching was a poor fit for most real decisions: anything self-referential to the project's own architecture/tests has no public source to corroborate against, so results were consistently irrelevant regardless of query-quality fixes (narration-verb stripping, rationale-only queries, etc., see git history on `core/corroboration/` before removal). Removed rather than kept as a feature that mostly produced noise.
 
 ---
 
 ## Explainability & Discovery
 
-### 7. Explainable Memory — "Why do we...?" Chat
+### 7. Explainable Memory: "Why do we...?" Chat
 **Purpose:** Conversational front-end that fuses RAG + decision tree + impact analysis into causal answers.
 
-**Why:** "Why do we use Postgres instead of MySQL?" should trace the decision, who made it, confidence/tier, what superseded it, and what it caused downstream. This is qualitatively different from search — it's architecture archaeology as a conversation.
+**Why:** "Why do we use Postgres instead of MySQL?" should trace the decision, who made it, confidence/tier, what superseded it, and what it caused downstream. This is qualitatively different from search: it's architecture archaeology as a conversation.
 
 **Features:**
 - Natural language "why" questions answered with full causal chain
@@ -223,7 +223,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
-### 15. Memory Lens — IDE Inline Annotations
+### 15. Memory Lens: IDE Inline Annotations
 **Purpose:** Ambient decision annotations in code editors, like GitLens but for decisions.
 
 **Why:** Most people never open a dashboard, but everyone reads code. Highest "daily-use stickiness" upgrade.
@@ -256,8 +256,8 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 **Implementation detail:** relevance scoring is a composite of impact score, category match, decay confidence, and semantic similarity; assembly uses a budget-aware knapsack (value-density greedy + exact DP pass for boundary optimization); near-misses are surfaced with their scores rather than silently dropped; a genealogy/feedback loop tracks precision (included items referenced) and recall proxy (requested but excluded) to improve weights over time. Reuses `impact/analysis.py`, `agent_skills.py`, and `packet_builder.py` trimming logic.
 
 **API:**
-- `POST /api/memory/{project}/prefetch` — task + token_budget → bundle + near_misses + bundle_id
-- `POST /api/memory/{project}/prefetch/{bundle_id}/outcome` — referenced_ids + requested_but_missing
+- `POST /api/memory/{project}/prefetch`: task + token_budget → bundle + near_misses + bundle_id
+- `POST /api/memory/{project}/prefetch/{bundle_id}/outcome`: referenced_ids + requested_but_missing
 
 ---
 
@@ -266,7 +266,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 35. Safety Metadata, Review Workflow & Alignment/Governance Scoring
 **Purpose:** Risk classification, review workflow, and multi-dimensional alignment/governance scoring for the decision graph.
 
-**Why:** Decisions were recorded with confidence and rationale but no risk classification, review trail, or compliance framing — needed for evaluating Tropelex as safety-relevant infrastructure (see `SAFETY.md`) rather than just a productivity tool.
+**Why:** Decisions were recorded with confidence and rationale but no risk classification, review trail, or compliance framing, which is needed for evaluating Tropelex as safety-relevant infrastructure (see `SAFETY.md`) rather than just a productivity tool.
 
 **Features:**
 - Safety metadata on every decision: risk_level, reversibility, affected_systems, safety_category, requires_review
@@ -278,7 +278,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - Provenance Chain, Integrity Verification, Tamper Detection, immutable Security Audit Log
 - Decision Versioning with rollback
 
-**Status:** ✅ Implemented — but as an exception to this codebase's own pattern: every other feature above ships as its own `core/<name>/` module with a router; this one (~3,200 lines) is inline in `core/tropebook/web/server.py`. Candidate for extraction into `core/safety/` + `core/governance/`. Tests: `tests/test_safety_features.py`, `tests/test_alignment_governance.py`, `tests/test_far_cais_sff.py`.
+**Status:** ✅ Implemented. As an exception to this codebase's own pattern: every other feature above ships as its own `core/<name>/` module with a router; this one (~3,200 lines) is inline in `core/tropebook/web/server.py`. Candidate for extraction into `core/safety/` + `core/governance/`. Tests: `tests/test_safety_features.py`, `tests/test_alignment_governance.py`, `tests/test_far_cais_sff.py`.
 
 ---
 
@@ -293,14 +293,14 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - UI registration form + compliance dashboard
 - Aggregate statistics across all registered policies
 
-**Status:** ✅ Implemented (`core/tropebook/web/server.py` — same inline-implementation caveat as #35). Tests: `tests/test_synthetic_data_policy.py` — note: 17 of these currently fail only when the full `pytest tests/` suite runs together (pass 100% in isolation); see `design.md`'s Security Features section for the known cross-test state-leak issue.
+**Status:** ✅ Implemented (`core/tropebook/web/server.py`, same inline-implementation caveat as #35). Tests: `tests/test_synthetic_data_policy.py` (note: 17 of these currently fail only when the full `pytest tests/` suite runs together (pass 100% in isolation); see `design.md`'s Security Features section for the known cross-test state-leak issue).
 
 ---
 
 ### 37. Agent Surface Audit
-**Purpose:** Scan the agent's own harness configuration for risk — secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions.
+**Purpose:** Scan the agent's own harness configuration for risk: secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions.
 
-**Why:** Every other feature in this list audits decisions and code — the things an agent *produces*. Nothing audited the agent's own operating environment (`CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent/skill definitions), even though a leaked key in a committed config file, an unrestricted `Bash(*)` permission, or a hook that pipes remote content into a shell is a safety-relevant risk that never shows up in the decision graph. Inspired by [AgentShield](https://github.com/affaan-m/agentshield)'s five-category shape, reimplemented as pure functions so it plugs into the same severity-ranked finding pattern Contradictions and Doc Mining already use, rather than shelling out to a separate tool.
+**Why:** Every other feature in this list audits decisions and code: the things an agent *produces*. Nothing audited the agent's own operating environment (`CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent/skill definitions), even though a leaked key in a committed config file, an unrestricted `Bash(*)` permission, or a hook that pipes remote content into a shell is a safety-relevant risk that never shows up in the decision graph. Inspired by [AgentShield](https://github.com/affaan-m/agentshield)'s five-category shape, reimplemented as pure functions so it plugs into the same severity-ranked finding pattern Contradictions and Doc Mining already use, rather than shelling out to a separate tool.
 
 **Features:**
 - Secrets detection: AWS/GitHub/OpenAI/Anthropic/Slack key patterns, private key headers, generic high-entropy assignments
@@ -360,7 +360,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - Detect regressions or repeated work
 - Generate retrospective reports
 
-**Status:** Open — the one feature on this list not yet implemented.
+**Status:** Open. This is the one feature on this list not yet implemented.
 
 ---
 
@@ -447,16 +447,16 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 39. Auto-Import Sessions from External Coding Tools
 **Purpose:** Automatically pull session/conversation history from the major AI coding tools (Claude Code, Cursor, GitHub Copilot Chat, Windsurf, Cline, Aider, and similar) into Tropelex on a schedule, instead of requiring a manual paste into the friction-scan or session-record forms.
 
-**Why:** The agent-identity work (skills, friction, session tracking, all now taggable per `agent_name`) is only as rich as what actually gets recorded, and today that requires a human to manually capture and tag every session. Raw transcripts are the highest-signal data Tropelex could have — they're the actual record of what an agent did and how the human reacted — and almost nobody currently working with multiple coding agents has a way to compare them side by side on real usage rather than benchmarks. Automating the capture is what would make the per-agent skill/friction breakdown genuinely comprehensive instead of only reflecting whatever the user remembers to log by hand.
+**Why:** The agent-identity work (skills, friction, session tracking, all now taggable per `agent_name`) is only as rich as what actually gets recorded, and today that requires a human to manually capture and tag every session. Raw transcripts are the highest-signal data Tropelex could have (they're the actual record of what an agent did and how the human reacted), and almost nobody currently working with multiple coding agents has a way to compare them side by side on real usage rather than benchmarks. Automating the capture is what would make the per-agent skill/friction breakdown genuinely comprehensive instead of only reflecting whatever the user remembers to log by hand.
 
-**Features (needs feasibility research first — this is not yet scoped):**
-- Survey where each target tool actually stores session/transcript data locally (formats and locations are largely undocumented and tool-specific — e.g. flat JSONL transcripts vs. an app's internal SQLite/LevelDB storage vs. plain-text chat history files — and can change without notice between tool versions)
+**Features (needs feasibility research first; this is not yet scoped):**
+- Survey where each target tool actually stores session/transcript data locally (formats and locations are largely undocumented and tool-specific, e.g. flat JSONL transcripts vs. an app's internal SQLite/LevelDB storage vs. plain-text chat history files, and can change without notice between tool versions)
 - Determine which tools expose anything stable enough to build against (a documented export, a local file format worth committing to, or neither)
 - Design the "which agent produced this" tagging so it maps cleanly onto the existing freeform `agent_name` convention (`core/market/calibration.py`'s pattern, now shared by skills/friction/sessions)
 - Work out consent/scope: this reads potentially sensitive local conversation history, so opt-in per tool and a clear picture of what leaves the machine (nothing should, by default) matters as much as the technical import path
 - Scheduling/dedup: avoid re-importing the same session on every run
 
-**Status:** Idea — needs feasibility research before it can be scoped as a real feature. Worth prioritizing early since the answer ("which tools are even feasible") determines whether this is buildable at all.
+**Status:** Idea: needs feasibility research before it can be scoped as a real feature. Worth prioritizing early since the answer ("which tools are even feasible") determines whether this is buildable at all.
 
 ---
 
@@ -481,7 +481,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 8. Agent Handoff Packets
 **Purpose:** Generate role-aware context bundles when one agent hands off to another.
 
-**Why:** Tropelex is used inside multi-subagent systems. When one agent's session ends and hands off to a different specialist, generate a role-aware context packet — "here's what a TestEngineer specifically needs to know" vs "here's what a Frontend specialist needs."
+**Why:** Tropelex is used inside multi-subagent systems. When one agent's session ends and hands off to a different specialist, generate a role-aware context packet: "here's what a TestEngineer specifically needs to know" vs "here's what a Frontend specialist needs."
 
 **Features:**
 - Role-specific context slicing (different agents get different memory slices)
@@ -497,7 +497,7 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ### 14. Decision Market / Calibration Score
 **Purpose:** Team members place confidence bets on decisions; track calibration over time.
 
-**Why:** Gamifies retrospective honesty. "Alice's gut calls are 85% accurate; Bob is overconfident on auth decisions." Genuinely novel — not in Continue, Cursor, mem0, or Zep.
+**Why:** Gamifies retrospective honesty. "Alice's gut calls are 85% accurate; Bob is overconfident on auth decisions." Genuinely novel: not in Continue, Cursor, mem0, or Zep.
 
 **Features:**
 - Place confidence bets before decisions are finalized
@@ -625,6 +625,15 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 **Status:** ✅ Implemented (core/cost/)
 
+## UI & Presentation
+
+### 38. Global Horizontal Sub-Navigation Migration
+**Purpose:** Standardize all dashboard sections to use the horizontal tab architecture established in Safety & Alignment.
+**Why:** The left sidebar is suffering from horizontal text overflow and cognitive overload due to the sheer number of features. 
+**Features:**
+- Restructure sidebar to only contain top-level taxonomy categories (e.g., Content, Quality & Integrity).
+- Move all individual features (e.g., Ghost Decisions, Friction Mining) to horizontal tabs within their parent category views.
+
 ---
 
 ## Implementation Roadmap
@@ -649,14 +658,14 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - ✅ Collaborative Memory (WebSocket)
 
 ### Phase 3: Awareness (Complete)
-- ✅ Ghost Decisions — Silent Drift Detection
+- ✅ Ghost Decisions: Silent Drift Detection
 - ✅ Explainable Memory Chat ("Why do we...?")
 - ✅ Agent Handoff Packets
 - ✅ Memory Debt Score (complement to Health Dashboard)
 
 ### Phase 4: Intelligence (Complete)
 - ✅ Decision Market / Calibration Score
-- ✅ Memory Lens — IDE Inline Annotations
+- ✅ Memory Lens: IDE Inline Annotations
 - ✅ Predictive Context Prefetch
 - ✅ Bidirectional Slack Decision Capture
 
@@ -688,10 +697,10 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - ✅ Corroboration results writing back to decision confidence scores
 - ✅ Friction mining wired to session-end processing
 - ✅ Session-start context using handoff packets + cross-project briefing
-- ✅ Friction Mining UI fix — "Scan for Friction" button now works (was missing JS handler)
+- ✅ Friction Mining UI fix: "Scan for Friction" button now works (was missing JS handler)
 
 ### Phase 10: Deep Research & Emacs Integration (Complete)
-- ✅ Deep Research (last30days engine) — multi-source research with LLM synthesis
+- ✅ Deep Research (last30days engine): multi-source research with LLM synthesis
 - ✅ Deep Research feed provider (`research_provider: "deep_research"`)
 - ✅ Deep Research UI section + Settings panel for source keys
 - ✅ Deep Research synthesis driver (pipeline + LLM + HTML in one pass)
@@ -710,10 +719,10 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - ✅ Dashboard: Logo animation (tl.png + pulsing dot)
 - ✅ Dashboard: Favicon change (TL1.ico)
 - ✅ Dashboard: "Power Up with Emacs" button linking to help docs
-- ✅ Emacs: Magit integration — auto-capture decisions from git commits
-- ✅ Emacs: LSP context — captures include function name/type from eglot/lsp-mode/treesit
+- ✅ Emacs: Magit integration, auto-capturing decisions from git commits
+- ✅ Emacs: LSP context, captures include function name/type from eglot/lsp-mode/treesit
 - ✅ Emacs: Code context in decision captures (function name, class, type)
-- ✅ 17 router `_load_memory` fixes — all routers now use MemoryManager
+- ✅ 17 router `_load_memory` fixes: all routers now use MemoryManager
 - ✅ Run Pipeline button fix (missing element ID)
 - ✅ 46 new tests (test_deep_research.py, test_router_fixes.py, test_last30days_runner.py)
 
@@ -726,37 +735,37 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 - ✅ Decision Versioning with rollback
 - ✅ Synthetic Data Policy framework (EU AI Act Art. 10 & 50) with 10 blocking compliance gates
 - ✅ 116 new tests (1292 → 1408 total, all passing together)
-- ✅ Fixed a cross-test rate-limiter state leak (`tests/conftest.py`) that was causing 21 failures in this area when the full suite ran together — see `design.md` §17
+- ✅ Fixed a cross-test rate-limiter state leak (`tests/conftest.py`) that was causing 21 failures in this area when the full suite ran together; see `design.md` §17
 - ⚠️ Known gap: implemented inline in `core/tropebook/web/server.py` rather than a dedicated `core/` module (breaks the pattern every prior phase followed)
 
 ---
 
 ### Phase 13: Agent Surface Audit & Cross-Connections (Complete)
-- ✅ Agent Surface Audit (`core/agent_audit/`, feature #37) — scans the agent's own harness config (CLAUDE.md/AGENTS.md, .mcp.json, .claude/settings.json, hooks, agent/skill definitions) for secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions. Inspired by AgentShield.
+- ✅ Agent Surface Audit (`core/agent_audit/`, feature #37): scans the agent's own harness config (CLAUDE.md/AGENTS.md, .mcp.json, .claude/settings.json, hooks, agent/skill definitions) for secrets, over-broad permissions, hook-injection risk, MCP server risk, and injected instructions. Inspired by AgentShield.
 - ✅ Safety & Alignment dashboard consolidation: 6 separate sidebar sections (Safety Dashboard, Alignment, Governance, Provenance, Reviews, Synthetic Data) collapsed into one sidebar entry with 7 in-page tabs (the 6 plus Agent Audit), each lazy-loaded on selection instead of all six loading eagerly together
-- ✅ Cross-connect: Friction Mining → Safety score. Recent friction history (capped, last 10 scans) now contributes a bounded penalty to the aggregate safety score, not just the Health Dashboard. Also fixed: `friction_history` was read by `/friction/summary` but nothing had ever written to it — the scan endpoint now persists results.
+- ✅ Cross-connect: Friction Mining → Safety score. Recent friction history (capped, last 10 scans) now contributes a bounded penalty to the aggregate safety score, not just the Health Dashboard. Also fixed: `friction_history` was read by `/friction/summary` but nothing had ever written to it. The scan endpoint now persists results.
 - ✅ Cross-connect: Contradictions / Doc Mining → Safety Review queue. High-severity contradictions and doc-vs-decision findings auto-escalate their decisions' `requires_review` flag instead of only surfacing in their own tabs.
-- ✅ Cross-connect: Personas + Decision Market → Safety Review queue. A decision touching a category that's *both* a known persona weakness *and* has poor market calibration auto-escalates — neither signal alone is enough, since every project has some weak category and some mediocre bet.
-- ✅ Cross-connect: Cost Ledger ↔ Decision Market. New `GET /{project}/cost/compounding-risk` surfaces decisions with real rework cost *and* poor calibration in the same category — previously these lived in unconnected tabs.
-- ✅ Cross-connect: PR Bot → Safety & Alignment. PR comments now include a "Safety & Alignment" section for any relevant decision that's high/critical risk or flagged for review — previously PR Bot only surfaced ghost decisions and health scores.
-- ✅ Cross-connect: Federation (renamed Benchmarks) → safety-posture benchmarking. `AnonymizedStats` gained `avg_safety_score` and `risk_level_distribution`, threaded through share/aggregate/compare — anonymized safety posture, not just structural stats like reversal rate.
+- ✅ Cross-connect: Personas + Decision Market → Safety Review queue. A decision touching a category that's *both* a known persona weakness *and* has poor market calibration auto-escalates: neither signal alone is enough, since every project has some weak category and some mediocre bet.
+- ✅ Cross-connect: Cost Ledger ↔ Decision Market. New `GET /{project}/cost/compounding-risk` surfaces decisions with real rework cost *and* poor calibration in the same category. Previously these lived in unconnected tabs.
+- ✅ Cross-connect: PR Bot → Safety & Alignment. PR comments now include a "Safety & Alignment" section for any relevant decision that's high/critical risk or flagged for review. Previously PR Bot only surfaced ghost decisions and health scores.
+- ✅ Cross-connect: Federation (renamed Benchmarks) → safety-posture benchmarking. `AnonymizedStats` gained `avg_safety_score` and `risk_level_distribution`, threaded through share/aggregate/compare: anonymized safety posture, not just structural stats like reversal rate.
 - ✅ 66 new tests (1408 → 1474 total, all passing together)
 
 ---
 
 ### Phase 14: Integration Debt, Data Integrity & Search Resilience (Complete)
-- ✅ Wired 5 previously-built-but-orphaned endpoints into the dashboard: `handoff/roles`, `agent-skills/briefing`, `cross-pollinate/briefing`, `sessions/weekly-summary` (also fixed a real route-shadowing bug — it was registered after `/sessions/{session_id}` and so was permanently unreachable), and `cost/compounding-risk`.
-- ✅ Deleted Research Chains (`core/research_chains.py`) — redundant with Deep Research + Feeds, confirmed unused anywhere in the UI.
+- ✅ Wired 5 previously-built-but-orphaned endpoints into the dashboard: `handoff/roles`, `agent-skills/briefing`, `cross-pollinate/briefing`, `sessions/weekly-summary` (also fixed a real route-shadowing bug: it was registered after `/sessions/{session_id}` and so was permanently unreachable), and `cost/compounding-risk`.
+- ✅ Deleted Research Chains (`core/research_chains.py`): redundant with Deep Research + Feeds, confirmed unused anywhere in the UI.
 - ✅ Wired Memory Lens into the VS Code extension (inline hover annotations, `tropelex.scanFileForDecisions` command).
 - ✅ Fixed Deep Research not persisting Hybrid/Citation-Grade runs (only `last30days` runs were ever saved) and a related bug where those runs would have rendered as raw unrendered markdown instead of HTML.
-- ✅ Fixed a real `knowledge_decay.score_decision` bug: self-comparison used object identity (`is`) instead of `id` equality, silently inflating every decision's confidence score whenever callers passed reconstructed objects (e.g. `DecisionTree` nodes) rather than the original list — this broke Memory Compaction's stale-chain detection universally, not just for test data.
+- ✅ Fixed a real `knowledge_decay.score_decision` bug: self-comparison used object identity (`is`) instead of `id` equality, silently inflating every decision's confidence score whenever callers passed reconstructed objects (e.g. `DecisionTree` nodes) rather than the original list. This broke Memory Compaction's stale-chain detection universally, not just for test data.
 - ✅ Git sync repo-fingerprint safeguard: `sync_repo_to_memory` now fingerprints a repo (origin remote URL, falling back to root commit hash) and blocks a later sync from a different repo into the same project instead of silently mixing histories, with a `force` override. Root cause of an earlier real incident where a project's memory got contaminated with another repo's commits.
-- ✅ Renamed Federation → Benchmarks — the old name implied cross-machine networking it never had (confirmed zero networking code). Added genuine cross-install comparison via `GET /benchmarks/export` / `POST /benchmarks/import`: a portable JSON bundle handed between installs as a plain file, no network call.
-- ✅ Fixed Account Backup silently importing zero citations on every import, always — it iterated `tropebook.citations` (a dict keyed by ID) as if it were a list, so the `isinstance(citation, dict)` check that followed could never pass. New `Tropebook.import_bundle()` also preserves citation IDs so relationship-graph edges survive the round trip, which the old `add()`-based path could never have restored even once the iteration bug was fixed.
+- ✅ Renamed Federation → Benchmarks: the old name implied cross-machine networking it never had (confirmed zero networking code). Added genuine cross-install comparison via `GET /benchmarks/export` / `POST /benchmarks/import`: a portable JSON bundle handed between installs as a plain file, no network call.
+- ✅ Fixed Account Backup silently importing zero citations on every import, always: it iterated `tropebook.citations` (a dict keyed by ID) as if it were a list, so the `isinstance(citation, dict)` check that followed could never pass. New `Tropebook.import_bundle()` also preserves citation IDs so relationship-graph edges survive the round trip, which the old `add()`-based path could never have restored even once the iteration bug was fixed.
 - ✅ Fixed Account Backup export leaking live credentials: its secret-exclusion list only covered 6 of the 17 keys the Settings API treats as credentials, so `BSKY_APP_PASSWORD`, `CT0` (X/Twitter session cookie), and others were written into exported JSON despite the UI's claim that "API keys are excluded." Both lists now come from one shared `SECRET_ENV_KEYS` set.
-- ✅ Search fallback waterfall for Auto-Research (`/api/research/auto`): Brave → Exa → Serper → DuckDuckGo, matching the tiering `last30days` already had — previously this endpoint was Brave-or-DuckDuckGo only, with Exa/Serper keys accepted by Settings but never consulted here. Documented in `API_KEYS.md`/Settings/guide, including that Brave dropped its free tier in Feb 2026 (now $5 prepaid minimum, ~$0.003–$0.005/query).
+- ✅ Search fallback waterfall for Auto-Research (`/api/research/auto`): Brave → Exa → Serper → DuckDuckGo, matching the tiering `last30days` already had; previously this endpoint was Brave-or-DuckDuckGo only, with Exa/Serper keys accepted by Settings but never consulted here. Documented in `API_KEYS.md`/Settings/guide, including that Brave dropped its free tier in Feb 2026 (now $5 prepaid minimum, ~$0.003–$0.005/query).
 - ✅ Decision Market: added `DELETE /{project}/market/clear` (previously no way to wipe accumulated bet data short of hand-editing memory JSON) and documented `agent_name` naming conventions, including the caveat that Agent Skills tracks proficiency per-project, not per-agent, unlike Decision Market's genuinely per-agent calibration.
-- ✅ Removed 4 cross-project-contaminated decisions from a project's memory (verified via git hash cross-reference — they were verbatim Tropelex commits mined into an unrelated project).
+- ✅ Removed 4 cross-project-contaminated decisions from a project's memory (verified via git hash cross-reference: they were verbatim Tropelex commits mined into an unrelated project).
 - ✅ ~32 new tests across this phase, full suite passing together (1434 total).
 
 ---
@@ -801,5 +810,5 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ---
 
 **Last Updated:** 2026-07-30
-**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14). #30 (Rationale Corroboration) removed 2026-07-28 — see its entry above.
+**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
 **Next Review:** 2026-08-15

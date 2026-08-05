@@ -2,7 +2,7 @@
 
 **Persistent memory and learning system for AI agents.**
 
-Tropelex accumulates knowledge across projects — decisions, patterns, preferences, research — so sessions don't start from scratch. It grows smarter with use.
+Tropelex accumulates knowledge across projects (decisions, patterns, preferences, research) so sessions don't start from scratch. It grows smarter with use.
 
 The same mechanisms that make an agent's memory useful also make its behavior auditable: an immutable decision history an agent must cross-reference before acting, drift detection that catches code silently diverging from stated intent, and multi-agent handoff that carries rationale across agent boundaries instead of losing it. See [`SAFETY.md`](SAFETY.md) for how these properties apply to agent safety and alignment work.
 
@@ -12,44 +12,44 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 
 | Component | Purpose |
 |---|---|
-| **Memory Manager** | Stores project knowledge as JSON — decisions, preferences, session history |
+| **Memory Manager** | Stores project knowledge as JSON: decisions, preferences, session history |
 | **Pattern Learner** | Analyzes sessions to detect recurring themes and suggest next steps |
-| **Context Compressor** | Strips filler from prompts using AI (OpenAI) or dictionary-based rules — also reduces the surface area untrusted payloads have to carry injected instructions ([SAFETY.md](SAFETY.md#prompt-injection--payload-defense)) |
-| **Tropebook** | Research knowledge base — store, search, link citations with a graph |
+| **Context Compressor** | Strips filler from prompts using AI (OpenAI) or dictionary-based rules, and reduces the surface area untrusted payloads have to carry injected instructions ([SAFETY.md](SAFETY.md#prompt-injection--payload-defense)) |
+| **Tropebook** | Research knowledge base (store, search, link citations with a graph) |
 | **Agent Pipeline** | 3-stage prompt prep: compress → context check → structure |
 | **Prompt Hijacker** | One-click AI compression for any prompt before sending to an AI |
 | **Git Integration** | Auto-extract decisions, rationale, and tech stack changes from commits |
-| **Decision Trees** | Graph of decision evolution — tracks what caused what, reverts, relationships |
+| **Decision Trees** | Graph of decision evolution (tracks what caused what, reverts, relationships) |
 | **Living ADRs** | Auto-generate Architecture Decision Records from memory data |
-| **Session Replay** | Structured memory diffs per session — what changed, rollback support |
-| **Knowledge Decay** | Time-based confidence scoring — decisions lose reliability over age, preventing stale policy from silently retaining full authority ([SAFETY.md](SAFETY.md#guardrail-ossification-prevention)) |
+| **Session Replay** | Structured memory diffs per session (what changed, rollback support) |
+| **Knowledge Decay** | Time-based confidence scoring, where decisions lose reliability over age and stale policy can't silently retain full authority ([SAFETY.md](SAFETY.md#guardrail-ossification-prevention)) |
 | **Memory RAG** | Semantic retrieval from project memory at query time |
 | **Cross-Pollination** | Surface solutions from similar projects with matching tech stacks |
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
 | **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
-| **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp — plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
-| **Ghost Decisions** | Silent objective-drift detection — code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
+| **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp, plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
+| **Ghost Decisions** | Silent objective-drift detection: code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
-| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows — a working inter-agent coordination protocol ([SAFETY.md](SAFETY.md#inter-agent-coordination-protocol)) |
-| **Decision Market** | Confidence bets, calibration tracking, leaderboard — a live calibration and honest-signaling mechanism among cooperating agents ([SAFETY.md](SAFETY.md#calibration--honest-signaling-mechanism)) |
-| **Memory Lens** | IDE inline annotations — GitLens but for decisions |
+| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows (a working inter-agent coordination protocol) ([SAFETY.md](SAFETY.md#inter-agent-coordination-protocol)) |
+| **Decision Market** | Confidence bets, calibration tracking, leaderboard: a live calibration and honest-signaling mechanism among cooperating agents ([SAFETY.md](SAFETY.md#calibration--honest-signaling-mechanism)) |
+| **Memory Lens** | IDE inline annotations, like GitLens but for decisions |
 | **Slack Capture** | Bidirectional Slack integration for decision logging |
-| **Time-Travel Debugger** | Memory snapshots as of any past date — forensic state auditing ([SAFETY.md](SAFETY.md#forensic-state-auditing)) |
-| **Contradiction Detection** | Actively scan for unresolved conflicting decisions — surfaces conflicting objectives before they cause harm ([SAFETY.md](SAFETY.md#conflicting-objective-surfacing)) |
-| **Doc Mining** | Scans every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims never captured in the decision graph — reuses the Contradiction Detection engine rather than a separate one |
+| **Time-Travel Debugger** | Memory snapshots as of any past date, for forensic state auditing ([SAFETY.md](SAFETY.md#forensic-state-auditing)) |
+| **Contradiction Detection** | Actively scan for unresolved conflicting decisions (surfaces conflicting objectives before they cause harm) ([SAFETY.md](SAFETY.md#conflicting-objective-surfacing)) |
+| **Doc Mining** | Scans every markdown file in the repo for drift against recorded decisions, contradictions between docs, and decision-shaped claims never captured in the decision graph. Reuses the Contradiction Detection engine rather than a separate one |
 | **Digital Twin Personas** | Synthesize readable persona summaries from agent proficiency |
 | **Federated Benchmarking** | Opt-in, privacy-preserving cross-install statistics |
 | **Memory Compaction** | Epoch summarization to prevent unbounded memory growth |
-| **Friction Mining** | Implicit signal detection from conversation transcripts — a lightweight human-in-the-loop alignment elicitation channel ([SAFETY.md](SAFETY.md#human-in-the-loop-alignment-elicitation)) |
-| **Preventive Ghost Checks** | Pre-write hook that checks diff against active decisions — a pre-action policy compliance gate ([SAFETY.md](SAFETY.md#pre-action-policy-compliance-gate)) |
+| **Friction Mining** | Implicit signal detection from conversation transcripts: a lightweight human-in-the-loop alignment elicitation channel ([SAFETY.md](SAFETY.md#human-in-the-loop-alignment-elicitation)) |
+| **Preventive Ghost Checks** | Pre-write hook that checks diff against active decisions: a pre-action policy compliance gate ([SAFETY.md](SAFETY.md#pre-action-policy-compliance-gate)) |
 | **Rationale Corroboration** | Fact-check decision rationale against the live web |
 | **PR Bot** | Deliver ghost decisions, contradictions as PR comments |
 | **Narrative Mode** | Readable prose summaries for non-technical audiences |
 | **Cost Ledger** | Per-decision token cost tracking and ROI scoring |
 | **Predictive Prefetch** | Budget-aware context assembly prioritized by impact score |
-| **Background Scheduler** | Automatic periodic tasks — feeds, ghost scans, stale checks |
-| **Emacs Integration** | Capture decisions and friction signals directly from Emacs — compilation errors, rapid saves, manual decisions |
+| **Background Scheduler** | Automatic periodic tasks (feeds, ghost scans, stale checks) |
+| **Emacs Integration** | Capture decisions and friction signals directly from Emacs: compilation errors, rapid saves, manual decisions |
 | **Safety Metadata** | Risk classification, reversibility tracking, affected systems, safety categories for every decision |
 | **Safety Dashboard** | Risk trend analysis, system exposure monitoring, safety score calculation |
 | **Decision Impact Analysis** | Dependency graphs, risk propagation, critical system identification |
@@ -65,7 +65,7 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Security Audit Log** | Immutable chronological log of all security-relevant events |
 | **Decision Versioning** | Version history, rollback support, change tracking |
 | **Automated Safety Checks** | Pre-decision safety analysis with risk scoring and recommendations |
-| **Synthetic Data Policy** | EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets — fidelity, privacy, bias audits, blocking gates |
+| **Synthetic Data Policy** | EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets: fidelity, privacy, bias audits, blocking gates |
 
 ---
 
@@ -73,10 +73,10 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 
 Tropelex doubles as empirical safety infrastructure for autonomous agents. For the alignment reframing of its features, threat models, and grant-specific technical summaries, see:
 
-- [SAFETY.md](./SAFETY.md) — mapping developer features to AI safety & control terminology.
-- [CAIS Grant Technical Summary](./docs/cais-summary.md) — objective drift and reward hacking prevention.
-- [FAR AI Grant Technical Summary](./docs/far-ai-summary.md) — cooperative multi-agent coordination and calibration.
-- [SFF Grant Technical Summary](./docs/sff-summary.md) — independent developer, open-source safety infrastructure.
+- [SAFETY.md](./SAFETY.md): mapping developer features to AI safety & control terminology.
+- [CAIS Grant Technical Summary](./docs/cais-summary.md) (objective drift and reward hacking prevention).
+- [FAR AI Grant Technical Summary](./docs/far-ai-summary.md): cooperative multi-agent coordination and calibration.
+- [SFF Grant Technical Summary](./docs/sff-summary.md) (independent developer, open-source safety infrastructure).
 
 ---
 
@@ -84,10 +84,10 @@ Tropelex doubles as empirical safety infrastructure for autonomous agents. For t
 
 - Python 3.10+
 - `uv` (recommended) or `pip`
-- OpenAI API key (for AI compression — optional, dictionary fallback available)
-- Brave Search API key (optional — falls back to DuckDuckGo free)
-- xAI API key (optional — enables X/Twitter search + LLM planner for Deep Research)
-- ScrapeCreators API key (optional — unlocks Reddit without rate limits, TikTok, Instagram, Threads, Pinterest)
+- OpenAI API key (for AI compression; optional, dictionary fallback available)
+- Brave Search API key (optional, falls back to DuckDuckGo free)
+- xAI API key (optional, enables X/Twitter search + LLM planner for Deep Research)
+- ScrapeCreators API key (optional, unlocks Reddit without rate limits, TikTok, Instagram, Threads, Pinterest)
 
 ---
 
@@ -140,13 +140,13 @@ Visit **http://localhost:8766** in your browser.
 
 ### 4. (Optional) Use the Prompt Hijacker
 
-Visit **http://localhost:8766/hijacker** — paste any verbose prompt and get it AI-compressed in one click.
+Visit **http://localhost:8766/hijacker**. Paste any verbose prompt and get it AI-compressed in one click.
 
 ---
 
 ## Web Interface
 
-The dashboard sidebar groups 32 sections into 9 categories — the same grouping used in `wishlist.md` for the feature backlog. Within a category, sections are ordered as they appear in the sidebar. Safety & Alignment is a single sidebar entry that opens onto seven in-page tabs (listed below) rather than seven separate sidebar entries, since those seven are all facets of one thing.
+The dashboard sidebar groups 32 sections into 9 categories, the same grouping used in `wishlist.md` for the feature backlog. Within a category, sections are ordered as they appear in the sidebar. Safety & Alignment is a single sidebar entry that opens onto seven in-page tabs (listed below) rather than seven separate sidebar entries, since those seven are all facets of one thing.
 
 ### Engine Core
 Browsing and visualizing what's stored.
@@ -157,10 +157,10 @@ Landing overview: quick stats, recent activity, and the Getting Started checklis
 #### Tropebook
 Add, search, and manage research citations. Each citation can have tags, entities, and relationships to other citations.
 
-- **Add Citation** — manually add a URL with title, summary, tags
-- **Import** — import JSON from Google Deep Research / NotebookLM export
-- **Search** — full-text search across titles and summaries
-- **Sync** — refresh all data from the server
+- **Add Citation**: manually add a URL with title, summary, tags
+- **Import**: import JSON from Google Deep Research / NotebookLM export
+- **Search**: full-text search across titles and summaries
+- **Sync**: refresh all data from the server
 
 #### Memory
 Project-based persistent memory. Each project stores:
@@ -176,17 +176,17 @@ Automatically detected patterns from session history. Shows what categories of w
 Interactive, force-directed knowledge graph of decisions and their relationships. Node size reflects confidence/age, edge color reflects relationship type, filterable by date range, confidence tier, and category.
 
 ### Quality & Integrity
-Surfacing problems in the decision corpus — stale, contradictory, or silently-drifted decisions.
+Surfacing problems in the decision corpus: stale, contradictory, or silently-drifted decisions.
 
 #### Insights
 Decision intelligence and knowledge analysis:
-- **Decision Confidence** — time-based reliability scoring (decays with age, boosted by references)
-- **Agent Proficiency** — tracks what the agent is good at per category (ui, backend, testing, etc.)
-- **Decision Timeline** — every decision with source, confidence, rationale, and relationship tags
-- **Decision Chains** — visualizes causal chains (A caused B caused C)
-- **ADR Generation** — one-click Architecture Decision Records in Nygard, MADR, or Tropelex format
-- **Session Replay** — structured memory diffs, rollback support
-- **Cross-Project Knowledge** — finds transferable solutions from similar projects
+- **Decision Confidence**: time-based reliability scoring (decays with age, boosted by references)
+- **Agent Proficiency**: tracks what the agent is good at per category (ui, backend, testing, etc.)
+- **Decision Timeline**: every decision with source, confidence, rationale, and relationship tags
+- **Decision Chains**: visualizes causal chains (A caused B caused C)
+- **ADR Generation**: one-click Architecture Decision Records in Nygard, MADR, or Tropelex format
+- **Session Replay**: structured memory diffs, rollback support
+- **Cross-Project Knowledge**: finds transferable solutions from similar projects
 
 #### Health
 Memory health dashboard: stale-decision alerts, category coverage gaps, growth trends, per-project quality scores, and maintenance recommendations.
@@ -195,13 +195,13 @@ Memory health dashboard: stale-decision alerts, category coverage gaps, growth t
 Decision Impact Analysis: links decisions to the commits/tasks that followed, tracks reversal rate and time-to-value, and scores architectural choices by ROI.
 
 #### Ghost Decisions
-Diffs incoming commits against the decision corpus to flag "ghost decisions" — code that silently contradicts a recorded decision without anyone documenting the drift.
+Diffs incoming commits against the decision corpus to flag "ghost decisions": code that silently contradicts a recorded decision without anyone documenting the drift.
 
 #### Pre-Write Guard
-Runs the same ghost-decision check *before* a diff is finalized, not after commit — prevention instead of after-the-fact detection.
+Runs the same ghost-decision check *before* a diff is finalized, not after commit: prevention instead of after-the-fact detection.
 
 #### Friction Mining
-Mines session transcripts for implicit friction signals — corrections, rephrasing, retry loops, rapid edits — that never got explicitly logged as decisions. Feeds a session-level friction score into the Health Dashboard.
+Mines session transcripts for implicit friction signals (corrections, rephrasing, retry loops, rapid edits) that never got explicitly logged as decisions. Feeds a session-level friction score into the Health Dashboard.
 
 #### Contradictions
 Actively scans for unresolved contradictions between decisions that are both still marked active (e.g., "use REST" and "use GraphQL" with no supersede link), with resolution suggestions.
@@ -210,7 +210,7 @@ Actively scans for unresolved contradictions between decisions that are both sti
 Helping a human or agent find and understand what's already known.
 
 #### Why Do We...?
-Conversational front-end that answers "why do we...?" questions by fusing RAG, the decision tree, and impact analysis into a full causal chain — provenance, supersession, downstream impact, and source citations.
+Conversational front-end that answers "why do we...?" questions by fusing RAG, the decision tree, and impact analysis into a full causal chain: provenance, supersession, downstream impact, and source citations.
 
 #### Context Prefetch
 Predicts the minimal context bundle for a task before an agent starts, sized to a token budget and prioritized by impact score rather than recency. Near-misses are surfaced with their scores instead of silently dropped.
@@ -219,7 +219,7 @@ Predicts the minimal context bundle for a task before an agent starts, sized to 
 Mines project markdown files for drift, contradictions, and undocumented decisions that never made it into the decision graph.
 
 ### Safety & Alignment
-Risk classification, review workflow, and compliance framing for the decision graph — one sidebar entry, seven in-page tabs. Each tab lazy-loads only its own data when selected. See [SAFETY.md](./SAFETY.md) for the full alignment/control-terminology mapping.
+Risk classification, review workflow, and compliance framing for the decision graph (one sidebar entry, seven in-page tabs). Each tab lazy-loads only its own data when selected. See [SAFETY.md](./SAFETY.md) for the full alignment/control-terminology mapping.
 
 #### Dashboard (tab)
 Risk trends, system exposure, and aggregate safety score across a project's decisions.
@@ -237,16 +237,16 @@ Provenance chain, integrity verification, tamper detection, and an immutable sec
 Review workflow for decisions flagged `requires_review`: pending queue, approve/reject, reviewer accountability, mitigation suggestions.
 
 #### Synthetic Data (tab)
-EU AI Act Art. 10 & 50 compliant registration for synthetic datasets used in agent training/eval — fidelity, privacy budget, bias audit, adversarial testing, and 10 blocking compliance gates.
+EU AI Act Art. 10 & 50 compliant registration for synthetic datasets used in agent training/eval: fidelity, privacy budget, bias audit, adversarial testing, and 10 blocking compliance gates.
 
 #### Agent Audit (tab)
-Every other feature in this app audits decisions and code; this audits the agent's own harness configuration — `CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent definitions, and skills — across five categories: hardcoded secrets, over-broad tool permissions, hook-injection risk, MCP server risk profiling, and injected-instruction patterns in agent/skill definitions. Read-only, A–F graded, defaults to scanning this Tropelex instance's own repo when no path is given.
+Every other feature in this app audits decisions and code; this audits the agent's own harness configuration (`CLAUDE.md`/`AGENTS.md`, `.mcp.json`, `.claude/settings.json`, hooks, agent definitions, and skills) across five categories: hardcoded secrets, over-broad tool permissions, hook-injection risk, MCP server risk profiling, and injected-instruction patterns in agent/skill definitions. Read-only, A–F graded, defaults to scanning this Tropelex instance's own repo when no path is given.
 
 ### Memory Lifecycle
 Keeping the memory store itself navigable and bounded as it grows.
 
 #### Time Travel
-Check out project memory as of any past date and generate agent context as if it were that point in time — a forensic tool for postmortems.
+Check out project memory as of any past date and generate agent context as if it were that point in time: a forensic tool for postmortems.
 
 #### Memory Compaction
 Collapses superseded or low-confidence decision chains into higher-level "epoch summaries" so memory matures instead of growing unbounded. Originals are archived, never deleted.
@@ -256,9 +256,9 @@ Pulling outside information in.
 
 #### Prompt Lab
 3-stage prompt preprocessor:
-1. **Compression** — AI strips filler, fixes typos, makes prompts imperative
-2. **Context Check** — flags vague or missing context
-3. **Structure** — formats output as TASK / CONSTRAINTS / CONTEXT
+1. **Compression**: AI strips filler, fixes typos, makes prompts imperative
+2. **Context Check**: flags vague or missing context
+3. **Structure**: formats output as TASK / CONSTRAINTS / CONTEXT
 
 The final output is ready to paste into any AI assistant.
 
@@ -268,9 +268,9 @@ Scheduled research feeds with trend detection across runs, anomaly flagging, cro
 #### Deep Research
 Two independent research engines, laid out side by side so neither buries the other, plus a hybrid mode:
 
-- **Multi-Source Scan** — last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes, synchronous.
-- **Citation-Grade Web Research** — [web-researcher-mcp](https://github.com/zoharbabin/web-researcher-mcp) (spoken to directly over MCP's stdio protocol, no extra Python dependency). Runs a small loop of search → LLM-refined follow-up query → search again, and imports every real, verifiable source URL straight into the Tropebook citation library. Requires the `web-researcher-mcp` binary on `PATH`.
-- **Hybrid** — runs both engines concurrently on the same query, then asks the project's LLM backend to deduplicate and merge them into a single report. Degrades gracefully if one engine fails: the other's results (and any citations it found) are still returned and imported.
+- **Multi-Source Scan**: last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes, synchronous.
+- **Citation-Grade Web Research**: [web-researcher-mcp](https://github.com/zoharbabin/web-researcher-mcp) (spoken to directly over MCP's stdio protocol, no extra Python dependency). Runs a small loop of search → LLM-refined follow-up query → search again, and imports every real, verifiable source URL straight into the Tropebook citation library. Requires the `web-researcher-mcp` binary on `PATH`.
+- **Hybrid**: runs both engines concurrently on the same query, then asks the project's LLM backend to deduplicate and merge them into a single report. Degrades gracefully if one engine fails: the other's results (and any citations it found) are still returned and imported.
 
 Configure sources for the multi-source scan in Settings → Deep Research Sources. Citation-grade research prefers `BRAVE_SEARCH_API_KEY` when set (falls back to the free DuckDuckGo provider otherwise, which rate-limits more aggressively under repeated use).
 
@@ -278,13 +278,13 @@ Configure sources for the multi-source scan in Settings → Deep Research Source
 Getting decisions to the humans (and other agents) who need them.
 
 #### Agent Handoff
-Generates role-aware context packets when one agent's session hands off to another — a TestEngineer gets test-relevant decisions and coverage gaps, a Frontend specialist gets something different. Token-budget-aware.
+Generates role-aware context packets when one agent's session hands off to another: a TestEngineer gets test-relevant decisions and coverage gaps, a Frontend specialist gets something different. Token-budget-aware.
 
 #### PR Bot
 Delivers ghost decisions, contradictions, and health scores as PR comments, so detection reaches developers where they already work instead of sitting in a dashboard.
 
 #### Narrative
-Converts the decision graph and git history into readable prose — "what was tried, what failed, why" — with presets for investors, new hires, and PMs. Exports to markdown/PDF.
+Converts the decision graph and git history into readable prose, "what was tried, what failed, why," with presets for investors, new hires, and PMs. Exports to markdown/PDF.
 
 #### Decision Market
 Team members place confidence bets on decisions before they're finalized; tracks bet accuracy against outcomes for per-person and per-category calibration scores.
@@ -293,16 +293,16 @@ Team members place confidence bets on decisions before they're finalized; tracks
 Bidirectional Slack integration: `/tropelex decide "..."` captures a decision inline, `/tropelex ask "..."` queries memory, with automatic extraction from chat threads.
 
 #### Personas
-Synthesizes "digital twin" persona summaries from agent proficiency tracking — strengths, weaknesses, and historical accuracy per category, meant as calibration notes for reviewers.
+Synthesizes "digital twin" persona summaries from agent proficiency tracking: strengths, weaknesses, and historical accuracy per category, meant as calibration notes for reviewers.
 
 ### Integrations & Ops
 Cross-system hooks and cost accounting.
 
 #### Git
 Repository integration and deep analysis:
-- **Summary** — tech stack detection, work category frequency, recent commits
-- **Sync** — extract decisions from conventional commits
-- **Deep Sync** — parse diffs, detect rationale, dependency changes, revert chains, structural patterns
+- **Summary**: tech stack detection, work category frequency, recent commits
+- **Sync**: extract decisions from conventional commits
+- **Deep Sync**: parse diffs, detect rationale, dependency changes, revert chains, structural patterns
 
 #### Benchmarks
 Opt-in, privacy-preserving comparison of structural statistics (not decision text) across projects. Sharing and aggregation are local to one install by default; Export/Import move a bundle of shared stats between installs as a plain JSON file (no networking) for true cross-machine comparison.
@@ -428,7 +428,7 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/last30days/query` | Run a deep research query — returns HTML output + citations (1–3 min) |
+| POST | `/api/last30days/query` | Run a deep research query, returns HTML output + citations (1–3 min) |
 
 ### Deep Research (web-researcher-mcp)
 
@@ -609,14 +609,14 @@ adapter.summarize_session("my-project", "Built the compression pipeline and UI")
 
 ## Emacs Integration
 
-The `emacs/tropelex-capture.el` package captures decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in `json.el` and `url.el`.
+The `emacs/tropelex-capture.el` package captures decisions, friction signals, and git commits directly from Emacs. Zero external dependencies: uses only built-in `json.el` and `url.el`.
 
 ### Setup
 
 ```elisp
 (add-to-list 'load-path "~/Tropelex/emacs")
 (require 'tropelex-capture)
-(tropelex-capture-mode 1)  ; global mode — enables all hooks
+(tropelex-capture-mode 1)  ; global mode, enables all hooks
 ```
 
 ### Commands
@@ -652,9 +652,9 @@ Auto-detects from: projectile → `vc-root-dir` → directory name fallback. Ove
 
 ## OpenCode Integration
 
-Slash commands and a startup hook for using Tropelex from inside [OpenCode](https://opencode.ai). Defined in [`.opencode/`](.opencode/) — the plugin itself is [`plugins/tropelex.js`](plugins/tropelex.js).
+Slash commands and a startup hook for using Tropelex from inside [OpenCode](https://opencode.ai). Defined in [`.opencode/`](.opencode/): the plugin itself is [`plugins/tropelex.js`](plugins/tropelex.js).
 
-**Setup required** — OpenCode only loads plugins it's told about:
+**Setup required.** OpenCode only loads plugins it's told about:
 
 ```bash
 cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js
@@ -664,17 +664,17 @@ Then add `"tropelex"` to the `"plugin"` array in `~/.config/opencode/opencode.js
 
 | Command | What it does |
 |---|---|
-| `/tropelex-record-decision` | Record a decision — `/tropelex-record-decision Using PostgreSQL for database` |
+| `/tropelex-record-decision` | Record a decision: `/tropelex-record-decision Using PostgreSQL for database` |
 | `/tropelex-end-session` | Summarize the session and trigger pattern learning |
 | `/tropelex-show-context` | Print accumulated context for the current project |
 | `/tropelex-context` | Run raw queries against project memory, insights, and recent decisions |
 | `/tropelex-up` | Create/update a project's memory record |
 
-Project name auto-detects from the workspace folder name or git remote; override with `TROPELEX_PROJECT`. The startup hook also compresses prompts over a configurable length and injects project context automatically — see `plugins/tropelex.js`'s header for all env vars (`TROPELEX_URL`, `TROPELEX_COMPRESS_MIN`, `TROPELEX_INJECT_CONTEXT`).
+Project name auto-detects from the workspace folder name or git remote; override with `TROPELEX_PROJECT`. The startup hook also compresses prompts over a configurable length and injects project context automatically. See `plugins/tropelex.js`'s header for all env vars (`TROPELEX_URL`, `TROPELEX_COMPRESS_MIN`, `TROPELEX_INJECT_CONTEXT`).
 
 ## CLI Reference
 
-A local command-line interface for the Tropebook citation library (`core/tropebook/cli.py`, installed as the `tropelex` command). Operates directly on local storage — doesn't require the server running.
+A local command-line interface for the Tropebook citation library (`core/tropebook/cli.py`, installed as the `tropelex` command). Operates directly on local storage. Doesn't require the server running.
 
 | Command | What it does |
 |---|---|
@@ -694,7 +694,7 @@ If `tropelex` isn't on `PATH`: `python -m core.tropebook.cli <command>`.
 
 ## MCP Server
 
-Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent — Claude Code, Cursor, Claude Desktop — can read and write project memory directly, without a bespoke per-editor integration.
+Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent (Claude Code, Cursor, Claude Desktop) can read and write project memory directly, without a bespoke per-editor integration.
 
 Lives in [`mcp_server/`](mcp_server/), in its own venv kept separate from Tropelex's own system-Python server.
 
@@ -708,7 +708,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 ### Register with Claude Code
 
-A project-scoped `.mcp.json` is committed at the repo root — anyone who clones Tropelex and opens it in Claude Code gets the `tropelex` MCP server automatically (it shells out to `mcp_server/run.sh`, which resolves its own venv relative to the repo, so no absolute paths are baked in). No manual registration needed.
+A project-scoped `.mcp.json` is committed at the repo root: anyone who clones Tropelex and opens it in Claude Code gets the `tropelex` MCP server automatically (it shells out to `mcp_server/run.sh`, which resolves its own venv relative to the repo, so no absolute paths are baked in). No manual registration needed.
 
 To register it in a different Claude Code project, or for another MCP client:
 
@@ -724,7 +724,7 @@ Requires the main Tropelex server running (`python3 -m core.tropebook.web.server
 
 ## Terminal UI
 
-A Textual-based terminal dashboard for anyone who lives in tmux rather than an editor — project list, decision table, contradiction count, capture decisions without leaving the terminal. Lives in [`tui/`](tui/), own venv, same setup pattern as the MCP server. See [`tui/README.md`](tui/README.md) for keybindings and setup.
+A Textual-based terminal dashboard for anyone who lives in tmux rather than an editor: project list, decision table, contradiction count, capture decisions without leaving the terminal. Lives in [`tui/`](tui/), own venv, same setup pattern as the MCP server. See [`tui/README.md`](tui/README.md) for keybindings and setup.
 
 ---
 
@@ -751,7 +751,7 @@ Tropelex/
 │   ├── embeddings.py        # Vector embeddings for semantic search
 │   ├── research_pipeline.py # Auto-research, staleness, dedup
 │   ├── llm.py               # LLM backend (OpenAI/Ollama)
-│   ├── friction/            # Friction mining — implicit signal detection
+│   ├── friction/            # Friction mining: implicit signal detection
 │   │   ├── miner.py         # Signal detection, scoring, zone grouping
 │   │   └── router.py        # POST /api/memory/{project}/friction/scan
 │   ├── last30days/          # Deep research engine (last30days integration)
@@ -836,7 +836,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ## Status
 
-**v3.2.0** — Dashboard overhaul + Emacs Magit/LSP integration + 17 router fixes + section persistence.
+**v3.2.0**: Dashboard overhaul + Emacs Magit/LSP integration + 17 router fixes + section persistence.
 
 ### Core Features
 - Memory, compression, pattern learning, research KB all working
@@ -851,13 +851,13 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - Agent skills: track proficiency per work category
 - Prompt genealogy: learn which compression strategies produce best outcomes
 - **Research Feeds**: scheduled monitoring with auto-ingest to citations (web_search + deep_research providers)
-- **Deep Research**: multi-source research via the last30days engine — Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis into narrative briefs
-- **Emacs Integration**: capture decisions, friction signals, and git commits from Emacs — with Magit hooks, LSP context, compilation auto-scan, rapid-save tracking
-- **Ghost Decisions**: silent drift detection — code contradicts decisions
+- **Deep Research**: multi-source research via the last30days engine (Reddit, X, YouTube, GitHub, HN, Polymarket) + LLM synthesis into narrative briefs
+- **Emacs Integration**: capture decisions, friction signals, and git commits from Emacs (with Magit hooks, LSP context, compilation auto-scan, rapid-save tracking)
+- **Ghost Decisions**: silent drift detection (code contradicts decisions)
 - **Explainable Memory**: conversational "why do we...?" with causal chains
 - **Agent Handoff Packets**: role-aware context bundles for multi-agent workflows
 - **Decision Market**: confidence bets, calibration tracking, leaderboard
-- **Memory Lens**: IDE inline annotations — GitLens but for decisions
+- **Memory Lens**: IDE inline annotations, like GitLens but for decisions
 - **Slack Capture**: bidirectional Slack integration for decision logging
 - **Time-Travel Debugger**: memory snapshots as of any past date
 - **Contradiction Detection**: actively scan for unresolved conflicting decisions
@@ -871,7 +871,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Narrative Mode**: readable prose summaries for non-technical audiences
 - **Cost Ledger**: per-decision token cost tracking and ROI scoring
 - **Predictive Prefetch**: budget-aware context assembly prioritized by impact score
-- **Background Scheduler**: automatic periodic tasks — feeds, ghost scans, stale checks
+- **Background Scheduler**: automatic periodic tasks (feeds, ghost scans, stale checks)
 
 ### Security & Reliability
 - **Rate limiting**: 30 req/min global + 5 feed runs/min on sensitive endpoints
