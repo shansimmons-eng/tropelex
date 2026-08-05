@@ -13,6 +13,6 @@ curl -s -X POST http://localhost:8766/api/memory -H "Content-Type: application/j
 ```
 
 **QuickStart Commands:**
-- `/tropelex-show-context` — Load accumulated knowledge
-- `/tropelex-record-decision` — Save a decision
-- `/tropelex-end-session` — End session + learn patterns
+- `/tropelex-show-context`: Load accumulated knowledge
+- `/tropelex-record-decision`: Save a decision
+- `/tropelex-end-session`: End session + learn patterns

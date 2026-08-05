@@ -10,7 +10,7 @@ Record this decision in the Tropelex memory system:
 
 **Context:** Based on our recent discussion
 
-Use this bash command to record it:
-!`curl -s -X POST http://localhost:8766/api/memory/tropelex/decisions -H "Content-Type: application/json" -d "{\"decision\":\"$ARGUMENTS\",\"context\":\"From OpenCode session\"}" && echo "✓ Decision recorded in Tropelex"`
+Use this bash command to record it (project inferred from the current directory name):
+!`PROJECT=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]'); curl -s -X POST "http://localhost:8766/api/memory/$PROJECT/decisions" -H "Content-Type: application/json" -d "{\"decision\":\"$ARGUMENTS\",\"context\":\"From OpenCode session\"}" && echo "✓ Decision recorded for project $PROJECT"`
 
 After recording, continue with the task at hand.

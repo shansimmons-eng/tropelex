@@ -8,8 +8,10 @@ Summarize what was accomplished in this session, then record it in Tropelex:
 
 **Session Summary:** $ARGUMENTS
 
-Use this bash command to record and trigger pattern learning:
-!`curl -s -X POST http://localhost:8766/api/memory/tropelex/sessions -H "Content-Type: application/json" -d "{\"summary\":\"$ARGUMENTS\"}" && echo "✓ Session recorded - patterns learned"`
+Use this bash command to record it (project inferred from the current
+directory name; recorded under agent "OpenCode" so per-agent skill/persona
+tracking has real data):
+!`PROJECT=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]'); curl -s -X POST "http://localhost:8766/api/memory/$PROJECT/sessions/record" -H "Content-Type: application/json" -d "{\"summary\":\"$ARGUMENTS\",\"session_type\":\"manual\",\"agent_name\":\"OpenCode\"}" && echo "✓ Session recorded for project $PROJECT"`
 
 The system will analyze this summary and learn patterns about:
 - UI vs backend work

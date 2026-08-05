@@ -4,30 +4,33 @@ This directory contains hooks and commands that integrate Tropelex with OpenCode
 
 ## How It Works
 
-### Startup Hook
-- **Runs automatically** when OpenCode starts in this workspace
-- **Detects project name** from directory name (`tropelex-test`)
-- **Loads context** from Tropelex memory for this project
-- **Injects context** into your system prompt automatically
+### Startup Hook (`hooks/startup.py`): not currently wired up
+This script detects the project name from the directory and loads Tropelex
+context, but OpenCode only auto-runs plugins placed in `.opencode/plugins/`
+using the `@opencode-ai/plugin` SDK (JS/TS): a standalone Python file here
+is never invoked automatically. Use `/tropelex-show-context` manually to get
+the same effect until this is ported to a real plugin.
 
 ### Slash Commands
 
-Use these commands during your session:
+OpenCode auto-discovers any `.md` file in this directory as a slash command
+named after the file: no config needed, nothing to register. The commands
+actually present here:
 
-#### `/record-decision`
+#### `/tropelex-record-decision`
 Record a decision in project memory.
 
 ```
-/record-decision Using PostgreSQL for database | Better JSON support
+/tropelex-record-decision Using PostgreSQL for database | Better JSON support
 ```
 
-Format: `/record-decision <decision> | <context (optional)>`
+Format: `/tropelex-record-decision <decision> | <context (optional)>`
 
-#### `/end-session`
+#### `/tropelex-end-session`
 Summarize your work and trigger pattern learning.
 
 ```
-/end-session Built user auth with JWT, added password reset flow
+/tropelex-end-session Built user auth with JWT, added password reset flow
 ```
 
 This analyzes your summary and learns patterns like:
@@ -36,11 +39,11 @@ This analyzes your summary and learns patterns like:
 - Performance improvements
 - Security updates
 
-#### `/tropelex-context`
+#### `/tropelex-show-context`
 View current project context.
 
 ```
-/tropelex-context
+/tropelex-show-context
 ```
 
 Shows all accumulated knowledge for this project.
