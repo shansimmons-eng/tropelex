@@ -140,6 +140,10 @@ _RATES: dict[str, float] = {
     "api_call": 0.01,         # rough $/call
     "rework": 0.05,           # rough $/rework event
     "token_usage": 0.000002,  # rough $/token for GPT-4 class
+    "llm_usage": 1.0,         # identity: amount is already an accurate
+                               # precomputed USD figure (see
+                               # core/cost/tracker.py:record_llm_cost),
+                               # not a magnitude to multiply by a rate
 }
 
 
@@ -168,6 +172,10 @@ def _event_tokens(event: CostEvent) -> int:
     """Extract token count from a token_usage event, else 0."""
     if event.event_type == "token_usage" and event.unit == "tokens":
         return int(event.amount)
+    if event.event_type == "llm_usage":
+        # unit is "usd" here (amount is a precomputed dollar figure), so the
+        # real token count lives in metadata instead.
+        return int(event.metadata.get("total_tokens", 0))
     return 0
 
 

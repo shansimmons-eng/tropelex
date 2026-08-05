@@ -21,9 +21,11 @@ from core.cost import (
     ROIScore,
     Ok,
     Err,
+    Result,
     compute_event_cost,
     rollup_costs,
     compute_roi,
+    _event_tokens,
 )
 from core.decision_tree import DecisionTree
 from core.knowledge_decay import decay_score
@@ -292,8 +294,7 @@ def get_decision_cost(decision_id: str, events: list[CostEvent]) -> DecisionCost
         cost = compute_event_cost(ev)
         if isinstance(cost, Ok):
             total_usd += cost.value
-            if ev.event_type == "token_usage" and ev.unit == "tokens":
-                total_tokens += int(ev.amount)
+            total_tokens += _event_tokens(ev)
             if ev.event_type == "rework":
                 rework_usd += cost.value
     return DecisionCost(
@@ -338,3 +339,67 @@ def compute_cost_trend(
         }
         for d, v in sorted(daily.items())
     ]
+
+
+# ---------------------------------------------------------------------------
+# Real LLM usage -> cost event (feeds the ledger from actual API calls)
+# ---------------------------------------------------------------------------
+
+# $/token, split by input vs output where the provider prices them
+# differently. Update these if OpenAI changes pricing.
+_MODEL_PRICING: dict[str, dict[str, float]] = {
+    "gpt-4o-mini": {"input": 0.15e-6, "output": 0.60e-6},
+    "text-embedding-3-small": {"input": 0.02e-6, "output": 0.0},
+}
+
+
+def record_llm_cost(
+    project: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    model: str,
+    description: str = "",
+    decision_id: str = "_general",
+) -> Result[CostEvent]:
+    """Record a real OpenAI usage event as accurately-priced cost.
+
+    Computes actual USD from the model's real per-token pricing (not the
+    flat generic token_usage rate), so this is real spend, not an estimate.
+    decision_id defaults to "_general" for calls not tied to a specific
+    decision (the common case: compression, embeddings) -- still rolls up
+    into real project totals. Never raises; returns Err on failure so
+    callers can no-op rather than letting cost tracking break a real LLM
+    call.
+    """
+    pricing = _MODEL_PRICING.get(model)
+    if pricing is None:
+        return Err(
+            error=f"No pricing known for model {model!r}",
+            code="UNKNOWN_MODEL",
+            details={"known_models": list(_MODEL_PRICING)},
+        )
+    total_tokens = prompt_tokens + completion_tokens
+    amount_usd = (
+        prompt_tokens * pricing["input"] + completion_tokens * pricing["output"]
+    )
+    event = CostEvent(
+        id="",
+        decision_id=decision_id,
+        event_type="llm_usage",
+        amount=round(amount_usd, 8),
+        unit="usd",
+        description=description,
+        timestamp=_now_iso(),
+        metadata={
+            "model": model,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        },
+    )
+    tracker = CostTracker(DecisionTree())
+    try:
+        recorded = tracker.record_cost_event(project, event)
+    except CostError as exc:
+        return Err(error=str(exc), code=exc.code, details=exc.details)
+    return Ok(value=recorded)

@@ -272,16 +272,17 @@ class TestPersonaMarketSafetyCrossConnect:
         monkeypatch.setattr("core.agent_skills.AgentSkillGraph", _FakeSkillGraph)
 
         # Decision in the "auth" category — matches the fake persona's weakness.
-        client.post(f"/api/memory/{project}/decisions", json={
+        created = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Ship the new login flow",
             "context": "",
             "safety_metadata": {"affected_systems": ["auth"]},
-        })
+        }).json()
+        decision_id = created["decision"]["id"]
 
         # Poor market calibration in "auth": 3 incorrect, 1 correct.
         for i, outcome in enumerate(["incorrect", "incorrect", "incorrect", "correct"]):
             placed = client.post(f"/api/memory/{project}/market/bet", json={
-                "decision_id": f"d{i}", "agent_name": project,
+                "decision_id": decision_id, "agent_name": project,
                 "confidence": 0.8, "category": "auth",
             }).json()
             bet_id = placed["bet"]["id"]
@@ -295,6 +296,46 @@ class TestPersonaMarketSafetyCrossConnect:
         data = resp.json()
         assert data["total_pending"] == 1
         assert "auth" in data["pending_reviews"][0]["escalation_reason"]
+
+    def test_approved_decision_does_not_re_escalate(self, client, project, monkeypatch):
+        """Regression test: approving an auto-escalated decision must make it
+        leave the pending queue for good. Previously, since the persona/market
+        risk signal that triggered escalation doesn't go away just because a
+        human approved the decision, the very next /reviews/pending call
+        re-flagged it (requires_review=False -> True again), so it never
+        actually left the queue no matter how many times it was approved."""
+        monkeypatch.setattr("core.agent_skills.AgentSkillGraph", _FakeSkillGraph)
+
+        created = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Ship the new login flow",
+            "context": "",
+            "safety_metadata": {"affected_systems": ["auth"]},
+        }).json()
+        decision_id = created["decision"]["id"]
+
+        for i, outcome in enumerate(["incorrect", "incorrect", "incorrect", "correct"]):
+            placed = client.post(f"/api/memory/{project}/market/bet", json={
+                "decision_id": decision_id, "agent_name": project,
+                "confidence": 0.8, "category": "auth",
+            }).json()
+            client.post(f"/api/memory/{project}/market/resolve", json={
+                "bet_id": placed["bet"]["id"], "outcome": outcome,
+            })
+
+        # Confirm it's actually in the queue before approving.
+        assert client.get(f"/api/memory/{project}/reviews/pending").json()["total_pending"] == 1
+
+        approved = client.post(
+            f"/api/memory/{project}/decisions/{decision_id}/approve",
+            params={"reviewer": "shan"},
+        )
+        assert approved.status_code == 200
+
+        # Call /reviews/pending twice — the bug only reproduced on the call
+        # *after* the approval, since that's what re-runs the escalation check.
+        for _ in range(2):
+            resp = client.get(f"/api/memory/{project}/reviews/pending")
+            assert resp.json()["total_pending"] == 0, "approved decision re-entered the pending queue"
 
     def test_weak_category_but_good_calibration_no_escalation(self, client, project, monkeypatch):
         # Persona weakness alone, without poor market calibration, is not

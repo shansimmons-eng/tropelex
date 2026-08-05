@@ -263,6 +263,7 @@ class CitationUpdate(BaseModel):
 class CompressRequest(BaseModel):
     prompt: str = Field(..., max_length=8000)
     level: int = Field(2, ge=1, le=3)
+    project: str | None = Field(None, max_length=100)
 
 
 class LinkRequest(BaseModel):
@@ -1137,7 +1138,7 @@ async def compress_prompt(req: CompressRequest):
 
         # Sanitize input
         prompt = req.prompt.strip()[:8000]
-        result = await llm_compress(prompt)
+        result = await llm_compress(prompt, project=req.project)
         compressed = result["compressed"]
         return {
             "compressed": compressed,
@@ -2242,6 +2243,14 @@ def _apply_persona_market_escalation(project: str, memory: dict, mm) -> int:
     for d in memory.get("decisions", []):
         safety = d.setdefault("safety_metadata", {})
         if safety.get("requires_review"):
+            continue
+        # A human already reviewed this decision at least once — respect
+        # that resolution rather than re-flagging it every time this signal
+        # is re-evaluated. Without this, approving a decision (which sets
+        # requires_review=False) just gets undone on the next pending-reviews
+        # load as long as the persona/market risk category still applies,
+        # so it never actually leaves the queue.
+        if d.get("safety_reviews"):
             continue
         touched = {safety.get("safety_category", "general"), *safety.get("affected_systems", [])}
         matched = touched & risk_categories.keys()
@@ -4193,39 +4202,69 @@ async def detect_tampering(project: str):
 
         tamper_flags = []
 
-        # Check for ID continuity
+        # Check for ID continuity — duplicate IDs can only happen via direct
+        # file manipulation; the API always generates unique ones.
         ids = [d.get("id") for d in decisions if d.get("id")]
         if len(ids) != len(set(ids)):
             tamper_flags.append({
                 "type": "duplicate_ids",
                 "severity": "high",
-                "message": "Duplicate decision IDs detected",
+                "message": "Duplicate decision IDs found — the API never generates these, so this points to direct file edits rather than normal use.",
             })
 
-        # Check for timestamp anomalies
-        timestamps = [d.get("timestamp") for d in decisions if d.get("timestamp")]
-        for i in range(1, len(timestamps)):
-            if timestamps[i] < timestamps[i-1]:
-                tamper_flags.append({
-                    "type": "timestamp_anomaly",
-                    "severity": "medium",
-                    "index": i,
-                    "message": f"Timestamp out of order at index {i}",
-                })
+        # Check for malformed ID format — the API always generates 12-char
+        # lowercase hex IDs (uuid4().hex[:12]); anything else means the
+        # record wasn't created through the normal decision-capture path.
+        _ID_RE = re.compile(r"^[0-9a-f]{12}$")
+        malformed = [d.get("id") for d in decisions if d.get("id") and not _ID_RE.match(d.get("id"))]
+        if malformed:
+            tamper_flags.append({
+                "type": "malformed_ids",
+                "severity": "high",
+                "count": len(malformed),
+                "message": f"{len(malformed)} decision ID(s) don't match the format the API generates — likely written outside the normal decision-capture path.",
+            })
 
-        # Check for empty decisions
+        # Check for empty decisions — the API requires non-empty decision
+        # text, so an empty one means the record was edited directly.
         empty_count = sum(1 for d in decisions if not d.get("decision"))
         if empty_count > 0:
             tamper_flags.append({
                 "type": "empty_decisions",
                 "severity": "high",
                 "count": empty_count,
-                "message": f"{empty_count} decisions have empty decision text",
+                "message": f"{empty_count} decision(s) have empty decision text, which the API's validation would normally reject.",
             })
 
-        # Tamper risk score
+        # Check for timestamp anomalies — lower confidence than the checks
+        # above: this can happen from clock skew, backdated test data, or
+        # concurrent writes, not just tampering, so it's flagged as an
+        # ordering irregularity worth a look rather than asserted as proof
+        # of anything.
+        timestamps = [d.get("timestamp") for d in decisions if d.get("timestamp")]
+        for i in range(1, len(timestamps)):
+            if timestamps[i] < timestamps[i-1]:
+                tamper_flags.append({
+                    "type": "timestamp_anomaly",
+                    "severity": "low",
+                    "index": i,
+                    "message": f"Decision at index {i} has an earlier timestamp than the one before it — could be reordering, backdated data, clock skew, or (less likely) tampering. Not conclusive on its own.",
+                })
+
+        # Status reflects the most severe flag type present, not just how
+        # many flags there are — a pile of low-confidence timestamp
+        # irregularities shouldn't read the same as one duplicate-ID hit.
+        # "compromised" is reserved for flags the API's own validation
+        # would never allow (duplicate/malformed IDs, empty text) — genuine
+        # structural evidence, not just statistical noise.
+        severities_present = {f["severity"] for f in tamper_flags}
+        if not tamper_flags:
+            status = "clean"
+        elif "high" in severities_present:
+            status = "compromised"
+        else:
+            status = "alert"
         tamper_risk = len(tamper_flags) / max(len(decisions), 1)
-        status = "clean" if tamper_risk == 0 else "suspicious" if tamper_risk < 0.1 else "compromised"
 
         return {
             "project": project,
@@ -4881,6 +4920,7 @@ async def record_session(project: str, req: SessionRecordRequest):
     """Record current memory state as a session snapshot."""
     project = _sanitise_project(project)
     mm = get_memory_manager()
+    from core.agent_identity import normalize_agent_name
     from core.session_replay import SessionReplay
 
     replay = SessionReplay(str(BASE_DIR))
@@ -4898,7 +4938,7 @@ async def record_session(project: str, req: SessionRecordRequest):
         project, before, current,
         summary=req.summary,
         session_type=req.session_type,
-        agent=req.agent_name.strip() or "unspecified",
+        agent=normalize_agent_name(req.agent_name),
     )
     _emit_telemetry("OK", f"Session recorded for {project}")
     return result
@@ -5133,10 +5173,12 @@ async def list_project_agents(project: str):
 async def get_agent_summary(project: str, agent: str):
     """Aggregate skill, friction, and session stats for one agent within a project."""
     project = _sanitise_project(project)
+    from core.agent_identity import normalize_agent_name
     from core.agent_skills import AgentSkillGraph
     from core.friction.miner import compute_friction_by_agent
     from core.session_replay import SessionReplay
 
+    agent = normalize_agent_name(agent)
     graph = AgentSkillGraph(str(BASE_DIR))
     replay = SessionReplay(str(BASE_DIR))
     memory = get_memory_manager().get_project_memory(project)

@@ -53,7 +53,7 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
     writes to.
     """
     try:
-        result = await run_web_deep_research(body.topic, max_steps=body.max_steps)
+        result = await run_web_deep_research(body.topic, max_steps=body.max_steps, project=project)
     except WebResearcherError as exc:
         logger.error("web deep research failed for topic %r: %s", body.topic, exc)
         raise HTTPException(status_code=502, detail=str(exc))
@@ -116,7 +116,7 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
 
     async def _run_web_research() -> dict[str, Any] | Exception:
         try:
-            return await run_web_deep_research(body.query, max_steps=body.max_web_steps)
+            return await run_web_deep_research(body.query, max_steps=body.max_web_steps, project=project)
         except WebResearcherError as exc:
             logger.warning("web-research leg of hybrid research failed: %s", exc)
             return exc
@@ -145,7 +145,7 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
             sources, add_relationships=False, source_type=SourceType.WEB_RESEARCHER_MCP
         )
 
-    merged = await _merge_reports(body.query, l30d_markdown, web_markdown)
+    merged = await _merge_reports(body.query, l30d_markdown, web_markdown, project=project)
 
     from core.tropebook.web.server import _save_deep_research_run
 
@@ -167,7 +167,9 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
     }
 
 
-async def _merge_reports(query: str, last30days_md: str, web_research_md: str) -> str:
+async def _merge_reports(
+    query: str, last30days_md: str, web_research_md: str, project: str | None = None,
+) -> str:
     """Ask the LLM to merge and deduplicate the two reports into one.
 
     Falls back to a simple concatenation (clearly labeled) when no LLM
@@ -193,6 +195,8 @@ async def _merge_reports(query: str, last30days_md: str, web_research_md: str) -
             system="You merge research reports. Output only the merged markdown report.",
             user=prompt,
             max_tokens=1500,
+            project=project,
+            description="deep research: merge reports",
         )
     except Exception as exc:
         logger.warning("hybrid merge LLM call failed, falling back to concatenation: %s", exc)

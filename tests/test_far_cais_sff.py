@@ -6,12 +6,21 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from core.memory.manager import MemoryManager
 from core.tropebook.web.server import app
 
 
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+def _load_memory(project: str) -> dict:
+    return MemoryManager().get_project_memory(project)
+
+
+def _save_memory(project: str, memory: dict) -> None:
+    MemoryManager().save_project_memory(project, memory)
 
 
 @pytest.fixture
@@ -215,7 +224,65 @@ class TestTamperDetection:
         response = client.get(f"/api/memory/{project}/tamper-detection")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] in ["clean", "suspicious", "compromised"]
+        assert data["status"] in ["clean", "alert", "compromised"]
+
+    def test_no_decisions_is_clean(self, client, project):
+        response = client.get(f"/api/memory/{project}/tamper-detection")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "clean"
+        assert data["flags"] == []
+
+    def test_timestamp_only_anomaly_is_alert_not_compromised(self, client, project):
+        """A single ordering irregularity (the only kind of flag a normal
+        multi-agent/backdated-import workflow can trigger) must read as a
+        low-confidence alert, not an assertion that the project was
+        compromised — that word is reserved for structural violations the
+        API's own validation would never allow through."""
+        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
+        client.post(f"/api/memory/{project}/decisions", json={"decision": "Second", "context": ""})
+
+        memory = _load_memory(project)
+        decisions = memory["decisions"]
+        decisions[0]["timestamp"], decisions[1]["timestamp"] = decisions[1]["timestamp"], decisions[0]["timestamp"]
+        _save_memory(project, memory)
+
+        response = client.get(f"/api/memory/{project}/tamper-detection")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "alert"
+        assert data["flags"][0]["type"] == "timestamp_anomaly"
+        assert data["flags"][0]["severity"] == "low"
+        assert "not conclusive" in data["flags"][0]["message"].lower()
+
+    def test_duplicate_ids_is_compromised_with_high_severity(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
+
+        memory = _load_memory(project)
+        original = memory["decisions"][0]
+        memory["decisions"].append({**original})  # exact duplicate, including id
+        _save_memory(project, memory)
+
+        response = client.get(f"/api/memory/{project}/tamper-detection")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "compromised"
+        flag_types = {f["type"] for f in data["flags"]}
+        assert "duplicate_ids" in flag_types
+
+    def test_malformed_id_is_compromised(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
+
+        memory = _load_memory(project)
+        memory["decisions"][0]["id"] = "not-a-real-id"
+        _save_memory(project, memory)
+
+        response = client.get(f"/api/memory/{project}/tamper-detection")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "compromised"
+        flag_types = {f["type"] for f in data["flags"]}
+        assert "malformed_ids" in flag_types
 
 
 class TestSecurityAuditLog:

@@ -65,7 +65,31 @@ def _openai_key() -> str | None:
     return key if key.startswith("sk-") else None
 
 
-async def _openai_chat(messages: list, max_tokens: int = 1000) -> str | None:
+def _record_usage_best_effort(
+    project: str | None, usage: dict, model: str, description: str,
+) -> None:
+    """Record a real cost event from an OpenAI usage block. Never raises --
+    a cost-tracking failure must never break the actual LLM call."""
+    try:
+        from core.cost.tracker import record_llm_cost
+
+        record_llm_cost(
+            project or "_global",
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            model=model,
+            description=description,
+        )
+    except Exception as e:
+        logger.warning("Cost tracking failed (non-fatal): %s", e)
+
+
+async def _openai_chat(
+    messages: list,
+    max_tokens: int = 1000,
+    project: str | None = None,
+    description: str = "chat",
+) -> str | None:
     key = _openai_key()
     if not key:
         return None
@@ -87,14 +111,20 @@ async def _openai_chat(messages: list, max_tokens: int = 1000) -> str | None:
                 },
             )
             if r.status_code == 200:
-                return r.json()["choices"][0]["message"]["content"].strip()
+                data = r.json()
+                usage = data.get("usage") or {}
+                if usage:
+                    _record_usage_best_effort(project, usage, OPENAI_CHAT_MODEL, description)
+                return data["choices"][0]["message"]["content"].strip()
             logger.error("OpenAI chat error %s: %s", r.status_code, r.text[:200])
     except Exception as e:
         logger.warning("OpenAI chat failed: %s", e)
     return None
 
 
-async def _openai_embed(texts: list[str]) -> list[list[float]] | None:
+async def _openai_embed(
+    texts: list[str], project: str | None = None,
+) -> list[list[float]] | None:
     key = _openai_key()
     if not key:
         return None
@@ -111,7 +141,11 @@ async def _openai_embed(texts: list[str]) -> list[list[float]] | None:
                 json={"model": OPENAI_EMBED_MODEL, "input": texts},
             )
             if r.status_code == 200:
-                data = r.json()["data"]
+                body = r.json()
+                usage = body.get("usage") or {}
+                if usage:
+                    _record_usage_best_effort(project, usage, OPENAI_EMBED_MODEL, "embedding")
+                data = body["data"]
                 data.sort(key=lambda x: x["index"])
                 return [d["embedding"] for d in data]
             logger.error("OpenAI embed error %s: %s", r.status_code, r.text[:200])
@@ -123,7 +157,7 @@ async def _openai_embed(texts: list[str]) -> list[list[float]] | None:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-async def compress(prompt: str) -> dict:
+async def compress(prompt: str, project: str | None = None) -> dict:
     """
     Compress a prompt. Tries Ollama first, falls back to OpenAI.
     Returns {"compressed": str, "backend": str, "error": str|None}
@@ -133,7 +167,7 @@ async def compress(prompt: str) -> dict:
         {"role": "user", "content": prompt},
     ]
 
-    # Try Ollama first
+    # Try Ollama first (free/local -- never produces a cost event)
     if await _ollama_available():
         result = await _ollama_chat(messages)
         if result:
@@ -144,7 +178,12 @@ async def compress(prompt: str) -> dict:
             }
 
     # Fall back to OpenAI
-    result = await _openai_chat(messages, max_tokens=min(len(prompt) // 2 + 100, 1000))
+    result = await _openai_chat(
+        messages,
+        max_tokens=min(len(prompt) // 2 + 100, 1000),
+        project=project,
+        description="prompt compression",
+    )
     if result:
         return {
             "compressed": result,
@@ -159,7 +198,13 @@ async def compress(prompt: str) -> dict:
     }
 
 
-async def chat(system: str, user: str, max_tokens: int = 500) -> str | None:
+async def chat(
+    system: str,
+    user: str,
+    max_tokens: int = 500,
+    project: str | None = None,
+    description: str = "chat",
+) -> str | None:
     """
     General-purpose chat. Ollama → OpenAI fallback.
     """
@@ -171,10 +216,10 @@ async def chat(system: str, user: str, max_tokens: int = 500) -> str | None:
         result = await _ollama_chat(messages)
         if result:
             return result
-    return await _openai_chat(messages, max_tokens=max_tokens)
+    return await _openai_chat(messages, max_tokens=max_tokens, project=project, description=description)
 
 
-async def embed(texts: list[str]) -> list[list[float]] | None:
+async def embed(texts: list[str], project: str | None = None) -> list[list[float]] | None:
     """
     Generate embeddings. OpenAI text-embedding-3-small only (best quality/cost).
     Returns list of float vectors, or None if unavailable.
@@ -185,16 +230,16 @@ async def embed(texts: list[str]) -> list[list[float]] | None:
     results = []
     for i in range(0, len(texts), 100):
         batch = texts[i : i + 100]
-        vecs = await _openai_embed(batch)
+        vecs = await _openai_embed(batch, project=project)
         if vecs is None:
             return None
         results.extend(vecs)
     return results
 
 
-async def embed_one(text: str) -> list[float] | None:
+async def embed_one(text: str, project: str | None = None) -> list[float] | None:
     """Embed a single string."""
-    vecs = await embed([text])
+    vecs = await embed([text], project=project)
     return vecs[0] if vecs else None
 
 
