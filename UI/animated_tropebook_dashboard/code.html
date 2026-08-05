@@ -14,22 +14,43 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
 
-<!-- Font Anti-Flash Verification Guard Script -->
+<!-- Anti-Flash Verification Guard Script -->
+<!-- Gates on TWO signals, not just fonts: web fonts, and the Tailwind CDN
+     script (loaded further down as a blocking <script src>, which builds
+     all utility CSS at runtime after it downloads and executes). Fonts can
+     resolve from the browser's font cache faster than that CDN script
+     downloads, especially on a cold cache or slow connection -- if the
+     guard only waited on fonts, it would unhide the page before Tailwind's
+     classes exist yet, showing genuinely unstyled HTML for a flash. That
+     race (not just font-swap) is what "creeping back in" intermittently. -->
 <script>
     document.documentElement.classList.add('fonts-loading');
+    window.__tropelexReady = { fonts: false, tailwind: false };
+    function __tropelexMaybeReveal() {
+        if (window.__tropelexReady.fonts && window.__tropelexReady.tailwind) {
+            document.documentElement.classList.remove('fonts-loading');
+        }
+    }
     if ('fonts' in document) {
       Promise.all([
         document.fonts.load('1em "Plus Jakarta Sans"'),
         document.fonts.load('1em "Inter"'),
         document.fonts.load('1em "JetBrains Mono"')
       ]).then(() => {
-        document.documentElement.classList.remove('fonts-loading');
+        window.__tropelexReady.fonts = true;
+        __tropelexMaybeReveal();
       }).catch(() => {
-        document.documentElement.classList.remove('fonts-loading');
+        window.__tropelexReady.fonts = true;
+        __tropelexMaybeReveal();
       });
     } else {
-      document.documentElement.classList.remove('fonts-loading');
+      window.__tropelexReady.fonts = true;
     }
+    // Safety net: if the Tailwind CDN script never loads at all (blocked by
+    // an ad-blocker, offline, CDN outage), force-reveal anyway after 4s --
+    // a permanently blank page is a far worse failure than the flash this
+    // guard exists to prevent.
+    setTimeout(() => document.documentElement.classList.remove('fonts-loading'), 4000);
 </script>
 
 <style>
@@ -62,6 +83,17 @@
     }
 </style>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    // Runs only once the Tailwind CDN script above has fully downloaded and
+    // executed (synchronous <script src> tags run in strict document order),
+    // so this is the real "Tailwind is ready" signal -- there's no official
+    // ready event from the Play CDN build. Double rAF gives its initial
+    // class-application pass a paint cycle to settle before revealing.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        window.__tropelexReady.tailwind = true;
+        __tropelexMaybeReveal();
+    }));
+</script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 tailwind.config = {
@@ -186,17 +218,15 @@ tailwind.config = {
     /* ── Sidebar ── */
     .sidebar {
         position: fixed; top: 0; left: 0; bottom: 0;
-        width: 240px; z-index: 50;
+        width: 272px; z-index: 50;
         background: rgba(12, 19, 36, 0.92);
         backdrop-filter: blur(20px);
         border-right: 1px solid rgba(165, 128, 250, 0.12);
         display: flex; flex-direction: column;
-        overflow-y: auto;
         transition: transform 0.3s ease;
     }
     .sidebar-header { padding: 1.25rem 1rem; border-bottom: 1px solid rgba(165, 128, 250, 0.08); }
-    .sidebar-nav { flex: 1; padding: 0.5rem 0; overflow-y: auto; }
-    .sidebar-footer { padding: 0.75rem 1rem; border-top: 1px solid rgba(165, 128, 250, 0.08); }
+    .sidebar-nav { flex: 1; padding: 0.5rem 0; overflow-y: auto; min-height: 0; }
     @media (max-width: 767px) {
         .sidebar { transform: translateX(-100%); }
         .sidebar.open { transform: translateX(0); }
@@ -205,7 +235,7 @@ tailwind.config = {
         main { padding-bottom: 4rem; }
     }
     @media (min-width: 768px) {
-        main { margin-left: 240px; }
+        main { margin-left: 272px; }
     }
 
     /* ── Accordion ── */
@@ -393,7 +423,7 @@ tailwind.config = {
         gap: 16px;
     }
     @media (min-width: 768px) {
-        .status-footer { left: 240px; }
+        .status-footer { left: 272px; }
     }
     .status-footer .status-dot {
         width: 7px;
@@ -731,54 +761,54 @@ void main() {
         <p class="font-mono text-[10px] text-outline uppercase tracking-wider mt-1 ml-1">The Rationale Engine</p>
     </div>
     <div class="sidebar-nav">
-        <div class="px-4 py-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-220px)]">
-            <button class="nav-item active flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="content" onclick="switchSection('content')">
+        <div class="px-4 py-4 space-y-1.5">
+            <button class="nav-item active flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="content" onclick="switchSection('content')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">dashboard</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Engine Core</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="quality" onclick="switchSection('quality')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="quality" onclick="switchSection('quality')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">verified</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Quality & Integrity</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="explainability" onclick="switchSection('explainability')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="explainability" onclick="switchSection('explainability')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">auto_awesome</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Explainability & Discovery</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="safety" onclick="switchSection('safety')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="safety" onclick="switchSection('safety')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">shield_lock</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Safety & Alignment</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="lifecycle" onclick="switchSection('lifecycle')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="lifecycle" onclick="switchSection('lifecycle')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">history</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Memory Lifecycle</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="research" onclick="switchSection('research')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="research" onclick="switchSection('research')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">science</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Research & Ingestion</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="team" onclick="switchSection('team')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="team" onclick="switchSection('team')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">groups</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Team & Collaboration</span>
             </button>
 
-            <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="integrations" onclick="switchSection('integrations')">
+            <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="integrations" onclick="switchSection('integrations')">
                 <span class="material-symbols-outlined text-lg text-accent-lavender">hub</span>
                 <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Integrations & Ops</span>
             </button>
 
             <div class="pt-4 mt-4 border-t border-glass-border">
-                <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="onboarding" onclick="switchSection('onboarding')">
+                <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="onboarding" onclick="switchSection('onboarding')">
                     <span class="material-symbols-outlined text-lg text-accent-sky">rocket_launch</span>
                     <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Getting Started</span>
                 </button>
 
-                <button class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="settings" onclick="switchSection('settings')">
+                <button class="nav-item flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer" data-section="settings" onclick="switchSection('settings')">
                     <span class="material-symbols-outlined text-lg text-outline">settings</span>
                     <span class="font-sans text-xs font-medium text-on-surface whitespace-nowrap">Settings</span>
                 </button>
@@ -786,37 +816,10 @@ void main() {
         </div>
     </div>
     
-    <div class="sidebar-footer">
-        <!-- Mock Login -->
-        <div id="login-section" class="mb-3 pb-3 border-b border-glass-border">
-            <div id="logged-out" class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-outline text-sm">person</span>
-                <span class="font-mono text-xs text-outline">Not signed in</span>
-                <button onclick="document.getElementById('logged-out').classList.add('hidden');document.getElementById('logged-in').classList.remove('hidden');" class="ml-auto px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/30 transition-all cursor-pointer">Sign In</button>
-            </div>
-            <div id="logged-in" class="hidden">
-                <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-full bg-accent-lavender/30 flex items-center justify-center">
-                        <span class="font-mono text-[10px] text-accent-lavender">A</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-mono text-xs text-on-surface truncate">Admin</div>
-                        <div class="font-mono text-[10px] text-outline truncate">admin@tropelex.local</div>
-                    </div>
-                    <button onclick="document.getElementById('logged-in').classList.add('hidden');document.getElementById('logged-out').classList.remove('hidden');" class="text-outline hover:text-accent-lavender transition-colors" title="Sign Out">
-                        <span class="material-symbols-outlined text-sm">logout</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <button class="nav-item flex items-center gap-2 w-full mb-2 pb-2 border-b border-glass-border" data-section="settings" style="padding: 0.35rem 0;">
-            <span class="material-symbols-outlined text-sm">settings</span> Settings
-        </button>
-    </div>
 </aside>
 
 <!-- Slim Top Bar -->
-<header class="fixed top-0 left-0 right-0 z-40 glass-panel md:left-[240px]">
+<header class="fixed top-0 left-0 right-0 z-40 glass-panel md:left-[272px]">
     <div class="px-4 md:px-6 h-12 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <button class="md:hidden text-accent-lavender" id="mobile-menu-btn" onclick="toggleSidebar()">
@@ -830,10 +833,16 @@ void main() {
             <select id="global-project-select" class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer hover:border-accent-lavender/50 transition-colors">
                 <option value="">Select project...</option>
             </select>
-            <input list="global-agent-names" id="global-agent-input" placeholder="Agent (e.g. Claude)..."
-                title="Which AI agent is doing this work — attributes skills, friction, and sessions to it"
-                class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface w-36 focus:border-accent-lavender focus:outline-none placeholder-outline"/>
-            <datalist id="global-agent-names"></datalist>
+            <div class="relative">
+                <select id="global-agent-input"
+                    title="Which AI agent is doing this work — attributes skills, friction, and sessions to it"
+                    class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface w-36 focus:border-accent-lavender focus:outline-none cursor-pointer">
+                    <option value="">Agent...</option>
+                    <option value="__new__">+ Add new agent...</option>
+                </select>
+                <input type="text" id="global-agent-input-new" placeholder="New agent name" style="display:none"
+                    class="bg-surface-raised border border-accent-lavender/30 rounded-lg px-3 py-1 font-mono text-xs text-on-surface w-36 focus:border-accent-lavender focus:outline-none placeholder-outline"/>
+            </div>
             <button id="btn-new-project-header" class="px-2 py-1 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all flex items-center gap-1" title="New Project">
                 <span class="material-symbols-outlined text-sm">add</span>
                 <span class="hidden sm:inline">New</span>
@@ -875,12 +884,20 @@ void main() {
 <!-- Main Content -->
 <main class="flex-grow pt-20 pb-24 md:pb-8">
     <!-- Dashboard Section -->
-    <main class="flex-grow pt-20 pb-24 md:pb-8">
     <!-- ==================== CONTENT SECTION ==================== -->
-    <section id="section-content" class="section active w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">dashboard</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Engine Core</h2>
+    <section id="section-content" class="section active w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lavender/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-sky/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-lavender/10 text-accent-lavender border border-accent-lavender/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-lavender animate-pulse"></span> Live
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-lavender text-2xl md:text-3xl">dashboard</span>Engine Core</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Live system status, recent decisions, and everything currently running.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="content-tab-strip">
             <button class="content-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="dashboard" onclick="switchGenericTab('content', 'dashboard')">Overview</button>
@@ -893,7 +910,7 @@ void main() {
 
         <div id="content-dashboard" class="content-tab-panel active">
         <!-- Modern Top HUD Metrics Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="glass-panel rounded-xl p-5 border-l-4 border-accent-lime relative overflow-hidden">
                 <div class="flex items-center justify-between mb-2">
                     <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">System Status</span>
@@ -952,6 +969,18 @@ void main() {
                     <div class="bg-yellow-400 h-full rounded-full" style="width: 100%;"></div>
                 </div>
             </div>
+
+            <div class="glass-panel rounded-xl p-5 border-l-4 border-accent-periwinkle relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">Total Spend</span>
+                    <span class="material-symbols-outlined text-accent-periwinkle text-sm">payments</span>
+                </div>
+                <div class="flex items-baseline justify-between">
+                    <span id="dash-cost-total" class="font-mono text-2xl text-on-surface font-bold">—</span>
+                    <span id="dash-cost-label" class="font-mono text-xs text-accent-periwinkle">TRACKED</span>
+                </div>
+                <div id="dash-cost-sub" class="text-xs text-outline mt-3">Real OpenAI usage, this project</div>
+            </div>
         </div>
 
         <!-- Main Bento Grid -->
@@ -994,6 +1023,31 @@ void main() {
                         <span class="text-accent-sky font-mono text-xs">category:backend</span>
                         <span class="text-accent-lime font-mono text-xs font-bold">8x</span>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Decision Risk Mix -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="material-symbols-outlined text-accent-lavender text-lg">donut_large</span>
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lavender no-wrap-title">Decision Risk Mix</h3>
+                </div>
+                <div id="dash-risk-mix" class="flex items-center gap-6">
+                    <p class="text-sm text-outline">Select a project to see the risk breakdown.</p>
+                </div>
+            </div>
+
+            <!-- Agent Activity Split -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="material-symbols-outlined text-accent-sky text-lg">groups</span>
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-sky no-wrap-title">Agent Activity Split</h3>
+                </div>
+                <div id="dash-agent-activity" class="space-y-3">
+                    <p class="text-sm text-outline">Select a project to see agent activity.</p>
                 </div>
             </div>
         </div>
@@ -1469,10 +1523,19 @@ void main() {
     </section>
 
     <!-- ==================== QUALITY & INTEGRITY SECTION ==================== -->
-    <section id="section-quality" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">verified</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Quality & Integrity</h2>
+    <section id="section-quality" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-periwinkle/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-lime/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-periwinkle/10 text-accent-periwinkle border border-accent-periwinkle/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-periwinkle animate-pulse"></span> Continuously Monitored
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-periwinkle text-2xl md:text-3xl">verified</span>Confidence, Drift & Friction</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Where every decision's health is scored, checked for contradictions, and watched for signs of quiet decay.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="quality-tab-strip">
             <button class="quality-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="insights" onclick="switchGenericTab('quality', 'insights')">Insights</button>
@@ -1805,8 +1868,15 @@ void main() {
         <div class="glass-panel rounded-xl p-6">
             <textarea id="friction-transcript" rows="6" placeholder="Paste a session transcript here..." class="w-full bg-surface border border-glass-border rounded-lg px-4 py-3 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-4"></textarea>
             <div class="flex items-center gap-3">
-                <input list="global-agent-names" type="text" id="friction-agent" placeholder="Agent"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-40"/>
+                <div class="relative">
+                    <select id="friction-agent"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-40 cursor-pointer">
+                        <option value="">Agent (current)</option>
+                        <option value="__new__">+ Add new agent...</option>
+                    </select>
+                    <input type="text" id="friction-agent-new" placeholder="New agent name" style="display:none"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-40"/>
+                </div>
                 <button id="btn-scan-friction" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Scan for Friction</button>
             </div>
         </div>
@@ -1841,10 +1911,19 @@ void main() {
     </section>
 
     <!-- ==================== EXPLAINABILITY & DISCOVERY SECTION ==================== -->
-    <section id="section-explainability" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">auto_awesome</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Explainability & Discovery</h2>
+    <section id="section-explainability" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lavender/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-lavender/10 text-accent-lavender border border-accent-lavender/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-lavender animate-pulse"></span> Full Traceability
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-lavender text-2xl md:text-3xl">auto_awesome</span>Why Do We...?</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Trace the reasoning behind any decision, mine your docs for drift, and follow the lineage between choices.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="explainability-tab-strip">
             <button class="explainability-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="explain" onclick="switchGenericTab('explainability', 'explain')">Why Do We...?</button>
@@ -1973,10 +2052,19 @@ void main() {
     </section>
 
     <!-- ==================== MEMORY LIFECYCLE SECTION ==================== -->
-    <section id="section-lifecycle" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">history</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Memory Lifecycle</h2>
+    <section id="section-lifecycle" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-sky/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-sky/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-sky/10 text-accent-sky border border-accent-sky/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-sky animate-pulse"></span> Time Travel
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-sky text-2xl md:text-3xl">history</span>Every Decision, Any Point in Time</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Travel back through project history, or compact old decisions into epoch summaries.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="lifecycle-tab-strip">
             <button class="lifecycle-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="timetravel" onclick="switchGenericTab('lifecycle', 'timetravel')">Time Travel</button>
@@ -2027,10 +2115,19 @@ void main() {
     </section>
 
     <!-- ==================== RESEARCH & INGESTION SECTION ==================== -->
-    <section id="section-research" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">science</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Research & Ingestion</h2>
+    <section id="section-research" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-periwinkle/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-sky/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-periwinkle/10 text-accent-periwinkle border border-accent-periwinkle/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-periwinkle animate-pulse"></span> Auto-Ingesting
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-periwinkle text-2xl md:text-3xl">science</span>What Tropelex Is Watching</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Automated feeds and deep research runs, pulling outside signal into your project's memory.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="research-tab-strip">
             <button class="research-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="feeds" onclick="switchGenericTab('research', 'feeds')">Research Feeds</button>
@@ -2267,10 +2364,19 @@ void main() {
     </section>
 
     <!-- ==================== TEAM & COLLABORATION SECTION ==================== -->
-    <section id="section-team" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">groups</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Team & Collaboration</h2>
+    <section id="section-team" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-periwinkle/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-lime/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-periwinkle/10 text-accent-periwinkle border border-accent-periwinkle/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-periwinkle animate-pulse"></span> Multi-Agent
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-periwinkle text-2xl md:text-3xl">groups</span>Handoffs Without Losing the Thread</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Agent handoffs, PR delivery, decision markets, and personas — how multiple agents stay in sync.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="team-tab-strip">
             <button class="team-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="handoff" onclick="switchGenericTab('team', 'handoff')">Agent Handoff</button>
@@ -2384,10 +2490,18 @@ void main() {
         <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Place a Bet</h3>
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <input type="text" id="bet-decision-id" placeholder="Decision ID"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
-                <input type="text" id="bet-agent" placeholder="Agent name"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
+                <select id="bet-decision-id" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none">
+                    <option value="">Select a decision...</option>
+                </select>
+                <div class="relative">
+                    <select id="bet-agent"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none w-full cursor-pointer">
+                        <option value="">Select agent...</option>
+                        <option value="__new__">+ Add new agent...</option>
+                    </select>
+                    <input type="text" id="bet-agent-new" placeholder="New agent name" style="display:none"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none w-full"/>
+                </div>
                 <input type="number" id="bet-confidence" placeholder="Confidence (0-1)" min="0" max="1" step="0.05" value="0.5"
                     class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-lavender focus:outline-none"/>
                 <button id="btn-place-bet" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Place Bet</button>
@@ -2437,8 +2551,15 @@ void main() {
             <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
                 <input type="text" id="skill-categories" placeholder="Categories (comma-separated)"
                     class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
-                <input list="global-agent-names" type="text" id="skill-agent" placeholder="Agent"
-                    class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none"/>
+                <div class="relative">
+                    <select id="skill-agent"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-full cursor-pointer">
+                        <option value="">Agent (current)</option>
+                        <option value="__new__">+ Add new agent...</option>
+                    </select>
+                    <input type="text" id="skill-agent-new" placeholder="New agent name" style="display:none"
+                        class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none w-full"/>
+                </div>
                 <select id="skill-outcome" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs focus:border-accent-sky focus:outline-none">
                     <option value="success">Success</option>
                     <option value="partial">Partial</option>
@@ -2459,10 +2580,19 @@ void main() {
     </section>
 
     <!-- ==================== INTEGRATIONS & OPS SECTION ==================== -->
-    <section id="section-integrations" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-        <div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">hub</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Integrations & Ops</h2>
+    <section id="section-integrations" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-periwinkle/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-periwinkle/10 text-accent-periwinkle border border-accent-periwinkle/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-periwinkle animate-pulse"></span> Connected
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-periwinkle text-2xl md:text-3xl">hub</span>How It All Plugs In</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Git sync, cross-install benchmarking, and the cost ledger for everything Tropelex touches outside itself.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="integrations-tab-strip">
             <button class="integrations-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="git" onclick="switchGenericTab('integrations', 'git')">Git</button>
@@ -2601,7 +2731,7 @@ void main() {
 
     </section>
 
-        <section id="section-onboarding" class="section active w-full max-w-7xl mx-auto px-6 pt-12 pb-16 fade-in">
+        <section id="section-onboarding" class="section active w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-16 fade-in">
         <!-- Hero Banner with Gradient Glow & Live Status -->
         <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lavender/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
             <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -2861,14 +2991,18 @@ void main() {
         </div>
     </section>
 
-    <section id="section-settings" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
+    <section id="section-settings" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lavender/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lavender/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-lavender text-2xl md:text-3xl">settings</span>Settings</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Compression, thresholds, and the knobs that shape how Tropelex behaves.</p>
+            </div>
+        </div>
 <div class="space-y-6">
             <div class="glass-panel rounded-xl p-6">
-                <h2 class="text-xl font-semibold mb-6 flex items-center gap-3">
-                    <span class="material-symbols-outlined text-accent-lavender">settings</span>
-                    Settings
-                </h2>
-                
+
                 <!-- Compression Settings -->
                 <div class="space-y-4">
                     <div class="p-4 rounded-lg bg-surface-raised border border-glass-border">
@@ -3151,10 +3285,19 @@ void main() {
         </div>
     </section>
 
-    <section id="section-safety" class="section w-full max-w-7xl mx-auto px-6 px-8 pt-16 pb-8 fade-in">
-<div class="flex items-center gap-3 mb-6">
-            <span class="material-symbols-outlined text-accent-lavender text-2xl">shield</span>
-            <h2 class="font-mono text-xl text-accent-lavender uppercase tracking-wider">Safety &amp; Alignment</h2>
+    <section id="section-safety" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
+        <div class="relative overflow-hidden glass-panel rounded-2xl p-8 mb-8 border border-accent-lime/30 bg-gradient-to-r from-purple-900/30 via-indigo-950/40 to-slate-900/60 shadow-2xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-accent-lime/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-accent-periwinkle/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-lime/10 text-accent-lime border border-accent-lime/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-lime animate-pulse"></span> Actively Scored
+                    </span>
+                </div>
+                <h1 class="font-display font-extrabold text-2xl md:text-3xl text-on-surface tracking-tight flex items-center gap-2.5"><span class="material-symbols-outlined text-accent-lime text-2xl md:text-3xl">shield</span>Safety &amp; Alignment</h1>
+                <p class="text-sm md:text-base text-outline max-w-2xl leading-relaxed">Governance, alignment scoring, and audit trails for every decision that carries risk.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="safety-tab-strip">
             <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="safety-dashboard" onclick="switchSafetyTab('safety-dashboard')">Dashboard</button>
@@ -3371,6 +3514,7 @@ void main() {
                 <span class="font-mono text-3xl" id="provenance-tamper">—</span>
             </div>
         </div>
+        <div id="provenance-tamper-flags" class="mb-6"></div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="glass-panel rounded-xl p-6">
                 <h3 class="font-mono text-sm text-outline uppercase mb-4">Provenance Chain</h3>
@@ -3596,8 +3740,6 @@ void main() {
     </div>
     </section>
 
-</main>
-
 <!-- Bottom Navigation (Mobile Only) -->
 <nav class="fixed bottom-0 left-0 w-full z-50 glass-panel md:hidden border-t border-glass-border">
     <div class="flex justify-around items-center h-16">
@@ -3743,7 +3885,7 @@ void main() {
 </div>
 
 <!-- Live Telemetry Drawer -->
-<div id="telemetry-drawer" class="fixed left-0 right-0 md:left-[240px] z-30" style="bottom:28px;">
+<div id="telemetry-drawer" class="fixed left-0 right-0 md:left-[272px] z-30" style="bottom:28px;">
     <button id="telemetry-toggle" class="flex items-center gap-2 px-3 h-6 bg-surface-raised border-t border-glass-border font-mono text-xs text-outline hover:text-accent-lavender w-full md:w-auto cursor-pointer">
         <span class="material-symbols-outlined text-sm">terminal</span> Telemetry
         <span id="telemetry-unread" class="hidden ml-1 px-1.5 rounded-full bg-accent-lavender/20 text-accent-lavender">0</span>
@@ -4068,6 +4210,7 @@ function switchGenericTab(parent, tab) {
     if (tab === 'docmine' && typeof syncDocmineProject === 'function') syncDocmineProject();
     if (tab === 'git' && typeof syncGitProject === 'function') syncGitProject();
     if (tab === 'lineage' && typeof loadLineageGraph === 'function') { syncLineageProject(); loadLineageGraph(); }
+    if (tab === 'market' && typeof populateMarketDecisionSelect === 'function') populateMarketDecisionSelect();
 }
 
 
@@ -4223,6 +4366,58 @@ function syncExplainProject() {
 function syncHandoffProject() {
     const sel = document.getElementById('handoff-project-select');
     if (sel) sel.value = state.currentProject || '';
+}
+
+// Referenced by switchGenericTab's tab-loader dispatch but never defined --
+// silently a no-op behind its `typeof === 'function'` guard, which is the
+// actual reason the Git tab could look blank on open: nothing ever loaded a
+// summary automatically, and the only persistence was a save-on-navigate-away
+// snapshot that never ran if the page was closed/reloaded without switching
+// sections first. Only auto-loads the read-only Summary (a cheap GET with no
+// side effects, and only when the repo-path field is genuinely empty -- i.e.
+// no manually-typed path or restored state to preserve). Sync/Deep Sync stay
+// deliberate button clicks since they write decisions into memory.
+async function syncGitProject() {
+    const nameField = document.getElementById('git-project-name');
+    if (nameField && !nameField.value && state.currentProject) {
+        nameField.value = state.currentProject;
+    }
+
+    const pathField = document.getElementById('git-repo-path');
+    const summaryEl = document.getElementById('git-summary-output');
+    if (!pathField || pathField.value || !summaryEl || summaryEl.dataset.autoLoaded) return;
+    summaryEl.dataset.autoLoaded = '1';
+
+    // No repo_path -- the backend defaults to this Tropelex instance's own
+    // repo root, same convention Agent Audit already uses.
+    const data = await api('/git/summary');
+    if (!data || data.error) return;
+    renderGitLightSummary(summaryEl, data);
+    saveSectionResults('integrations');
+}
+
+function renderGitLightSummary(el, data) {
+    const decisions = data.decisions || [];
+    el.innerHTML = `
+        <div class="flex items-center gap-3 mb-3">
+            <span class="text-xs px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender">${escapeHtml(data.branch || 'unknown')}</span>
+            <span class="text-xs text-outline">Auto-loaded from this repo -- enter a different path and click Summary for another one</span>
+        </div>
+        <div class="mb-3">
+            <h4 class="text-xs uppercase text-outline mb-1">Tech Stack</h4>
+            <div class="flex flex-wrap gap-1">${(data.stack || []).map(t => `<span class="text-xs px-2 py-0.5 rounded bg-accent-lime/20 text-accent-lime">${escapeHtml(t)}</span>`).join('')}</div>
+        </div>
+        <div>
+            <h4 class="text-xs uppercase text-outline mb-1">Recent Commits</h4>
+            ${(data.commits || []).map(c => `<p class="text-sm text-outline truncate"><span class="font-mono text-accent-periwinkle">${escapeHtml(c.hash || '')}</span> ${escapeHtml(c.subject || '')}</p>`).join('') || '<p class="text-sm text-outline">No commits found.</p>'}
+        </div>
+        ${decisions.length ? `
+            <div class="mt-3">
+                <h4 class="text-xs uppercase text-outline mb-1">Decisions Detected</h4>
+                ${decisions.map(d => `<p class="text-sm mt-1">${escapeHtml(d.decision || d.subject || '')}</p>`).join('')}
+            </div>
+        ` : ''}
+    `;
 }
 
 // GET /handoff/roles was fully built (role -> description from
@@ -5118,6 +5313,17 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// Real per-call LLM costs are often a fraction of a cent -- .toFixed(4)
+// alone renders as "$0.0000" for anything under a hundredth of a cent,
+// which reads as broken even when tracking is working correctly. Show
+// enough precision for small figures, but don't pad larger ones.
+function formatUsd(amount) {
+    const n = amount || 0;
+    if (n === 0) return '$0.00';
+    if (n < 0.01) return `$${n.toFixed(6)}`;
+    return `$${n.toFixed(4)}`;
+}
+
 // escapeHtml doesn't escape quotes (fine for text nodes, not for going into
 // a quoted HTML attribute like data-copy-text="...").
 function escapeAttr(str) {
@@ -5551,25 +5757,103 @@ document.getElementById('global-project-select').addEventListener('change', asyn
 });
 
 // --- Agent identity ---
+// All agent pickers share one known-agent list, each as a real <select> (not a
+// datalist input) so switching agents is a click, not "clear the field and
+// retype" -- datalist suggestions only filter against the *current* text,
+// which is the exact confusion this replaces. Each select has a trailing
+// "+ Add new agent..." option that swaps in a plain text input for one-time
+// entry of a name not seen before; committing that text adds it as a real
+// option to every agent select at once, so it's immediately pickable
+// elsewhere too.
+const AGENT_SELECT_IDS = ['global-agent-input', 'friction-agent', 'skill-agent', 'bet-agent'];
+
+function populateAgentSelect(select, agents, placeholder) {
+    const preserve = select.value && select.value !== '__new__' ? select.value : '';
+    const names = preserve && !agents.includes(preserve) ? [...agents, preserve] : agents;
+    select.innerHTML = `<option value="">${placeholder}</option>`
+        + names.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('')
+        + '<option value="__new__">+ Add new agent...</option>';
+    select.value = preserve;
+}
 
 async function loadAgentNames(project) {
     if (!project) return;
     const data = await api(`/memory/${encodeURIComponent(project)}/agents`);
     if (!data) return;
-    const datalist = document.getElementById('global-agent-names');
-    datalist.innerHTML = data.agents.map(a => `<option value="${escapeHtml(a)}"></option>`).join('');
+    const agents = data.agents || [];
+    populateAgentSelect(document.getElementById('global-agent-input'), agents, 'Agent...');
+    populateAgentSelect(document.getElementById('friction-agent'), agents, 'Agent (current)');
+    populateAgentSelect(document.getElementById('skill-agent'), agents, 'Agent (current)');
+    populateAgentSelect(document.getElementById('bet-agent'), agents, 'Select agent...');
+    if (state.currentAgent) setCurrentAgent(state.currentAgent);
+}
+
+function addAgentOptionEverywhere(name, selectId) {
+    AGENT_SELECT_IDS.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        if (![...select.options].some(o => o.value === name)) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.insertBefore(opt, select.lastElementChild); // before "+ Add new agent..."
+        }
+        if (id === selectId) select.value = name;
+    });
 }
 
 function setCurrentAgent(name) {
     name = (name || '').trim();
     state.currentAgent = name;
     localStorage.setItem('tropelex-current-agent', name);
-    const input = document.getElementById('global-agent-input');
-    if (input && input.value !== name) input.value = name;
+    const select = document.getElementById('global-agent-input');
+    if (!select) return;
+    if (name && ![...select.options].some(o => o.value === name)) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.insertBefore(opt, select.lastElementChild);
+    }
+    if (select.value !== name) select.value = name;
 }
 
-document.getElementById('global-agent-input').value = state.currentAgent;
-document.getElementById('global-agent-input').addEventListener('change', (e) => setCurrentAgent(e.target.value));
+// Wire each agent <select>'s "+ Add new agent..." escape hatch: reveal the
+// paired text input, let the user type a name, commit on blur or Enter.
+AGENT_SELECT_IDS.forEach(id => {
+    const select = document.getElementById(id);
+    const newInput = document.getElementById(`${id}-new`);
+    if (!select || !newInput) return;
+
+    select.addEventListener('change', () => {
+        if (select.value === '__new__') {
+            select.style.display = 'none';
+            newInput.style.display = '';
+            newInput.value = '';
+            newInput.focus();
+        } else if (id === 'global-agent-input') {
+            setCurrentAgent(select.value);
+        }
+    });
+
+    function commitNewAgent() {
+        const name = newInput.value.trim();
+        newInput.style.display = 'none';
+        select.style.display = '';
+        if (name) {
+            addAgentOptionEverywhere(name, id);
+            if (id === 'global-agent-input') setCurrentAgent(name);
+        } else {
+            select.value = '';
+        }
+    }
+    newInput.addEventListener('blur', commitNewAgent);
+    newInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); newInput.blur(); }
+        if (e.key === 'Escape') { newInput.value = ''; e.preventDefault(); newInput.blur(); }
+    });
+});
+
+setCurrentAgent(state.currentAgent);
 
 
 
@@ -5664,6 +5948,20 @@ function renderDecisions(decisions) {
             <span class="text-xs text-outline font-mono">${d.timestamp?.slice(0, 10) || ''}</span>
         </div>
     `).join('');
+    populateMarketDecisionSelect();
+}
+
+function populateMarketDecisionSelect() {
+    const select = document.getElementById('bet-decision-id');
+    if (!select) return;
+    const decisions = state.decisions || [];
+    const current = select.value;
+    select.innerHTML = '<option value="">Select a decision...</option>' +
+        decisions.slice().reverse().map(d => {
+            const label = (d.decision || '').length > 70 ? d.decision.slice(0, 70) + '…' : (d.decision || d.id);
+            return `<option value="${escapeAttr(d.id)}">${escapeHtml(label)}</option>`;
+        }).join('');
+    if (decisions.some(d => d.id === current)) select.value = current;
 }
 
 
@@ -5948,7 +6246,7 @@ async function compressionAgent(input) {
         const response = await fetch('/api/compress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: input })
+            body: JSON.stringify({ prompt: input, project: state.currentProject || undefined })
         });
         const data = await response.json();
         return { text: data.compressed || clientCompressed || input, strategy: data.backend || 'client' };
@@ -7798,17 +8096,26 @@ async function loadSafetyDashboard(project) {
     document.getElementById('safety-pending-reviews').textContent = summary.pending_reviews || '0';
     document.getElementById('safety-systems').textContent = summary.affected_systems_count || '0';
 
-    // Render risk distribution
+    // Render risk distribution as a chunky vertical bar chart — this is a
+    // time trend (risk by month), so columns read more naturally than the
+    // ranked horizontal bars used for Category Breakdown below it.
     const riskChart = document.getElementById('safety-risk-chart');
     const riskTrend = data.risk_trend || [];
     if (riskTrend.length > 0) {
-        riskChart.innerHTML = riskTrend.map(t => `
-            <div class="flex items-center justify-between py-1 border-b border-glass-border">
-                <span class="text-xs">${t.month}</span>
-                <span class="text-xs font-mono">${t.total_decisions} decisions</span>
-                <span class="text-xs font-mono ${t.avg_risk > 0.5 ? 'text-red-400' : 'text-accent-lime'}">${t.avg_risk?.toFixed(2)}</span>
-            </div>
-        `).join('');
+        const TRACK_HEIGHT = 128; // px — inner bar track, leaves room for labels above/below
+        riskChart.innerHTML = `<div class="w-full h-full flex items-end justify-around gap-3 px-2">` + riskTrend.map(t => {
+            const risk = Math.max(0, Math.min(1, t.avg_risk || 0));
+            const barPx = Math.max(4, Math.round(risk * TRACK_HEIGHT));
+            const barColor = risk > 0.5 ? 'bg-red-400' : 'bg-accent-lime';
+            const textColor = risk > 0.5 ? 'text-red-400' : 'text-accent-lime';
+            return `
+            <div class="flex flex-col items-center gap-1.5 flex-1">
+                <span class="font-mono text-xs font-semibold ${textColor}">${risk.toFixed(2)}</span>
+                <div class="w-full max-w-10 rounded-t-lg ${barColor}" style="height:${barPx}px" title="${escapeAttr(t.total_decisions)} decisions"></div>
+                <span class="text-[10px] text-outline font-mono">${escapeHtml(t.month)}</span>
+                <span class="text-[10px] text-outline">${t.total_decisions} dec.</span>
+            </div>`;
+        }).join('') + `</div>`;
     }
 
     // Category breakdown — data.category_distribution was already computed
@@ -7892,15 +8199,22 @@ function renderSystemImpact(stakeholderImpact, decisionImpact) {
 // otherwise-unused GET /safety-trend endpoint does.
 function renderSafetyTrendChart(svgEl, riskTrend) {
     if (!riskTrend.length) { svgEl.innerHTML = ''; return; }
-    const W = 800, H = 160, PAD = 12;
-    const step = riskTrend.length > 1 ? (W - PAD * 2) / (riskTrend.length - 1) : 0;
-    const grid = [0, 0.5, 1].map(f => {
-        const y = PAD + f * (H - PAD * 2);
-        return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>`;
+    const W = 800, H = 160;
+    const marginLeft = 32, marginRight = 10, marginTop = 10, marginBottom = 20;
+    const plotW = W - marginLeft - marginRight;
+    const plotH = H - marginTop - marginBottom;
+    const step = riskTrend.length > 1 ? plotW / (riskTrend.length - 1) : 0;
+
+    // Y-axis: gridlines + numeric labels (risk 0.0 at bottom, 1.0 at top)
+    const yAxis = [0, 0.5, 1].map(f => {
+        const y = marginTop + (1 - f) * plotH;
+        return `<line x1="${marginLeft}" y1="${y}" x2="${W - marginRight}" y2="${y}" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>` +
+               `<text x="${marginLeft - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#8a93a8" font-family="monospace">${f.toFixed(1)}</text>`;
     }).join('');
+
     const pts = riskTrend.map((t, i) => {
-        const x = PAD + i * step;
-        const y = PAD + (1 - Math.max(0, Math.min(1, t.avg_risk))) * (H - PAD * 2);
+        const x = marginLeft + i * step;
+        const y = marginTop + (1 - Math.max(0, Math.min(1, t.avg_risk))) * plotH;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
     const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="#a580fa" stroke-width="2"/>`;
@@ -7909,7 +8223,16 @@ function renderSafetyTrendChart(svgEl, riskTrend) {
         const color = t.avg_risk > 0.5 ? '#ff4444' : t.avg_risk > 0.25 ? '#ffa500' : '#98fa80';
         return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"><title>${escapeHtml(t.month)}: ${t.avg_risk} (${t.total_decisions} decisions)</title></circle>`;
     }).join('');
-    svgEl.innerHTML = grid + line + dots;
+
+    // X-axis: month labels under each point. First/last labels anchor to
+    // start/end instead of middle so they don't clip past the viewBox edges.
+    const xAxis = riskTrend.map((t, i) => {
+        const x = marginLeft + i * step;
+        const anchor = i === 0 ? 'start' : i === riskTrend.length - 1 ? 'end' : 'middle';
+        return `<text x="${x.toFixed(1)}" y="${H - 4}" text-anchor="${anchor}" font-size="9" fill="#8a93a8" font-family="monospace">${escapeHtml(t.month)}</text>`;
+    }).join('');
+
+    svgEl.innerHTML = yAxis + xAxis + line + dots;
 }
 
 function renderSafetyEnvelope(envelope) {
@@ -7968,9 +8291,14 @@ async function loadAlignment(project) {
 
         const categories = document.getElementById('alignment-categories');
         const categoryScores = data.category_scores || {};
+        // Each category maps to exactly one weighted criterion (see criteria_used) —
+        // the overall Alignment Score is a weighted average across these, not a
+        // plain mean of the numbers below, so show the weight next to each one.
+        const catWeights = {};
+        (data.criteria_used || []).forEach(c => { catWeights[c.category] = c.weight; });
         categories.innerHTML = Object.entries(categoryScores).map(([cat, score]) => `
             <div class="flex items-center justify-between">
-                <span class="text-sm capitalize">${cat}</span>
+                <span class="text-sm capitalize">${cat} <span class="text-outline text-xs font-mono">(×${(catWeights[cat] ?? 1).toFixed(1)})</span></span>
                 <div class="flex items-center gap-2">
                     <div class="w-24 h-2 bg-surface-high rounded-full overflow-hidden">
                         <div class="h-full rounded-full ${score >= 0.7 ? 'bg-accent-lime' : score >= 0.4 ? 'bg-yellow-400' : 'bg-red-400'}" style="width: ${score * 100}%"></div>
@@ -7978,7 +8306,7 @@ async function loadAlignment(project) {
                     <span class="text-xs font-mono">${score?.toFixed(2)}</span>
                 </div>
             </div>
-        `).join('');
+        `).join('') + `<p class="text-[11px] text-outline pt-1">Alignment Score above is a weighted average of these categories (by ×, not a plain mean) — governance counts more than reversibility by design.</p>`;
         renderAlignmentRadar(document.getElementById('alignment-radar'), categoryScores);
     }
 
@@ -8239,7 +8567,27 @@ async function loadProvenance(project) {
     if (tamper) {
         const tamperEl = document.getElementById('provenance-tamper');
         tamperEl.textContent = tamper.status;
-        tamperEl.className = `font-mono text-3xl ${tamper.status === 'clean' ? 'text-accent-lime' : tamper.status === 'suspicious' ? 'text-yellow-400' : 'text-red-400'}`;
+        tamperEl.className = `font-mono text-3xl ${tamper.status === 'clean' ? 'text-accent-lime' : tamper.status === 'alert' ? 'text-yellow-400' : 'text-red-400'}`;
+
+        const flagsEl = document.getElementById('provenance-tamper-flags');
+        const flags = tamper.flags || [];
+        if (flags.length === 0) {
+            flagsEl.innerHTML = '';
+        } else {
+            const sevColor = { high: 'border-red-400 text-red-400', medium: 'border-yellow-400 text-yellow-400', low: 'border-glass-border text-outline' };
+            flagsEl.innerHTML = `
+                <div class="glass-panel rounded-xl p-4">
+                    <h3 class="font-mono text-sm text-outline uppercase mb-3">Why "${escapeHtml(tamper.status)}"? (${flags.length} flag${flags.length === 1 ? '' : 's'})</h3>
+                    <div class="space-y-1.5">
+                        ${flags.map(f => `
+                            <div class="flex items-center gap-2 text-xs border-l-2 pl-2 ${sevColor[f.severity] || sevColor.low}">
+                                <span class="uppercase font-mono">${escapeHtml(f.severity || '')}</span>
+                                <span class="text-on-surface">${escapeHtml(f.message || f.type || '')}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
     }
     
     if (auditLog) {
@@ -8739,6 +9087,7 @@ document.getElementById('btn-git-summary').addEventListener('click', async () =>
             ${renderGitDeepDecisions(data.deep_decisions || [])}
         </div>
     `;
+    saveSectionResults('integrations');
 });
 
 // Deep decision cards — real per-commit analysis from extract_deep_decisions()
@@ -8782,6 +9131,10 @@ async function runGitSync(endpoint, btnId, btnIcon, btnLabel, force) {
     btn.disabled = false;
     btn.innerHTML = `<span class="material-symbols-outlined text-sm align-middle">${btnIcon}</span> ${btnLabel}`;
     renderGitSyncResult(data, endpoint);
+    // Save immediately, not just on navigate-away/unload -- otherwise a hard
+    // refresh or crash right after a sync completes loses the result even
+    // though the underlying sync itself persisted fine.
+    saveSectionResults('integrations');
     if (data?.synced && endpoint === '/git/sync-deep') loadProjects();
 }
 
@@ -9148,6 +9501,78 @@ async function loadDashboard() {
     try { await loadDashInterfaces(); } catch(e) { console.error('Interfaces card init failed:', e); }
 }
 
+// ── Overview: Decision Risk Mix donut ──
+function renderRiskMixChart(container, decisions) {
+    if (!container) return;
+    if (!decisions || !decisions.length) {
+        container.innerHTML = '<p class="text-sm text-outline">No decisions yet.</p>';
+        return;
+    }
+    const order = ['critical', 'high', 'medium', 'low'];
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    decisions.forEach(d => {
+        const lvl = d.safety_metadata?.risk_level;
+        counts[lvl in counts ? lvl : 'low']++;
+    });
+    const total = decisions.length;
+    const r = 46, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
+    let offset = 0;
+    const present = order.filter(l => counts[l] > 0);
+    const segments = present.map(level => {
+        const len = (counts[level] / total) * circumference;
+        const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${RISK_HEATMAP_COLORS[level]}" stroke-width="16" stroke-dasharray="${len.toFixed(2)} ${(circumference - len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"/>`;
+        offset += len;
+        return seg;
+    }).join('');
+    const legend = present.map(level => `
+        <div class="flex items-center gap-2 text-xs">
+            <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0" style="background:${RISK_HEATMAP_COLORS[level]}"></span>
+            <span class="capitalize text-on-surface">${level}</span>
+            <span class="text-outline font-mono ml-auto">${counts[level]} (${Math.round(counts[level] / total * 100)}%)</span>
+        </div>`).join('');
+    container.innerHTML = `
+        <svg viewBox="0 0 120 120" class="w-28 h-28 shrink-0" style="transform: rotate(-90deg)">${segments}</svg>
+        <div class="flex-1 space-y-1.5 min-w-0">${legend}</div>`;
+}
+
+// ── Overview: Agent Activity Split (skill-outcome attempts per agent) ──
+const AGENT_ACTIVITY_COLORS = ['#a580fa', '#8098fa', '#80d5fa', '#98fa80'];
+
+async function renderAgentActivityChart(container, project) {
+    if (!container) return;
+    if (!project) {
+        container.innerHTML = '<p class="text-sm text-outline">Select a project to see agent activity.</p>';
+        return;
+    }
+    const agentsData = await api(`/memory/${encodeURIComponent(project)}/agents`);
+    const names = agentsData?.agents || [];
+    if (!names.length) {
+        container.innerHTML = '<p class="text-sm text-outline">No agent activity recorded yet — record a skill outcome under Personas to get started.</p>';
+        return;
+    }
+    const summaries = await Promise.all(names.map(name => api(`/memory/${encodeURIComponent(project)}/agents/${encodeURIComponent(name)}/summary`)));
+    const totals = names.map((name, i) => ({
+        name,
+        color: AGENT_ACTIVITY_COLORS[i % AGENT_ACTIVITY_COLORS.length],
+        attempts: (summaries[i]?.skills || []).reduce((s, sk) => s + (sk.attempts || 0), 0),
+    })).filter(a => a.attempts > 0).sort((a, b) => b.attempts - a.attempts);
+    if (!totals.length) {
+        container.innerHTML = '<p class="text-sm text-outline">No skill outcomes recorded yet for any agent.</p>';
+        return;
+    }
+    const grand = totals.reduce((s, a) => s + a.attempts, 0);
+    const bar = totals.map(a => `<div style="width:${(a.attempts / grand * 100).toFixed(1)}%; background:${a.color}" class="h-full" title="${escapeHtml(a.name)}: ${a.attempts}"></div>`).join('');
+    const legend = totals.map(a => `
+        <div class="flex items-center gap-2 text-xs">
+            <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0" style="background:${a.color}"></span>
+            <span class="text-on-surface">${escapeHtml(a.name)}</span>
+            <span class="text-outline font-mono ml-auto">${a.attempts} (${Math.round(a.attempts / grand * 100)}%)</span>
+        </div>`).join('');
+    container.innerHTML = `
+        <div class="w-full h-4 rounded-full overflow-hidden flex bg-surface-raised">${bar}</div>
+        <div class="space-y-1.5">${legend}</div>`;
+}
+
 async function loadDashboardStatusCards() {
     const project = state.currentProject;
     const healthEl = document.getElementById('dash-health');
@@ -9308,6 +9733,27 @@ async function loadDashboardStatusCards() {
                     <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span> <span class="text-outline">passing criteria</span></div>`;
             }
         } catch { alignmentEl.textContent = 'N/A'; }
+    }
+    renderRiskMixChart(document.getElementById('dash-risk-mix'), state.decisions || []);
+    try { await renderAgentActivityChart(document.getElementById('dash-agent-activity'), project); } catch (e) { console.error('Agent activity chart failed:', e); }
+    try { await renderCostTotalCard(project); } catch (e) { console.error('Cost total card failed:', e); }
+}
+
+async function renderCostTotalCard(project) {
+    const totalEl = document.getElementById('dash-cost-total');
+    const labelEl = document.getElementById('dash-cost-label');
+    const subEl = document.getElementById('dash-cost-sub');
+    if (!totalEl) return;
+    const data = await api(`/memory/${encodeURIComponent(project)}/cost/report`);
+    if (!data) { totalEl.textContent = 'N/A'; return; }
+    totalEl.textContent = formatUsd(data.total_cost_usd);
+    const events = (data.cost_per_decision || []).reduce((sum, d) => sum + (d.event_count || 0), 0);
+    if (events === 0) {
+        labelEl.textContent = 'NO DATA YET';
+        subEl.textContent = 'Recorded automatically as OpenAI calls happen';
+    } else {
+        labelEl.textContent = 'TRACKED';
+        subEl.textContent = `${(data.total_tokens || 0).toLocaleString()} tokens · ${events} call${events !== 1 ? 's' : ''}`;
     }
 }
 
@@ -9524,7 +9970,8 @@ document.getElementById('btn-personas')?.addEventListener('click', async () => {
         document.getElementById('personas-empty')?.classList.add('hidden');
         const el = document.getElementById('personas-data');
         const personas = data.personas || data.agents || [];
-        el.innerHTML = personas.length ? personas.map(p => {
+        el.innerHTML = personas.length ? personas.map(entry => {
+            const p = entry.persona || entry;
             const name = p.agent_name || p.name || 'Unknown';
             const strengths = (p.strengths || []).join(', ') || 'None identified';
             const weaknesses = (p.weaknesses || []).join(', ') || 'None identified';
@@ -9544,13 +9991,15 @@ document.getElementById('btn-cost-report')?.addEventListener('click', async () =
     if (data) {
         document.getElementById('costs-empty')?.classList.add('hidden');
         const el = document.getElementById('cost-report-data');
+        const perDecision = data.cost_per_decision || [];
+        const totalEvents = perDecision.reduce((sum, d) => sum + (d.event_count || 0), 0);
         el.innerHTML = `<div class="space-y-3">
-            <div class="flex justify-between"><span class="text-outline">Total Cost</span><span class="text-accent-lime font-mono">$${(data.total_cost_usd || 0).toFixed(4)}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Total Cost</span><span class="text-accent-lime font-mono">${formatUsd(data.total_cost_usd)}</span></div>
             <div class="flex justify-between"><span class="text-outline">Total Tokens</span><span class="text-accent-sky font-mono">${(data.total_tokens || 0).toLocaleString()}</span></div>
-            <div class="flex justify-between"><span class="text-outline">Events</span><span class="text-accent-periwinkle font-mono">${data.total_events || data.events?.length || 0}</span></div>
-            <div class="flex justify-between"><span class="text-outline">Rework Cost</span><span class="text-red-400 font-mono">$${(data.rework_cost_usd || 0).toFixed(4)}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Events</span><span class="text-accent-periwinkle font-mono">${totalEvents}</span></div>
+            <div class="flex justify-between"><span class="text-outline">Rework Cost</span><span class="text-red-400 font-mono">${formatUsd(data.rework_costs)}</span></div>
         </div>
-        ${(data.events || []).length ? '<div class="mt-4"><h4 class="font-mono text-xs text-outline uppercase mb-2">Recent Events</h4>' + data.events.slice(0, 10).map(e => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1 text-xs"><span class="text-outline">${escapeHtml(e.decision_id || e.type || 'event')}</span><span class="text-accent-lime">$${(e.cost_usd || 0).toFixed(4)}</span></div>`).join('') + '</div>' : ''}`;
+        ${perDecision.length ? '<div class="mt-4"><h4 class="font-mono text-xs text-outline uppercase mb-2">By Decision</h4>' + perDecision.map(d => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1 text-xs"><span class="text-outline truncate" title="${escapeHtml(d.decision_text || '')}">${escapeHtml(d.decision_id === '_general' ? 'General (unattributed)' : (d.decision_text || d.decision_id))}</span><span class="text-accent-lime shrink-0 ml-2">${formatUsd(d.total_cost_usd)} · ${(d.total_tokens || 0).toLocaleString()} tok</span></div>`).join('') + '</div>' : ''}`;
     }
     loadCompoundingRisk(state.currentProject);
 });
@@ -9573,7 +10022,7 @@ async function loadCompoundingRisk(project) {
         <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-red-500/40">
             <div class="flex items-center justify-between gap-2">
                 <span class="text-sm truncate">${escapeHtml(c.decision_text || '')}</span>
-                <span class="font-mono text-sm text-red-400 shrink-0">$${c.rework_cost_usd.toFixed(4)} rework</span>
+                <span class="font-mono text-sm text-red-400 shrink-0">${formatUsd(c.rework_cost_usd)} rework</span>
             </div>
             <div class="flex flex-wrap gap-1 mt-1.5">${cats}</div>
         </div>`;
@@ -9680,13 +10129,44 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
         if (uncaptured.length) {
             html += '<h4 class="font-mono text-xs uppercase text-accent-lime mb-2 mt-4">Uncaptured decisions in docs</h4>';
             html += '<p class="text-xs text-outline mb-2">Decision-shaped statements in the docs with nothing matching in the decision graph — candidates to import.</p>';
-            html += uncaptured.map(c => `<div class="p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs">
-                <span class="text-accent-lime">${escapeHtml(c.source_file)}:${c.line_number}</span> — ${escapeHtml(c.text)}
+            html += uncaptured.map((c, i) => `<div class="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs" id="uncaptured-claim-${i}">
+                <span><span class="text-accent-lime">${escapeHtml(c.source_file)}:${c.line_number}</span> — ${escapeHtml(c.text)}</span>
+                <span class="flex items-center gap-1 shrink-0">
+                    <button class="btn-uncaptured-add px-2 py-1 rounded border border-accent-lime/30 text-accent-lime hover:bg-accent-lime/10 transition-all cursor-pointer" data-text="${escapeAttr(c.text)}" data-source="${escapeAttr(c.source_file)}" data-line="${c.line_number}" title="Capture this as a decision">Add</button>
+                    <button class="btn-uncaptured-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" title="Dismiss from this list">Remove</button>
+                </span>
             </div>`).join('');
         }
 
         results.innerHTML = html;
         showToast(`Doc mining complete: ${data.finding_count} finding(s), ${data.uncaptured_count} uncaptured`);
+    }
+});
+
+// ── Doc Mining: Add/Remove uncaptured claim rows (event delegation, since
+// rows are rebuilt on every scan) ──
+document.getElementById('docmine-results')?.addEventListener('click', async (e) => {
+    const removeBtn = e.target.closest('.btn-uncaptured-remove');
+    if (removeBtn) {
+        removeBtn.closest('[id^="uncaptured-claim-"]')?.remove();
+        return;
+    }
+
+    const addBtn = e.target.closest('.btn-uncaptured-add');
+    if (addBtn) {
+        if (!state.currentProject) { showToast('Select a project first'); return; }
+        addBtn.disabled = true;
+        const { text, source, line } = addBtn.dataset;
+        const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
+            decision: text,
+            context: `Imported from docs: ${source}:${line}`,
+        });
+        if (data) {
+            showToast('Captured as a decision');
+            addBtn.closest('[id^="uncaptured-claim-"]')?.remove();
+        } else {
+            addBtn.disabled = false;
+        }
     }
 });
 
@@ -9755,7 +10235,18 @@ document.getElementById('btn-check-ghost')?.addEventListener('click', async () =
         const warnings = data.warnings || [];
         let html = `<p class="text-xs text-outline mb-3">${data.total_warnings || 0} warning(s) — High: ${data.severity_distribution?.high || 0}, Medium: ${data.severity_distribution?.medium || 0}, Low: ${data.severity_distribution?.low || 0}</p>`;
         html += warnings.length
-            ? warnings.map(w => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${w.severity === 'high' ? 'border-red-400' : 'border-yellow-400'}"><p class="text-sm">${escapeHtml(w.recommendation || w.message || JSON.stringify(w))}</p></div>`).join('')
+            ? warnings.map(w => {
+                const borderColor = w.severity === 'high' ? 'border-red-400' : w.severity === 'medium' ? 'border-yellow-400' : 'border-glass-border';
+                const fileLoc = w.diff_file ? `${escapeHtml(w.diff_file)}${w.diff_line ? ':' + w.diff_line : ''}` : '';
+                return `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${borderColor}">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="font-mono text-[10px] uppercase tracking-wider ${w.severity === 'high' ? 'text-red-400' : w.severity === 'medium' ? 'text-yellow-400' : 'text-outline'}">${escapeHtml(w.severity || '')} · ${((w.severity_score || 0) * 100).toFixed(0)}%</span>
+                        ${fileLoc ? `<span class="font-mono text-[10px] text-outline">${fileLoc}</span>` : ''}
+                    </div>
+                    <p class="text-sm">${escapeHtml(w.recommendation || w.message || JSON.stringify(w))}</p>
+                    ${w.matched_keywords && w.matched_keywords.length ? `<p class="text-[10px] font-mono text-outline mt-1.5">matched: ${w.matched_keywords.map(escapeHtml).join(', ')}</p>` : ''}
+                </div>`;
+            }).join('')
             : '<p class="text-sm text-outline">No warnings — this diff does not appear to conflict with active decisions.</p>';
         results.innerHTML = html;
     }
