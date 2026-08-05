@@ -149,7 +149,8 @@ class TestParseDiffHunks:
         assert hunks[0]["content"] == "def old_function():"
 
     def test_parse_diff_hunks_skips_file_headers(self):
-        """'--- a/file' and '+++ b/file' header lines are skipped."""
+        """'--- a/file' and '+++ b/file' header lines don't become hunk entries
+        themselves, but the '+++' line's filename is captured onto subsequent hunks."""
         # Arrange
         diff = "--- a/src/utils.py\n+++ b/src/utils.py\n+new_line()"
 
@@ -160,6 +161,34 @@ class TestParseDiffHunks:
         assert len(hunks) == 1
         assert hunks[0]["is_addition"] is True
         assert hunks[0]["content"] == "new_line()"
+        assert hunks[0]["file"] == "src/utils.py"
+
+    def test_parse_diff_hunks_tracks_file_across_multiple_files(self):
+        """A multi-file diff attributes each hunk's lines to the right file."""
+        # Arrange
+        diff = (
+            "--- a/src/a.py\n+++ b/src/a.py\n+in_a()\n"
+            "--- a/src/b.py\n+++ b/src/b.py\n+in_b()"
+        )
+
+        # Act
+        hunks = parse_diff_hunks(diff)
+
+        # Assert
+        by_content = {h["content"]: h["file"] for h in hunks}
+        assert by_content["in_a()"] == "src/a.py"
+        assert by_content["in_b()"] == "src/b.py"
+
+    def test_parse_diff_hunks_handles_no_ab_prefix(self):
+        """Diffs generated with --no-prefix (no a/ b/ prefix) still set the filename."""
+        # Arrange
+        diff = "--- src/utils.py\n+++ src/utils.py\n+new_line()"
+
+        # Act
+        hunks = parse_diff_hunks(diff)
+
+        # Assert
+        assert hunks[0]["file"] == "src/utils.py"
 
     def test_parse_diff_hunks_extracts_line_numbers(self):
         """Hunk headers set the starting line number for subsequent lines."""

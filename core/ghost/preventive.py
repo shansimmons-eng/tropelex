@@ -65,13 +65,40 @@ def _classify_severity(score: float) -> str:
     return "low"
 
 
-def _recommendation_for(severity: str) -> str:
-    """Generate a human-readable recommendation from severity tier."""
+def _truncate(text: str, limit: int = 80) -> str:
+    """Shorten text for inline display, without cutting mid-word where avoidable."""
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "…"
+
+
+def _recommendation_for(
+    severity: str, decision_text: str, diff_file: str, matched_keywords: list[str]
+) -> str:
+    """Generate a human-readable, diff-specific recommendation.
+
+    Interpolates the actual matched decision/file/keywords rather than
+    returning one of three fixed strings, so two different warnings in the
+    same severity tier don't read as identical.
+    """
+    where = f" in `{diff_file}`" if diff_file else ""
+    quoted_decision = f'"{_truncate(decision_text)}"'
+    keyword_note = f" (matched: {', '.join(matched_keywords[:5])})" if matched_keywords else ""
+
     if severity == "high":
-        return "Consider updating the decision or reverting this change"
+        return (
+            f"This change{where} may contradict the decision {quoted_decision}"
+            f"{keyword_note} — consider updating the decision or reverting this change."
+        )
     if severity == "medium":
-        return "Review this drift — may be intentional"
-    return "Minor drift — monitor but no immediate action needed"
+        return (
+            f"This change{where} overlaps with the decision {quoted_decision}"
+            f"{keyword_note} — review this drift, may be intentional."
+        )
+    return (
+        f"Minor overlap{where} with the decision {quoted_decision}"
+        f"{keyword_note} — monitor but no immediate action needed."
+    )
 
 
 def _build_scored_decisions(
@@ -113,7 +140,7 @@ def _warn_single_decision(
             severity=tier,
             severity_score=round(raw_severity, 4),
             matched_keywords=m.matched_keywords,
-            recommendation=_recommendation_for(tier),
+            recommendation=_recommendation_for(tier, text, m.diff_file, m.matched_keywords),
             diff_file=m.diff_file,
             diff_line=m.diff_line,
         ))

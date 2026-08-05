@@ -88,7 +88,13 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
     current_line = 0
 
     for raw_line in diff_text.splitlines():
-        # Skip file headers
+        # "+++ b/path/to/file" carries the new filename — everything else
+        # under _DIFF_FILE_RE ("---"/"+++") is just skipped.
+        if raw_line.startswith("+++"):
+            path = raw_line[len("+++"):].strip()
+            if path and path != "/dev/null":
+                current_file = path[2:] if path[:2] in ("a/", "b/") else path
+            continue
         if _DIFF_FILE_RE.match(raw_line):
             continue
 
@@ -125,9 +131,6 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
         else:
             # Context line (space-prefixed or blank)
             content = raw_line[1:] if raw_line.startswith(" ") else raw_line
-            # Track file from first context line after ---/+++ headers
-            if not current_file and content.strip():
-                pass  # file set by ---/+++ or first hunk
             hunks.append({
                 "file": current_file,
                 "line_number": current_line,

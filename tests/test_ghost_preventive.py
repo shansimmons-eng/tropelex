@@ -303,7 +303,7 @@ class TestRecommendationFor:
     def test_high_severity(self):
         """High severity recommends updating or reverting."""
         # Arrange / Act
-        rec = _recommendation_for("high")
+        rec = _recommendation_for("high", "Use Postgres", "db.py", ["postgres"])
 
         # Assert
         assert "update" in rec.lower() or "revert" in rec.lower()
@@ -311,7 +311,7 @@ class TestRecommendationFor:
     def test_medium_severity(self):
         """Medium severity recommends review."""
         # Arrange / Act
-        rec = _recommendation_for("medium")
+        rec = _recommendation_for("medium", "Use Postgres", "db.py", ["postgres"])
 
         # Assert
         assert "review" in rec.lower() or "drift" in rec.lower()
@@ -319,7 +319,7 @@ class TestRecommendationFor:
     def test_low_severity(self):
         """Low severity recommends monitoring."""
         # Arrange / Act
-        rec = _recommendation_for("low")
+        rec = _recommendation_for("low", "Use Postgres", "db.py", ["postgres"])
 
         # Assert
         assert "minor" in rec.lower() or "monitor" in rec.lower()
@@ -328,9 +328,51 @@ class TestRecommendationFor:
         """All severity tiers produce non-empty string recommendations."""
         # Arrange / Act / Assert
         for tier in ("high", "medium", "low"):
-            rec = _recommendation_for(tier)
+            rec = _recommendation_for(tier, "Use Postgres", "db.py", ["postgres"])
             assert isinstance(rec, str)
             assert len(rec) > 0
+
+    def test_interpolates_decision_text_and_diff_file(self):
+        """The recommendation quotes the actual decision and names the file,
+        instead of returning one of three generic strings regardless of input."""
+        # Arrange / Act
+        rec = _recommendation_for("low", "Use Postgres for the primary database", "core/db.py", ["postgres", "database"])
+
+        # Assert
+        assert "Use Postgres for the primary database" in rec
+        assert "core/db.py" in rec
+        assert "postgres" in rec
+
+    def test_two_different_decisions_produce_different_text_at_same_tier(self):
+        """Two unrelated warnings in the same severity tier must not read as
+        identical — this was the exact complaint the vague static text caused."""
+        # Arrange / Act
+        rec_a = _recommendation_for("low", "Use Postgres", "db.py", ["postgres"])
+        rec_b = _recommendation_for("low", "Use snake_case naming", "utils.py", ["naming"])
+
+        # Assert
+        assert rec_a != rec_b
+
+    def test_omits_file_clause_when_diff_file_empty(self):
+        """No diff_file shouldn't produce a dangling 'in ``' artifact."""
+        # Arrange / Act
+        rec = _recommendation_for("low", "Use Postgres", "", [])
+
+        # Assert
+        assert "in ``" not in rec
+        assert "Use Postgres" in rec
+
+    def test_truncates_long_decision_text(self):
+        """A long decision doesn't blow up the recommendation to unreadable length."""
+        # Arrange
+        long_decision = "This is a very long decision statement " * 5
+
+        # Act
+        rec = _recommendation_for("low", long_decision, "file.py", [])
+
+        # Assert
+        assert "…" in rec
+        assert len(rec) < len(long_decision) + 200
 
 
 class TestWarningToDict:
