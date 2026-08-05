@@ -6,6 +6,7 @@ decisions from chat-style messages.
 import re
 from typing import Any
 
+from core.agent_identity import normalize_agent_name
 from core.slack import (
     CapturedDecision,
     ExtractionResult,
@@ -106,7 +107,7 @@ def capture_decision(
         source="manual",
         channel=channel.strip()[:100],
         timestamp=datetime.now(timezone.utc).isoformat(),
-        agent_name=agent_name.strip()[:100],
+        agent_name=normalize_agent_name(agent_name)[:100],
     )
 
     # Add to memory
