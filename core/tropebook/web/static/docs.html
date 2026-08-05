@@ -311,9 +311,11 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
             <tr><td><code>check_contradictions</code></td><td>Scan a project's decisions for unresolved contradictions.</td></tr>
             <tr><td><code>check_diff_for_conflicts</code></td><td>Pre-write guard — check a proposed unified diff against active decisions before committing.</td></tr>
             <tr><td><code>friction_scan</code></td><td>Scan a conversation transcript for rephrasing/escalation/retry signals.</td></tr>
+            <tr><td><code>record_skill_outcome</code></td><td>Record how well a task went, to build up per-agent skill and persona data.</td></tr>
             <tr><td><code>get_handoff_packet</code></td><td>Generate a role-aware context bundle for handing work off to another agent.</td></tr>
             <tr><td><code>explain_why</code></td><td>Ask a natural-language "why do we...?" question, get a causal-chain answer.</td></tr>
         </table>
+        <p><code>end_session</code>, <code>friction_scan</code>, and <code>record_skill_outcome</code> all take an <code>agent</code> argument — pass your own name (e.g. <code>"Claude"</code>) so per-agent skill and persona tracking has real data instead of everything landing under <code>"unspecified"</code>.</p>
         <p>This is a curated subset of Tropelex's 150+ REST endpoints. Add more by following the same pattern in <code>mcp_server/server.py</code>: a thin <code>@mcp.tool()</code> wrapper around the existing <code>_request()</code> helper.</p>
     </div>
 

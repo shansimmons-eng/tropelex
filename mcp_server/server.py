@@ -112,15 +112,22 @@ async def capture_decision(
 
 
 @mcp.tool()
-async def end_session(project: str, summary: str) -> dict[str, Any]:
+async def end_session(project: str, summary: str, agent: str = "unspecified") -> dict[str, Any]:
     """Record the current session as a snapshot in a project's session history.
 
     Call this at the end of a work session so Session Replay and Time Travel
     have something to reconstruct later.
+
+    Args:
+        project: Project name.
+        summary: One-line summary of what happened this session.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini") — attributes
+            this session to you specifically, so per-agent skill and persona
+            tracking has real data instead of lumping every agent together.
     """
     return await _request(
         "POST", f"/api/memory/{quote(project, safe='')}/sessions/record",
-        json={"summary": summary, "session_type": "manual"},
+        json={"summary": summary, "session_type": "manual", "agent_name": agent},
     )
 
 
@@ -171,17 +178,55 @@ async def check_diff_for_conflicts(project: str, diff: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-async def friction_scan(project: str, transcript: str) -> dict[str, Any]:
+async def friction_scan(project: str, transcript: str, agent: str = "unspecified") -> dict[str, Any]:
     """Scan a conversation transcript for friction signals — rephrasing,
     escalation, retries — that indicate implicit user correction or frustration.
 
     Args:
         project: Project name.
         transcript: Raw conversation text to scan.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini") — attributes
+            this scan to you specifically for per-agent friction tracking.
     """
     return await _request(
         "POST", f"/api/memory/{quote(project, safe='')}/friction/scan",
-        json={"transcript": transcript},
+        json={"transcript": transcript, "agent_name": agent},
+    )
+
+
+@mcp.tool()
+async def record_skill_outcome(
+    project: str,
+    session_type: str,
+    categories: list[str],
+    outcome: str = "success",
+    details: str = "",
+    agent: str = "unspecified",
+) -> dict[str, Any]:
+    """Record how well a task went, to build up per-agent skill and persona data.
+
+    Call this after finishing a non-trivial task so Agent Skill Proficiency
+    and Personas reflect what you actually did, instead of requiring a human
+    to type it into the web UI by hand.
+
+    Args:
+        project: Project name.
+        session_type: Short label for the kind of work (e.g. "bugfix", "feature", "refactor").
+        categories: Skill categories this task touched (e.g. ["ui", "backend"]).
+        outcome: How it went: success, partial, or failure. Default: success.
+        details: Optional one-line note on what happened.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini") — attributes
+            this outcome to you specifically.
+    """
+    return await _request(
+        "POST", f"/api/memory/{quote(project, safe='')}/agent-skills/record",
+        json={
+            "session_type": session_type,
+            "categories": categories,
+            "outcome": outcome,
+            "details": details,
+            "agent_name": agent,
+        },
     )
 
 
