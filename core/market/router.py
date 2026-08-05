@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from core.agent_identity import normalize_agent_name
 from core.market import CalibrationScore, Err, LeaderboardEntry, Ok, Result
 from core.market.calibration import (
     compute_calibration,
@@ -125,11 +126,19 @@ async def place_bet(project: str, req: BetPlaceRequest) -> dict[str, Any]:
         logger.error("market bet load failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
+    known_ids = {d.get("id") for d in memory.get("decisions", []) if d.get("id")}
+    if req.decision_id not in known_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Decision '{req.decision_id}' not found in project '{project}'",
+        )
+
     bets = _get_bets(memory)
+    agent_name = normalize_agent_name(req.agent_name)
     bet_dict = {
-        "id": f"bet-{project}-{req.decision_id}-{req.agent_name}-{len(bets)}",
+        "id": f"bet-{project}-{req.decision_id}-{agent_name}-{len(bets)}",
         "decision_id": req.decision_id,
-        "agent_name": req.agent_name,
+        "agent_name": agent_name,
         "confidence": req.confidence,
         "category": req.category,
     }
@@ -183,6 +192,7 @@ async def resolve_bet_endpoint(project: str, req: BetResolveRequest) -> dict[str
 @market_router.get("/{project}/market/calibration/{agent}")
 async def get_calibration(project: str, agent: str) -> CalibrationResponse:
     """Get calibration metrics for a specific agent."""
+    agent = normalize_agent_name(agent)
     try:
         memory = _load_memory(project)
     except HTTPException:

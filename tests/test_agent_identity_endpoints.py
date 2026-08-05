@@ -102,6 +102,20 @@ class TestListProjectAgents:
         res = client.get(f"/api/memory/{project}/agents")
         assert res.json()["agents"] == []
 
+    def test_known_aliases_collapse_to_one_agent(self, client, project):
+        _record_skill(client, project, "Claude")
+        _record_skill(client, project, "claude-sonnet-5")
+        res = client.get(f"/api/memory/{project}/agents")
+        data = res.json()
+        assert data["agents"] == ["Claude"]
+        assert data["count"] == 1
+
+    def test_known_aliases_collapse_across_friction_too(self, client, project):
+        _scan_friction(client, project, "Claude")
+        _scan_friction(client, project, "Claude Code")
+        res = client.get(f"/api/memory/{project}/agents")
+        assert res.json()["agents"] == ["Claude"]
+
 
 class TestGetAgentSummary:
     def test_unknown_agent_returns_zeroed_summary_not_404(self, client, project):
@@ -147,3 +161,11 @@ class TestGetAgentSummary:
         gemini = client.get(f"/api/memory/{project}/agents/Gemini/summary").json()
         assert "ui" in claude["strengths"]
         assert "ui" in gemini["weaknesses"]
+
+    def test_alias_spelling_in_url_resolves_to_same_canonical_data(self, client, project):
+        _record_skill(client, project, "Claude", outcome="success", categories=["ui"])
+
+        canonical = client.get(f"/api/memory/{project}/agents/Claude/summary").json()
+        alias = client.get(f"/api/memory/{project}/agents/claude-sonnet-5/summary").json()
+        assert alias["agent_name"] == "Claude"
+        assert alias["skills"] == canonical["skills"]

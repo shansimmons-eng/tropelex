@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.agent_identity import normalize_agent_name
+
 logger = logging.getLogger("tropelex.agent_skills")
 
 
@@ -104,7 +106,7 @@ class AgentSkillGraph:
                     "skills" aggregate (unchanged behavior) and a per-agent
                     breakdown under "skills_by_agent".
         """
-        agent_name = (agent_name or "").strip() or "unspecified"
+        agent_name = normalize_agent_name(agent_name)
         data = self._load(project_name)
 
         for cat in categories:

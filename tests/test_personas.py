@@ -252,14 +252,52 @@ class TestPersonaRouterAgentRegression:
         assert claude_accuracy["ui"] == 1.0
         assert gemini_accuracy["ui"] == 0.0
 
-    def test_all_personas_endpoint_stays_project_wide(self, client, project):
-        """GET /{project}/personas (no agent) is the intentional aggregate
-        rollup and must not be affected by the per-agent fix."""
+    def test_all_personas_endpoint_returns_one_per_real_agent(self, client, project):
+        """GET /{project}/personas (no agent) previously blended every agent
+        into a single fake persona keyed by the *project* name, which showed
+        up in the dashboard as an "Unknown" persona with no strengths or
+        weaknesses. It must now return one real persona per distinct agent
+        that has actually recorded skill outcomes."""
         self._record_skill(client, project, "Claude", "success")
         self._record_skill(client, project, "Gemini", "failure")
 
         res = client.get(f"/api/memory/{project}/personas")
         assert res.status_code == 200
         personas = res.json()["personas"]
+        assert len(personas) == 2
+
+        by_agent = {p["persona"]["agent_name"]: p["persona"] for p in personas}
+        assert set(by_agent.keys()) == {"Claude", "Gemini"}
+        assert by_agent["Claude"]["accuracy_by_category"]["ui"] == 1.0
+        assert by_agent["Gemini"]["accuracy_by_category"]["ui"] == 0.0
+
+    def test_known_aliases_produce_one_persona_not_two(self, client, project):
+        """Skill outcomes recorded under known-alias spellings of the same
+        agent ("Claude" vs "Claude Code") must collapse into one persona."""
+        self._record_skill(client, project, "Claude", "success")
+        self._record_skill(client, project, "Claude Code", "success")
+        self._record_skill(client, project, "Gemini", "failure")
+
+        res = client.get(f"/api/memory/{project}/personas")
+        assert res.status_code == 200
+        personas = res.json()["personas"]
+        assert len(personas) == 2
+
+        by_agent = {p["persona"]["agent_name"]: p["persona"] for p in personas}
+        assert set(by_agent.keys()) == {"Claude", "Gemini"}
+
+    def test_all_personas_endpoint_falls_back_to_project_aggregate_when_no_agents_tagged(self, client, project):
+        """Legacy data recorded before agent tagging existed has no agent
+        names to iterate — the endpoint should still return something usable
+        (the old project-wide aggregate) rather than an empty list."""
+        res = client.post(
+            f"/api/memory/{project}/agent-skills/record",
+            json={"session_type": "manual", "categories": ["ui"], "outcome": "success"},
+        )
+        assert res.status_code == 200, res.text
+
+        res = client.get(f"/api/memory/{project}/personas")
+        assert res.status_code == 200
+        personas = res.json()["personas"]
         assert len(personas) == 1
-        assert personas[0]["persona"]["accuracy_by_category"]["ui"] == 0.5
+        assert personas[0]["persona"]["agent_name"] == project

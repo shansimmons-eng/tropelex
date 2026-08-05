@@ -22,6 +22,7 @@ from core.friction.miner import (
     detect_friction_signals,
     group_signals_by_zone,
 )
+from core.agent_identity import normalize_agent_name
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.friction")
@@ -103,7 +104,7 @@ async def friction_scan(project: str, body: FrictionScanRequest) -> dict[str, An
     # trends, not just the single scan just run. Previously this only
     # returned results — friction_summary read from friction_history, but
     # nothing ever wrote to it.
-    agent_name = (body.agent_name or "").strip() or "unspecified"
+    agent_name = normalize_agent_name(body.agent_name)
     memory = _load_memory(project)
     history = memory.setdefault("friction_history", [])
     history.append({

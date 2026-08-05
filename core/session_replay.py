@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.agent_identity import normalize_agent_name
+
 logger = logging.getLogger("tropelex.session_replay")
 
 
@@ -175,7 +177,7 @@ class SessionReplay:
         session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{_snapshot_id(memory_after)[:6]}"
 
         changes = _deep_diff(memory_before, memory_after)
-        agent = (agent or "").strip() or "unspecified"
+        agent = normalize_agent_name(agent)
 
         record = {
             "session_id": session_id,

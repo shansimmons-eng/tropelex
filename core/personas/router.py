@@ -15,7 +15,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.personas import Err, PersonaError, PersonaSummary
+from core.agent_identity import normalize_agent_name
+from core.personas import Err, Ok, PersonaError, PersonaSummary, Result
 from core.personas.persona_builder import build_persona, suggest_review_focus
 
 logger = logging.getLogger("tropelex.personas")
@@ -114,6 +115,7 @@ async def get_agent_persona(project: str, agent: str) -> dict[str, Any]:
     Returns the synthesised persona including strengths, weaknesses,
     preferred categories, and a human-readable summary.
     """
+    agent = normalize_agent_name(agent)
     try:
         agent_skills = _load_agent_skills(project, agent=agent)
     except HTTPException:
@@ -150,42 +152,75 @@ async def get_agent_persona(project: str, agent: str) -> dict[str, Any]:
 
 @persona_router.get("/{project}/personas")
 async def get_all_personas(project: str) -> dict[str, Any]:
-    """Get persona summaries for all agents in a project.
+    """Get persona summaries for all real agents recorded in a project.
 
-    Returns a list of persona summaries. Each skill category is treated
-    as contributing to a single project-level agent persona.
+    One entry per distinct agent (Claude, Gemini, ...) that has actually
+    recorded skill outcomes — not a single persona keyed by the project
+    name. Falls back to the legacy project-wide aggregate persona only for
+    projects that predate agent tagging (no agent has ever been recorded).
     """
+    from core.agent_skills import AgentSkillGraph
+
     try:
-        agent_skills = _load_agent_skills(project)
-    except HTTPException:
-        raise
-    except PersonaError as exc:
-        logger.error("PersonaError loading skills for '%s': %s", project, exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        graph = AgentSkillGraph(str(BASE_DIR))
+        agent_names = graph.list_agents(project) if graph._skills_file(project).exists() else []
     except Exception as exc:
-        logger.error("Failed to load skills for '%s': %s", project, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to load agent skills: {exc}")
+        logger.error("Failed to list agents for '%s': %s", project, exc)
+        agent_names = []
 
-    result = build_persona(agent_skills, project)
+    def _build_entry(agent_skills: dict[str, Any], name: str) -> Result[dict[str, Any]]:
+        result = build_persona(agent_skills, name)
+        if isinstance(result, Err):
+            return result
+        persona = result.value
+        review = suggest_review_focus(persona)
+        return Ok(value={
+            "persona": _persona_to_response(persona).model_dump(),
+            "review_suggestion": ReviewSuggestionResponse(
+                agent_name=review.agent_name,
+                focus_areas=review.focus_areas,
+                reasoning=review.reasoning,
+            ).model_dump(),
+        })
 
-    if isinstance(result, Err):
-        logger.error("Persona build failed for '%s': %s", project, result.error)
-        raise HTTPException(status_code=500, detail=result.error)
+    personas: list[dict[str, Any]] = []
 
-    persona = result.value
-    review = suggest_review_focus(persona)
+    if agent_names:
+        for name in agent_names:
+            try:
+                agent_skills = _load_agent_skills(project, agent=name)
+            except HTTPException:
+                raise
+            except Exception as exc:
+                logger.error("Failed to load skills for '%s/%s': %s", project, name, exc)
+                continue
+            entry = _build_entry(agent_skills, name)
+            if isinstance(entry, Err):
+                logger.error("Persona build failed for '%s/%s': %s", project, name, entry.error)
+                continue
+            personas.append(entry.value)
+    else:
+        # Legacy fallback: no agent-tagged data exists yet, so surface the
+        # old project-wide aggregate rather than an empty list.
+        try:
+            agent_skills = _load_agent_skills(project)
+        except HTTPException:
+            raise
+        except PersonaError as exc:
+            logger.error("PersonaError loading skills for '%s': %s", project, exc)
+            raise HTTPException(status_code=500, detail=str(exc))
+        except Exception as exc:
+            logger.error("Failed to load skills for '%s': %s", project, exc)
+            raise HTTPException(status_code=500, detail=f"Failed to load agent skills: {exc}")
+
+        entry = _build_entry(agent_skills, project)
+        if isinstance(entry, Err):
+            logger.error("Persona build failed for '%s': %s", project, entry.error)
+            raise HTTPException(status_code=500, detail=entry.error)
+        personas.append(entry.value)
 
     return {
         "project": project,
-        "personas": [
-            {
-                "persona": _persona_to_response(persona).model_dump(),
-                "review_suggestion": ReviewSuggestionResponse(
-                    agent_name=review.agent_name,
-                    focus_areas=review.focus_areas,
-                    reasoning=review.reasoning,
-                ).model_dump(),
-            }
-        ],
-        "count": 1,
+        "personas": personas,
+        "count": len(personas),
     }
