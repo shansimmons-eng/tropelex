@@ -164,3 +164,67 @@ class TestDetectContradictions:
             severities = [c.severity for c in result.contradictions]
             rank = {"high": 0, "medium": 1, "low": 2}
             assert severities == sorted(severities, key=lambda s: rank.get(s, 3))
+
+
+# ── /contradictions endpoint: escalation to Safety Review queue ────────────
+
+import uuid
+from fastapi.testclient import TestClient
+from core.tropebook.web.server import app
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+@pytest.fixture
+def project():
+    return f"test_contradictions_{uuid.uuid4().hex[:8]}"
+
+
+class TestContradictionEscalation:
+    def _create_conflicting_pair(self, client, project):
+        a = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Use React for frontend", "context": "",
+        }).json()["decision"]
+        b = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Use Vue for frontend", "context": "",
+        }).json()["decision"]
+        return a["id"], b["id"]
+
+    def test_high_severity_contradiction_escalates_to_review(self, client, project):
+        a_id, b_id = self._create_conflicting_pair(client, project)
+
+        resp = client.get(f"/api/memory/{project}/contradictions")
+        assert resp.status_code == 200
+
+        pending = client.get(f"/api/memory/{project}/reviews/pending").json()
+        pending_ids = {r["id"] for r in pending["pending_reviews"]}
+        assert a_id in pending_ids
+        assert b_id in pending_ids
+
+    def test_approved_decision_does_not_re_escalate_on_rescan(self, client, project):
+        """Regression test: a contradiction doesn't structurally resolve just
+        because one side gets approved -- the pair is still "unresolved" by
+        detect_contradictions' own definition. Without a check for an
+        existing review, every re-scan (e.g. re-opening the Contradictions
+        tab) flips requires_review back to True, so an approved decision
+        never actually leaves the pending queue. Same bug class already
+        fixed once for the persona/market escalation path; this is the
+        contradiction path's own copy of it."""
+        a_id, b_id = self._create_conflicting_pair(client, project)
+
+        client.get(f"/api/memory/{project}/contradictions")
+        assert client.get(f"/api/memory/{project}/reviews/pending").json()["total_pending"] == 2
+
+        approved = client.post(f"/api/memory/{project}/decisions/{a_id}/approve", params={"reviewer": "shan"})
+        assert approved.status_code == 200
+
+        # Re-scanning contradictions (e.g. revisiting the tab) must not
+        # undo the approval.
+        client.get(f"/api/memory/{project}/contradictions")
+        pending = client.get(f"/api/memory/{project}/reviews/pending").json()
+        pending_ids = {r["id"] for r in pending["pending_reviews"]}
+        assert a_id not in pending_ids
+        assert b_id in pending_ids  # the un-approved side is still correctly pending

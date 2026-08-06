@@ -46,11 +46,16 @@
     } else {
       window.__tropelexReady.fonts = true;
     }
-    // Safety net: if the Tailwind CDN script never loads at all (blocked by
-    // an ad-blocker, offline, CDN outage), force-reveal anyway after 4s --
-    // a permanently blank page is a far worse failure than the flash this
-    // guard exists to prevent.
-    setTimeout(() => document.documentElement.classList.remove('fonts-loading'), 4000);
+    // Last-resort safety net only -- a real network's Tailwind CDN fetch can
+    // legitimately take a few seconds under normal conditions (slow
+    // connection, contention with the font/D3 requests also in flight), and
+    // a short blind timeout here would fire on an ordinary slow-but-still-
+    // succeeding load, showing the exact unstyled flash this guard exists to
+    // prevent -- just delayed instead of avoided. The script's own onerror
+    // handler below (fires immediately on a genuine failure: ad-blocker,
+    // offline, CDN outage) is the real fast path; this is only a backstop
+    // for the case where neither success nor error ever fires at all.
+    setTimeout(() => document.documentElement.classList.remove('fonts-loading'), 15000);
 </script>
 
 <style>
@@ -82,17 +87,30 @@
         text-overflow: ellipsis;
     }
 </style>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"
+    onerror="window.__tropelexReady.tailwind = true; __tropelexMaybeReveal();"></script>
 <script>
     // Runs only once the Tailwind CDN script above has fully downloaded and
     // executed (synchronous <script src> tags run in strict document order),
     // so this is the real "Tailwind is ready" signal -- there's no official
-    // ready event from the Play CDN build. Double rAF gives its initial
-    // class-application pass a paint cycle to settle before revealing.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    // ready event from the Play CDN build. setTimeout(fn, 0) gives its
+    // initial class-application pass one event-loop tick to settle before
+    // revealing. This intentionally does NOT use requestAnimationFrame:
+    // rAF callbacks are tied to the paint cycle and browsers throttle or
+    // fully pause them for backgrounded/hidden tabs (e.g. a link opened in
+    // a background tab, or a tab that loses focus while still loading) --
+    // that starves this signal indefinitely and silently falls through to
+    // the 15s safety-net timeout below every time, reproducing the exact
+    // flash this guard exists to prevent. setTimeout keeps firing regardless
+    // of tab visibility.
+    // (The onerror on the tag above covers the case where the script never
+    // loads at all -- that fires immediately rather than waiting on the
+    // 15s last-resort timeout, so a genuinely blocked/offline CDN reveals
+    // fast instead of after a long, unnecessary wait.)
+    setTimeout(() => {
         window.__tropelexReady.tailwind = true;
         __tropelexMaybeReveal();
-    }));
+    }, 0);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>

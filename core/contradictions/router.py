@@ -45,6 +45,17 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
         safety = d.setdefault("safety_metadata", {})
         if safety.get("requires_review"):
             continue
+        # A human already reviewed this decision at least once — respect
+        # that resolution rather than re-flagging it every time contradictions
+        # are re-scanned. A contradiction doesn't structurally "resolve" just
+        # because someone approved one side of it, so without this check,
+        # approving (which sets requires_review=False) gets undone on the
+        # very next /contradictions call as long as the pair stays
+        # unresolved -- the same bug already fixed once for the persona/
+        # market escalation path (_apply_persona_market_escalation), just
+        # never applied here too.
+        if d.get("safety_reviews"):
+            continue
         safety["requires_review"] = True
         if safety.get("risk_level", "low") == "low":
             safety["risk_level"] = "medium"

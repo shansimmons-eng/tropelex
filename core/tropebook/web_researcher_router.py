@@ -87,7 +87,14 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
 class HybridResearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
     max_web_steps: int = Field(2, ge=1, le=4)
-    last30days_timeout: int = Field(180, ge=30, le=360)
+    # A real query (multi-provider fanout: GitHub, YouTube incl. transcript
+    # fetches with yt-dlp fallback, Reddit, HN, web grounding) measured at
+    # ~2m14s end to end -- 180s left almost no margin and was the actual
+    # cause of "last30days isn't producing results": not a broken engine,
+    # just a timeout tuned tighter than the engine's own real latency.
+    # runner.py's standalone ENGINE_TIMEOUT default is already 300s; match
+    # it here, with the ceiling raised enough to cover a genuinely slow run.
+    last30days_timeout: int = Field(300, ge=30, le=480)
 
 
 @web_research_router.post("/{project}/deep-research/hybrid")

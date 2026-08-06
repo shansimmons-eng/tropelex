@@ -36,14 +36,56 @@
       "strategy": "openai/gpt-4o-mini",
       "timestamp": "2026-07-29T15:43:36.584482+00:00",
       "outcome": "good"
+    },
+    {
+      "id": "e4a784bcb967",
+      "original_length": 418,
+      "compressed_length": 381,
+      "compression_ratio": 0.9114832535885168,
+      "strategy": "client",
+      "timestamp": "2026-07-30T23:30:15.171395+00:00",
+      "outcome": "rephrased"
+    },
+    {
+      "id": "69ad3883d17e",
+      "original_length": 244,
+      "compressed_length": 228,
+      "compression_ratio": 0.9344262295081968,
+      "strategy": "client",
+      "timestamp": "2026-07-31T19:58:31.210306+00:00",
+      "outcome": null
+    },
+    {
+      "id": "dfcbfa29acb6",
+      "original_length": 201,
+      "compressed_length": 104,
+      "compression_ratio": 0.5174129353233831,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-07-31T20:02:29.814028+00:00",
+      "outcome": "good"
+    },
+    {
+      "id": "b5c4fea095d3",
+      "original_length": 220,
+      "compressed_length": 104,
+      "compression_ratio": 0.4727272727272727,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-08-01T03:43:02.888606+00:00",
+      "outcome": "good"
     }
   ],
   "strategy_scores": {
     "openai/gpt-4o-mini": {
-      "good": 3,
+      "good": 5,
       "rephrased": 0,
       "failed": 0,
-      "total": 3
+      "total": 5
+    },
+    "client": {
+      "good": 0,
+      "rephrased": 1,
+      "failed": 0,
+      "total": 1
     }
   },
   "created": "2026-07-29T15:36:07.465974+00:00"
