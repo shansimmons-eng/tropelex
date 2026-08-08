@@ -44,10 +44,29 @@ async def get_project_memory(project: str) -> dict[str, Any]:
     return await request("GET", f"/api/memory/{quote(project, safe='')}")
 
 
-async def add_decision(project: str, decision: str, context: str = "") -> dict[str, Any]:
+SAFETY_CATEGORIES = [
+    "general", "adversarial", "robustness", "monitoring", "governance", "alignment",
+]
+
+
+async def preview_category(project: str, decision: str, context: str = "") -> dict[str, Any]:
+    """Ask the server for a suggested safety_category, without saving anything."""
+    return await request(
+        "POST", f"/api/memory/{quote(project, safe='')}/decisions/preview-category",
+        json={"decision": decision, "context": context},
+    )
+
+
+async def add_decision(
+    project: str, decision: str, context: str = "", safety_category: str = ""
+) -> dict[str, Any]:
     return await request(
         "POST", f"/api/memory/{quote(project, safe='')}/decisions",
-        json={"decision": decision, "context": context},
+        json={
+            "decision": decision,
+            "context": context,
+            "safety_metadata": {"safety_category": safety_category or None},
+        },
     )
 
 

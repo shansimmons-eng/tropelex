@@ -67,6 +67,14 @@
     :root {
         --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        /* Without this, every <select>'s open option list renders with the
+           browser's light-mode native chrome (near-white background) no
+           matter what Tailwind classes are on the <select> itself — those
+           only style the closed box, not the native popup. Combined with
+           our light-on-dark text colors, options were unreadable until
+           hovered. This is the actual fix; the `select option` rule below
+           is a belt-and-suspenders reinforcement, not the fix itself. */
+        color-scheme: dark;
     }
 
     body {
@@ -224,6 +232,24 @@ tailwind.config = {
     @keyframes slideIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .nav-item:hover:not(.active) { color: #80d5fa; }
 
+    /* ── Attention pulse — a soft glow breathing around an element,
+       applied conditionally (JS toggles the class) to indicators that mean
+       "there's open work here." Originally a conic-gradient chasing
+       border, but that technique sweeps by angle, which distorts badly on
+       wide/short pill shapes (the arc bunches into a jagged blob at the
+       rounded ends instead of tracing evenly) — every target here is a
+       pill or a wide stat tile, so it never looked clean. box-shadow has
+       no such geometry problem: it follows the element's actual rendered
+       shape regardless of proportions, so it stays clean on all of them. */
+    .attn-chase { animation: attn-pulse-glow 2.2s ease-in-out infinite; }
+    @keyframes attn-pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 var(--attn-chase-color, rgba(250, 204, 21, 0.55)); }
+        50% { box-shadow: 0 0 10px 2px var(--attn-chase-color, rgba(250, 204, 21, 0.55)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .attn-chase { animation: none; }
+    }
+
     /* ── Select dropdown arrows ── */
     select {
         appearance: none;
@@ -231,6 +257,12 @@ tailwind.config = {
         background-repeat: no-repeat;
         background-position: right 0.75rem center;
         padding-right: 2rem !important;
+    }
+    /* Reinforces color-scheme: dark above for browsers that honor per-option
+       styling in the native popup (Chrome/Edge do; not universal). */
+    select option {
+        background-color: #141b2d;
+        color: #dce2fa;
     }
 
     /* ── Sidebar ── */
@@ -921,6 +953,7 @@ void main() {
             <button class="content-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="dashboard" onclick="switchGenericTab('content', 'dashboard')">Overview</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="tropebook" onclick="switchGenericTab('content', 'tropebook')">Tropebook</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="memory" onclick="switchGenericTab('content', 'memory')">Memory</button>
+            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="goals" onclick="switchGenericTab('content', 'goals')">Goals</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="patterns" onclick="switchGenericTab('content', 'patterns')">Patterns</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="graph" onclick="switchGenericTab('content', 'graph')">Knowledge Graph</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="pipeline" onclick="switchGenericTab('content', 'pipeline')">Prompt Lab</button>
@@ -974,14 +1007,14 @@ void main() {
                 </div>
             </div>
 
-            <div class="glass-panel rounded-xl p-5 border-l-4 border-yellow-400 relative overflow-hidden">
+            <div id="dash-pending-reviews-card" class="glass-panel rounded-xl p-5 border-l-4 border-yellow-400 relative overflow-hidden">
                 <div class="flex items-center justify-between mb-2">
                     <span class="font-mono text-xs text-outline uppercase tracking-wider no-wrap-title">Pending Reviews</span>
                     <span class="material-symbols-outlined text-yellow-400 text-sm">rate_review</span>
                 </div>
                 <div class="flex items-baseline justify-between">
-                    <span class="font-mono text-2xl text-on-surface font-bold">0</span>
-                    <span class="font-mono text-xs text-yellow-400">CLEAR</span>
+                    <span id="dash-pending-reviews-count" class="font-mono text-2xl text-on-surface font-bold">—</span>
+                    <span id="dash-pending-reviews-label" class="font-mono text-xs text-yellow-400">—</span>
                 </div>
                 <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
                     <div class="bg-yellow-400 h-full rounded-full" style="width: 100%;"></div>
@@ -1067,6 +1100,29 @@ void main() {
                 <div id="dash-agent-activity" class="space-y-3">
                     <p class="text-sm text-outline">Select a project to see agent activity.</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Needs Attention — two rows down from the top HUD on purpose: the
+             activity stream/pattern learner/risk charts above it are what
+             a first-time viewer needs to understand the project, so they
+             stay first. This still isn't buried — it's ongoing, not a
+             one-time setup checklist, and always rendered (even when
+             clear) so it stays a standing checkpoint rather than
+             something that vanishes and gets forgotten. -->
+        <div id="needs-attention-panel" class="glass-panel rounded-xl p-6 mb-6 border-l-4 border-yellow-400">
+            <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-yellow-400 text-2xl">rate_review</span>
+                    <div>
+                        <h3 class="font-mono text-sm uppercase tracking-wider text-on-surface font-bold">Needs Attention</h3>
+                        <p class="text-xs text-outline">Ongoing — revisit as new items appear, not a one-time setup list</p>
+                    </div>
+                </div>
+                <span id="needs-attention-badge" class="px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 font-mono text-xs font-semibold">—</span>
+            </div>
+            <div id="needs-attention-list" class="space-y-2 mt-4">
+                <p class="text-sm text-outline">Select a project to see what's waiting.</p>
             </div>
         </div>
 
@@ -1263,6 +1319,19 @@ void main() {
                     <div id="decision-form" class="hidden mt-4 p-4 bg-surface-raised rounded-lg border border-accent-lavender/20">
                         <textarea id="decision-input" rows="3" placeholder="What did you decide? e.g., 'Using Python + FastAPI for backend'" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
                         <textarea id="decision-context" rows="2" placeholder="Why? (optional context)" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
+                        <select id="decision-category" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-1 cursor-pointer">
+                            <option value="">Safety category — required, choose one</option>
+                            <option value="general">general</option>
+                            <option value="adversarial">adversarial</option>
+                            <option value="robustness">robustness</option>
+                            <option value="monitoring">monitoring</option>
+                            <option value="governance">governance</option>
+                            <option value="alignment">alignment</option>
+                        </select>
+                        <p id="decision-category-suggestion" class="text-[10px] font-mono text-outline mb-3"></p>
+                        <select id="decision-goal-link" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-3 cursor-pointer">
+                            <option value="">No linked goal (optional)</option>
+                        </select>
                         <div class="flex gap-2">
                             <button id="btn-save-decision" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Save</button>
                             <button id="btn-cancel-decision" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
@@ -1312,6 +1381,68 @@ void main() {
                 </div>
             </div>
         </div>
+        </div>
+
+        <div id="content-goals" class="content-tab-panel" style="display: none;">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="font-mono text-base text-on-surface font-bold">Goals</h2>
+                    <p class="text-xs text-outline">What this project is aiming at — the prospective counterpart to Decisions.</p>
+                </div>
+                <button id="btn-add-goal" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">+ New Goal</button>
+            </div>
+
+            <div id="goal-form" class="hidden mb-6 p-4 bg-surface-raised rounded-lg border border-accent-lavender/20">
+                <textarea id="goal-text-input" rows="2" placeholder="What are you aiming at? e.g., 'Reduce login brute-force risk'" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
+                <div class="flex gap-2 mb-3">
+                    <select id="goal-priority-input" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
+                        <option value="low">low</option>
+                        <option value="medium" selected>medium</option>
+                        <option value="high">high</option>
+                        <option value="critical">critical</option>
+                    </select>
+                    <select id="goal-category-select" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
+                        <option value="">unclassified</option>
+                        <option value="general">general</option>
+                        <option value="adversarial">adversarial</option>
+                        <option value="robustness">robustness</option>
+                        <option value="monitoring">monitoring</option>
+                        <option value="governance">governance</option>
+                        <option value="alignment">alignment</option>
+                        <option value="__nonsafety__">other (non-safety)…</option>
+                    </select>
+                    <input id="goal-category-nonsafety-label" type="text" placeholder="label, e.g. performance" class="hidden flex-1 bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-save-goal" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Save</button>
+                    <button id="btn-cancel-goal" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <button id="btn-scan-goals" class="px-3 py-1.5 rounded-lg border border-accent-sky/30 text-accent-sky font-mono text-xs hover:bg-accent-sky/10 transition-all cursor-pointer">Scan for goal candidates</button>
+                <div id="goal-detect-form" class="hidden mt-3 p-4 bg-surface-raised rounded-lg border border-accent-sky/20">
+                    <textarea id="goal-detect-text-input" rows="4" placeholder="Paste a session summary or transcript…" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-3"></textarea>
+                    <div class="flex gap-2">
+                        <button id="btn-run-goal-detect" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Scan</button>
+                        <button id="btn-cancel-goal-detect" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+                    </div>
+                </div>
+                <div id="goal-candidates" class="mt-3 space-y-1 hidden"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-1">
+                    <div id="goals-list" class="space-y-2">
+                        <p class="text-sm text-outline">Select a project to see goals.</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <div id="goal-detail" class="glass-panel rounded-xl p-6">
+                        <p class="text-sm text-outline">Select a goal to see details, linked decisions, and drift.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="content-patterns" class="content-tab-panel" style="display: none;">
@@ -4229,6 +4360,7 @@ function switchGenericTab(parent, tab) {
     if (tab === 'git' && typeof syncGitProject === 'function') syncGitProject();
     if (tab === 'lineage' && typeof loadLineageGraph === 'function') { syncLineageProject(); loadLineageGraph(); }
     if (tab === 'market' && typeof populateMarketDecisionSelect === 'function') populateMarketDecisionSelect();
+    if (tab === 'goals' && typeof loadGoals === 'function') loadGoals();
 }
 
 
@@ -6066,15 +6198,44 @@ ${data.context}
 });
 
 // Memory: Add Decision
-document.getElementById('btn-add-decision').addEventListener('click', () => {
+document.getElementById('btn-add-decision').addEventListener('click', async () => {
     document.getElementById('decision-form').classList.remove('hidden');
     document.getElementById('decision-input').focus();
+    const goalSelect = document.getElementById('decision-goal-link');
+    if (state.currentProject) {
+        const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals?status=active`);
+        const goals = (data && data.goals) || [];
+        goalSelect.innerHTML = '<option value="">No linked goal (optional)</option>' +
+            goals.map(g => `<option value="${escapeAttr(g.id)}">${escapeHtml(g.text.length > 60 ? g.text.slice(0, 60) + '…' : g.text)}</option>`).join('');
+    }
 });
 
 document.getElementById('btn-cancel-decision').addEventListener('click', () => {
     document.getElementById('decision-form').classList.add('hidden');
     document.getElementById('decision-input').value = '';
     document.getElementById('decision-context').value = '';
+    document.getElementById('decision-category').value = '';
+    document.getElementById('decision-category-suggestion').textContent = '';
+    document.getElementById('decision-goal-link').value = '';
+});
+
+// Fetch a suggested category once the user's finished typing the decision.
+// Shown as a hint only — it never fills the <select> itself, since the
+// point of the gate is a deliberate pick, not a fast-tracked default.
+document.getElementById('decision-input').addEventListener('blur', async () => {
+    const decision = document.getElementById('decision-input').value.trim();
+    const suggestionEl = document.getElementById('decision-category-suggestion');
+    if (!decision || !state.currentProject) {
+        suggestionEl.textContent = '';
+        return;
+    }
+    const context = document.getElementById('decision-context').value.trim();
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions/preview-category`, 'POST', {
+        decision, context
+    });
+    if (res && res.safety_category) {
+        suggestionEl.textContent = `Suggested: ${res.safety_category} — still your call above`;
+    }
 });
 
 document.getElementById('btn-save-decision').addEventListener('click', async () => {
@@ -6084,21 +6245,32 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
     }
     const decision = document.getElementById('decision-input').value.trim();
     const context = document.getElementById('decision-context').value.trim();
+    const safety_category = document.getElementById('decision-category').value;
     if (!decision) {
         showToast('Decision cannot be empty');
         return;
     }
-    
+    if (!safety_category) {
+        showToast('Pick a safety category first');
+        return;
+    }
+
+    const goal_id = document.getElementById('decision-goal-link').value || null;
     const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
         decision,
-        context
+        context,
+        safety_metadata: { safety_category },
+        goal_id,
     });
-    
+
     if (res) {
         showToast('Decision recorded');
         document.getElementById('decision-form').classList.add('hidden');
         document.getElementById('decision-input').value = '';
         document.getElementById('decision-context').value = '';
+        document.getElementById('decision-category').value = '';
+        document.getElementById('decision-category-suggestion').textContent = '';
+        document.getElementById('decision-goal-link').value = '';
         selectProject(state.currentProject); // Refresh
     }
 });
@@ -9760,7 +9932,116 @@ async function loadDashboardStatusCards() {
     renderRiskMixChart(document.getElementById('dash-risk-mix'), state.decisions || []);
     try { await renderAgentActivityChart(document.getElementById('dash-agent-activity'), project); } catch (e) { console.error('Agent activity chart failed:', e); }
     try { await renderCostTotalCard(project); } catch (e) { console.error('Cost total card failed:', e); }
+    try { await loadNeedsAttention(); } catch (e) { console.error('Needs Attention failed:', e); }
 }
+
+// Needs Attention (Overview page) — an ongoing panel, not a one-time setup
+// checklist: it's always rendered, including its "clear" state, so it stays
+// a standing checkpoint rather than something that disappears and gets
+// forgotten. Pending reviews link out to the Safety & Alignment section;
+// untagged decisions get tagged right here, inline — no navigation needed
+// since a single field is the entire fix.
+// Overview's Pending Reviews HUD tile shares the same fetch as Needs
+// Attention (both need /needs-attention's pending_review items) rather
+// than making a second network call for the same data.
+function _updatePendingReviewsCard(pendingCount) {
+    const card = document.getElementById('dash-pending-reviews-card');
+    const countEl = document.getElementById('dash-pending-reviews-count');
+    const labelEl = document.getElementById('dash-pending-reviews-label');
+    if (!card || !countEl || !labelEl) return;
+    countEl.textContent = pendingCount;
+    labelEl.textContent = pendingCount > 0 ? 'NEEDS REVIEW' : 'CLEAR';
+    card.classList.toggle('attn-chase', pendingCount > 0);
+}
+
+async function loadNeedsAttention() {
+    const project = state.currentProject;
+    const badge = document.getElementById('needs-attention-badge');
+    const list = document.getElementById('needs-attention-list');
+    if (!badge || !list) return;
+    if (!project) {
+        badge.textContent = '—';
+        badge.classList.remove('attn-chase');
+        list.innerHTML = '<p class="text-sm text-outline">Select a project to see what\'s waiting.</p>';
+        return;
+    }
+
+    const data = await api(`/memory/${encodeURIComponent(project)}/needs-attention`);
+    if (!data) return;
+
+    const pendingCount = (data.items || []).filter(i => i.kind === 'pending_review').length;
+    _updatePendingReviewsCard(pendingCount);
+
+    if (data.count === 0) {
+        badge.textContent = 'CLEAR';
+        badge.className = 'px-3 py-1 rounded-full bg-accent-lime/10 border border-accent-lime/20 text-accent-lime font-mono text-xs font-semibold';
+        list.innerHTML = '<p class="text-sm text-accent-lime">Nothing waiting on you right now.</p>';
+        return;
+    }
+
+    badge.textContent = `${data.count} OPEN`;
+    badge.className = 'px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 font-mono text-xs font-semibold attn-chase';
+
+    list.innerHTML = data.items.map(item => {
+        const label = escapeHtml((item.label || '').length > 90 ? item.label.slice(0, 90) + '…' : (item.label || ''));
+        const detail = escapeHtml(item.detail || '');
+        if (item.kind === 'pending_review') {
+            return `<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium truncate">${label}</p>
+                    <p class="text-xs text-outline truncate">${detail}</p>
+                </div>
+                <button class="attn-review-btn shrink-0 px-3 py-1.5 rounded-lg border border-yellow-400/30 text-yellow-400 font-mono text-xs hover:bg-yellow-400/10 transition-all cursor-pointer">Review →</button>
+            </div>`;
+        }
+        // untagged_decision — the fix is one field, so it happens right here.
+        return `<div class="flex items-center justify-between gap-2 p-3 rounded-lg bg-surface-raised border border-glass-border" id="attn-untagged-${escapeAttr(item.id)}">
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium truncate">${label}</p>
+                <p class="text-xs text-outline truncate">${detail}</p>
+            </div>
+            <select class="attn-category-select bg-surface border border-glass-border rounded px-2 py-1 font-mono text-xs text-outline cursor-pointer shrink-0">
+                <option value="">category…</option>
+                <option value="general">general</option>
+                <option value="adversarial">adversarial</option>
+                <option value="robustness">robustness</option>
+                <option value="monitoring">monitoring</option>
+                <option value="governance">governance</option>
+                <option value="alignment">alignment</option>
+            </select>
+            <button class="attn-tag-save-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(item.id)}">Save</button>
+        </div>`;
+    }).join('');
+}
+
+document.getElementById('needs-attention-list').addEventListener('click', async (e) => {
+    if (e.target.closest('.attn-review-btn')) {
+        switchSectionWithGraph('safety');
+        return;
+    }
+    const saveBtn = e.target.closest('.attn-tag-save-btn');
+    if (!saveBtn) return;
+
+    const id = saveBtn.dataset.id;
+    const row = document.getElementById(`attn-untagged-${id}`);
+    const safety_category = row?.querySelector('.attn-category-select')?.value;
+    if (!safety_category) {
+        showToast('Pick a safety category first');
+        return;
+    }
+    saveBtn.disabled = true;
+    const resp = await api(
+        `/memory/${encodeURIComponent(state.currentProject)}/decisions/${encodeURIComponent(id)}/safety-category`,
+        'PATCH',
+        { safety_category }
+    );
+    if (resp) {
+        showToast('Tagged');
+        loadNeedsAttention();
+    } else {
+        saveBtn.disabled = false;
+    }
+});
 
 async function renderCostTotalCard(project) {
     const totalEl = document.getElementById('dash-cost-total');
@@ -9779,6 +10060,295 @@ async function renderCostTotalCard(project) {
         subEl.textContent = `${(data.total_tokens || 0).toLocaleString()} tokens · ${events} call${events !== 1 ? 's' : ''}`;
     }
 }
+
+// ── Goals — the prospective counterpart to Decisions ──
+let _selectedGoalId = null;
+
+async function loadGoals() {
+    const project = state.currentProject;
+    const list = document.getElementById('goals-list');
+    if (!project) {
+        list.innerHTML = '<p class="text-sm text-outline">Select a project to see goals.</p>';
+        return;
+    }
+    const data = await api(`/memory/${encodeURIComponent(project)}/goals`);
+    if (!data) return;
+    renderGoalsList(data.goals || []);
+    if (_selectedGoalId && (data.goals || []).some(g => g.id === _selectedGoalId)) {
+        selectGoal(_selectedGoalId);
+    }
+}
+
+const _GOAL_STATUS_COLOR = {
+    proposed: 'text-outline', active: 'text-accent-sky',
+    achieved: 'text-accent-lime', abandoned: 'text-red-400',
+};
+const _GOAL_PRIORITY_COLOR = {
+    low: 'text-outline', medium: 'text-accent-sky',
+    high: 'text-yellow-400', critical: 'text-red-400',
+};
+
+function renderGoalsList(goals) {
+    const list = document.getElementById('goals-list');
+    if (!goals.length) {
+        list.innerHTML = '<p class="text-sm text-outline">No goals yet — propose one to get started.</p>';
+        return;
+    }
+    list.innerHTML = goals.map(g => `
+        <div class="p-3 rounded-lg bg-surface-raised border border-glass-border hover:border-accent-lavender/40 transition-all cursor-pointer ${g.id === _selectedGoalId ? 'border-accent-lavender/60' : ''}" onclick="selectGoal('${g.id}')">
+            <p class="text-sm font-medium truncate">${escapeHtml(g.text)}</p>
+            <div class="flex items-center gap-2 mt-1 font-mono text-[10px] uppercase">
+                <span class="${_GOAL_STATUS_COLOR[g.status] || 'text-outline'}">${g.status}</span>
+                <span class="text-outline">·</span>
+                <span class="${_GOAL_PRIORITY_COLOR[g.priority] || 'text-outline'}">${g.priority}</span>
+                ${g.category ? `<span class="text-outline">· ${escapeHtml(g.category)}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+async function selectGoal(goalId) {
+    _selectedGoalId = goalId;
+    document.querySelectorAll('#goals-list > div').forEach(el => el.classList.remove('border-accent-lavender/60'));
+    const project = state.currentProject;
+    const detail = document.getElementById('goal-detail');
+    detail.innerHTML = '<p class="text-sm text-outline">Loading…</p>';
+
+    const [goal, alignment, decisionsData] = await Promise.all([
+        api(`/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(goalId)}`),
+        api(`/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(goalId)}/alignment`),
+        api(`/memory/${encodeURIComponent(project)}`),
+    ]);
+    if (!goal) return;
+
+    const linkedDecisions = ((decisionsData && decisionsData.decisions) || []).filter(d => d.goal_id === goalId);
+
+    const transitions = {
+        proposed: ['active', 'abandoned'], active: ['achieved', 'abandoned'],
+        achieved: [], abandoned: [],
+    }[goal.status] || [];
+
+    const drift = alignment ? alignment.semantic_drift : null;
+    const trend = alignment ? alignment.trend_drift : null;
+    const calibration = alignment ? (alignment.market_calibration || []) : [];
+
+    detail.innerHTML = `
+        <div class="flex items-start justify-between mb-4">
+            <div>
+                <p class="text-base font-medium">${escapeHtml(goal.text)}</p>
+                <div class="flex items-center gap-2 mt-1 font-mono text-xs uppercase">
+                    <span class="${_GOAL_STATUS_COLOR[goal.status] || 'text-outline'}">${goal.status}</span>
+                    <span class="text-outline">·</span>
+                    <span class="${_GOAL_PRIORITY_COLOR[goal.priority] || 'text-outline'}">${goal.priority}</span>
+                    ${goal.category ? `<span class="text-outline">· ${escapeHtml(goal.category)}</span>` : ''}
+                </div>
+            </div>
+            <button class="btn-delete-goal px-3 py-1.5 rounded-lg border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 font-mono text-xs transition-all cursor-pointer" data-id="${goal.id}">Delete</button>
+        </div>
+        <div class="flex gap-2 mb-6">
+            ${transitions.map(s => `<button class="btn-transition-goal px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${goal.id}" data-status="${s}">Mark ${s} →</button>`).join('')}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-3 rounded-lg bg-surface-raised">
+                <p class="font-mono text-xs uppercase text-outline mb-2">Semantic drift</p>
+                ${drift && drift.severity ? `
+                    <p class="font-mono text-lg ${drift.severity === 'high' ? 'text-red-400' : drift.severity === 'medium' ? 'text-yellow-400' : 'text-accent-lime'}">${drift.severity}</p>
+                    <p class="text-xs text-outline mt-1">${escapeHtml(drift.recommendation || '')}</p>
+                ` : `<p class="text-xs text-outline">${drift && drift.message ? escapeHtml(drift.message) : 'No data yet'}</p>`}
+            </div>
+            <div class="p-3 rounded-lg bg-surface-raised">
+                <p class="font-mono text-xs uppercase text-outline mb-2">Trend drift</p>
+                ${trend && trend.drift_detected !== undefined && trend.metrics ? `
+                    <p class="font-mono text-lg ${trend.drift_detected ? 'text-yellow-400' : 'text-accent-lime'}">${trend.drift_detected ? 'shifting' : 'stable'}</p>
+                    <p class="text-xs text-outline mt-1">risk drift ${trend.metrics.risk_drift}, review drift ${trend.metrics.review_drift}</p>
+                ` : `<p class="text-xs text-outline">${trend && trend.message ? escapeHtml(trend.message) : 'No data yet'}</p>`}
+            </div>
+        </div>
+
+        ${calibration.length ? `
+            <div class="mb-6">
+                <p class="font-mono text-xs uppercase text-outline mb-2">Market calibration (agents who bet on linked decisions)</p>
+                ${calibration.map(c => `<div class="flex justify-between p-2 rounded bg-surface-raised mb-1 text-xs font-mono"><span>${escapeHtml(c.agent_name)}</span><span class="text-accent-sky">${Math.round(c.accuracy * 100)}% accurate · ${c.total_bets} bet${c.total_bets !== 1 ? 's' : ''}</span></div>`).join('')}
+            </div>
+        ` : ''}
+
+        <div>
+            <p class="font-mono text-xs uppercase text-outline mb-2">Linked decisions (${linkedDecisions.length})</p>
+            ${linkedDecisions.length ? linkedDecisions.map(d => `<div class="p-2 rounded bg-surface-raised mb-1 text-sm">${escapeHtml(d.decision)}</div>`).join('') : '<p class="text-xs text-outline">None yet — link a decision to this goal via its goal_id.</p>'}
+        </div>
+    `;
+}
+
+document.getElementById('btn-add-goal')?.addEventListener('click', () => {
+    document.getElementById('goal-form').classList.remove('hidden');
+    document.getElementById('goal-text-input').focus();
+});
+
+document.getElementById('btn-cancel-goal')?.addEventListener('click', () => {
+    document.getElementById('goal-form').classList.add('hidden');
+    document.getElementById('goal-text-input').value = '';
+    document.getElementById('goal-category-nonsafety-label').value = '';
+    document.getElementById('goal-category-nonsafety-label').classList.add('hidden');
+    document.getElementById('goal-category-select').value = '';
+});
+
+document.getElementById('goal-category-select')?.addEventListener('change', (e) => {
+    const labelInput = document.getElementById('goal-category-nonsafety-label');
+    labelInput.classList.toggle('hidden', e.target.value !== '__nonsafety__');
+});
+
+document.getElementById('btn-save-goal')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const text = document.getElementById('goal-text-input').value.trim();
+    if (!text) { showToast('Goal text cannot be empty'); return; }
+    const priority = document.getElementById('goal-priority-input').value;
+    const categorySelect = document.getElementById('goal-category-select').value;
+    let category = null;
+    if (categorySelect === '__nonsafety__') {
+        const label = document.getElementById('goal-category-nonsafety-label').value.trim();
+        category = label ? `nonsafety:${label}` : null;
+    } else if (categorySelect) {
+        category = categorySelect;
+    }
+
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals`, 'POST', { text, priority, category });
+    if (res) {
+        showToast('Goal proposed');
+        document.getElementById('btn-cancel-goal').click();
+        loadGoals();
+    }
+});
+
+document.getElementById('goal-detail')?.addEventListener('click', async (e) => {
+    const project = state.currentProject;
+    const transitionBtn = e.target.closest('.btn-transition-goal');
+    if (transitionBtn) {
+        const res = await api(
+            `/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(transitionBtn.dataset.id)}/status`,
+            'PATCH', { status: transitionBtn.dataset.status }
+        );
+        if (res) { showToast(`Goal marked ${transitionBtn.dataset.status}`); loadGoals(); }
+        return;
+    }
+    const deleteBtn = e.target.closest('.btn-delete-goal');
+    if (deleteBtn) {
+        const res = await api(`/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(deleteBtn.dataset.id)}`, 'DELETE');
+        if (res) {
+            showToast(`Goal deleted${res.decisions_unlinked ? ` — ${res.decisions_unlinked} decision(s) unlinked` : ''}`);
+            _selectedGoalId = null;
+            document.getElementById('goal-detail').innerHTML = '<p class="text-sm text-outline">Select a goal to see details, linked decisions, and drift.</p>';
+            loadGoals();
+        }
+    }
+});
+
+// ── Scan for goal candidates — reviews regex-detected goal-shaped language
+// (core/goals/detector.py) before creating anything. Same review-row shape
+// already used twice: docmine's uncaptured claims, Needs Attention's
+// untagged decisions. Candidates aren't persisted, so rows are keyed by
+// client-side array index, not a server id (matches docmine, not
+// Needs Attention). ──
+document.getElementById('btn-scan-goals')?.addEventListener('click', () => {
+    document.getElementById('goal-detect-form').classList.remove('hidden');
+    document.getElementById('goal-detect-text-input').focus();
+});
+
+document.getElementById('btn-cancel-goal-detect')?.addEventListener('click', () => {
+    document.getElementById('goal-detect-form').classList.add('hidden');
+    document.getElementById('goal-detect-text-input').value = '';
+});
+
+const _GOAL_CANDIDATE_CATEGORY_OPTIONS = `
+    <option value="">category…</option>
+    <option value="general">general</option>
+    <option value="adversarial">adversarial</option>
+    <option value="robustness">robustness</option>
+    <option value="monitoring">monitoring</option>
+    <option value="governance">governance</option>
+    <option value="alignment">alignment</option>
+    <option value="__nonsafety__">other (non-safety)…</option>
+`;
+
+function renderGoalCandidates(candidates) {
+    const container = document.getElementById('goal-candidates');
+    if (!candidates.length) {
+        container.classList.remove('hidden');
+        container.innerHTML = '<p class="text-sm text-outline">No goal-shaped language found in that text.</p>';
+        return;
+    }
+    container.classList.remove('hidden');
+    container.innerHTML = candidates.map((c, i) => `
+        <div id="goal-candidate-${i}" class="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs">
+            <span><span class="text-accent-lavender">${escapeHtml(c.type)}</span> <span class="text-outline">(${escapeHtml(c.confidence)})</span> — ${escapeHtml(c.content)}</span>
+            <span class="flex items-center gap-1 shrink-0">
+                <select class="goal-candidate-category-select bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-outline cursor-pointer">${_GOAL_CANDIDATE_CATEGORY_OPTIONS}</select>
+                <input class="goal-candidate-nonsafety-label hidden bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-on-surface w-24" placeholder="label"/>
+                <button class="btn-goal-candidate-propose px-2 py-1 rounded border border-accent-lavender/30 text-accent-lavender hover:bg-accent-lavender/10 transition-all cursor-pointer" data-text="${escapeAttr(c.content)}">Propose</button>
+                <button class="btn-goal-candidate-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer">Remove</button>
+            </span>
+        </div>
+    `).join('');
+}
+
+document.getElementById('btn-run-goal-detect')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const text = document.getElementById('goal-detect-text-input').value.trim();
+    if (!text) { showToast('Paste some text to scan first'); return; }
+    const btn = document.getElementById('btn-run-goal-detect');
+    btn.disabled = true;
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals/detect`, 'POST', { text });
+    btn.disabled = false;
+    if (data) {
+        renderGoalCandidates(data.candidates || []);
+        showToast(`${(data.candidates || []).length} candidate(s) found`);
+    }
+});
+
+document.getElementById('goal-candidates')?.addEventListener('change', (e) => {
+    if (e.target.classList.contains('goal-candidate-category-select')) {
+        const labelInput = e.target.parentElement.querySelector('.goal-candidate-nonsafety-label');
+        labelInput.classList.toggle('hidden', e.target.value !== '__nonsafety__');
+    }
+});
+
+document.getElementById('goal-candidates')?.addEventListener('click', async (e) => {
+    const removeBtn = e.target.closest('.btn-goal-candidate-remove');
+    if (removeBtn) {
+        removeBtn.closest('[id^="goal-candidate-"]')?.remove();
+        return;
+    }
+
+    const proposeBtn = e.target.closest('.btn-goal-candidate-propose');
+    if (!proposeBtn) return;
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+
+    const row = proposeBtn.closest('[id^="goal-candidate-"]');
+    const categorySelect = row.querySelector('.goal-candidate-category-select');
+    const categoryValue = categorySelect.value;
+    if (!categoryValue) { showToast('Pick a category first'); return; }
+
+    let category = null;
+    if (categoryValue === '__nonsafety__') {
+        const label = row.querySelector('.goal-candidate-nonsafety-label').value.trim();
+        if (!label) { showToast('Enter a label for the non-safety category'); return; }
+        category = `nonsafety:${label}`;
+    } else {
+        category = categoryValue;
+    }
+
+    proposeBtn.disabled = true;
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals`, 'POST', {
+        text: proposeBtn.dataset.text, priority: 'medium', category,
+    });
+    if (res) {
+        showToast('Goal proposed');
+        row.remove();
+        loadGoals();
+    } else {
+        proposeBtn.disabled = false;
+    }
+});
 
 // ── Interfaces card: live connection status ──
 async function loadDashInterfaces() {
@@ -9805,7 +10375,8 @@ document.getElementById('btn-dash-contradictions')?.addEventListener('click', as
     if (data) {
         const count = data.unresolved_count || 0;
         const cls = count > 0 ? 'text-red-400' : 'text-accent-lime';
-        el.innerHTML = `<span class="${cls} font-mono text-lg">${count}</span> <span class="text-xs text-outline">unresolved of ${data.total_checked || 0} pairs checked</span>`;
+        const chaseAttrs = count > 0 ? 'attn-chase inline-block px-2 rounded-full' : '';
+        el.innerHTML = `<span class="${cls} font-mono text-lg ${chaseAttrs}" style="--attn-chase-color:rgba(248,113,113,0.55)">${count}</span> <span class="text-xs text-outline">unresolved of ${data.total_checked || 0} pairs checked</span>`;
     } else {
         el.textContent = 'N/A';
     }
@@ -10124,8 +10695,10 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
         results.classList.remove('hidden');
         const sev = data.severity_distribution || {};
         const sevBadge = (level, color) => `<span class="text-xs px-2 py-0.5 rounded-full bg-${color}/20 text-${color}">${level}: ${sev[level.toLowerCase()] || 0}</span>`;
+        const highChaseClass = (sev.high || 0) > 0 ? 'attn-chase' : '';
+        const highBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 ${highChaseClass}" style="--attn-chase-color:rgba(248,113,113,0.55)">High: ${sev.high || 0}</span>`;
         let html = `<div class="flex items-center gap-2 mb-4 flex-wrap">
-            ${sevBadge('High', 'red-400').replace('bg-red-400/20 text-red-400', 'bg-red-500/20 text-red-400')}
+            ${highBadge}
             ${sevBadge('Medium', 'accent-lavender')}
             ${sevBadge('Low', 'accent-sky')}
         </div>`;
@@ -10155,6 +10728,15 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
             html += uncaptured.map((c, i) => `<div class="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs" id="uncaptured-claim-${i}">
                 <span><span class="text-accent-lime">${escapeHtml(c.source_file)}:${c.line_number}</span> — ${escapeHtml(c.text)}</span>
                 <span class="flex items-center gap-1 shrink-0">
+                    <select class="claim-category-select bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-outline cursor-pointer" title="Safety category — required to add">
+                        <option value="">category…</option>
+                        <option value="general">general</option>
+                        <option value="adversarial">adversarial</option>
+                        <option value="robustness">robustness</option>
+                        <option value="monitoring">monitoring</option>
+                        <option value="governance">governance</option>
+                        <option value="alignment">alignment</option>
+                    </select>
                     <button class="btn-uncaptured-add px-2 py-1 rounded border border-accent-lime/30 text-accent-lime hover:bg-accent-lime/10 transition-all cursor-pointer" data-text="${escapeAttr(c.text)}" data-source="${escapeAttr(c.source_file)}" data-line="${c.line_number}" title="Capture this as a decision">Add</button>
                     <button class="btn-uncaptured-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" title="Dismiss from this list">Remove</button>
                 </span>
@@ -10178,11 +10760,18 @@ document.getElementById('docmine-results')?.addEventListener('click', async (e) 
     const addBtn = e.target.closest('.btn-uncaptured-add');
     if (addBtn) {
         if (!state.currentProject) { showToast('Select a project first'); return; }
+        const categorySelect = addBtn.closest('[id^="uncaptured-claim-"]')?.querySelector('.claim-category-select');
+        const safety_category = categorySelect?.value;
+        if (!safety_category) {
+            showToast('Pick a safety category first');
+            return;
+        }
         addBtn.disabled = true;
         const { text, source, line } = addBtn.dataset;
         const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
             decision: text,
             context: `Imported from docs: ${source}:${line}`,
+            safety_metadata: { safety_category },
         });
         if (data) {
             showToast('Captured as a decision');

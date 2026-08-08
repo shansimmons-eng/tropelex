@@ -11,13 +11,19 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Header, Input, Label, ListItem, ListView, Static
+from textual.widgets import DataTable, Footer, Header, Input, Label, ListItem, ListView, Select, Static
 
 import client
 
 
-class AddDecisionScreen(ModalScreen[tuple[str, str] | None]):
-    """Modal for capturing a new decision."""
+class AddDecisionScreen(ModalScreen[tuple[str, str, str] | None]):
+    """Modal for capturing a new decision.
+
+    safety_category has no pre-selected default — add_decision on the
+    server rejects a missing/omitted category rather than silently
+    assigning one (see core/triggers/tag_gate.py). Submitting without
+    picking one just shows a hint instead of dismissing.
+    """
 
     CSS = """
     AddDecisionScreen {
@@ -30,7 +36,7 @@ class AddDecisionScreen(ModalScreen[tuple[str, str] | None]):
         background: $surface;
         padding: 1 2;
     }
-    #dialog Input {
+    #dialog Input, #dialog Select {
         margin-bottom: 1;
     }
     #dialog Label.hint {
@@ -43,7 +49,12 @@ class AddDecisionScreen(ModalScreen[tuple[str, str] | None]):
             yield Label("Capture a decision")
             yield Input(placeholder="Decision — what did you decide?", id="decision-input")
             yield Input(placeholder="Context — why? (optional)", id="context-input")
-            yield Label("Enter to submit · Escape to cancel", classes="hint")
+            yield Select(
+                [(c, c) for c in client.SAFETY_CATEGORIES],
+                prompt="Safety category — required",
+                id="category-select",
+            )
+            yield Label("Enter to submit · Escape to cancel", classes="hint", id="hint-label")
 
     def on_mount(self) -> None:
         self.query_one("#decision-input", Input).focus()
@@ -54,7 +65,15 @@ class AddDecisionScreen(ModalScreen[tuple[str, str] | None]):
     def _submit(self) -> None:
         decision = self.query_one("#decision-input", Input).value.strip()
         context = self.query_one("#context-input", Input).value.strip()
-        self.dismiss((decision, context) if decision else None)
+        category = self.query_one("#category-select", Select).value
+        if not decision:
+            return
+        if category is Select.BLANK:
+            self.query_one("#hint-label", Label).update(
+                "Pick a safety category first — Escape to cancel"
+            )
+            return
+        self.dismiss((decision, context, category))
 
     def on_key(self, event) -> None:
         if event.key == "escape":
@@ -169,16 +188,16 @@ class TropelexTUI(App):
             self.set_status("Select a project first")
             return
 
-        def handle_result(result: tuple[str, str] | None) -> None:
+        def handle_result(result: tuple[str, str, str] | None) -> None:
             if result:
-                self.run_worker(self._submit_decision(result[0], result[1]))
+                self.run_worker(self._submit_decision(result[0], result[1], result[2]))
 
         self.push_screen(AddDecisionScreen(), handle_result)
 
-    async def _submit_decision(self, decision: str, context: str) -> None:
+    async def _submit_decision(self, decision: str, context: str, safety_category: str) -> None:
         assert self.current_project
         try:
-            await client.add_decision(self.current_project, decision, context)
+            await client.add_decision(self.current_project, decision, context, safety_category)
         except client.TropelexError as exc:
             self.set_status(f"Error: {exc}")
             return

@@ -196,6 +196,7 @@ from core.prbot.router import prbot_router                  # noqa: E402
 from core.narrative.router import narrative_router          # noqa: E402
 from core.lens.router import lens_router                    # noqa: E402
 from core.market.router import market_router                # noqa: E402
+from core.goals.router import goals_router                    # noqa: E402
 from core.slack.router import slack_router                  # noqa: E402
 from core.timetravel.router import timetravel_router        # noqa: E402
 from core.contradictions.router import contradiction_router  # noqa: E402
@@ -205,6 +206,9 @@ from core.tropebook.web_researcher_router import web_research_router  # noqa: E4
 from core.docmine.router import docmine_router                     # noqa: E402
 from core.agent_audit.router import agent_audit_router              # noqa: E402
 from core.telemetry import telemetry_router, _emit_telemetry        # noqa: E402
+from core.triggers.tag_gate import require_tag, TagRequiredError, SAFETY_CATEGORIES  # noqa: E402
+from core.goals.drift import score_trend_drift  # noqa: E402
+from core.friction.miner import compute_friction_penalty  # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -233,6 +237,7 @@ app.include_router(prbot_router)
 app.include_router(narrative_router)
 app.include_router(lens_router)
 app.include_router(market_router)
+app.include_router(goals_router)
 app.include_router(slack_router)
 app.include_router(timetravel_router)
 app.include_router(contradiction_router)
@@ -767,10 +772,14 @@ class SafetyMetadata(BaseModel):
         default=False,
         description="Whether this decision requires human review"
     )
-    safety_category: str = Field(
-        default="general",
+    safety_category: str | None = Field(
+        default=None,
         pattern="^(general|adversarial|robustness|monitoring|governance|alignment)$",
-        description="Safety category for classification"
+        description=(
+            "Safety category for classification. No default on purpose — "
+            "add_decision requires this to be an explicit choice, not a "
+            "silently-assigned one. See core/triggers/tag_gate.py."
+        ),
     )
 
 
@@ -780,6 +789,11 @@ class DecisionCreate(BaseModel):
     safety_metadata: SafetyMetadata | None = Field(
         default=None,
         description="Optional safety metadata for AI safety research alignment"
+    )
+    goal_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Optional link to the Goal this decision serves.",
     )
 
 
@@ -885,12 +899,110 @@ def _auto_classify_safety(decision: str, context: str) -> dict:
     }
 
 
-@app.post("/api/memory/{project}/decisions")
-async def add_decision(project: str, data: DecisionCreate):
-    """Add a decision to project memory with optional safety metadata."""
+class CategoryPreviewRequest(BaseModel):
+    decision: str = Field(..., max_length=500)
+    context: str = Field("", max_length=1000)
+
+
+@app.post("/api/memory/{project}/decisions/preview-category")
+async def preview_decision_category(project: str, data: CategoryPreviewRequest):
+    """Return the auto-classifier's suggestion without saving anything.
+
+    Callers (dashboard, TUI) use this to show a suggested category before
+    the user picks one — add_decision itself no longer accepts that
+    suggestion silently, see require_tag in core/triggers/tag_gate.py.
+    """
+    _sanitise_project(project)
+    return _auto_classify_safety(data.decision, data.context)
+
+
+@app.get("/api/memory/{project}/decisions/untagged")
+async def list_untagged_decisions(project: str):
+    """List decisions with no explicit safety_category — the triage queue.
+
+    Decisions captured via /{project}/slack/capture (Emacs, Slack) never go
+    through add_decision's require_tag gate on purpose: that path fires
+    with no human present (e.g. magit auto-capture on commit), so there's
+    no one to ask. They land untagged instead and show up here for a human
+    to classify later, rather than being blocked or silently defaulted.
+    """
     project = _sanitise_project(project)
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
+    untagged = [
+        d for d in memory.get("decisions", [])
+        if not (d.get("safety_metadata") or {}).get("safety_category")
+    ]
+    return {"decisions": untagged, "count": len(untagged)}
+
+
+class TagDecisionRequest(BaseModel):
+    safety_category: str = Field(..., max_length=32)
+
+
+@app.patch("/api/memory/{project}/decisions/{decision_id}/safety-category")
+async def tag_decision(project: str, decision_id: str, data: TagDecisionRequest):
+    """Attach an explicit safety_category to a decision captured without
+    one — the write side of the untagged-decisions triage queue above.
+    This is the only way an item leaves that queue: decisions from
+    /{project}/slack/capture never go through add_decision, so there's no
+    other path that sets safety_metadata on them after the fact.
+    """
+    project = _sanitise_project(project)
+    try:
+        category = require_tag(data.safety_category)
+    except TagRequiredError as exc:
+        raise HTTPException(status_code=422, detail=exc.to_dict())
+
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    for d in memory.get("decisions", []):
+        if d.get("id") == decision_id:
+            safety = d.setdefault("safety_metadata", {})
+            safety["safety_category"] = category
+            memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+            mm.save_project_memory(project, memory)
+            return {"tagged": True, "decision": d}
+    raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
+
+
+@app.post("/api/memory/{project}/decisions")
+async def add_decision(project: str, data: DecisionCreate):
+    """Add a decision to project memory. Requires an explicit safety_category.
+
+    Auto-classification still runs, but only to produce a *suggestion* on
+    the 422 a caller gets back if it omits the category — it no longer
+    writes that guess to disk unasked. See core/triggers/tag_gate.py for
+    the rationale (an omitted or invalid category is an unmade choice, not
+    a "general" one).
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    suggestion = _auto_classify_safety(data.decision, data.context)
+    provided_category = data.safety_metadata.safety_category if data.safety_metadata else None
+    try:
+        category = require_tag(provided_category, suggested=suggestion["safety_category"])
+    except TagRequiredError as exc:
+        raise HTTPException(status_code=422, detail=exc.to_dict())
+
+    # Start from the auto-classified suggestion and overlay only the fields
+    # the caller actually set (via model_fields_set, not model_dump) — a
+    # caller sending just {"safety_category": "..."} still gets a real
+    # heuristic risk_level/affected_systems instead of silently falling
+    # back to SafetyMetadata's bare field defaults (low/True/[]/...).
+    if data.safety_metadata:
+        explicit = data.safety_metadata.model_dump(include=data.safety_metadata.model_fields_set)
+        safety_metadata = {**suggestion, **explicit}
+    else:
+        safety_metadata = dict(suggestion)
+    safety_metadata["safety_category"] = category
+
+    if data.goal_id is not None:
+        known_goal_ids = {g.get("id") for g in memory.get("goals", []) if g.get("id")}
+        if data.goal_id not in known_goal_ids:
+            raise HTTPException(status_code=404, detail=f"Goal '{data.goal_id}' not found in project '{project}'")
 
     import uuid as _uuid
     decision_entry = {
@@ -898,14 +1010,9 @@ async def add_decision(project: str, data: DecisionCreate):
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "decision": data.decision,
         "context": data.context,
+        "safety_metadata": safety_metadata,
+        "goal_id": data.goal_id,
     }
-
-    # Add safety metadata if provided
-    if data.safety_metadata:
-        decision_entry["safety_metadata"] = data.safety_metadata.model_dump()
-    else:
-        # Auto-classify risk level if not provided
-        decision_entry["safety_metadata"] = _auto_classify_safety(data.decision, data.context)
 
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
@@ -1673,14 +1780,11 @@ def _friction_penalty(memory: dict) -> float:
     corrections, retries, escalation) is a leading indicator of instability
     even before any individual decision looks risky on its own.
 
-    Averages friction_score over the last 10 recorded scans; 0.0 if none.
+    Thin wrapper — the actual computation is core.friction.miner.
+    compute_friction_penalty, extracted so core/goals/router.py's
+    alignment aggregator can reuse it without importing from this module.
     """
-    history = memory.get("friction_history", [])
-    if not history:
-        return 0.0
-    recent = history[-10:]
-    avg = sum(h.get("friction_score", 0.0) for h in recent) / len(recent)
-    return round(min(avg * 0.15, 0.15), 3)  # capped — friction nudges the score, doesn't dominate it
+    return compute_friction_penalty(memory.get("friction_history", []))
 
 
 def _calculate_safety_score(
@@ -2317,6 +2421,42 @@ async def get_pending_reviews(project: str):
     except Exception as e:
         logger.error("get_pending_reviews failed: %s", e)
         raise HTTPException(500, f"Failed to get pending reviews: {e}")
+
+
+@app.get("/api/memory/{project}/needs-attention")
+async def get_needs_attention(project: str) -> dict[str, Any]:
+    """Aggregate everything in this project currently waiting on a human —
+    feeds the dashboard's Overview-page Needs Attention panel.
+
+    Deliberately not a one-time setup checklist: this reflects live state
+    and is meant to be revisited, not completed once. Reuses the existing
+    pending-reviews and untagged-decisions endpoints rather than
+    re-deriving their logic, so this stays a thin aggregation layer as more
+    sources get added (e.g. a future promotion of a core/triggers check
+    from severity="warn" to "block").
+    """
+    pending = await get_pending_reviews(project)
+    untagged = await list_untagged_decisions(project)
+
+    items = [
+        {
+            "kind": "pending_review",
+            "id": r["id"],
+            "label": r["decision"],
+            "detail": r.get("escalation_reason") or f"{r['risk_level']} risk — needs a reviewer",
+        }
+        for r in pending["pending_reviews"]
+    ] + [
+        {
+            "kind": "untagged_decision",
+            "id": d.get("id"),
+            "label": d.get("decision"),
+            "detail": "no safety category set",
+        }
+        for d in untagged["decisions"]
+    ]
+
+    return {"items": items, "count": len(items)}
 
 
 @app.get("/api/memory/{project}/reviews/history")
@@ -3944,68 +4084,19 @@ def _generate_envelope_recommendations(status: str, avg_risk: float, backlog: fl
 @app.get("/api/memory/{project}/alignment/drift")
 async def get_alignment_drift(project: str, window: int = Query(10, ge=5, le=50)):
     """Detect alignment drift - changes in decision patterns over time.
-    
+
     Compares recent decisions against historical patterns to detect drift.
+    The comparison itself lives in core.goals.drift.score_trend_drift (a
+    pure function, extracted so it can also be scoped to a single goal's
+    linked decisions in GET /goals/{goal_id}/alignment) — this endpoint is
+    now just the project-wide caller of it.
     """
     try:
         project = _sanitise_project(project)
         mm = get_memory_manager()
         memory = mm.get_project_memory(project)
         decisions = memory.get("decisions", [])
-
-        if len(decisions) < window * 2:
-            return {
-                "project": project,
-                "drift_detected": False,
-                "message": "Not enough decisions for drift detection",
-                "total_decisions": len(decisions),
-            }
-
-        # Split into baseline and recent
-        baseline = decisions[:len(decisions) - window]
-        recent = decisions[-window:]
-
-        # Compare metrics
-        risk_weights = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-
-        baseline_risk = sum(risk_weights.get(d.get("safety_metadata", {}).get("risk_level", "low"), 0) for d in baseline) / len(baseline)
-        recent_risk = sum(risk_weights.get(d.get("safety_metadata", {}).get("risk_level", "low"), 0) for d in recent) / len(recent)
-
-        baseline_reviewed = sum(1 for d in baseline if d.get("safety_reviews")) / len(baseline)
-        recent_reviewed = sum(1 for d in recent if d.get("safety_reviews")) / len(recent)
-
-        # Detect drift
-        risk_drift = recent_risk - baseline_risk
-        review_drift = recent_reviewed - baseline_reviewed
-
-        drift_detected = abs(risk_drift) > 0.5 or abs(review_drift) > 0.3
-
-        drift_indicators = []
-        if risk_drift > 0.5:
-            drift_indicators.append({"metric": "risk_level", "direction": "increasing", "change": round(risk_drift, 3)})
-        elif risk_drift < -0.5:
-            drift_indicators.append({"metric": "risk_level", "direction": "decreasing", "change": round(risk_drift, 3)})
-
-        if review_drift > 0.3:
-            drift_indicators.append({"metric": "review_rate", "direction": "increasing", "change": round(review_drift, 3)})
-        elif review_drift < -0.3:
-            drift_indicators.append({"metric": "review_rate", "direction": "decreasing", "change": round(review_drift, 3)})
-
-        return {
-            "project": project,
-            "drift_detected": drift_detected,
-            "baseline_size": len(baseline),
-            "recent_size": len(recent),
-            "metrics": {
-                "baseline_avg_risk": round(baseline_risk, 3),
-                "recent_avg_risk": round(recent_risk, 3),
-                "risk_drift": round(risk_drift, 3),
-                "baseline_review_rate": round(baseline_reviewed, 3),
-                "recent_review_rate": round(recent_reviewed, 3),
-                "review_drift": round(review_drift, 3),
-            },
-            "drift_indicators": drift_indicators,
-        }
+        return {"project": project, **score_trend_drift(decisions, window=window)}
     except Exception as e:
         logger.error("alignment drift detection failed: %s", e)
         raise HTTPException(500, f"Alignment drift detection failed: {e}")

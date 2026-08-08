@@ -72,20 +72,74 @@
       "strategy": "openai/gpt-4o-mini",
       "timestamp": "2026-08-01T03:43:02.888606+00:00",
       "outcome": "good"
+    },
+    {
+      "id": "fe2f0d30018c",
+      "original_length": 174,
+      "compressed_length": 157,
+      "compression_ratio": 0.9022988505747126,
+      "strategy": "client",
+      "timestamp": "2026-08-08T06:22:17.687286+00:00",
+      "outcome": "rephrased"
+    },
+    {
+      "id": "95c939fd54f2",
+      "original_length": 48,
+      "compressed_length": 36,
+      "compression_ratio": 0.75,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-08-08T06:24:14.317203+00:00",
+      "outcome": "good"
+    },
+    {
+      "id": "15ea4a4541e6",
+      "original_length": 55,
+      "compressed_length": 47,
+      "compression_ratio": 0.8545454545454545,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-08-08T06:25:15.222438+00:00",
+      "outcome": "good"
+    },
+    {
+      "id": "9c25eda68aa1",
+      "original_length": 209,
+      "compressed_length": 197,
+      "compression_ratio": 0.9425837320574163,
+      "strategy": "client",
+      "timestamp": "2026-08-08T06:27:32.472266+00:00",
+      "outcome": "failed"
+    },
+    {
+      "id": "bd6782e73816",
+      "original_length": 160,
+      "compressed_length": 96,
+      "compression_ratio": 0.6,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-08-08T06:29:43.848611+00:00",
+      "outcome": "rephrased"
+    },
+    {
+      "id": "ec0e47446a7c",
+      "original_length": 35,
+      "compressed_length": 22,
+      "compression_ratio": 0.6285714285714286,
+      "strategy": "openai/gpt-4o-mini",
+      "timestamp": "2026-08-08T06:30:45.176003+00:00",
+      "outcome": "good"
     }
   ],
   "strategy_scores": {
     "openai/gpt-4o-mini": {
-      "good": 5,
-      "rephrased": 0,
+      "good": 8,
+      "rephrased": 1,
       "failed": 0,
-      "total": 5
+      "total": 9
     },
     "client": {
       "good": 0,
-      "rephrased": 1,
-      "failed": 0,
-      "total": 1
+      "rephrased": 2,
+      "failed": 1,
+      "total": 3
     }
   },
   "created": "2026-07-29T15:36:07.465974+00:00"

@@ -74,11 +74,12 @@ async def capture_decision(
     risk_level: str = "low",
     reversibility: bool = True,
     affected_systems: list[str] = None,
-    safety_category: str = "general",
+    safety_category: str | None = None,
     requires_review: bool = False,
     alignment_considerations: str = "",
+    goal_id: str | None = None,
 ) -> dict[str, Any]:
-    """Record a new decision in a project's memory with optional safety metadata.
+    """Record a new decision in a project's memory. safety_category is required.
 
     Args:
         project: Project name (created automatically if it doesn't exist).
@@ -88,8 +89,16 @@ async def capture_decision(
         reversibility: Whether this decision can be easily reversed. Default: True.
         affected_systems: List of systems/components affected (e.g., ["memory", "api"]).
         safety_category: Safety category: general, adversarial, robustness, monitoring, governance, alignment.
+            Not optional in practice — omitting it gets the call rejected with a
+            suggested category attached, which you should read and either accept
+            (retry with it) or override with a better-fitting one. It's not
+            defaulted to "general" for you; that was a real bug where every
+            decision anyone forgot to classify was recorded as generically
+            classified, silently.
         requires_review: Whether this decision requires human review. Default: False.
         alignment_considerations: Notes on alignment/safety considerations.
+        goal_id: Optional id of a Goal (see propose_goal) this decision serves.
+            Rejected with a 404 if it doesn't exist in this project.
     """
     safety_metadata = {
         "risk_level": risk_level,
@@ -107,7 +116,34 @@ async def capture_decision(
             "decision": decision,
             "context": context,
             "safety_metadata": safety_metadata,
+            "goal_id": goal_id,
         },
+    )
+
+
+@mcp.tool()
+async def propose_goal(
+    project: str,
+    text: str,
+    priority: str = "medium",
+    category: str | None = None,
+) -> dict[str, Any]:
+    """Propose a new goal for a project — the prospective counterpart to
+    capture_decision. Where a decision records what was decided, a goal
+    records what's being aimed at, before decisions accumulate under it.
+
+    Args:
+        project: Project name (created automatically if it doesn't exist).
+        text: The goal, stated as a target (e.g. "Reduce login brute-force risk").
+        priority: low, medium, high, or critical. Default: medium.
+        category: Either a safety category (general, adversarial, robustness,
+            monitoring, governance, alignment) for goals with a safety
+            dimension, or "nonsafety:<label>" (e.g. "nonsafety:performance")
+            for goals that don't have one. Omit if unclassified.
+    """
+    return await _request(
+        "POST", f"/api/memory/{quote(project, safe='')}/goals",
+        json={"text": text, "priority": priority, "category": category},
     )
 
 

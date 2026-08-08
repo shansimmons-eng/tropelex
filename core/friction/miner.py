@@ -387,6 +387,23 @@ def compute_friction_by_agent(history: list[dict], agent: str) -> dict:
     }
 
 
+def compute_friction_penalty(history: list[dict]) -> float:
+    """Average recent friction_score into a capped safety-score penalty.
+
+    Extracted from core/tropebook/web/server.py's _friction_penalty
+    (behavior-preserving — server.py's version is now a thin wrapper
+    around this) so core/goals/router.py's alignment aggregator can reuse
+    the same scoring without importing from the app module. Averages the
+    last 10 recorded scans; 0.0 if none. Capped at 0.15 — friction nudges
+    a score, it doesn't dominate it.
+    """
+    if not history:
+        return 0.0
+    recent = history[-10:]
+    avg = sum(h.get("friction_score", 0.0) for h in recent) / len(recent)
+    return round(min(avg * 0.15, 0.15), 3)
+
+
 def group_signals_by_zone(signals: list[FrictionSignal]) -> list[FrictionZone]:
     """Group nearby signals (within 5 lines) into friction zones."""
     if not signals:

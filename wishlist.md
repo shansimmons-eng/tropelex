@@ -189,6 +189,17 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
+### 45. Session-Shape Baselining (Tool-Call/Token/Latency Drift Signals)
+**Purpose:** Baseline the *shape* of a normal session — tool-call counts, tool-call variance, token counts, latency, hang duration, output size — so a deviation from that baseline becomes a detectable signal, not something only noticed in hindsight.
+
+**Why:** From the earliest brainstorm this project had on drift (before it had any concrete shape): does an agent use consistent tool calls or shift around session to session? Does output size vary significantly for the same call? Which calls fail? When something that normally hangs suddenly stops — what does that mean, and is it actually progress or a silent failure? Friction Mining (#28) captures *language*-level signals (corrections, retries, escalation); nothing captures *behavioral telemetry*-level signals the same way. The trigger registry (`core/triggers/`, added alongside the tag-required gate) formalizes "event → check → logged result" for git-level events (pre-push checks) — this would be the same pattern applied to in-session telemetry instead. Tracked live as goal `063021bb1eb3` in the `tropelex` project.
+
+**Why now, specifically:** the [emergentmind.com/topics/agent-drift](https://www.emergentmind.com/topics/agent-drift) research pass (2026-08-07) reports drift incidence approximating 50% in multi-agent LLM workflows by 600 interactions — the base rate is high enough that this isn't a rare-edge-case feature, it's closer to a default failure mode worth actually instrumenting for.
+
+**Status:** Open. Proposed early in the session that led to #35/#40/#41/#43/#44 — the oldest unimplemented idea in this list, finally given a number once the surrounding infrastructure (trigger registry, Goals, drift detection) existed to build it on.
+
+---
+
 ## Explainability & Discovery
 
 ### 7. Explainable Memory: "Why do we...?" Chat
@@ -314,6 +325,82 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 **API:** `POST /api/agent-audit/scan?repo_path=...`
 
 **Status:** ✅ Implemented (`core/agent_audit/`). Lives as the 7th tab in the consolidated Safety & Alignment section rather than its own sidebar entry. Tests: `tests/test_agent_audit.py`.
+
+---
+
+### 40. Injection Sentinel: Ingested-Content Screening
+**Purpose:** Screen externally-sourced content for injected instructions before it's written into memory that a future agent session will read back as trusted context.
+
+**Why:** Tropelex ingests content it doesn't originate: web-researcher search/scrape results, docmine-scanned files, and Slack/Emacs `capture_decision` text all get written into `memory["decisions"]` or the citation graph. Nothing currently screens that content before storage. A scraped page or a pasted message with embedded instructions ("ignore the above and...") sits quietly in a decision's `context` field until a later session reads it back as memory and treats it as instructions rather than data — a stored-prompt-injection vector, distinct from Agent Surface Audit (#37), which scans the harness's *own* config rather than content flowing *through* it. Came out of a brainstorm on what to take from 2026 industry guardrail architectures (Tencent's Agently Mail two-stage confirmation, generic "injection sentinel" input-filtering layers), reframed for what Tropelex actually is — a memory store being read back into future context, not an inference-serving pipeline protecting downstream compute cost.
+
+**Features (proposed):**
+- Cheap regex/heuristic scan at the three ingestion points: `core/tropebook/web_researcher_client.py` / `research_pipeline.py` results, `core/docmine/` file scans, and `core/slack/capture.py`
+- Reuses the prompt-injection marker patterns Agent Surface Audit (#37) already has for config scanning, extended to freeform ingested text
+- Flag, don't silently drop: a hit gets a `content_flags` marker on the stored item rather than being blocked outright — consistent with the project's "surface friction, don't hide it" pattern established for the decision `safety_category` gate (#35), not a silent filter
+- Severity-ranked findings, same shape as Contradictions/Doc Mining
+
+**Status:** Open. Proposed 2026-08-06.
+
+---
+
+### 41. Goal Entity & Alignment Layers
+**Purpose:** A first-class, prospective `Goal` object — what a project is aiming at, before decisions accumulate under it — mapped onto AI alignment theory's outer/inner/behavioral layers.
+
+**Why:** Decisions capture what *was* decided, retrospectively. Nothing captured what was being aimed at, prospectively. This came out of a conversation mapping Tropelex onto outer alignment (is the specified goal itself right — nothing to point at, until this), inner alignment (does pursuit match the stated goal — Ghost Decisions already did this shape for decision-vs-code, extended here to goal-vs-decision), and behavioral alignment (Decision Market/Friction/Agent Skills already measure this, but couldn't be sliced by goal). Discovered along the way: the codebase already had `/{project}/alignment/drift` — real baseline-vs-recent risk/review-rate drift detection, just unscoped and dead in the dashboard ("not enough data"). Extended rather than duplicated.
+
+**Features:**
+- Goal schema: `text`, `status` (proposed → active → achieved|abandoned, illegal transitions rejected), `priority` (low/medium/high/critical), `category` — either a bare `SAFETY_CATEGORIES` value or a `"nonsafety:<label>"` namespaced string (precedented by Pattern Learner's `"category:ui"`/`"day:monday"` namespacing, not improvised)
+- Neither `status` nor `priority` is gated the way `safety_category` is on Decision (#35) — a goal defaulting to `proposed`/`medium` isn't a silently-guessed value the way an unset safety category was; `category` defaults to `None`, an honest unclassified state
+- Full CRUD + dedicated status-transition endpoint (`core/goals/router.py`), project-scoped in the same memory blob as decisions (not a global file, unlike Research Feeds — goals are inherently per-project)
+- Two independent drift signals, composed (not duplicated) in `GET /goals/{id}/alignment`: semantic drift (Jaccard keyword overlap between a goal's text and its linked decisions', reusing Ghost Decisions' technique, worst-case aggregated so one badly-drifted decision surfaces immediately rather than being averaged away) and trend drift (the extracted, goal-scoped version of the pre-existing `/alignment/drift` risk/review-rate comparison)
+- `Decision.goal_id` — optional FK, validated at the router boundary exactly like Decision Market's `decision_id` validation, never inside pure logic
+- Market calibration and friction context composed into the same alignment endpoint — friction is explicitly labeled `friction_penalty_project_wide`, not fabricated as goal-scoped, since `friction_history` entries carry no `decision_id`/`goal_id`
+- `propose_goal` MCP tool; `capture_decision` gained an optional `goal_id` param
+- Dashboard: new Goals tab next to Memory in Engine Core (list/detail/create, status-transition buttons, inline drift + calibration panels); Add Decision form gained an optional goal-link select
+
+**Status:** ✅ Implemented (`core/goals/`). Tests: `tests/test_goals.py` (42 tests). `core/tropebook/web/server.py`'s `get_alignment_drift` and `_friction_penalty` were refactored into reusable pure functions (`core/goals/drift.py`'s `score_trend_drift`, `core/friction/miner.py`'s `compute_friction_penalty`) as part of this — behavior-preserving, existing test coverage (`tests/test_far_cais_sff.py`) unchanged.
+
+---
+
+### 42. Formalized Goal Adherence Scoring
+**Purpose:** Replace `score_trend_drift`'s baseline-vs-recent risk/review-rate comparison with a proper adherence score δ(t) = 1 − A(t), the formalization used in the agent-drift literature.
+
+**Why:** Reading [emergentmind.com/topics/agent-drift](https://www.emergentmind.com/topics/agent-drift) after shipping Goals (#41) surfaced that "Goal Drift" in the literature is exactly what `score_trend_drift` approximates — just less rigorously. Our version compares risk-level/review-rate trend as a proxy; the literature's adherence score is a more principled, purpose-built metric for the same question. Tracked live as goal `a58ac59c62cc` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-07. Low priority — the current approximation is functional; this is a rigor upgrade, not a gap.
+
+---
+
+### 43. Coordination Drift Detection
+**Purpose:** Detect declining agreement between multiple agents over time, not just one agent's individual calibration.
+
+**Why:** Decision Market (#14) already tracks each agent's calibration independently (accuracy, overconfidence_index), and the dashboard already shows multiple agents active on the same project (Claude, Gemini, gemini-3.6-flash in Agent Activity Split). Nothing currently asks whether those agents are *converging or diverging from each other* — a distinct signal from individual calibration, and one the agent-drift literature treats as its own category ("Coordination Drift," tracked via cumulative agreement rates). Tracked live as goal `a8c978b3ae25` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-07. Not urgent — no current pain point, but a real gap in what's measured.
+
+---
+
+### 44. Goal Re-Anchoring in Context Bundles
+**Purpose:** Actively surface a project's active Goals back into a live agent's working context (via `get_context_bundle` / `get_handoff_packet`), instead of Goals sitting passively until someone queries them.
+
+**Why:** The agent-drift literature's top mitigation strategy is "structure the prompt to re-anchor agent intent at each turn" — repeated goal reminders measurably reduce drift. Goals (#41) currently only get read when something explicitly queries `/goals` or `/goals/{id}/alignment`; nothing re-injects them into a session the way decisions already get assembled into context bundles. This is a small extension of existing infrastructure (`core/prefetch/`, `core/handoff/`), not a new subsystem. Tracked live as goal `43f95811bf29` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-07. The single most actionable item from the agent-drift research pass — cheapest to build, most directly matches the "ongoing, not set-and-forget" philosophy behind #35/Needs Attention.
+
+---
+
+### 48. Goal-Shaped Language Detection (`detect_goals`)
+**Purpose:** Regex-scan free text (a pasted session summary, a transcript) for goal-shaped phrasings — "the goal is to", "user requested", "user wants", "needs to", "would like to", "trying to achieve" — and surface candidates for a human to review before creating a real Goal.
+
+**Why:** Came out of a direct question: is "user wants X" a *trigger*? Not in the `core/triggers/registry.py` sense (that fires on discrete external lifecycle events) — it's a *pattern detector*, exactly the shape of an existing-but-orphaned method: `PatternLearner.detect_decisions()` (`core/learner/learner.py`), which regex-scans for decision-shaped phrasings. That method is fully built and tested but has **zero UI consumer anywhere** in the dashboard — confirmed via repo-wide grep. `detect_goals` is the goal-shaped sibling, built specifically to not repeat that mistake: it shipped with its UI consumer in the same pass.
+
+**Features:**
+- `core/goals/detector.py` — a third pure-function module in `core/goals/` (alongside `logic.py` and `drift.py`), structurally identical to `detect_decisions` (same `10 < len(content) < 500` filter, same 5-result cap across combined patterns, same two-tier `"high"`/`"medium"` confidence scheme). Deliberately not added to `core/learner/` — Goals must not gain a dependency on Learner.
+- `POST /{project}/goals/detect` (`core/goals/router.py`) — suggests candidates without persisting anything, same "suggest, don't save" shape as `preview-category`.
+- Dashboard: a "Scan for goal candidates" panel in the Goals tab — the third instance of the review-row pattern already used twice this session (docmine's uncaptured claims, Needs Attention's untagged decisions): paste text, Scan, review candidates with a category picker (reusing the create-form's safety/`nonsafety:<label>` widget pair), Propose creates a real goal via the normal `POST /goals` path.
+- Session-end auto-wiring (`add_session`/`record_session`) explicitly **not** built — two different, non-overlapping "session end" endpoints exist (dashboard-button-driven vs. the MCP `end_session` path an agent actually calls), and auto-wiring into the wrong one would silently reproduce `detect_decisions`' orphaned-feature problem. Deferred as a phase-2 decision pending real usage data on whether `end_session` calls carry substantive `summary` text.
+
+**Status:** ✅ Implemented (`core/goals/detector.py`). Tests: `tests/test_goals.py` (`TestDetectGoals`, `TestGoalDetectRouter`, 17 tests).
 
 ---
 
@@ -636,6 +723,39 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
+### 49. Attention Pulse Animation for Open-Work Indicators
+**Purpose:** A subtle, consistent visual cue applied to indicators that mean "there's real open work here," so they don't read as just another static number on the page.
+
+**Why:** The Needs Attention badge (#35/#41 era) was easy to miss next to everything else on Overview. First implementation used a conic-gradient "chasing border" (a bright segment traveling around the edge), but that technique sweeps by angle, which distorts badly on wide/short pill shapes — the arc bunches into a jagged blob at the rounded ends instead of tracing evenly, and every target here is a pill or a wide stat tile. Replaced with a `box-shadow`-based soft glow that breathes in intensity on a ~2.2s cycle — no directional sweep, so no shape-dependent geometry to go wrong; renders identically clean on badges and the wider stat tile. Reusable `.attn-chase` CSS class, respects `prefers-reduced-motion`, toggled on/off by JS based on whether the underlying count is actually non-zero — never animates a genuinely clear state.
+
+**Features:**
+- Needs Attention badge — pulses when `count > 0`.
+- Overview's Pending Reviews HUD tile — **was static dead text ("0"/"CLEAR" hardcoded, same underlying issue as the Pytest Suite counter)**, wired to real data as part of this fix by reusing `/needs-attention`'s already-fetched `pending_review` items instead of a second network call — pulses when count > 0.
+- Contradictions unresolved-count badge (Overview Quick Triggers) — pulses when count > 0, red glow color to match its existing red/lime text convention.
+- Doc Mining's High-severity finding badge — pulses when `severity_distribution.high > 0`.
+
+**Status:** ✅ Implemented (`UI/animated_tropebook_dashboard/code.html`). Pure frontend — no backend changes, no new tests (this repo has no JS test infra, verified live in-browser instead, same as every other dashboard-only change this session).
+
+---
+
+### 46. Tagline Reconsideration: "The Intention Engine"
+**Purpose:** Open question on whether the dashboard tagline should change from "The Rationale Engine" to "The Intention Engine."
+
+**Why:** Raised right after Goals (#41) shipped — "Intention" maps almost exactly onto what a Goal *is* (a stated, prospective aim), the way "Rationale" maps onto what a Decision's `context`/`alignment_considerations` capture (retrospective justification). The two words point at the two different halves of the system, and picking one is a real tradeoff, not a wording nitpick: Decisions are the larger, more mature half; Goals are one session old. "Intention" also carries a mild mindfulness/self-help register in casual usage that "Rationale" doesn't, worth being aware of for a tool that's also doing EU AI Act compliance work. Tracked live as goal `f5efe8968745` in the `tropelex` project.
+
+**Status:** Open, not decided. Current recommendation (2026-08-07): keep "The Rationale Engine" until Goals/drift detection have real usage behind them, not just a working demo — same "earn it before renaming" instinct already applied to the "Safety & Alignment" section name.
+
+---
+
+### 47. General Branding Alignment Pass
+**Purpose:** A broader review of whether the dashboard's naming/branding (tagline, section names, iconography) accurately reflects what Tropelex has become, rather than one-off tagline swaps in isolation.
+
+**Why:** The tagline question (#46) and the ongoing project-rename exploration (mirrorlex/spiegelloop/tropelex, still undecided — user already owns `tropelex.com`) are really the same underlying question asked at different scopes: does the current branding match the project's actual nature after several phases of growth (Safety & Alignment, Goals, drift detection)? Better done as one considered pass once the underlying feature set has settled, not piecemeal. Tracked live as goal `5ad7ae94788e` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-07. Deliberately vague/broad — a placeholder to revisit once #41's follow-ons (#42-45) and the rename question have more clarity, not a spec to build against yet.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
@@ -770,6 +890,18 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
+### Phase 15: Tag-Required Gate, Trigger Registry, Needs Attention & Goal Entity (Complete)
+- ✅ `add_decision` requires an explicit `safety_category` (`core/triggers/tag_gate.py`'s `require_tag`) — omitting it now 422s with a suggested category attached, instead of silently auto-classifying and writing an unchosen "general" to disk. `SafetyMetadata.safety_category` default changed from `"general"` to `None` to make omission distinguishable from an explicit choice.
+- ✅ New `POST /decisions/preview-category` (suggestion without saving) and `GET /decisions/untagged` (triage queue for decisions captured via `/slack/capture` — Emacs/Slack — which fire with no human present and are deliberately exempt from the gate) plus `PATCH /decisions/{id}/safety-category` to tag them after the fact.
+- ✅ Fixed a real bug found while building the above: decisions captured via `/slack/capture` had no `id` field at all (`core/slack/capture.py`), so nothing could ever address one individually. `CapturedDecision` gained an `id` default-factory.
+- ✅ `core/triggers/` — an event → check → logged-result registry (`core/triggers/registry.py`), with two real pre-push checks (endpoint-has-a-test, endpoint-has-error-handling) merged as a non-blocking addition into the existing `.git/hooks/pre-push`.
+- ✅ Dashboard "Needs Attention" panel (Overview, placed after the activity-stream/pattern-learner and risk-mix/agent-split rows so first-time context stays visible first) — aggregates pending safety reviews and untagged decisions via `GET /needs-attention`, always rendered including its clear state, untagged items fixed inline.
+- ✅ Fixed a real dashboard accessibility bug: `<select>` option lists rendered with the browser's light-mode native chrome (near-white background) regardless of the app's dark Tailwind classes, since nothing declared `color-scheme: dark`. Affected every dropdown in the app, not just new ones.
+- ✅ Goal Entity & Alignment Layers (#41) — see its entry above.
+- ✅ 63 new tests across this phase (test_triggers.py, test_safety_features.py additions, test_goals.py), full suite passing together (1632 total).
+
+---
+
 ## Technical Notes
 
 ### Storage Considerations
@@ -809,6 +941,6 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
-**Last Updated:** 2026-07-30
-**Status:** All features implemented except #19 (Session Replay with AI Analysis, still open) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
+**Last Updated:** 2026-08-08
+**Status:** All features implemented except #19 (Session Replay with AI Analysis), #40 (Injection Sentinel), and #42–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Session-Shape Baselining, Tagline Reconsideration, General Branding Alignment Pass — all proposed 2026-08-07 off the agent-drift research pass following #41, and mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), and Goal-Shaped Language Detection (#48). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
 **Next Review:** 2026-08-15

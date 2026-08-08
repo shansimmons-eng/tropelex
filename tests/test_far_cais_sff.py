@@ -239,8 +239,12 @@ class TestTamperDetection:
         low-confidence alert, not an assertion that the project was
         compromised — that word is reserved for structural violations the
         API's own validation would never allow through."""
-        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
-        client.post(f"/api/memory/{project}/decisions", json={"decision": "Second", "context": ""})
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Second", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
 
         memory = _load_memory(project)
         decisions = memory["decisions"]
@@ -256,7 +260,9 @@ class TestTamperDetection:
         assert "not conclusive" in data["flags"][0]["message"].lower()
 
     def test_duplicate_ids_is_compromised_with_high_severity(self, client, project):
-        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
 
         memory = _load_memory(project)
         original = memory["decisions"][0]
@@ -271,7 +277,9 @@ class TestTamperDetection:
         assert "duplicate_ids" in flag_types
 
     def test_malformed_id_is_compromised(self, client, project):
-        client.post(f"/api/memory/{project}/decisions", json={"decision": "First", "context": ""})
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
 
         memory = _load_memory(project)
         memory["decisions"][0]["id"] = "not-a-real-id"

@@ -112,6 +112,7 @@ def capture_decision(
 
     # Add to memory
     memory.setdefault("decisions", []).append({
+        "id": decision.id,
         "timestamp": decision.timestamp,
         "decision": decision.decision_text,
         "context": decision.context or f"Captured from Slack ({decision.channel})",

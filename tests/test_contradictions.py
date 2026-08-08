@@ -187,9 +187,11 @@ class TestContradictionEscalation:
     def _create_conflicting_pair(self, client, project):
         a = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Use React for frontend", "context": "",
+            "safety_metadata": {"safety_category": "general"},
         }).json()["decision"]
         b = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Use Vue for frontend", "context": "",
+            "safety_metadata": {"safety_category": "general"},
         }).json()["decision"]
         return a["id"], b["id"]
 

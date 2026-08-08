@@ -8,7 +8,8 @@ business logic error handling.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar, Union
 
 
@@ -84,6 +85,10 @@ class CapturedDecision:
     channel: str
     timestamp: str  # ISO 8601
     agent_name: str
+    # Without this, a decision captured here had no way to be addressed by
+    # any per-decision endpoint (approve/reject/review, or the safety-category
+    # tag endpoint) — there was simply nothing to look it up by.
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
 
 @dataclass(frozen=True)

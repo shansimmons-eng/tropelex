@@ -62,23 +62,196 @@ class TestSafetyMetadataEndpoint:
         assert data["decision"]["safety_metadata"]["risk_level"] == "high"
         assert data["decision"]["safety_metadata"]["requires_review"] is True
 
-    def test_add_decision_without_safety_metadata(self, client, project):
+    def test_add_decision_without_safety_metadata_requires_tag(self, client, project):
+        """A decision with no safety_category is rejected, not silently
+        assigned "general" — see core/triggers/tag_gate.py. The 422 carries
+        the auto-classifier's suggestion so a caller can retry with it."""
         response = client.post(
             f"/api/memory/{project}/decisions",
             json={"decision": "Simple decision", "context": "No safety metadata"},
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert "safety_metadata" in data["decision"]
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert detail["error"] == "tag_required"
+        assert detail["suggested"] in detail["valid_categories"]
 
     def test_auto_classify_risk_level(self, client, project):
-        response = client.post(
+        # First call omits the category and only reads the suggestion off
+        # the 422 — mirrors what the dashboard/TUI do via preview-category.
+        rejected = client.post(
             f"/api/memory/{project}/decisions",
             json={"decision": "Critical production deployment", "context": "High risk change"},
         )
+        assert rejected.status_code == 422
+
+        response = client.post(
+            f"/api/memory/{project}/decisions",
+            json={
+                "decision": "Critical production deployment",
+                "context": "High risk change",
+                "safety_metadata": {"safety_category": "general"},
+            },
+        )
         assert response.status_code == 200
         data = response.json()
+        # risk_level still comes from the heuristic even though the request
+        # only supplied safety_category explicitly (model_fields_set merge).
         assert data["decision"]["safety_metadata"]["risk_level"] in ["medium", "high"]
+
+
+class TestCategoryPreviewEndpoint:
+    """Tests for POST /api/memory/{project}/decisions/preview-category — the
+    suggestion the dashboard/TUI show before a user picks a category. Saves
+    nothing; add_decision itself never accepts this as a value."""
+
+    def test_preview_returns_a_suggestion_without_saving(self, client, project):
+        resp = client.post(
+            f"/api/memory/{project}/decisions/preview-category",
+            json={"decision": "Critical production deployment", "context": "High risk change"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["safety_category"] in {
+            "general", "adversarial", "robustness", "monitoring", "governance", "alignment",
+        }
+        assert data["risk_level"] in {"low", "medium", "high", "critical"}
+
+        # Nothing was actually recorded.
+        memory = client.get(f"/api/memory/{project}").json()
+        assert memory.get("decisions", []) == []
+
+
+class TestUntaggedDecisionsEndpoint:
+    """Tests for GET /api/memory/{project}/decisions/untagged — the triage
+    queue for decisions captured via /{project}/slack/capture (Emacs, Slack),
+    which never go through add_decision's require_tag gate since that path
+    fires with no human present."""
+
+    def test_no_decisions_is_empty(self, client, project):
+        resp = client.get(f"/api/memory/{project}/decisions/untagged")
+        assert resp.status_code == 200
+        assert resp.json() == {"decisions": [], "count": 0}
+
+    def test_tagged_decision_not_listed(self, client, project, sample_decision_with_safety):
+        client.post(f"/api/memory/{project}/decisions", json=sample_decision_with_safety)
+        resp = client.get(f"/api/memory/{project}/decisions/untagged")
+        assert resp.json() == {"decisions": [], "count": 0}
+
+    def test_slack_captured_decision_is_listed(self, client, project):
+        # Simulates the /{project}/slack/capture write path, which writes
+        # decisions with no safety_metadata key at all. slack_capture 404s
+        # on an unknown project, so create it first.
+        client.post("/api/memory", json={"project_name": project})
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy",
+            "context": "auto-captured from a commit",
+            "channel": "emacs",
+        })
+        resp = client.get(f"/api/memory/{project}/decisions/untagged")
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["decisions"][0]["decision"] == "Rolled back the last deploy"
+        # Must have a real id — slack-captured decisions used to have none,
+        # which meant nothing could ever address them individually.
+        assert data["decisions"][0]["id"]
+
+
+class TestTagDecisionEndpoint:
+    """Tests for PATCH /{project}/decisions/{id}/safety-category — the only
+    way a slack/capture-sourced decision leaves the untagged-decisions
+    queue, since it never goes through add_decision."""
+
+    def test_tags_a_slack_captured_decision(self, client, project):
+        client.post("/api/memory", json={"project_name": project})
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy", "context": "", "channel": "emacs",
+        })
+        decision_id = client.get(f"/api/memory/{project}/decisions/untagged").json()["decisions"][0]["id"]
+
+        resp = client.patch(
+            f"/api/memory/{project}/decisions/{decision_id}/safety-category",
+            json={"safety_category": "governance"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["decision"]["safety_metadata"]["safety_category"] == "governance"
+
+        # It's gone from the untagged queue now.
+        assert client.get(f"/api/memory/{project}/decisions/untagged").json()["count"] == 0
+
+    def test_invalid_category_rejected(self, client, project):
+        client.post("/api/memory", json={"project_name": project})
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy", "context": "", "channel": "emacs",
+        })
+        decision_id = client.get(f"/api/memory/{project}/decisions/untagged").json()["decisions"][0]["id"]
+
+        resp = client.patch(
+            f"/api/memory/{project}/decisions/{decision_id}/safety-category",
+            json={"safety_category": "not-a-real-category"},
+        )
+        assert resp.status_code == 422
+
+    def test_unknown_decision_id_404s(self, client, project):
+        client.post("/api/memory", json={"project_name": project})
+        resp = client.patch(
+            f"/api/memory/{project}/decisions/does-not-exist/safety-category",
+            json={"safety_category": "general"},
+        )
+        assert resp.status_code == 404
+
+
+class TestNeedsAttentionEndpoint:
+    """Tests for GET /api/memory/{project}/needs-attention — the aggregation
+    feeding the dashboard's Overview-page Needs Attention panel. Thin layer
+    over /reviews/pending and /decisions/untagged, so these mostly confirm
+    the merge and item shape rather than re-testing either source."""
+
+    def test_empty_project_has_no_items(self, client, project):
+        resp = client.get(f"/api/memory/{project}/needs-attention")
+        assert resp.status_code == 200
+        assert resp.json() == {"items": [], "count": 0}
+
+    def test_pending_review_appears_as_an_item(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Deploy without a rollback plan",
+            "context": "",
+            "safety_metadata": {"safety_category": "governance", "requires_review": True},
+        })
+        resp = client.get(f"/api/memory/{project}/needs-attention")
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["items"][0]["kind"] == "pending_review"
+        assert data["items"][0]["label"] == "Deploy without a rollback plan"
+
+    def test_untagged_decision_appears_as_an_item(self, client, project):
+        client.post("/api/memory", json={"project_name": project})
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy",
+            "context": "",
+            "channel": "emacs",
+        })
+        resp = client.get(f"/api/memory/{project}/needs-attention")
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["items"][0]["kind"] == "untagged_decision"
+        assert data["items"][0]["label"] == "Rolled back the last deploy"
+
+    def test_both_kinds_combine(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Deploy without a rollback plan",
+            "context": "",
+            "safety_metadata": {"safety_category": "governance", "requires_review": True},
+        })
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy",
+            "context": "",
+            "channel": "emacs",
+        })
+        resp = client.get(f"/api/memory/{project}/needs-attention")
+        data = resp.json()
+        assert data["count"] == 2
+        kinds = {item["kind"] for item in data["items"]}
+        assert kinds == {"pending_review", "untagged_decision"}
 
 
 class TestSafetyDashboardEndpoint:
@@ -164,9 +337,11 @@ class TestContradictionSafetyCrossConnect:
 
     def test_direct_contradiction_escalates_both_decisions(self, client, project):
         client.post(f"/api/memory/{project}/decisions",
-                    json={"decision": "Use REST for the public API", "context": ""})
+                    json={"decision": "Use REST for the public API", "context": "",
+                          "safety_metadata": {"safety_category": "general"}})
         client.post(f"/api/memory/{project}/decisions",
-                    json={"decision": "Use GraphQL for the public API", "context": ""})
+                    json={"decision": "Use GraphQL for the public API", "context": "",
+                          "safety_metadata": {"safety_category": "general"}})
 
         resp = client.get(f"/api/memory/{project}/contradictions")
         assert resp.status_code == 200
@@ -180,10 +355,11 @@ class TestContradictionSafetyCrossConnect:
     def test_already_flagged_decision_not_double_counted(self, client, project):
         client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Use REST for the public API", "context": "",
-            "safety_metadata": {"requires_review": True},
+            "safety_metadata": {"requires_review": True, "safety_category": "general"},
         })
         client.post(f"/api/memory/{project}/decisions",
-                    json={"decision": "Use GraphQL for the public API", "context": ""})
+                    json={"decision": "Use GraphQL for the public API", "context": "",
+                          "safety_metadata": {"safety_category": "general"}})
 
         resp = client.get(f"/api/memory/{project}/contradictions")
         # Only the second decision should be newly escalated — the first was already flagged.
@@ -191,7 +367,8 @@ class TestContradictionSafetyCrossConnect:
 
     def test_no_contradictions_no_escalation(self, client, project):
         client.post(f"/api/memory/{project}/decisions",
-                    json={"decision": "Use FastAPI for the backend", "context": ""})
+                    json={"decision": "Use FastAPI for the backend", "context": "",
+                          "safety_metadata": {"safety_category": "general"}})
         resp = client.get(f"/api/memory/{project}/contradictions")
         assert resp.json()["escalated_to_review"] == 0
 
@@ -275,7 +452,7 @@ class TestPersonaMarketSafetyCrossConnect:
         created = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Ship the new login flow",
             "context": "",
-            "safety_metadata": {"affected_systems": ["auth"]},
+            "safety_metadata": {"affected_systems": ["auth"], "safety_category": "general"},
         }).json()
         decision_id = created["decision"]["id"]
 
@@ -309,7 +486,7 @@ class TestPersonaMarketSafetyCrossConnect:
         created = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Ship the new login flow",
             "context": "",
-            "safety_metadata": {"affected_systems": ["auth"]},
+            "safety_metadata": {"affected_systems": ["auth"], "safety_category": "general"},
         }).json()
         decision_id = created["decision"]["id"]
 
@@ -344,7 +521,7 @@ class TestPersonaMarketSafetyCrossConnect:
         client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Ship the new login flow",
             "context": "",
-            "safety_metadata": {"affected_systems": ["auth"]},
+            "safety_metadata": {"affected_systems": ["auth"], "safety_category": "general"},
         })
         resp = client.get(f"/api/memory/{project}/reviews/pending")
         assert resp.json()["total_pending"] == 0
@@ -395,7 +572,7 @@ class TestDecisionImpactEndpoint:
             json={
                 "decision": "Update internal docs",
                 "context": "No systems affected",
-                "safety_metadata": {"risk_level": "low", "affected_systems": []},
+                "safety_metadata": {"risk_level": "low", "affected_systems": [], "safety_category": "general"},
             },
         )
 

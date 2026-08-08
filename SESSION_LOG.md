@@ -2987,3 +2987,773 @@ d1c3d67 fix: normalize agent identity in Slack capture too
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-05 21:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-05 22:42 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-05 23:11 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 56 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-05 23:18 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 78 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 15:17 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 100 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 15:18 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 122 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 15:41 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 144 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 15:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 166 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json core/triggers/ generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 16:06 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 188 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json core/triggers/ generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 16:07 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 210 insertions(+)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json core/triggers/ generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 16:30 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  10 files changed, 561 insertions(+), 46 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 16:33 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  10 files changed, 583 insertions(+), 46 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 16:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 914 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 17:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 950 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 17:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 976 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 17:53 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 998 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 17:58 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 1020 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:08 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 1042 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:08 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 1064 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:13 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 1086 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:15 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  12 files changed, 1108 insertions(+), 47 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:20 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  13 files changed, 1147 insertions(+), 49 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  13 files changed, 1169 insertions(+), 49 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-06 18:29 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  13 files changed, 1191 insertions(+), 49 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/triggers/ generate_views_list.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 00:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1613 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 03:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1635 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 15:55 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1657 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 16:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1679 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 16:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1757 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 16:48 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1779 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 16:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1801 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 22:38 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 1993 insertions(+), 112 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 23:45 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 2105 insertions(+), 117 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 23:47 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 2127 insertions(+), 117 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-07 23:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  14 files changed, 2153 insertions(+), 117 deletions(-)
+
+**Recent commits:**
+```
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+4faeed6 docs: replace em-dashes with varied punctuation across project docs
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/friction/miner.py core/slack/__init__.py core/slack/capture.py core/tropebook/web/server.py mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_far_cais_sff.py tests/test_safety_features.py tui/app.py tui/client.py wishlist.md core/goals/ core/triggers/ generate_views_list.py tests/test_goals.py tests/test_triggers.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
