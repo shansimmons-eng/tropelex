@@ -200,6 +200,21 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 
 ---
 
+### 50. Error Handling Audit: Unguarded Writes + Result-Type Consolidation
+**Purpose:** A real audit of "how robust is error handling here," prompted directly by the pre-push hook's `check_error_handling_present` warnings (#40's trigger registry) rather than assumed from the check's raw output.
+
+**Why:** The check itself only scans `core/*/router.py` — it never looks at `server.py`'s ~150 inline endpoints, so its count is an undercount of what exists to check, not an overcount. Of what it *did* flag, most were false positives: routers built around a `_load_memory`/`_save_memory` helper pair have real error handling in `_load_memory` (try/except, logged, clean 404/500) that the check can't see one function away. But digging past the false positives surfaced a real, systemic gap: `_save_memory` had **no error handling at all**, in every router where that helper exists (market, goals) — a disk-full, permission, or lock-contention failure on write would have surfaced as a raw unhandled exception instead of a clean logged 500. Not something introduced this session; goals' router faithfully copied an already-present gap in market's.
+
+Separately, auditing the *other* half of error handling (business-logic `Result`/`Ok`/`Err` — used for expected failures like validation and not-found) found it consistently well-designed everywhere it's used, but independently copy-pasted byte-for-byte in **17 separate files** rather than shared from one place. `core/goals` was the only module importing it from elsewhere (from `core.market`) instead of redefining it — everyone else, including the one module flagged earlier this session as "the inconsistency," redefines its own copy.
+
+**Features:**
+- New `core/result.py` — the actual canonical `Result`/`Ok`/`Err`, replacing 17 independent copies (`agent_audit`, `benchmarks`, `contradictions`, `cost`, `docmine`, `friction/miner`, `ghost/preventive`, `lens`, `market`, `narrative`, `personas`, `prbot`, `prefetch/{assembler,genealogy,tuner}`, `slack`, `timetravel`). Domain-specific exceptions (`MarketError`, `ContradictionError`, etc.) stayed put — legitimately domain-specific, not part of the generic type. `core/goals` updated to import from `core.result` directly instead of the `core.market` stopgap.
+- `_save_memory` in both `core/market/router.py` and `core/goals/router.py` now wrapped in try/except, matching `_load_memory`'s existing pattern exactly (log + clean `HTTPException(500)`).
+
+**Status:** ✅ Implemented. Tests: `TestSaveMemoryErrorHandling` in `tests/test_market_router.py` and `tests/test_goals.py` (monkeypatches `MemoryManager.save_project_memory` to raise, asserts the response is FastAPI's structured `{"detail": ...}` shape — proof the guard is what's producing the response, not just that *some* 500 comes back). Full suite at 1651 passing.
+
+---
+
 ## Explainability & Discovery
 
 ### 7. Explainable Memory: "Why do we...?" Chat
@@ -386,6 +401,245 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 **Why:** The agent-drift literature's top mitigation strategy is "structure the prompt to re-anchor agent intent at each turn" — repeated goal reminders measurably reduce drift. Goals (#41) currently only get read when something explicitly queries `/goals` or `/goals/{id}/alignment`; nothing re-injects them into a session the way decisions already get assembled into context bundles. This is a small extension of existing infrastructure (`core/prefetch/`, `core/handoff/`), not a new subsystem. Tracked live as goal `43f95811bf29` in the `tropelex` project.
 
 **Status:** Open. Proposed 2026-08-07. The single most actionable item from the agent-drift research pass — cheapest to build, most directly matches the "ongoing, not set-and-forget" philosophy behind #35/Needs Attention.
+
+---
+
+### 51. `nonsafety:bug` Convention (Chatbot Alternative)
+**Purpose:** A lightweight, no-new-subsystem way to capture bug reports through Goals, offered as the smaller alternative to "add a support chatbot to the project."
+
+**Why:** Asked directly whether a Q&A/bug-report chatbot was worth adding. The honest answer: not yet — no evidence of the external-user support burden that would justify it, and the goal ("capture and track bugs") is already reachable through Goals' existing `nonsafety:<label>` category namespace with zero backend changes. Standardizing on `nonsafety:bug` as a recognized value, rather than everyone inventing their own label (the same "branding" vs "UX" inconsistency already found once in this project's own goals), is what actually needed building.
+
+**Features:**
+- `nonsafety:bug` added as a one-click quick-pick in both category selects (the main Goal create form and the goal-candidate review rows) — sits alongside the safety categories and the freeform "other (non-safety)…" option, not buried inside it.
+- 🐛 Bugs quick-filter toggle in the Goals tab list pane, using `list_goals`'s existing `category` query param (no backend change — that filter already existed, nothing surfaced it in the UI).
+- Category display formatting (`_formatGoalCategory`) renders `nonsafety:bug` as "🐛 bug" instead of the raw string, in both the list and detail views.
+
+**Status:** ✅ Implemented (`UI/animated_tropebook_dashboard/code.html`, pure frontend). Verified live: create with the bug quick-pick → correct 🐛 chip in both list and detail → filter toggle correctly isolates bug-only goals.
+
+---
+
+## Safety Infrastructure Hardening (External Review, 2026-08-08)
+
+An external code review of Tropelex's safety/alignment infrastructure came back with nine categories of suggestions. Verifying its load-bearing claims against the actual code before building on them surfaced two corrections worth stating up front, since they change the prioritization:
+
+- **The review's suggestion #9 says "immutable security audit log + provenance chain: already present; harden it."** That's not accurate as of 2026-08-07: `get_provenance_chain` and `get_security_audit_log` (`core/tropebook/web/server.py`) both recomputed their output from the current, mutable `decisions` list on every GET, with `chain_valid` hardcoded `True` on every entry and no persisted write-time hash anywhere. Editing historical decision data directly in the memory JSON produced a perfectly clean-looking response on the next call — zero indication of tampering. `verify_integrity`'s "hash chain integrity" check computed a hash and then never compared it to anything. `SAFETY.md` itself claims "an immutable decision history" as a core safety primitive; that claim was not true. This is fixed now — see #52 below — but it means "harden" was the wrong verb; "build" was.
+- **The review's suggestion #2 treats `core/embeddings.py` as an already-available drop-in for semantic detection upgrades.** It's a pure cosine-similarity storage/query layer (`put`/`search`/`delete`) — it does not generate embeddings. Any semantic upgrade needs vectors computed externally via `OPENAI_API_KEY`, and should follow the project's existing tiered-fallback pattern (e.g. Compression's dictionary-vs-LLM split) rather than being framed as free.
+
+**My prioritization** (informed by, not deferential to, the reviewer's own suggested order): the reviewer's #1 (enforceable gates + override-as-decision) is correctly identified as the highest-leverage item, but it has an unstated prerequisite — an "override" is only a meaningful audit trail entry if the trail it's written into can't be silently rewritten, which wasn't true until #52. So the real order is #52 first (now done), then #53, then the two genuinely cheap items that reuse infrastructure already built this session (#54, reusing the `require_tag`/gate pattern; #55/#56, composing two detectors that already exist), then the larger, more speculative items last.
+
+1. **#52 — Real append-only audit trail.** ✅ Done — see below. Prerequisite for everything that follows.
+2. **#53 — Enforceable gates + override-as-decision.** Highest leverage per the reviewer; now has a real trail to write into.
+3. **#54 — Required safety metadata for high-risk decisions.** Low-hanging: directly reuses the `require_tag`/`TagRequiredError` pattern from the `safety_category` gate (#35), just extended to more fields under stricter conditions.
+4. **#55 / #56 — Doc Mining + Ghost combined-severity alert, Friction → decision promotion.** Low-hanging: both compose detectors that already exist and already produce structured output; no new detection logic needed, just cross-referencing.
+5. **#45 (existing) — Session-shape baselining.** Unchanged priority; the reviewer independently flagged it as high-value, which corroborates rather than changes its existing spot on the list.
+6. **#57 — Semantic/structural detection upgrade.** Valuable but bigger than it sounds once the `OPENAI_API_KEY` dependency is honestly scoped in; not low-hanging fruit.
+7. **#58 — Knowledge Decay loop closure.** Solid, moderate effort, no new subsystem.
+8. **#40 (existing) — Injection Sentinel.** The reviewer's #6 maps directly onto an already-scoped wishlist item; noted, not duplicated.
+9. **#59 — Signed/hash-chained handoffs + calibration-based authority.** Depends on #52's real chain to be more than cosmetic signing.
+10. **#60 — Drift-Bench evaluation harness.** Most valuable long-term, correctly last — needs a whole scenario corpus and CI wiring, not a single pass.
+
+**Added 2026-08-09** (not from the reviewer's list — surfaced by asking "what have we prevented so far?" of the now-complete #52/#53 pair): #61 slots ahead of #45, since it's cheaper than everything below #56 and it's the report that makes #52/#53's investment legible rather than just theoretically load-bearing. #62 slots near #58 — same "make existing detector output actionable instead of descriptive" shape.
+
+11. **#61 — Prevention Report.** ✅ Done — cheapest remaining item on the list: two new event types on call sites that already have the append-audit-event pattern, one aggregation endpoint, no new detection logic.
+12. **#62 — Friction persistence + generic review queue.** ✅ Done — direct extension of #56; the review-queue UI it builds is meant to be reused by #39 later rather than rebuilt.
+
+---
+
+### 52. Real Append-Only Provenance Chain & Security Audit Log
+**Purpose:** Replace the recomputed-on-every-GET provenance chain and security audit log with a genuine append-only, write-time-hashed store, so tampering with historical data is actually detectable instead of just not-visible.
+
+**Why:** Verified directly against `core/tropebook/web/server.py`: `get_provenance_chain` and `get_security_audit_log` both walked the *current* `decisions` list and recomputed hashes/events from scratch on every request, with `chain_valid: True` hardcoded unconditionally. `verify_integrity` computed a hash per decision but never compared it to anything — the comparison it needed didn't exist. None of the three could ever detect a mismatch, regardless of what was edited. `SAFETY.md` credits Tropelex with "an immutable decision history"; that wasn't true until this fix, and it's a prerequisite for #53 and #59 to mean anything (an override or a signed handoff is only as trustworthy as the trail it's chained into).
+
+**Features:**
+- `_append_audit_event(memory, event_type, **fields)` — writes `memory["audit_log"]` entries at the moment an event happens (not derived after the fact), each hash computed once at write time and chained from the *previous stored* entry's hash.
+- Wired into the three write sites the audit log's own docstring already promised to cover: `add_decision` (`decision_created`), `submit_safety_review` (`review_submitted`), `create_decision_version` (`version_created`).
+- `get_provenance_chain` and `get_security_audit_log` now read `audit_log` directly instead of reconstructing it; `chain_valid` is a real stored-vs-recomputed hash comparison.
+- `verify_integrity` gained `_verify_audit_log_chain`, which checks every entry's own hash and its `previous_hash` linkage against the prior entry — a real check where there was previously a no-op.
+- Known, honestly-surfaced limitation: no backfill. Only events written after this fix appear in the log; pre-existing decisions have no corresponding entry. Not faked.
+
+**Status:** ✅ Implemented (`core/tropebook/web/server.py`). Tests: `tests/test_far_cais_sff.py` (`TestAuditLogTamperEvidence` — directly edits/deletes an audit_log entry the way a rogue file edit would and proves it's now caught, which the old implementation could never do). Full suite: 1656 passing (was 1651).
+
+---
+
+### 53. Enforceable Preventive Gates + Override-as-Decision
+**Purpose:** Turn Preventive Ghost Checks and Contradiction Detection from advisory (agents can ignore them) into a configurable hard gate, with any override captured as its own audited decision.
+
+**Why:** Reviewer's #1, and independently the highest-leverage item on my own pass — everything else in this list assumes agents actually stop and look at what these detectors surface, and nothing currently enforces that. Now unblocked by #52: an override is only meaningful if it's written into a trail that can't be silently rewritten.
+
+**Features:**
+- `GET /{project}/ghost-check` (`core/ghost/preventive_router.py`) now resolves each warning's severity to a policy action via `_policy_for` — module default `{"high": "block", "medium": "warn", "low": "log_only"}`, overridable per-project via `memory["gate_policy"]`.
+- A `block` verdict with no recorded override raises **HTTP 409** (with the blocking warnings + how to resolve them in the body) instead of returning 200. This isn't cosmetic: `mcp_server/server.py`'s `_request` raises a `RuntimeError` on any non-2xx status, so a blocked ghost-check surfaces as an actual MCP tool failure the calling agent has to handle, not a warning sitting quietly in a 200 payload it can skip past.
+- `POST /{project}/decisions/{decision_id}/override` (+ MCP tool `override_ghost_warning`) records an override with `rationale` + `agent_name`, written into `audit_log` (#52) as its own `override` event — same tamper-evident trail as decision creation and review, not a parallel unaudited mechanism. Future warnings against that decision keep showing up (`"overridden": true`), just stop forcing a block.
+- Extracted the write-time hash-chain helper (`_append_audit_event`/`_compute_decision_hash`) out of `server.py` into `core/audit.py` once this became the second consumer — matches the `core/result.py` precedent (#50): shared module beats two copies.
+- **Deferred, not built this pass:** Contradiction Detection isn't gated yet (Ghost Preventive Check only); trigger-registry integration for git hooks/in-session tool use; session/role-scoped risk-budget auto-escalation. Scoped out deliberately to ship a real, tested v1 rather than a wider, thinner one — same "ship the UI consumer, don't leave it orphaned" discipline as #48.
+
+**Status:** ✅ Implemented (`core/ghost/preventive_router.py`, `core/audit.py`, `mcp_server/server.py`). Tests: `tests/test_ghost_preventive.py` (`TestGhostCheckGatePolicy`, 6 tests — block/warn/log_only resolution, override-then-retry, 404/422 on bad override requests, per-project policy override). Live end-to-end smoke test: created a decision, forced a policy override to block on `medium`, confirmed 409 with the blocking warning, called the override endpoint, confirmed the retry now returns 200 with `overridden: true`, and confirmed the override landed in the real `audit_log` alongside `decision_created`. Full suite: 1662 passing (was 1656).
+
+---
+
+### 54. Required Safety Metadata for High-Risk Decisions
+**Purpose:** Extend the existing `require_tag`/`TagRequiredError` gate (built for `safety_category`, #35) so decisions above a risk threshold, or touching listed critical systems, can't be saved without richer safety metadata — not just a category.
+
+**Why:** Reviewer's #7, folded together with two of the smaller items from the reviewer's #9 sub-list (role-based override authority, provenance/confidence labeling for externally-sourced or synthetic memory items) since they're small extensions of the same "make metadata mandatory and honest" theme rather than standalone subsystems — matches this session's repeated "don't build parallel systems for one idea" instinct. Genuinely low-hanging: the gate mechanism, error shape, and 422-with-suggestion UX already exist and are proven; this reuses them rather than designing something new.
+
+**Features:**
+- `core/safety/gate.py` — `require_safety_metadata(risk_level, provided_fields, suggested)`, structurally identical to `require_tag`: no-op for low/medium risk, raises `SafetyMetadataRequiredError` (422, with the auto-classifier's suggestion attached, scoped to just the gated fields) once the *resolved* `risk_level` is `high`/`critical` and `reversibility`/`affected_systems`/`requires_review` weren't explicitly set. Wired into `add_decision` right after `safety_metadata` is resolved, so it keys off the actual value being written — including when a caller explicitly marks an otherwise-mild decision `risk_level: "high"` themselves.
+- **Caught mid-build**: `mcp_server/server.py`'s `capture_decision` tool previously gave `reversibility`/`requires_review`/`affected_systems` concrete Python defaults (`True`/`False`/`[]`), which meant every field looked "explicitly provided" to this gate even when the calling agent never thought about them — the exact silent-default failure mode this gate exists to close, just reintroduced one layer up. Fixed by making those parameters `None`-default and only including them in the outgoing `safety_metadata` when the agent actually set them, so an agent that doesn't engage with a high-risk decision gets the real 422, not a rubber-stamped write.
+- `core/safety/` created as its own module (`__init__.py` + `gate.py`) — start of the extraction the review asked for, scoped honestly: it holds the new gate, not a relocation of the ~150-line inline safety block (`SafetyMetadata`, `_auto_classify_safety`, and the safety-report endpoints) still living in `server.py`. Moving all of that in the same pass as new gating logic risked exactly the kind of wide, hard-to-review change this project has been deliberately avoiding — noted as a deferred fast-follow, not silently dropped.
+- **Deferred, not built this pass:** role-based override authority and provenance/confidence discounting for externally-sourced or synthetic memory items (the reviewer's other two #9 sub-items folded in here) — both are additive on top of this gate rather than blocking it, and didn't fit in the same bounded pass.
+
+**Status:** ✅ Implemented (`core/safety/`, `core/tropebook/web/server.py`, `mcp_server/server.py`). Tests: `tests/test_safety_gate.py` (11 tests — pure-function gate logic + end-to-end router behavior, including the "explicit high risk_level on mild text is still gated" case) + 3 existing tests in `tests/test_safety_features.py` updated (they relied on auto-classified high-risk decisions succeeding with only `safety_category` set, which is exactly what this gate now closes). Live end-to-end smoke test against the running server: category-only high-risk decision → 422 with the auto-classifier's suggestion; same request with explicit fields → 200. Full suite: 1673 passing (was 1662).
+
+---
+
+### 55. Doc Mining + Ghost Combined-Severity Alert
+**Purpose:** When a decision's supporting docs have drifted *and* its code has drifted, raise one higher-severity combined finding instead of two separate, equally-weighted ones.
+
+**Why:** Reviewer's #9 sub-item. Genuinely low-hanging: Doc Mining and Ghost Decisions are both already built, already produce structured per-decision findings — this is cross-referencing two existing outputs by shared `decision_id`, not new detection logic.
+
+**Correction found mid-build:** the reviewer's framing assumes "Ghost" means the post-hoc `GET /ghost-decisions` endpoint (`core/ghost/detector.py`). That endpoint currently calls `detect_ghost_decisions` with a hardcoded empty `diff_data: list = []` (`core/ghost/router.py`) — git-diff integration was never wired in — so it can never actually surface anything today, joined with anything or not. This aggregator joins Doc Mining against **Preventive Ghost Checks** (`core/ghost/preventive.py`, #53's `check_diff_for_warnings`) instead, which takes a real diff directly and is the endpoint that's actually live. The broken post-hoc endpoint is a separate, real bug — not fixed here, flagged honestly rather than silently worked around.
+
+**Features:**
+- `core/docmine/combined.py` — `combine_doc_and_ghost_findings(doc_findings, ghost_warnings)`, a pure join on `decision_id` (`doc_vs_doc` findings don't reference a decision and are ignored; multiple findings/warnings for the same decision keep the worst severity from each side). Any overlap produces a `CombinedAlert` with `combined_severity: "critical"` — stronger than either source's own tier.
+- `POST /{project}/drift/combined-check` (`core/docmine/router.py`) — takes the same `diff` + optional `paths` shape as `/ghost-check` and `/docmine/scan` combined, runs both detectors, returns `combined_alerts` alongside each detector's own totals. Doc Mining's existing high-severity auto-escalation still runs unchanged; this doesn't add a second escalation path.
+- Refactored `scan_markdown`'s path-resolution/claim-extraction/detection logic into a shared `_run_docmine` helper so both endpoints call the same code instead of duplicating it.
+- **Deferred, not built this pass:** surfacing combined alerts in the Needs Attention panel (#35) — that panel is a no-argument GET, and combined-check inherently needs a `diff` to run, so it doesn't fit the same aggregation shape as `get_needs_attention`'s other sources without either an argument or a cached "last combined-check result." Noted as a real follow-up once there's a natural place a diff comes from (e.g. wired into #53's git-hook path).
+
+**Status:** ✅ Implemented (`core/docmine/combined.py`, `core/docmine/router.py`). Tests: `tests/test_docmine.py` (`TestCombineDocAndGhostFindings` — 5 tests on the pure joiner; `TestCombinedDriftCheckRouter` — 3 tests on the endpoint). Live end-to-end smoke test: a decision ("Use Postgres for the primary database"), a doc claiming MySQL, and a diff switching to MySQL — confirmed `doc_severity: high`, `ghost_severity: medium`, `combined_severity: critical` on the same decision. Full suite: 1681 passing (was 1673).
+
+---
+
+### 56. Friction → Decision Promotion
+**Purpose:** A high-friction zone (repeated correction, the same linguistic pattern Friction Mining already scores) auto-suggests — or, above a threshold, requires — a real decision or supersede link, instead of just accumulating a friction score nobody acts on.
+
+**Why:** Reviewer's #9 sub-item. Low-hanging: Friction Mining (`core/friction/miner.py`) already computes the penalty; `detect_decisions`-style suggestion is an established pattern (#48's `detect_goals` is the most recent instance). This wires two existing pieces together rather than building new scoring.
+
+**Correction found mid-build:** the reviewer's framing ("crosses a threshold in a given area") assumes friction is trackable by topic/area over time. It isn't: `friction_history` (the persisted, cross-session record) only stores numeric aggregates per scan (`friction_score`, `severity_distribution`, `agent_name`) — no signal text, no topic. The only place text actually exists is `FrictionZone` (line-proximity clusters within one scan's transcript), which was computed and returned but never persisted. So promotion happens per-scan, from a zone's own signals, not from accumulated cross-session history — a materially smaller scope than "area" implied, and the honest one given what data actually exists.
+
+**Features:**
+- `suggest_decision_from_zone(zone)` (`core/friction/miner.py`) — pure function, same "suggest, don't save" shape as `detect_goals`/`preview-category`. Only `zone_severity == "high"` zones (repeated correction/escalation, not one-off noise) produce a candidate; joins up to 3 signal snippets, capped at 500 chars.
+- Wired into `POST /{project}/friction/scan`'s existing response as `suggested_decisions` — no new endpoint, no new persistence.
+- Dashboard: Friction Mining's existing results panel (already had a live UI consumer, unlike the orphaned `detect_decisions`) gained a "Suggested decisions from repeated friction" section — the third instance of the review-row pattern (category select, Propose, Remove) already used for docmine's uncaptured claims and goal candidates.
+- **Deferred, not built this pass:** the reviewer's second bullet ("above a higher threshold, gate further writes in that area") — friction scans aren't tied to a specific write the way #53's ghost-check is, so there's no clean trigger point yet. Would need friction to be scoped by area first (a bigger, separate change) before a gate on it means anything.
+
+**Status:** ✅ Implemented (`core/friction/miner.py`, `core/friction/router.py`, `UI/animated_tropebook_dashboard/code.html`). Tests: `tests/test_friction.py` (`TestSuggestDecisionFromZone` — 5 tests; 2 new router-level assertions on `suggested_decisions`). Live end-to-end verification: backend smoke test via curl, then a full browser pass in the real dashboard — pasted a transcript with a repeated instruction, scanned, got a high-severity zone and its suggested decision, picked a category, clicked Propose, and confirmed a real decision landed in the project's memory (then removed that test decision from the live `tropelex` project afterward, matching this session's cleanup discipline — the append-only audit_log entry it left behind was deliberately not touched, since removing it would be exactly the kind of history-editing #52 exists to detect). Full suite: 1687 passing (was 1681).
+
+---
+
+### 57. Semantic + Structural Detection Upgrade (Ghost + Contradiction)
+**Purpose:** Add embedding-based similarity and lightweight AST/structural signals to `core/ghost/pattern_matcher.py` and `core/contradictions/detector.py`, which currently rely on opposing-keyword pairs and Jaccard overlap.
+
+**Why:** Reviewer's #2 — correctly identified as valuable, but the review frames `core/embeddings.py` as an already-available drop-in. It isn't quite: it's pure storage (`put`/`search`/`delete`), not a generator — but `core/llm.py`'s `embed`/`embed_one` (already used for citation semantic search) turned out to already be the generator, gracefully returning `None` with no key configured. So the real infrastructure gap was smaller than expected; the real risk, discovered by actually shipping this against the live `tropelex` project, was elsewhere entirely — see below.
+
+**Shipped scope:** Contradiction Detection only (not Ghost, not AST/structural signals, not the predicate ontology, not the calibration feedback loop — all explicitly deferred, see below). Even that narrower scope surfaced a real incident worth recording in full.
+
+**What happened:** `hybrid_similarity()` blends keyword Jaccard with embedding cosine similarity and feeds the result into `classify_contradiction`'s existing 0.15/0.4 thresholds — tuned years earlier for pure keyword Jaccard's naturally sparse distribution. General-purpose text embeddings don't share that distribution: two *unrelated* same-domain sentences routinely score 0.4-0.6+ on raw cosine similarity, nowhere near zero. Blending scores with different baselines into one number and reusing the old thresholds let far more pairs reach `detect_direct_contradiction`, which unmasked two latent bugs in that function that a decade of low-keyword-similarity filtering had accidentally hidden: (1) opposing-pair checks used raw substring `in` matching, so "add"/"remove" matched inside "added"/"removed"; (2) `_share_subject`'s "any single shared non-stopword" check passed on one coincidental shared word ("feed") between two otherwise-unrelated, differently-worded decisions. Live-tested against the real `tropelex` project (159 decisions, real `OPENAI_API_KEY`): unresolved contradictions jumped from a sane baseline to **272**, and — because high-severity contradictions auto-escalate their decisions into the Safety Review queue (an existing, intentional cross-connection) — **pending reviews jumped from 8 to 61** on the live, in-use project before the bug was caught.
+
+**Fix, verified against the same live project:**
+- `detect_direct_contradiction` now matches whole words/phrases (`\b`-bounded), not raw substrings.
+- `_share_subject` requires 2+ shared non-stopword tokens, or — for genuinely short decisions where 2 is unrealistic ("Don't use React" vs "We should use React") — 1 shared word that's at least half of the *shorter* side's remaining vocabulary. Targets exactly the failure mode found: one incidental word buried in an otherwise-unrelated, much longer sentence.
+- `classify_contradiction` now takes both the hybrid score (permissive gate 1 — lets embeddings rescue real opposition pairs with low keyword overlap, safe because reaching this gate still requires an independent keyword/date-based signal) and the pure keyword score (strict gate 2 and severity bump — the "implicit" category has no independent signal backing it, so it stays exactly as conservative as it was before embeddings existed, immune to the same-domain-baseline problem).
+- Re-verified against `tropelex`: 272 → 87 unresolved, 132 → 13 high-severity decisions. The genuine case this feature exists for (JWT vs. session storage, 0.053 keyword similarity — below the old 0.15 gate entirely, so never even reached opposition-detection) still fires correctly; the "Added X" / "Added Y, removed Z" false positive no longer does.
+- **Damage recovery on `tropelex`:** identified 55 decisions matching the escalation's exact signature (`requires_review=True`, `risk_level=="medium"`, no `safety_reviews`, no `escalation_reason` — the persona/market path's own marker, ruling that source out) and re-checked each against the corrected algorithm's high-severity set. 47 were reverted to their pre-scan state (`requires_review=False`, `risk_level="low"`); 8 were genuinely valid and left alone. Pending reviews: 61 → 14 (original baseline was 8; the remaining 6 are newly-found *genuine* contradictions like the real MySQL-vs-Postgres pair, correctly kept). This is a best-effort reconstruction, not a true undo — no audit trail existed for this specific mutation path at the time (contradiction auto-escalation was never wired into #52's audit log), so a small number of edge cases (a decision manually created with `risk_level: medium` + `requires_review: true` and no review yet) could theoretically be misattributed. Disclosed in full rather than silently patched.
+
+**Features:**
+- `core/contradictions/detector.py`: `hybrid_similarity`, `_cosine_similarity`, `classify_contradiction`'s dual-similarity signature, `detect_contradictions(decisions, embeddings=None)` — fully backward compatible, identical output when `embeddings` is omitted.
+- `core/contradictions/router.py`: `_get_decision_embeddings` — caches vectors per-project via `EmbeddingStore` (`core/embeddings.py`, gained a `.get()` method) so a decision is embedded once, not on every `/contradictions` call; gracefully falls back to keyword-only (`semantic_augmented: false` in the response) with no key or on API failure.
+- Dashboard: Contradictions tab shows a `semantic-augmented` / `keyword-only` badge — honest disclosure, matching Compression's `backend` field.
+- MCP tool `override_ghost_warning` unaffected; this doesn't touch #53's gate, only the read-side `/contradictions` scan.
+
+**Round 2 — vocabulary expansion + a second latent bug found the same way:** Asked directly whether the opposing-pairs vocabulary covered enough safety-relevant circumvention/concealment language (it didn't — the original list was generic add/remove-style phrasing only). Expanded `_OPPOSING_PAIRS` by 33 entries across two passes: concealment (`hide`/`expose`, `obscure`/`clarify`, `obfuscate`/`clarify`, `cloak`/`reveal`, `mask`/`reveal`, `redact`/`disclose`, `withhold`/`disclose`, `conceal`/`disclose`, `suppress`/`surface`), circumvention (`bypass`/`enforce`, `skip`/`enforce`, `omit`/`include`, `ignore`/`address`, `circumvent`/`enforce`, `evade`/`comply`, `waive`/`require`, `relax`/`tighten`, `weaken`/`strengthen`), authorization (`override`/`respect`, `authorize`/`revoke`, `grant`/`deny`, `elevate`/`restrict`), integrity (`tamper`/`preserve`, `purge`/`retain`, `discard`/`retain`, `spoof`/`verify`, `inject`/`validate`, `inject`/`sanitize`, `throttle`/`saturate`), and a few generic ones (`delete`/`preserve`, `strip`/`preserve`, `prioritize`/`deprioritize`, `escalate`/`deescalate`). Left out `undercount`/`overcount`/`miscount` (both sides are error modes, not opposed *decisions* — doesn't fit the pair structure) and a handful of vaguer suggestions (`switch`, `jump`, `away`, `saturate` on its own) with no clean canonical opposite.
+
+Doing this exposed two more real problems, both caught via a **dry-run against the live `tropelex` corpus before touching the escalating endpoint again** (lesson learned from round 1):
+1. The hand-written exclusion set in `_share_subject` had *already* been silently out of sync with `_OPPOSING_PAIRS` before any of this — missing over half its own terms (`include`, `allow`, `must`, `should`, `keep`, `stop`, and more). Fixed by deriving it programmatically (`_opposing_pair_tokens()` → `_OPPOSING_PAIR_TOKENS`, computed from `_OPPOSING_PAIRS` itself) instead of hand-maintaining a duplicate list that can drift again as the list grows.
+2. `_detect_temporal` turned out to have an *independent* copy of both bugs already fixed once in `detect_direct_contradiction`/`_share_subject` — raw substring reversal-keyword matching (`"undo"` matched inside `"undocumented"`) and its own separate, unfiltered `len(shared) >= 2` topic check with no exclusion at all. It was the dominant source of remaining noise in the corpus (most false positives were `temporal`, not `direct`), specifically from this project's own decision-logging template ("Added feature: X", "Fixed: Y") — two unrelated decisions sharing only "added"/"feature" was enough to pass. Fixed by switching to `_contains_phrase` for the reversal check and having it reuse `_share_subject` instead of duplicating (worse) logic inline, plus a new `_STRUCTURAL_NOISE_WORDS` exclusion set for exactly this project's own logging boilerplate.
+
+Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 → 2 high-severity. Both remaining high-severity pairs are defensible: the genuine MySQL-vs-Postgres case, and one borderline-but-topically-real case (two decisions about the same `last30days` engine rework) accepted as a known residual limitation rather than chased further — "topically related but not actually opposed" is a harder problem than keyword/embedding blending alone can fully solve, which is exactly why the reviewer's own suggestion #2 called for calibration from real override data (deferred, see below) before pushing this further.
+
+**Damage recovery on `tropelex` (final reconciliation, two passes):** Round 1 identified 55 decisions matching the escalation's signature (`requires_review=True`, `risk_level=="medium"`, no `safety_reviews`, no `escalation_reason`) and reverted 47 that no longer qualified under the algorithm as it stood then, leaving 8. After round 2's further fixes, re-ran the same reconciliation against the *final* algorithm and reverted 6 more of those 8. **Pending reviews: 8 → 61 (incident) → 14 (round 1) → 8 (round 2, final)** — landed back exactly on the pre-incident baseline. This is still a best-effort reconstruction, not a verified undo (no audit trail existed for this mutation path at the time), disclosed in full rather than presented as clean.
+
+**Deferred, not built this pass:** Ghost Decisions' own semantic upgrade (Preventive Ghost Checks weren't touched), AST/structural signal extraction for diffs, the safety-predicate ontology, and the override-feedback calibration loop into Decision Market. All four are additive on top of this pass, not blocking.
+
+**Round 3 — five more pairs, dry-run first this time:** `dismiss`/`flag`, `destruct`/`preserve`, `drain`/`refill`, `decommission`/`keep`, `sidestep`/`address`. `purge` was already covered by round 2 (not re-added); `overload` and `stall` were considered and left out — both describe a state something ends up in ("the server overloaded"), not an intentional decision verb the way the others are, so they don't fit the opposing-decision-pair shape. Applied the discipline round 2 ended on: dry-ran against the live `tropelex` corpus *before* adding anything to the live escalation path — 34 total / 2 high-severity, identical to pre-addition, so nothing new reached the review queue. No further live reconciliation needed.
+
+**Round 4 — ten more pairs, same dry-run discipline:** `establish`/`dismantle`, `connect`/`isolate`, `silence`/`alert`, `brick`/`restore`, `distort`/`clarify`, `guess`/`verify`, `overwrite`/`preserve`, `forge`/`verify`, `pause`/`resume`, `freeze`/`unfreeze`. `conceal` (round 2), `block` (round 1's `allow`/`block`), `reject` (round 1's `adopt`/`reject`), and `deny` (round 2's `grant`/`deny`) were already covered. Left out `convert`, `construct`, `leave`, `format`, `swap`, `trade`, `sweep` (too generic or high false-positive risk — "format"/"leave" in particular are common words in unrelated contexts); `collide` (describes an outcome, not a decision — same reasoning as `overload`/`stall` in round 3); and `constrain`/`defy`/`wipe`/`"let pass"`/`"turn off"`/`"switch off"`/`"make up"` as redundant with `tighten`/`evade`/`purge`/`sidestep`/`disable`/`spoof` respectively. Dry-run against `tropelex` first: 34 total / 2 high-severity, unchanged — no live reconciliation needed.
+
+**Status:** ✅ Implemented, Contradiction Detection only (`core/contradictions/`, `core/embeddings.py`, `UI/animated_tropebook_dashboard/code.html`). Tests: `tests/test_contradictions.py` — `TestCosineSimilarity`, `TestHybridSimilarity`, `TestDetectContradictionsWithEmbeddings`, `TestGetDecisionEmbeddings` (round 1, 15 tests), `TestConcealmentAndCircumventionPairs`, `TestMoreConcealmentAndCircumventionPairs`, `TestOpposingPairTokensStayInSync`, `TestDetectTemporal` (round 2, 13 tests), `TestThirdConcealmentPass` (round 3, 5 tests), `TestFourthConcealmentPass` (round 4, 10 tests) — plus regression fixes in `tests/test_contradictions.py` and `tests/test_safety_features.py` to mock `core.llm.embed` (without which those tests would have silently made real, billed OpenAI calls on every run — caught before merge). Full suite: 1739 passing (was 1687). Live-verified three times against the real `tropelex` project; landed at the exact pre-incident baseline and stayed there through rounds 3 and 4.
+
+---
+
+### 58. Knowledge Decay Loop Closure
+**Purpose:** Make the existing 90-day-half-life decay mechanism actionable instead of just descriptive.
+
+**Why:** Reviewer's #3. Decay itself already exists and is reasonable; nothing currently *acts* on a decision crossing a decay threshold.
+
+**Features (proposed):**
+- Auto-schedule a review task when a decision's confidence crosses a threshold while still referenced by active code or recent agent actions.
+- "Pinned"/constitutional decisions: slower or zero decay, but require periodic re-attestation instead of just being exempted.
+- Decayed decisions get down-weighted in Preventive Ghost Checks and Prefetch, not just labeled stale.
+- Decay propagates through the decision/impact graph, so downstream decisions lose authority when their foundation does.
+
+**Status:** Open. Proposed 2026-08-08.
+
+---
+
+### 59. Signed / Hash-Chained Handoffs + Calibration-Based Authority
+**Purpose:** Make Agent Handoff Packets (#8) tamper-evident, and let Decision Market calibration (#14) affect an agent's default authority, not just its visible score.
+
+**Why:** Reviewer's #4. Explicitly depends on #52 — "hash-chained into the Provenance Chain" only means something once that chain is a real append-only store rather than a recomputed view.
+
+**Features (proposed):**
+- Handoff packets hash-chained into `audit_log` (#52) at creation time; receiving agent must acknowledge critical safety constraints from the packet before writing, non-acknowledgment logged as a friction/ghost signal.
+- Systematically overconfident agents (per existing calibration/`overconfidence_index`) get lower default authority or stricter review requirements on high-risk categories — an incentive, not just a leaderboard entry.
+- Lightweight disagreement protocol: opposing confidence bets from two agents (or agent + human) force an explicit resolution decision rather than both staying active unresolved.
+
+**Status:** Open. Proposed 2026-08-08.
+
+---
+
+### 60. Drift-Bench Evaluation Harness
+**Purpose:** A small, deterministic, public scenario suite (silent objective drift, test-passing reward hacking, unresolved conflicting decisions, handoffs that drop constraints, tool-output injection) run continuously in CI against the preventive gate and ghost detector, measuring detection rate, false-positive rate, time-to-surface, and override rate.
+
+**Why:** Reviewer's #8, and independently already proposed in `docs/cais-summary.md` (verified, line 22: "Empirical Drift-Bench Suite"). Correctly last on both the reviewer's list and mine — it needs a real scenario corpus and CI wiring, not a single implementation pass, and it's most valuable once #53's enforcement layer exists to actually measure.
+
+**Features (proposed):**
+- Deterministic scenario corpus covering the five drift/injection categories above.
+- CI-integrated: regressions in safety coverage become visible the same way test regressions already are.
+- Published metrics — strengthens the "empirical safety infrastructure" claim `SAFETY.md` and `docs/cais-summary.md` already make, with actual numbers behind it.
+
+**Status:** Open. Proposed 2026-08-08. Biggest lift on this list; not low-hanging fruit.
+
+---
+
+### 61. Prevention Report
+**Purpose:** A report that answers "what have we prevented so far?" from real historical data, not a live recomputation — the missing counterpart to #52's tamper-evident *record* and #53's *enforcement*.
+
+**Why:** Verified directly against `core/ghost/preventive_router.py` and `core/audit.py`: the enforcement gate (#53) already resolves every ghost-check warning to block/warn/log_only via `_policy_for`, but **only the `override` event gets written to `audit_log`**. A block an agent correctly obeyed, or a warn it heeded, leaves no trace — `ghost_check` never even calls `_save_memory`, so nothing from that endpoint persists at all today. `#SAFETY.md` and `docs/cais-summary.md` claim this infrastructure prevents drift; right now there's no data to back that claim with a number. Same gap on the Contradiction Detection side: `_escalate_to_review` (`core/contradictions/router.py`) mutates `requires_review` in place but never writes an audit event, so escalations are only visible as a live snapshot, not a history.
+
+**Features:**
+- `core/prevention_report.py` — `build_prevention_report(audit_log)`, a pure aggregation function (same shape as `core/docmine/combined.py`'s joiner): counts `gate_blocked`/`gate_warned`/`contradiction_escalated`/`override` events, severity breakdown, override rationale list, and a calibration signal (`gate_signal_count / (gate_signal_count + override_count)`, i.e. `blocks_and_warns / (blocks_and_warns + overrides)` — a gate whose warnings mostly get overridden is either mistuned or the policy is too strict for this project, worth surfacing either way).
+- Two new audit event types in `ghost_check` (`core/ghost/preventive_router.py`): `gate_blocked` (one event per call covering every blocking warning, `decision_ids` + `severity_counts`, written before the 409 raise) and `gate_warned` (same shape, for policy-resolved-to-"warn" warnings on the 200 path) — both via the existing `append_audit_event`. `ghost_check` previously never called `_save_memory` at all (it was effectively read-only); it now does, but only when there's something to persist — a clean diff with zero warnings still writes nothing.
+- One new audit event type in `_escalate_to_review` (`core/contradictions/router.py`): `contradiction_escalated` (`decision_id`, `severity_counts: {"high": 1}` — always high, since only `high_severity_ids` ever reach this loop), written at the same point `requires_review` gets flipped. Persists for free via the existing `_mm.save_project_memory` call the caller already makes when `escalated_count` is truthy.
+- `GET /{project}/prevention-report` (`core/ghost/preventive_router.py`) — thin wrapper: loads memory, hands `audit_log` to the pure function, returns the result.
+- **Deferred, not built this pass:** the dashboard panel (backend/API only this round); friction zones as a data source (nothing to count until #62 ships persistence); Doc Mining + Ghost combined alerts (#55) as a source (same reason #55 itself deferred Needs Attention integration — no natural trigger point without a diff yet); backfill (same honest limitation #52 already disclosed for its own audit log — only events written after this shipped appear in the report).
+
+**Status:** ✅ Implemented (`core/prevention_report.py`, `core/ghost/preventive_router.py`, `core/contradictions/router.py`). Tests: `tests/test_prevention_report.py` (11 tests on the pure aggregation function), `tests/test_ghost_preventive.py` (`TestPreventionReportEndpoint`, 4 tests; existing `TestGhostCheckGatePolicy` tests extended to assert the new audit events, and updated to mock `_save_memory` now that `ghost_check` can actually persist), `tests/test_contradictions.py` (`test_escalation_writes_contradiction_escalated_audit_events`). Full suite: 1754 passing (was 1739). Live end-to-end verification against the real `tropelex` project: restarted the dashboard server to pick up the new routes, confirmed `GET /prevention-report` returned all-zero on a clean audit log (correctly disclosing the no-backfill limitation), created a temporary test decision, ran a real `ghost-check` against it and got a genuine `medium`-severity/`warn`-policy warning, confirmed the `gate_warned` event landed in the real `audit_log` and the report reflected it (`gate_warned_count: 1`, `total_prevented: 1`), then removed the test decision directly from `memory/tropelex.json` while deliberately leaving its audit trail entry untouched (matching #56's precedent), and confirmed via `GET /integrity/verify` that the audit hash chain was still intact afterward (no `entry_hash_mismatch`/`chain_link_broken` — the 19 pre-existing `timestamp_order_violation` issues are unrelated decision-timestamp warnings, not something this change touched).
+
+---
+
+### 62. Friction Persistence + Generic Review Queue (Keep/Dismiss)
+**Purpose:** Persist Friction Mining's zone-level findings (not just the numeric aggregate) with a keep/dismiss review state per entry, and build the review-queue mechanism generically enough that #39's auto-imported external sessions can plug into the same UI later instead of needing a second one.
+
+**Why:** Verified directly against `core/friction/miner.py` and `core/friction/router.py`: this is exactly the gap #56 already documented mid-build — `friction_history` (the persisted, cross-session record) stores only numeric aggregates (`friction_score`, `severity_distribution`, `agent_name`) per scan; the actual `FrictionZone` objects (the text, the signals, the severity) are computed and returned by `/friction/scan` but never written to memory. There's no keep/dismiss state anywhere in the system today. High-risk items need a stronger-than-default dismissal bar — a modal requiring name + reason — before the signal can be discarded, mirroring #53's override pattern (`rationale` + `agent_name` → written to the audit trail) rather than inventing a second accountability mechanism.
+
+**Features:**
+- `FrictionZone` entries persisted (not just aggregates) to `memory["friction_zones"]` on every `/friction/scan`, each with a stable `id`, full `signals` (text and all — friction_history's aggregates never stored this), an inline `suggested_decision` (reuses #56's `suggest_decision_from_zone`, computed once per zone rather than twice), and `review_status: "pending" | "kept" | "dismissed"`.
+- `_bound_friction_zones` caps stored zones without ever silently dropping a **pending** one — unlike `friction_history`'s flat "most recent 50," only already-reviewed (kept/dismissed) entries count against the 200-entry cap. A pending zone is exactly the not-yet-reviewed data this feature exists to stop losing, so capping it away would defeat the point.
+- `GET /{project}/friction/zones` (optional `status` filter, newest first), `POST .../keep` (no rationale needed — keeping is the safe default), `POST .../dismiss` — dismissing a `zone_severity: "high"` zone requires `agent_name` + `reason` (422 without them, same shape as #53's `OverrideRequest`) and writes a `friction_dismissed` audit event; low/medium dismissal is a plain status flip, no modal.
+- Dashboard: a Review Queue panel in the Friction Mining tab (status filter, signal snippets inline, Keep/Dismiss buttons) plus a modal that gates high-severity dismissal on name + reason client-side (mirroring the server-side 422) before it ever reaches the API. Auto-refreshes after every scan and on tab switch.
+- **Deferred, not built this pass:** kept zones becoming input to a "cycle back into the flow" pass (Prefetch/Ghost signal enrichment) — explicitly out of scope, same "ship a real v1, not a wider thinner one" discipline #53 applied to itself. #39's auto-imported sessions reusing this same queue — the queue is generic enough to support it, but #39 itself is still unbuilt.
+
+**Status:** ✅ Implemented (`core/friction/router.py`, `UI/animated_tropebook_dashboard/code.html`). Tests: `tests/test_friction.py` (`TestBoundFrictionZones` — 3 tests on the pending-never-dropped cap logic; `TestFrictionScanPersistsZones` — 2 tests, including one proving a second scan never overwrites a still-pending zone from a prior scan; `TestFrictionZoneKeepDismiss` — 9 tests on keep/dismiss/list, the 422 gate, and the audit event). Full suite: 1768 passing (was 1754). Live end-to-end verification against the real `tropelex` project, both API and browser: ran a real scan producing a high-severity zone, confirmed it persisted with full signal text via `GET /friction/zones`, confirmed dismiss-without-reason 422s and dismiss-with-reason both succeeds and lands a real `friction_dismissed` entry in `audit_log`, confirmed `/integrity/verify` still shows zero hash-chain issues afterward. Then in the actual dashboard: scanned, watched the zone land in the Review Queue with its signal snippets, clicked Dismiss, filled the modal, confirmed the status badge updated and the "Dismissed" filter correctly surfaced it — no console errors from the new code. Test zone removed from `memory/tropelex.json` afterward; its `friction_dismissed` audit entry deliberately left in place, matching #56's precedent.
 
 ---
 
@@ -942,5 +1196,5 @@ Grouped by function (what the feature is *for*), not by build priority or chrono
 ---
 
 **Last Updated:** 2026-08-08
-**Status:** All features implemented except #19 (Session Replay with AI Analysis), #40 (Injection Sentinel), and #42–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Session-Shape Baselining, Tagline Reconsideration, General Branding Alignment Pass — all proposed 2026-08-07 off the agent-drift research pass following #41, and mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), and Goal-Shaped Language Detection (#48). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
+**Status:** All features implemented except #19 (Session Replay with AI Analysis), #40 (Injection Sentinel), #42–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Session-Shape Baselining, Tagline Reconsideration, General Branding Alignment Pass — all proposed 2026-08-07 off the agent-drift research pass following #41, and mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`), and #58–#60 (the remaining external-review safety-hardening set: Knowledge Decay Loop Closure, Signed/Hash-Chained Handoffs, Drift-Bench Harness — proposed 2026-08-08, prioritized in the "Safety Infrastructure Hardening" section above) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), Goal-Shaped Language Detection (#48), Attention Pulse Animation (#49), the Error Handling Audit / Result-type consolidation (#50), the `nonsafety:bug` convention (#51), Real Append-Only Provenance Chain & Security Audit Log (#52), Enforceable Preventive Gates + Override-as-Decision (#53), Required Safety Metadata for High-Risk Decisions (#54), Doc Mining + Ghost Combined-Severity Alert (#55), Friction → Decision Promotion (#56), and Semantic Detection Upgrade for Contradictions (#57, Ghost Decisions deferred). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
 **Next Review:** 2026-08-15

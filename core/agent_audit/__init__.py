@@ -14,26 +14,8 @@ used by Contradictions and Doc Mining, instead of shelling out to a separate
 tool.
 """
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar, Union
 
-T = TypeVar("T")
-
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    """Success wrapper — carries the resulting value."""
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    """Error wrapper — carries an error message and code."""
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 
 class AgentAuditError(Exception):

@@ -1409,6 +1409,7 @@ void main() {
                         <option value="monitoring">monitoring</option>
                         <option value="governance">governance</option>
                         <option value="alignment">alignment</option>
+                        <option value="nonsafety:bug">🐛 bug</option>
                         <option value="__nonsafety__">other (non-safety)…</option>
                     </select>
                     <input id="goal-category-nonsafety-label" type="text" placeholder="label, e.g. performance" class="hidden flex-1 bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
@@ -1433,6 +1434,10 @@ void main() {
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-mono text-xs uppercase text-outline">All goals</span>
+                        <button id="btn-goals-filter-bugs" class="px-2 py-1 rounded-full border border-glass-border text-outline font-mono text-[10px] hover:border-red-400/40 transition-all cursor-pointer" title="Show only nonsafety:bug goals">🐛 Bugs</button>
+                    </div>
                     <div id="goals-list" class="space-y-2">
                         <p class="text-sm text-outline">Select a project to see goals.</p>
                     </div>
@@ -2035,6 +2040,39 @@ void main() {
             <p class="text-outline text-sm">No friction data yet. Paste a transcript above to scan for frustration signals.</p>
             <a href="/guide#friction-mining" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
         </div>
+
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-mono text-sm text-outline uppercase flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">rate_review</span>
+                    Review Queue
+                </h3>
+                <select id="friction-queue-filter" class="bg-surface border border-glass-border rounded-lg px-2 py-1 font-mono text-xs focus:border-accent-sky focus:outline-none cursor-pointer">
+                    <option value="pending">Pending</option>
+                    <option value="kept">Kept</option>
+                    <option value="dismissed">Dismissed</option>
+                    <option value="">All</option>
+                </select>
+            </div>
+            <p class="text-xs text-outline mb-3">Friction zones from every scan, persisted so they survive past the scan that found them. Keep what's real signal, dismiss what's noise — dismissing a high-severity zone needs your name and a reason, recorded in the audit trail.</p>
+            <div id="friction-queue-list" class="space-y-2">Loading…</div>
+        </div>
+        </div>
+
+        <div id="friction-dismiss-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center">
+            <div class="glass-panel rounded-xl p-6 w-full max-w-md">
+                <h3 class="font-mono text-sm text-red-400 uppercase mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">warning</span>
+                    Dismiss High-Severity Zone
+                </h3>
+                <p class="text-xs text-outline mb-4">This zone is high severity. Dismissing it requires your name and a reason — both are written into the audit trail, same accountability bar as overriding a preventive gate warning.</p>
+                <input id="friction-dismiss-agent" type="text" placeholder="Your name" maxlength="100" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs mb-2 text-on-surface focus:border-red-400/40 focus:outline-none"/>
+                <textarea id="friction-dismiss-reason" rows="3" placeholder="Reason for dismissing this signal..." maxlength="1000" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs mb-4 text-on-surface focus:border-red-400/40 focus:outline-none resize-none"></textarea>
+                <div class="flex items-center justify-end gap-2">
+                    <button id="btn-friction-dismiss-cancel" class="px-3 py-1.5 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-on-surface transition-all cursor-pointer">Cancel</button>
+                    <button id="btn-friction-dismiss-confirm" class="px-3 py-1.5 rounded-lg bg-red-400/20 text-red-400 font-mono text-xs hover:bg-red-400/30 transition-all cursor-pointer">Confirm Dismiss</button>
+                </div>
+            </div>
         </div>
 
         <div id="quality-contradictions" class="quality-tab-panel" style="display: none;">
@@ -3674,6 +3712,38 @@ void main() {
                 <div id="security-audit-log" class="text-sm text-outline max-h-64 overflow-y-auto">Loading audit log...</div>
             </div>
         </div>
+
+        <div class="glass-panel rounded-xl p-6 mt-6">
+            <h3 class="font-mono text-sm text-outline uppercase mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">shield</span>
+                Prevention Report
+            </h3>
+            <p class="text-xs text-outline mb-4">What the enforcement gate and contradiction detection have actually stopped, read from the audit trail — not a live recomputation. Events only exist from when this shipped onward; a report showing zero on an older project isn't evidence nothing was ever prevented, just that nothing was logged yet.</p>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Blocked</span>
+                    <span class="font-mono text-2xl text-red-400" id="prevention-blocked">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Warned</span>
+                    <span class="font-mono text-2xl text-yellow-400" id="prevention-warned">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Escalated</span>
+                    <span class="font-mono text-2xl text-accent-periwinkle" id="prevention-escalated">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Overridden</span>
+                    <span class="font-mono text-2xl text-accent-sky" id="prevention-overridden">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Override Rate</span>
+                    <span class="font-mono text-2xl text-accent-lime" id="prevention-override-rate">—</span>
+                </div>
+            </div>
+            <h4 class="font-mono text-xs text-outline uppercase mb-2">Overrides (accepted risk, with rationale)</h4>
+            <div id="prevention-overrides-list" class="text-sm text-outline max-h-48 overflow-y-auto">Loading…</div>
+        </div>
     </div>
 
     <!-- Safety Reviews -->
@@ -4361,6 +4431,7 @@ function switchGenericTab(parent, tab) {
     if (tab === 'lineage' && typeof loadLineageGraph === 'function') { syncLineageProject(); loadLineageGraph(); }
     if (tab === 'market' && typeof populateMarketDecisionSelect === 'function') populateMarketDecisionSelect();
     if (tab === 'goals' && typeof loadGoals === 'function') loadGoals();
+    if (tab === 'friction' && typeof loadFrictionZones === 'function') loadFrictionZones();
 }
 
 
@@ -4698,8 +4769,37 @@ async function scanFriction() {
             `).join('') + `</div>`;
         }
 
+        // #56: high-severity friction zones surface a suggested decision —
+        // same "suggest, don't save" review-row pattern as docmine's
+        // uncaptured claims (a plain category picker, Propose/Remove).
+        if (data.suggested_decisions?.length) {
+            html += `<h4 class="font-mono text-xs uppercase text-red-400 mb-2 mt-4">Suggested decisions from repeated friction</h4>`;
+            html += `<p class="text-xs text-outline mb-2">These zones hit high severity — repeated correction or escalation, not one-off noise. Worth a real tracked decision.</p>`;
+            html += data.suggested_decisions.map((s, i) => `
+                <div class="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface-raised border border-glass-border mb-1 text-xs" id="friction-suggestion-${i}">
+                    <span>${escapeHtml(s.zone_description || '')} — ${escapeHtml(s.content)}</span>
+                    <span class="flex items-center gap-1 shrink-0">
+                        <select class="friction-suggestion-category-select bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-outline cursor-pointer" title="Safety category — required to add">
+                            <option value="">category…</option>
+                            <option value="general">general</option>
+                            <option value="adversarial">adversarial</option>
+                            <option value="robustness">robustness</option>
+                            <option value="monitoring">monitoring</option>
+                            <option value="governance">governance</option>
+                            <option value="alignment">alignment</option>
+                        </select>
+                        <button class="btn-friction-suggestion-propose px-2 py-1 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-all cursor-pointer" data-text="${escapeAttr(s.content)}" title="Capture this as a decision">Propose</button>
+                        <button class="btn-friction-suggestion-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" title="Dismiss from this list">Remove</button>
+                    </span>
+                </div>
+            `).join('');
+        }
+
         html += `</div>`;
         results.innerHTML = html;
+        // #62: newly-scanned zones just got persisted to friction_zones —
+        // refresh the review queue so they show up without a tab switch.
+        loadFrictionZones();
     } catch (e) {
         results.classList.remove('hidden');
         results.innerHTML = `<p class="error text-sm text-red-400 flex items-center gap-2"><span class="material-symbols-outlined text-sm">error</span> Scan failed: ${escapeHtml(e.message)}</p>`;
@@ -4710,6 +4810,144 @@ async function scanFriction() {
 }
 
 document.getElementById('btn-scan-friction')?.addEventListener('click', scanFriction);
+
+// ── Friction: Propose/Remove suggested-decision rows (event delegation,
+// since rows are rebuilt on every scan) ──
+document.getElementById('friction-results')?.addEventListener('click', async (e) => {
+    const removeBtn = e.target.closest('.btn-friction-suggestion-remove');
+    if (removeBtn) {
+        removeBtn.closest('[id^="friction-suggestion-"]')?.remove();
+        return;
+    }
+
+    const proposeBtn = e.target.closest('.btn-friction-suggestion-propose');
+    if (proposeBtn) {
+        if (!state.currentProject) { showToast('Select a project first'); return; }
+        const row = proposeBtn.closest('[id^="friction-suggestion-"]');
+        const safety_category = row?.querySelector('.friction-suggestion-category-select')?.value;
+        if (!safety_category) {
+            showToast('Pick a safety category first');
+            return;
+        }
+        proposeBtn.disabled = true;
+        const { text } = proposeBtn.dataset;
+        const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
+            decision: text,
+            context: 'Promoted from a high-severity friction zone',
+            safety_metadata: { safety_category },
+        });
+        if (data) {
+            showToast('Captured as a decision');
+            row?.remove();
+        } else {
+            proposeBtn.disabled = false;
+        }
+    }
+});
+
+// ── Friction Review Queue (#62): persisted zones, keep/dismiss ──
+// High-severity dismissal requires a name + reason (written into the
+// audit trail, core/audit.py, #52) — same accountability bar #53's
+// override applies to bypassing the preventive gate. Low/medium dismissal
+// is a plain status flip, no modal.
+let _frictionDismissTargetZoneId = null;
+
+async function loadFrictionZones() {
+    const project = state.currentProject;
+    const listEl = document.getElementById('friction-queue-list');
+    if (!project || !listEl) return;
+
+    const filterSel = document.getElementById('friction-queue-filter');
+    const status = filterSel ? filterSel.value : 'pending';
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const data = await api(`/memory/${encodeURIComponent(project)}/friction/zones${qs}`);
+    if (!data) return;
+
+    const zones = data.zones || [];
+    if (zones.length === 0) {
+        listEl.innerHTML = `<p class="text-sm text-outline">No ${status || ''} friction zones.</p>`;
+        return;
+    }
+
+    const sevColor = { high: 'border-red-400 text-red-400', medium: 'border-yellow-400 text-yellow-400', low: 'border-glass-border text-outline' };
+    const statusBadge = { kept: 'bg-accent-lime/20 text-accent-lime', dismissed: 'bg-surface-high text-outline' };
+
+    listEl.innerHTML = zones.map(z => `
+        <div class="glass-panel rounded-xl p-4" data-zone-id="${escapeAttr(z.id)}" data-zone-severity="${escapeAttr(z.zone_severity)}">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono uppercase px-2 py-0.5 rounded border ${sevColor[z.zone_severity] || sevColor.low}">${escapeHtml(z.zone_severity)}</span>
+                <span class="text-xs text-outline">${escapeHtml(z.agent_name || '')} · ${z.timestamp?.substring(0, 10) || ''}</span>
+            </div>
+            <p class="text-sm mb-2">${escapeHtml(z.description || '')} <span class="text-outline">(lines ${z.start_line}-${z.end_line})</span></p>
+            <div class="space-y-1 mb-3">
+                ${(z.signals || []).slice(0, 3).map(s => `
+                    <p class="text-xs text-outline border-l-2 border-glass-border pl-2">${escapeHtml(s.text_snippet || '')}</p>
+                `).join('')}
+            </div>
+            ${z.review_status === 'pending' ? `
+                <div class="flex items-center gap-2">
+                    <button class="btn-friction-keep px-2 py-1 rounded border border-accent-lime/30 text-accent-lime font-mono text-xs hover:bg-accent-lime/10 transition-all cursor-pointer">Keep</button>
+                    <button class="btn-friction-dismiss px-2 py-1 rounded border border-red-400/30 text-red-400 font-mono text-xs hover:bg-red-400/10 transition-all cursor-pointer">Dismiss</button>
+                </div>
+            ` : `<span class="text-xs px-2 py-0.5 rounded ${statusBadge[z.review_status] || ''}">${escapeHtml(z.review_status)}</span>`}
+        </div>
+    `).join('');
+}
+
+document.getElementById('friction-queue-filter')?.addEventListener('change', () => loadFrictionZones());
+
+document.getElementById('friction-queue-list')?.addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-zone-id]');
+    if (!row) return;
+    const project = state.currentProject;
+    if (!project) { showToast('Select a project first'); return; }
+    const zoneId = row.dataset.zoneId;
+    const severity = row.dataset.zoneSeverity;
+
+    if (e.target.classList.contains('btn-friction-keep')) {
+        const data = await api(`/memory/${encodeURIComponent(project)}/friction/zones/${encodeURIComponent(zoneId)}/keep`, 'POST');
+        if (data) { showToast('Friction zone kept'); loadFrictionZones(); }
+    } else if (e.target.classList.contains('btn-friction-dismiss')) {
+        if (severity === 'high') {
+            _frictionDismissTargetZoneId = zoneId;
+            document.getElementById('friction-dismiss-agent').value = state.currentAgent || '';
+            document.getElementById('friction-dismiss-reason').value = '';
+            const modal = document.getElementById('friction-dismiss-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        } else {
+            const data = await api(`/memory/${encodeURIComponent(project)}/friction/zones/${encodeURIComponent(zoneId)}/dismiss`, 'POST', {});
+            if (data) { showToast('Friction zone dismissed'); loadFrictionZones(); }
+        }
+    }
+});
+
+document.getElementById('btn-friction-dismiss-cancel')?.addEventListener('click', () => {
+    const modal = document.getElementById('friction-dismiss-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    _frictionDismissTargetZoneId = null;
+});
+
+document.getElementById('btn-friction-dismiss-confirm')?.addEventListener('click', async () => {
+    const project = state.currentProject;
+    const agentName = document.getElementById('friction-dismiss-agent').value.trim();
+    const reason = document.getElementById('friction-dismiss-reason').value.trim();
+    if (!agentName || !reason) {
+        showToast('Name and reason are both required to dismiss a high-severity zone');
+        return;
+    }
+    const data = await api(
+        `/memory/${encodeURIComponent(project)}/friction/zones/${encodeURIComponent(_frictionDismissTargetZoneId)}/dismiss`,
+        'POST',
+        { agent_name: agentName, reason },
+    );
+    const modal = document.getElementById('friction-dismiss-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (data) { showToast('Friction zone dismissed'); loadFrictionZones(); }
+    _frictionDismissTargetZoneId = null;
+});
 
 // ==================== DEEP RESEARCH (last30days engine) ====================
 
@@ -8735,12 +8973,13 @@ async function loadComplianceReport(framework) {
 // Provenance & Integrity
 async function loadProvenance(project) {
     if (!project) return;
-    
-    const [chain, integrity, tamper, auditLog] = await Promise.all([
+
+    const [chain, integrity, tamper, auditLog, prevention] = await Promise.all([
         api(`/memory/${encodeURIComponent(project)}/provenance/chain`),
         api(`/memory/${encodeURIComponent(project)}/integrity/verify`),
         api(`/memory/${encodeURIComponent(project)}/tamper-detection`),
         api(`/memory/${encodeURIComponent(project)}/security/audit-log?limit=20`),
+        api(`/memory/${encodeURIComponent(project)}/prevention-report`),
     ]);
     
     if (chain) {
@@ -8794,6 +9033,32 @@ async function loadProvenance(project) {
                 <span class="text-xs text-outline">${e.timestamp?.substring(0, 10)}</span>
             </div>
         `).join('');
+    }
+
+    // Prevention Report (#61) — historical counts from audit_log, not a
+    // live recomputation. See core/prevention_report.py.
+    if (prevention) {
+        document.getElementById('prevention-blocked').textContent = prevention.gate_blocked_count ?? '0';
+        document.getElementById('prevention-warned').textContent = prevention.gate_warned_count ?? '0';
+        document.getElementById('prevention-escalated').textContent = prevention.contradiction_escalated_count ?? '0';
+        document.getElementById('prevention-overridden').textContent = prevention.override_count ?? '0';
+        document.getElementById('prevention-override-rate').textContent = ((prevention.override_rate || 0) * 100).toFixed(0) + '%';
+
+        const overridesEl = document.getElementById('prevention-overrides-list');
+        const overrides = prevention.overrides || [];
+        if (overrides.length === 0) {
+            overridesEl.innerHTML = '<p class="text-sm text-outline">No overrides recorded.</p>';
+        } else {
+            overridesEl.innerHTML = overrides.map(o => `
+                <div class="py-1.5 border-b border-glass-border">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono text-outline">${escapeHtml(o.agent_name || 'unknown')}</span>
+                        <span class="text-xs text-outline">${o.timestamp?.substring(0, 10) || ''}</span>
+                    </div>
+                    <p class="text-sm">${escapeHtml(o.rationale || '')}</p>
+                </div>
+            `).join('');
+        }
     }
 }
 
@@ -10063,6 +10328,7 @@ async function renderCostTotalCard(project) {
 
 // ── Goals — the prospective counterpart to Decisions ──
 let _selectedGoalId = null;
+let _goalsBugsOnly = false;
 
 async function loadGoals() {
     const project = state.currentProject;
@@ -10071,12 +10337,29 @@ async function loadGoals() {
         list.innerHTML = '<p class="text-sm text-outline">Select a project to see goals.</p>';
         return;
     }
-    const data = await api(`/memory/${encodeURIComponent(project)}/goals`);
+    // "Bugs" isn't a separate subsystem -- it's the nonsafety:bug category
+    // convention (see wishlist #50/goal-detect), filtered client-side via
+    // the same category query param list_goals already supports.
+    const query = _goalsBugsOnly ? '?category=' + encodeURIComponent('nonsafety:bug') : '';
+    const data = await api(`/memory/${encodeURIComponent(project)}/goals${query}`);
     if (!data) return;
     renderGoalsList(data.goals || []);
     if (_selectedGoalId && (data.goals || []).some(g => g.id === _selectedGoalId)) {
         selectGoal(_selectedGoalId);
     }
+}
+
+document.getElementById('btn-goals-filter-bugs')?.addEventListener('click', () => {
+    _goalsBugsOnly = !_goalsBugsOnly;
+    const btn = document.getElementById('btn-goals-filter-bugs');
+    btn.classList.toggle('bg-red-500/20', _goalsBugsOnly);
+    btn.classList.toggle('text-red-400', _goalsBugsOnly);
+    btn.classList.toggle('border-red-400/40', _goalsBugsOnly);
+    loadGoals();
+});
+
+function _formatGoalCategory(category) {
+    return category === 'nonsafety:bug' ? '🐛 bug' : category;
 }
 
 const _GOAL_STATUS_COLOR = {
@@ -10101,7 +10384,7 @@ function renderGoalsList(goals) {
                 <span class="${_GOAL_STATUS_COLOR[g.status] || 'text-outline'}">${g.status}</span>
                 <span class="text-outline">·</span>
                 <span class="${_GOAL_PRIORITY_COLOR[g.priority] || 'text-outline'}">${g.priority}</span>
-                ${g.category ? `<span class="text-outline">· ${escapeHtml(g.category)}</span>` : ''}
+                ${g.category ? `<span class="text-outline">· ${escapeHtml(_formatGoalCategory(g.category))}</span>` : ''}
             </div>
         </div>
     `).join('');
@@ -10140,7 +10423,7 @@ async function selectGoal(goalId) {
                     <span class="${_GOAL_STATUS_COLOR[goal.status] || 'text-outline'}">${goal.status}</span>
                     <span class="text-outline">·</span>
                     <span class="${_GOAL_PRIORITY_COLOR[goal.priority] || 'text-outline'}">${goal.priority}</span>
-                    ${goal.category ? `<span class="text-outline">· ${escapeHtml(goal.category)}</span>` : ''}
+                    ${goal.category ? `<span class="text-outline">· ${escapeHtml(_formatGoalCategory(goal.category))}</span>` : ''}
                 </div>
             </div>
             <button class="btn-delete-goal px-3 py-1.5 rounded-lg border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 font-mono text-xs transition-all cursor-pointer" data-id="${goal.id}">Delete</button>
@@ -10267,6 +10550,7 @@ const _GOAL_CANDIDATE_CATEGORY_OPTIONS = `
     <option value="monitoring">monitoring</option>
     <option value="governance">governance</option>
     <option value="alignment">alignment</option>
+    <option value="nonsafety:bug">🐛 bug</option>
     <option value="__nonsafety__">other (non-safety)…</option>
 `;
 
@@ -10793,11 +11077,14 @@ document.getElementById('btn-contradictions')?.addEventListener('click', async (
         document.getElementById('contradictions-empty')?.classList.add('hidden');
         const el = document.getElementById('contradictions-data');
         const items = data.contradictions || [];
+        const semanticBadge = data.semantic_augmented
+            ? `<span class="text-accent-lavender" title="Similarity blends keyword overlap with embedding-based semantic similarity (OPENAI_API_KEY configured)"> · semantic-augmented</span>`
+            : `<span class="text-outline" title="Keyword-only similarity — set OPENAI_API_KEY to also catch paraphrased conflicts"> · keyword-only</span>`;
         if (!items.length) {
-            el.innerHTML = `<p class="text-sm text-outline">No contradictions found across ${data.total_checked || 0} pairs checked.</p>`;
+            el.innerHTML = `<p class="text-sm text-outline">No contradictions found across ${data.total_checked || 0} pairs checked.${semanticBadge}</p>`;
             return;
         }
-        el.innerHTML = `<p class="text-xs text-outline mb-3">${data.unresolved_count} unresolved out of ${data.total_checked} pairs checked. High: ${data.severity_distribution?.high || 0}, Medium: ${data.severity_distribution?.medium || 0}, Low: ${data.severity_distribution?.low || 0}</p>` +
+        el.innerHTML = `<p class="text-xs text-outline mb-3">${data.unresolved_count} unresolved out of ${data.total_checked} pairs checked. High: ${data.severity_distribution?.high || 0}, Medium: ${data.severity_distribution?.medium || 0}, Low: ${data.severity_distribution?.low || 0}${semanticBadge}</p>` +
             items.slice(0, 20).map(c => `<div class="glass-panel rounded-lg p-3 mb-2 border-l-2 ${c.severity === 'high' ? 'border-red-400' : c.severity === 'medium' ? 'border-yellow-400' : 'border-glass-border'}">
                 <div class="flex items-center gap-2 mb-1"><span class="text-xs px-2 py-0.5 rounded-full bg-accent-lavender/20 text-accent-lavender">${escapeHtml(c.contradiction_type)}</span><span class="text-xs text-outline">${escapeHtml(c.severity)} · ${Math.round((c.similarity_score || 0) * 100)}%</span></div>
                 <p class="text-sm mb-1">${escapeHtml(c.decision_a_text)}</p>

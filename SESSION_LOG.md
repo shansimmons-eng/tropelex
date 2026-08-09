@@ -3757,3 +3757,487 @@ d1c3d67 fix: normalize agent identity in Slack capture too
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-08 01:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 01:42 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json generate_views_list.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 02:03 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  25 files changed, 195 insertions(+), 374 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/cost/__init__.py core/docmine/__init__.py core/friction/miner.py core/ghost/preventive.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py core/narrative/__init__.py core/personas/__init__.py core/prbot/__init__.py core/prefetch/assembler.py core/prefetch/genealogy.py core/prefetch/tuner.py core/slack/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 02:13 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  26 files changed, 282 insertions(+), 377 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/cost/__init__.py core/docmine/__init__.py core/friction/miner.py core/ghost/preventive.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py core/narrative/__init__.py core/personas/__init__.py core/prbot/__init__.py core/prefetch/assembler.py core/prefetch/genealogy.py core/prefetch/tuner.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 13:41 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  28 files changed, 701 insertions(+), 451 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/cost/__init__.py core/docmine/__init__.py core/friction/miner.py core/ghost/preventive.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py core/narrative/__init__.py core/personas/__init__.py core/prbot/__init__.py core/prefetch/assembler.py core/prefetch/genealogy.py core/prefetch/tuner.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 13:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  31 files changed, 987 insertions(+), 459 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/cost/__init__.py core/docmine/__init__.py core/friction/miner.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py core/narrative/__init__.py core/personas/__init__.py core/prbot/__init__.py core/prefetch/assembler.py core/prefetch/genealogy.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 14:13 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  36 files changed, 1573 insertions(+), 496 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py core/narrative/__init__.py core/personas/__init__.py core/prbot/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 14:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2028 insertions(+), 516 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 15:23 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2386 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 15:28 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2465 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 15:51 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2586 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:06 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2608 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:24 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2630 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:50 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2652 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:54 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2674 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:56 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2696 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 21:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  41 files changed, 2718 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py core/market/router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-08 22:00 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  42 files changed, 2741 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-09 01:27 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  42 files changed, 2763 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-09 01:34 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  42 files changed, 2821 insertions(+), 525 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-09 01:48 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  42 files changed, 3065 insertions(+), 526 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-09 02:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  42 files changed, 3851 insertions(+), 531 deletions(-)
+
+**Recent commits:**
+```
+5aca50a feat: tag-required decisions, trigger registry, Goal entity + drift detection, dashboard polish
+dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidden tabs
+8a8f89f fix: address ultrareview findings from PR #1
+927e841 feat: dashboard UI pass — agent selects, layout, cost panel, git auto-load, FOUC fix
+d1c3d67 fix: normalize agent identity in Slack capture too
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/agent_audit/__init__.py core/benchmarks/__init__.py core/contradictions/__init__.py core/contradictions/detector.py core/contradictions/router.py core/cost/__init__.py core/docmine/__init__.py core/docmine/router.py core/embeddings.py core/friction/miner.py core/friction/router.py core/ghost/preventive.py core/ghost/preventive_router.py core/goals/__init__.py core/goals/router.py core/lens/__init__.py core/market/__init__.py `
+
+**Open questions / next steps:** <!-- fill in -->
+

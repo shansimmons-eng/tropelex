@@ -96,7 +96,11 @@ def _load_memory(project: str) -> dict[str, Any]:
 
 def _save_memory(project: str, memory: dict[str, Any]) -> None:
     """Persist project memory to disk via MemoryManager (with flock)."""
-    _mm.save_project_memory(project, memory)
+    try:
+        _mm.save_project_memory(project, memory)
+    except Exception as exc:
+        logger.error("market save failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 def _get_bets(memory: dict[str, Any]) -> list[dict]:

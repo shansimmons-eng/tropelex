@@ -60,6 +60,11 @@ class EmbeddingStore:
     def has(self, key: str) -> bool:
         return key in self._store
 
+    def get(self, key: str) -> list[float] | None:
+        """Return the stored vector for `key`, or None if absent."""
+        entry = self._store.get(key)
+        return entry["vector"] if entry else None
+
     def put(
         self, key: str, text: str, vector: list[float], meta: dict | None = None
     ):

@@ -207,6 +207,7 @@ from core.docmine.router import docmine_router                     # noqa: E402
 from core.agent_audit.router import agent_audit_router              # noqa: E402
 from core.telemetry import telemetry_router, _emit_telemetry        # noqa: E402
 from core.triggers.tag_gate import require_tag, TagRequiredError, SAFETY_CATEGORIES  # noqa: E402
+from core.safety import require_safety_metadata, SafetyMetadataRequiredError  # noqa: E402
 from core.goals.drift import score_trend_drift  # noqa: E402
 from core.friction.miner import compute_friction_penalty  # noqa: E402
 
@@ -999,6 +1000,18 @@ async def add_decision(project: str, data: DecisionCreate):
         safety_metadata = dict(suggestion)
     safety_metadata["safety_category"] = category
 
+    # #54: once the *resolved* risk lands on high/critical — whether the
+    # caller set that explicitly or the auto-classifier guessed it from
+    # keywords — reversibility/affected_systems/requires_review can no
+    # longer ride in on the guess unexamined. Same "accepting the guess is
+    # a decision, not a default" principle as the safety_category gate
+    # above, conditional on risk instead of universal.
+    provided_fields = data.safety_metadata.model_fields_set if data.safety_metadata else set()
+    try:
+        require_safety_metadata(safety_metadata["risk_level"], provided_fields, suggestion)
+    except SafetyMetadataRequiredError as exc:
+        raise HTTPException(status_code=422, detail=exc.to_dict())
+
     if data.goal_id is not None:
         known_goal_ids = {g.get("id") for g in memory.get("goals", []) if g.get("id")}
         if data.goal_id not in known_goal_ids:
@@ -1016,6 +1029,13 @@ async def add_decision(project: str, data: DecisionCreate):
 
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+    _append_audit_event(
+        memory,
+        "decision_created",
+        decision_id=decision_entry["id"],
+        decision=decision_entry["decision"],
+        risk_level=safety_metadata.get("risk_level", "low"),
+    )
     mm.save_project_memory(project, memory)
     _emit_telemetry("OK", f"Decision captured in {project}")
     return {"added": True, "decision": decision_entry}
@@ -2263,6 +2283,14 @@ async def submit_safety_review(
                         d["safety_metadata"] = {}
                     d["safety_metadata"]["requires_review"] = False
 
+                _append_audit_event(
+                    memory,
+                    "review_submitted",
+                    decision_id=decision_id,
+                    reviewer=review.reviewer,
+                    status=review.status,
+                )
+
                 # Save updated memory
                 mm.save_project_memory(project, memory)
                 break
@@ -3155,6 +3183,14 @@ async def create_decision_version(
         }
 
         target_decision["version_history"].append(version)
+
+        _append_audit_event(
+            memory,
+            "version_created",
+            decision_id=decision_id,
+            version=version["version"],
+            change_reason=change_reason,
+        )
 
         # Save
         mm.save_project_memory(project, memory)
@@ -4159,46 +4195,46 @@ async def get_corrigibility_tracker(project: str):
 # ============================
 
 
-import hashlib
-import json as _json
-
-
-def _compute_decision_hash(decision: dict) -> str:
-    """Compute a hash of a decision for integrity verification."""
-    content = _json.dumps(decision, sort_keys=True, default=str)
-    return hashlib.sha256(content.encode()).hexdigest()
+from core.audit import append_audit_event as _append_audit_event
+from core.audit import compute_hash as _compute_decision_hash
+from core.audit import verify_audit_log_chain as _verify_audit_log_chain
 
 
 @app.get("/api/memory/{project}/provenance/chain")
 async def get_provenance_chain(project: str):
-    """Get the provenance chain for all decisions.
-    
-    Creates a cryptographic chain where each decision's hash
-    includes the previous decision's hash, forming an immutable chain.
+    """Get the provenance chain for decision-creation events.
+
+    Reads memory["audit_log"] — an append-only store written to at the
+    moment each event happens (see _append_audit_event), not recomputed
+    from the current decisions list. Each entry's hash was computed once,
+    at write time, chained from the previous *stored* entry's hash, so
+    chain_valid here reflects a real comparison, not a hardcoded literal.
+
+    Known limitation: audit_log only captures events from this point
+    forward — decisions created before this endpoint was hardened have no
+    corresponding audit_log entry and won't appear in the chain. That's
+    surfaced honestly via chain_length rather than backfilled/faked.
     """
     try:
         project = _sanitise_project(project)
         mm = get_memory_manager()
         memory = mm.get_project_memory(project)
-        decisions = memory.get("decisions", [])
+        audit_log = memory.get("audit_log", [])
+        decision_events = [e for e in audit_log if e.get("event_type") == "decision_created"]
 
-        # Build provenance chain
         chain = []
-        previous_hash = "genesis"
-
-        for i, d in enumerate(decisions):
-            decision_hash = _compute_decision_hash(d)
-            chain_entry = {
+        for i, e in enumerate(decision_events):
+            stored_hash = e.get("hash")
+            recomputed = _compute_decision_hash({k: v for k, v in e.items() if k != "hash"})
+            chain.append({
                 "index": i,
-                "decision_id": d.get("id"),
-                "decision": d.get("decision"),
-                "timestamp": d.get("timestamp"),
-                "hash": decision_hash,
-                "previous_hash": previous_hash,
-                "chain_valid": True,
-            }
-            chain.append(chain_entry)
-            previous_hash = decision_hash
+                "decision_id": e.get("decision_id"),
+                "decision": e.get("decision"),
+                "timestamp": e.get("timestamp"),
+                "hash": stored_hash,
+                "previous_hash": e.get("previous_hash"),
+                "chain_valid": stored_hash == recomputed,
+            })
 
         return {
             "project": project,
@@ -4217,9 +4253,10 @@ async def get_provenance_chain(project: str):
 @app.get("/api/memory/{project}/integrity/verify")
 async def verify_integrity(project: str):
     """Verify the integrity of the decision history.
-    
+
     Checks:
-    - Hash chain integrity
+    - Audit log hash-chain integrity (real comparison against audit_log,
+      not a computed-but-unused hash like the old implementation had)
     - Decision structure validity
     - Timestamp ordering
     """
@@ -4228,15 +4265,12 @@ async def verify_integrity(project: str):
         mm = get_memory_manager()
         memory = mm.get_project_memory(project)
         decisions = memory.get("decisions", [])
+        audit_log = memory.get("audit_log", [])
 
-        issues = []
-        previous_hash = "genesis"
+        issues = _verify_audit_log_chain(audit_log)
         previous_timestamp = None
 
         for i, d in enumerate(decisions):
-            # Verify hash chain
-            expected_hash = _compute_decision_hash(d)
-
             # Verify structure
             if not d.get("decision"):
                 issues.append({
@@ -4256,8 +4290,6 @@ async def verify_integrity(project: str):
                         "message": f"Timestamp {current_ts} is before {previous_timestamp}",
                     })
             previous_timestamp = current_ts
-
-            previous_hash = expected_hash
 
         integrity_score = 1.0 - (len(issues) / max(len(decisions), 1))
 
@@ -4374,57 +4406,29 @@ async def detect_tampering(project: str):
 
 @app.get("/api/memory/{project}/security/audit-log")
 async def get_security_audit_log(project: str, limit: int = Query(50, ge=1, le=200)):
-    """Get immutable security audit log.
-    
-    Returns a chronological log of all security-relevant events:
-    - Decision creations
-    - Reviews
-    - Risk level changes
-    - Version changes
+    """Get the security audit log.
+
+    Reads memory["audit_log"] directly — the append-only store written to
+    at the moment each security-relevant event happens (see
+    _append_audit_event), rather than reconstructing events after the fact
+    from the current decisions list. That distinction matters: the old
+    reconstruction only ever saw whatever safety_reviews/version_history
+    currently exist on a decision, so editing or deleting one of those
+    entries directly in the memory JSON silently removed it from the
+    "immutable" log on the very next call. This version doesn't share that
+    entries with those records — it's a separate, independently-written
+    trail.
+
+    Known limitation: only events written after this endpoint was hardened
+    appear here — no backfill for history that predates it.
     """
     try:
         project = _sanitise_project(project)
         mm = get_memory_manager()
         memory = mm.get_project_memory(project)
-        decisions = memory.get("decisions", [])
+        audit_log = memory.get("audit_log", [])
 
-        audit_events = []
-
-        for d in decisions:
-            safety = d.get("safety_metadata", {})
-
-            # Decision creation event
-            audit_events.append({
-                "event_type": "decision_created",
-                "timestamp": d.get("timestamp"),
-                "decision_id": d.get("id"),
-                "decision": d.get("decision"),
-                "risk_level": safety.get("risk_level", "low"),
-                "hash": _compute_decision_hash(d),
-            })
-
-            # Review events
-            for review in d.get("safety_reviews", []):
-                audit_events.append({
-                    "event_type": "review_submitted",
-                    "timestamp": review.get("timestamp"),
-                    "decision_id": d.get("id"),
-                    "reviewer": review.get("reviewer"),
-                    "status": review.get("status"),
-                })
-
-            # Version events
-            for version in d.get("version_history", []):
-                audit_events.append({
-                    "event_type": "version_created",
-                    "timestamp": version.get("timestamp"),
-                    "decision_id": d.get("id"),
-                    "version": version.get("version"),
-                    "change_reason": version.get("change_reason"),
-                })
-
-        # Sort by timestamp
-        audit_events.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        audit_events = sorted(audit_log, key=lambda x: x.get("timestamp", ""), reverse=True)
 
         return {
             "project": project,

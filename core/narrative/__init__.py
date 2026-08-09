@@ -1,25 +1,7 @@
 """Narrative mode — prose generation for non-technical audiences."""
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar, Union
 
-T = TypeVar("T")
-
-
-# --- Result type (business logic) ---
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 
 # --- Domain exceptions (IO boundaries) ---

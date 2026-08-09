@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -84,7 +86,11 @@ class TestSafetyMetadataEndpoint:
         )
         assert rejected.status_code == 422
 
-        response = client.post(
+        # Category alone still isn't enough once the heuristic's own
+        # risk_level lands on high/critical (#54) — reversibility/
+        # affected_systems/requires_review can't ride in on the guess
+        # unexamined, same principle as the category gate above.
+        category_only = client.post(
             f"/api/memory/{project}/decisions",
             json={
                 "decision": "Critical production deployment",
@@ -92,10 +98,27 @@ class TestSafetyMetadataEndpoint:
                 "safety_metadata": {"safety_category": "general"},
             },
         )
+        assert category_only.status_code == 422
+        missing = category_only.json()["detail"]["missing_fields"]
+        assert set(missing) == {"reversibility", "affected_systems", "requires_review"}
+
+        response = client.post(
+            f"/api/memory/{project}/decisions",
+            json={
+                "decision": "Critical production deployment",
+                "context": "High risk change",
+                "safety_metadata": {
+                    "safety_category": "general",
+                    "reversibility": False,
+                    "affected_systems": ["api"],
+                    "requires_review": True,
+                },
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         # risk_level still comes from the heuristic even though the request
-        # only supplied safety_category explicitly (model_fields_set merge).
+        # didn't supply it explicitly (model_fields_set merge).
         assert data["decision"]["safety_metadata"]["risk_level"] in ["medium", "high"]
 
 
@@ -215,7 +238,12 @@ class TestNeedsAttentionEndpoint:
         client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Deploy without a rollback plan",
             "context": "",
-            "safety_metadata": {"safety_category": "governance", "requires_review": True},
+            "safety_metadata": {
+                "safety_category": "governance",
+                "requires_review": True,
+                "reversibility": False,
+                "affected_systems": ["deploy"],
+            },
         })
         resp = client.get(f"/api/memory/{project}/needs-attention")
         data = resp.json()
@@ -240,7 +268,12 @@ class TestNeedsAttentionEndpoint:
         client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Deploy without a rollback plan",
             "context": "",
-            "safety_metadata": {"safety_category": "governance", "requires_review": True},
+            "safety_metadata": {
+                "safety_category": "governance",
+                "requires_review": True,
+                "reversibility": False,
+                "affected_systems": ["deploy"],
+            },
         })
         client.post(f"/api/memory/{project}/slack/capture", json={
             "decision_text": "Rolled back the last deploy",
@@ -334,6 +367,14 @@ class TestContradictionSafetyCrossConnect:
     """High-severity contradictions auto-escalate their decisions into the
     Safety Review queue instead of only surfacing in the Contradictions tab.
     """
+
+    @pytest.fixture(autouse=True)
+    def _no_real_embedding_calls(self):
+        """#57 made GET /contradictions call core.llm.embed — must be
+        mocked here, or these tests silently make a real OpenAI network
+        call (this file uses the real app, no isolated router fixture)."""
+        with patch("core.contradictions.router.embed", return_value=None):
+            yield
 
     def test_direct_contradiction_escalates_both_decisions(self, client, project):
         client.post(f"/api/memory/{project}/decisions",

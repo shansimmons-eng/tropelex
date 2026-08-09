@@ -394,6 +394,23 @@ class TestGoalDetectRouter:
         assert "candidates" in resp.json()
 
 
+class TestSaveMemoryErrorHandling:
+    """_save_memory previously had no try/except at all (found during an
+    error-handling audit, the exact same gap already fixed in
+    core/market/router.py) -- a disk/lock failure on write would surface
+    as a raw unhandled exception instead of a clean, logged 500."""
+
+    def test_save_failure_returns_clean_500(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        def _boom(self, project, memory):
+            raise OSError("disk full (simulated)")
+
+        monkeypatch.setattr(MemoryManager, "save_project_memory", _boom)
+
+        resp = client.post("/api/memory/demo/goals", json={"text": "Reduce login latency"})
+        assert resp.status_code == 500
+        assert "disk full (simulated)" in resp.json()["detail"]
+
+
 class TestGoalAlignment:
     def _seed_goal_and_decisions(self, mm: MemoryManager, goal_text: str, decisions: list[dict]) -> str:
         memory = mm.get_project_memory("demo")

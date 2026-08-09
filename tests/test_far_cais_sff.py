@@ -305,3 +305,89 @@ class TestSecurityAuditLog:
         assert response.status_code == 200
         data = response.json()
         assert data["summary"]["decision_events"] == 3
+
+
+class TestAuditLogTamperEvidence:
+    """Proves the actual value of the append-only audit_log rewrite: before
+    this, provenance/chain and security/audit-log were recomputed from the
+    current (mutable) decisions list on every call, with chain_valid
+    hardcoded True — editing history directly in the memory JSON produced a
+    perfectly clean-looking response. These tests directly edit an
+    audit_log entry the way a rogue direct-file-edit would, and assert the
+    tampering is now actually detected, which the old implementation could
+    never do regardless of what was edited.
+    """
+
+    def test_decision_creation_writes_a_real_chained_entry(self, client, project):
+        resp = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+        assert resp.status_code == 200
+
+        memory = _load_memory(project)
+        audit_log = memory["audit_log"]
+        assert len(audit_log) == 1
+        assert audit_log[0]["event_type"] == "decision_created"
+        assert audit_log[0]["previous_hash"] == "genesis"
+        assert audit_log[0]["hash"]
+
+    def test_editing_an_audit_log_entry_is_detected_as_tampering(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Original text", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+
+        memory = _load_memory(project)
+        memory["audit_log"][0]["decision"] = "Tampered text"  # content edited, hash untouched
+        _save_memory(project, memory)
+
+        chain = client.get(f"/api/memory/{project}/provenance/chain").json()
+        assert chain["chain"][0]["chain_valid"] is False
+
+        integrity = client.get(f"/api/memory/{project}/integrity/verify").json()
+        issue_types = {i["type"] for i in integrity["issues"]}
+        assert "entry_hash_mismatch" in issue_types
+        assert integrity["valid"] is False
+
+    def test_deleting_an_audit_log_entry_breaks_the_chain_link(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Second", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+
+        memory = _load_memory(project)
+        del memory["audit_log"][0]  # remove the genesis entry, leaving a dangling previous_hash
+        _save_memory(project, memory)
+
+        integrity = client.get(f"/api/memory/{project}/integrity/verify").json()
+        issue_types = {i["type"] for i in integrity["issues"]}
+        assert "chain_link_broken" in issue_types
+
+    def test_clean_audit_log_passes_verification(self, client, project, sample_decisions):
+        integrity = client.get(f"/api/memory/{project}/integrity/verify").json()
+        assert integrity["valid"] is True
+        assert integrity["issues"] == []
+
+    def test_review_and_version_events_are_independently_chained(self, client, project):
+        created = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        }).json()["decision"]
+
+        client.post(
+            f"/api/memory/{project}/decisions/{created['id']}/review",
+            json={"reviewer": "alice", "status": "approved"},
+        )
+        client.post(f"/api/memory/{project}/decisions/{created['id']}/version?change_reason=edit")
+
+        memory = _load_memory(project)
+        audit_log = memory["audit_log"]
+        assert [e["event_type"] for e in audit_log] == [
+            "decision_created", "review_submitted", "version_created",
+        ]
+        # Each entry's previous_hash must chain to the prior entry's actual hash.
+        assert audit_log[1]["previous_hash"] == audit_log[0]["hash"]
+        assert audit_log[2]["previous_hash"] == audit_log[1]["hash"]
+
+        integrity = client.get(f"/api/memory/{project}/integrity/verify").json()
+        assert integrity["valid"] is True

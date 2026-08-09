@@ -7,28 +7,9 @@ rephrasing, retry loops, rapid edits, and escalation markers.
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar, Union
 
 from core.agent_identity import normalize_agent_name
-
-T = TypeVar("T")
-
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    """Success wrapper — carries the resulting value."""
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    """Error wrapper — carries an error message and code."""
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 
 # ---------------------------------------------------------------------------
@@ -448,3 +429,30 @@ def _build_zone(signals: list[FrictionSignal]) -> FrictionZone:
         zone_severity=zone_sev,
         description=desc,
     )
+
+
+def suggest_decision_from_zone(zone: FrictionZone) -> dict[str, str] | None:
+    """Suggest a decision candidate from a high-severity friction zone (#56).
+
+    Same "suggest, don't save" shape as PatternLearner.detect_decisions and
+    detect_goals — this doesn't persist anything, it just proposes text a
+    caller can review and turn into a real decision. Only "high" severity
+    zones are promotion-worthy; a single low/medium zone (one rephrase, one
+    retry) is normal conversational noise, not a signal something needs a
+    tracked decision. Returns None for anything below that.
+
+    friction_history (the persisted, cross-session record) only stores
+    numeric aggregates — no signal text — so this operates on a zone from
+    the *current* scan, not historical friction. Promoting based on
+    accumulated history across scans would need history to carry text it
+    currently doesn't; noted as a real gap, not silently worked around.
+    """
+    if zone.zone_severity != "high":
+        return None
+    content = "; ".join(s.text_snippet for s in zone.signals[:3])
+    return {
+        "type": "friction_promotion",
+        "content": content[:500],
+        "confidence": "medium",
+        "zone_description": zone.description,
+    }

@@ -7,12 +7,16 @@ Mount into the main app:
 """
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from core.audit import append_audit_event
 from core.contradictions import ContradictionError
 from core.contradictions.detector import detect_contradictions
+from core.embeddings import EmbeddingStore
+from core.llm import embed
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.contradictions")
@@ -20,6 +24,7 @@ logger = logging.getLogger("tropelex.contradictions")
 contradiction_router = APIRouter(prefix="/api/memory", tags=["contradictions"])
 
 _mm = MemoryManager()
+_EMBED_STORE_DIR = Path(__file__).resolve().parent.parent.parent / "memory" / "embeddings"
 
 
 def _load_memory(project: str) -> dict[str, Any]:
@@ -27,6 +32,42 @@ def _load_memory(project: str) -> dict[str, Any]:
     if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
     return _mm.get_project_memory(project)
+
+
+async def _get_decision_embeddings(
+    project: str, decisions: list[dict[str, Any]]
+) -> dict[str, list[float]] | None:
+    """Best-effort {decision_id: vector} lookup for #57's hybrid similarity.
+
+    Cached per-project via EmbeddingStore (core/embeddings.py) so a decision
+    is only ever sent to OpenAI once, not re-embedded on every /contradictions
+    call — same "embed only what's not already cached" pattern already used
+    for citations (core/tropebook/web/server.py's embed_all_citations).
+
+    Returns None (not a partial dict) whenever embeddings aren't usable at
+    all — no OPENAI_API_KEY configured, or the API call itself fails — so
+    the caller's fallback to pure keyword matching is a clean, explicit
+    branch rather than a dict that's silently missing some entries.
+    """
+    store = EmbeddingStore(str(_EMBED_STORE_DIR / f"contradictions_{project}.json"))
+    to_embed = [d for d in decisions if d.get("id") and not store.has(d["id"])]
+
+    if to_embed:
+        texts = [d.get("decision", "") for d in to_embed]
+        vectors = await embed(texts, project=project)
+        if vectors is None:
+            # No key configured, or the call failed — the existing cached
+            # entries (if any) are still real and safe to use; only the
+            # brand-new decisions are missing, which is exactly what a
+            # partial embeddings dict already handles via hybrid_similarity's
+            # per-pair None fallback.
+            logger.info("contradictions: embeddings unavailable, using keyword-only similarity")
+        else:
+            for d, vec in zip(to_embed, vectors):
+                store.put(d["id"], d.get("decision", ""), vec)
+
+    result = {d["id"]: store.get(d["id"]) for d in decisions if d.get("id") and store.has(d["id"])}
+    return result or None
 
 
 def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
@@ -59,6 +100,16 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
         safety["requires_review"] = True
         if safety.get("risk_level", "low") == "low":
             safety["risk_level"] = "medium"
+        # #61 (wishlist.md): this mutation previously had no audit trace at
+        # all — only a live requires_review flip, gone the moment a review
+        # resolved it. severity is always "high" here: only high_severity_ids
+        # (the caller) ever reach this loop.
+        append_audit_event(
+            memory,
+            "contradiction_escalated",
+            decision_id=d.get("id"),
+            severity_counts={"high": 1},
+        )
         escalated += 1
     return escalated
 
@@ -82,9 +133,10 @@ async def project_contradictions(project: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(exc))
 
     decisions = memory.get("decisions", [])
+    embeddings = await _get_decision_embeddings(project, decisions)
 
     try:
-        report = detect_contradictions(decisions)
+        report = detect_contradictions(decisions, embeddings=embeddings)
     except ContradictionError as exc:
         logger.error("contradiction detection failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -126,4 +178,8 @@ async def project_contradictions(project: str) -> dict[str, Any]:
         # Safety Review integration: high-severity contradictions auto-flag
         # their decisions for review rather than waiting to be noticed here.
         "escalated_to_review": escalated_count,
+        # #57: honest disclosure of which similarity mode actually ran —
+        # matches Compression's "backend" field rather than silently
+        # degrading to keyword-only when no OPENAI_API_KEY is configured.
+        "semantic_augmented": embeddings is not None,
     }

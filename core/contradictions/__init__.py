@@ -1,25 +1,8 @@
 """Contradiction Detection — models and types for finding conflicting decisions."""
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, Union
+from typing import Literal
 
-T = TypeVar("T")
-
-
-# --- Result type (business logic) ---
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 
 # --- Domain exceptions (IO boundaries) ---

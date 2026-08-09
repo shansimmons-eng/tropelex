@@ -8,7 +8,7 @@ All functions are pure: no I/O, no side effects, same input → same output.
 """
 
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar, Union
+from typing import Any
 
 from core.ghost.pattern_matcher import (
     extract_keywords,
@@ -17,25 +17,7 @@ from core.ghost.pattern_matcher import (
     score_ghost_severity,
 )
 from core.knowledge_decay import score_decision
-
-T = TypeVar("T")
-
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    """Success wrapper — carries the resulting value."""
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    """Error wrapper — carries an error message and code."""
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 # Severity tier thresholds (mirrors detector.py)
 _SEVERITY_HIGH = 0.6

@@ -493,7 +493,8 @@ class TestPreventiveRouter:
                     json={"diff": diff},
                 )
 
-        with patch("core.ghost.preventive_router._load_memory", return_value=mock_memory):
+        with patch("core.ghost.preventive_router._load_memory", return_value=mock_memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
             resp = asyncio.run(_call())
 
         # Assert
@@ -589,3 +590,269 @@ class TestPreventiveRouter:
         assert resp.status_code == 404
         body = resp.json()
         assert "not found" in body["detail"].lower()
+
+
+# ===========================================================================
+#  4. Enforceable Gate Policy Tests (#53) — block/warn/log_only + override
+# ===========================================================================
+
+
+@pytest.mark.skipif(not _HAS_ROUTER, reason="preventive_router.py not yet created (subtask 02 pending)")
+class TestGhostCheckGatePolicy:
+    """A high-severity warning without a recorded override must block the
+    request (409) instead of returning 200 with a warning buried in the
+    body — that's the whole point of #53 (mcp_server's MCP wrapper raises
+    on any non-2xx, so this is what actually stops an agent from skipping
+    past it). Overriding it must be a real, retryable, audited action.
+    """
+
+    @staticmethod
+    def _memory():
+        return {
+            "decisions": [{
+                "id": "naming-1",
+                "decision": "Use snake_case naming convention for all Python module functions",
+                "timestamp": _NOW,
+                "context": "",
+            }],
+        }
+
+    @staticmethod
+    def _high_severity_warning():
+        return {
+            "decision_id": "naming-1",
+            "decision_text": "Use snake_case naming convention for all Python module functions",
+            "severity": "high",
+            "severity_score": 0.9,
+            "matched_keywords": ["snake_case"],
+            "recommendation": "This change may contradict the decision.",
+            "diff_file": "src/utils.py",
+            "diff_line": 5,
+        }
+
+    def _post(self, path, json_body):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(path, json=json_body)
+
+        return asyncio.run(_call())
+
+    def test_high_severity_blocks_without_override(self):
+        from core.result import Ok
+
+        memory = self._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None), \
+             patch("core.ghost.preventive_router.check_diff_for_warnings",
+                   return_value=Ok(value=[self._high_severity_warning()])):
+            resp = self._post("/api/memory/demo/ghost-check", {"diff": CAMEL_CASE_DIFF})
+
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert len(detail["blocking_warnings"]) == 1
+        assert detail["blocking_warnings"][0]["decision_id"] == "naming-1"
+
+        # #61: a block that was correctly obeyed still leaves a trace now,
+        # not just overrides.
+        event_types = [e["event_type"] for e in memory["audit_log"]]
+        assert "gate_blocked" in event_types
+        blocked_event = next(e for e in memory["audit_log"] if e["event_type"] == "gate_blocked")
+        assert blocked_event["decision_ids"] == ["naming-1"]
+        assert blocked_event["severity_counts"] == {"high": 1, "medium": 0, "low": 0}
+
+    def test_medium_and_low_severity_do_not_block(self):
+        from core.result import Ok
+
+        memory = self._memory()
+        warnings = [
+            {**self._high_severity_warning(), "severity": "medium", "decision_id": "naming-1"},
+        ]
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None), \
+             patch("core.ghost.preventive_router.check_diff_for_warnings", return_value=Ok(value=warnings)):
+            resp = self._post("/api/memory/demo/ghost-check", {"diff": CAMEL_CASE_DIFF})
+
+        assert resp.status_code == 200
+        assert resp.json()["warnings"][0]["policy"] == "warn"
+
+        # #61: a warn-tier warning that was returned (not blocked) still
+        # gets logged — it's the "this is what we flagged" half of the
+        # prevention story, distinct from an outright block.
+        event_types = [e["event_type"] for e in memory["audit_log"]]
+        assert "gate_warned" in event_types
+        assert "gate_blocked" not in event_types
+        warned_event = next(e for e in memory["audit_log"] if e["event_type"] == "gate_warned")
+        assert warned_event["decision_ids"] == ["naming-1"]
+        assert warned_event["severity_counts"] == {"high": 0, "medium": 1, "low": 0}
+
+    def test_override_then_retry_succeeds_and_marks_warning_overridden(self):
+        from core.result import Ok
+
+        memory = self._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None), \
+             patch("core.ghost.preventive_router.check_diff_for_warnings",
+                   return_value=Ok(value=[self._high_severity_warning()])):
+            blocked = self._post("/api/memory/demo/ghost-check", {"diff": CAMEL_CASE_DIFF})
+            assert blocked.status_code == 409
+
+            override_resp = self._post(
+                "/api/memory/demo/decisions/naming-1/override",
+                {"rationale": "Legacy API must match external SDK casing", "agent_name": "claude"},
+            )
+            assert override_resp.status_code == 200
+            assert override_resp.json()["created"] is True
+
+            retried = self._post("/api/memory/demo/ghost-check", {"diff": CAMEL_CASE_DIFF})
+
+        assert retried.status_code == 200
+        assert retried.json()["warnings"][0]["overridden"] is True
+
+        # The override is part of the same audited trail as everything else
+        # in #52, not a parallel, unaudited mechanism.
+        event_types = [e["event_type"] for e in memory["audit_log"]]
+        assert "override" in event_types
+        override_event = next(e for e in memory["audit_log"] if e["event_type"] == "override")
+        assert override_event["decision_id"] == "naming-1"
+        assert override_event["rationale"] == "Legacy API must match external SDK casing"
+
+    def test_override_unknown_decision_404s(self):
+        memory = self._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._post(
+                "/api/memory/demo/decisions/does-not-exist/override",
+                {"rationale": "x", "agent_name": "claude"},
+            )
+
+        assert resp.status_code == 404
+
+    def test_override_requires_nonempty_rationale(self):
+        memory = self._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._post(
+                "/api/memory/demo/decisions/naming-1/override",
+                {"rationale": "", "agent_name": "claude"},
+            )
+
+        assert resp.status_code == 422
+
+    def test_project_can_override_default_policy(self):
+        """memory["gate_policy"] lets a project loosen/tighten enforcement
+        per severity tier instead of being stuck with the module default."""
+        from core.result import Ok
+
+        memory = self._memory()
+        memory["gate_policy"] = {"high": "warn"}  # loosen: don't block on high here
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None), \
+             patch("core.ghost.preventive_router.check_diff_for_warnings",
+                   return_value=Ok(value=[self._high_severity_warning()])):
+            resp = self._post("/api/memory/demo/ghost-check", {"diff": CAMEL_CASE_DIFF})
+
+        assert resp.status_code == 200
+        assert resp.json()["warnings"][0]["policy"] == "warn"
+
+        # Logged under gate_warned, not gate_blocked -- the audit trail
+        # reflects the resolved policy action, not the raw severity tier.
+        event_types = [e["event_type"] for e in memory["audit_log"]]
+        assert "gate_warned" in event_types
+        assert "gate_blocked" not in event_types
+
+
+# ===========================================================================
+#  5. Prevention Report (#61) — GET /{project}/prevention-report
+# ===========================================================================
+
+
+@pytest.mark.skipif(not _HAS_ROUTER, reason="preventive_router.py not yet created (subtask 02 pending)")
+class TestPreventionReportEndpoint:
+    """Router-level tests for GET /{project}/prevention-report — the
+    aggregation itself is unit-tested in tests/test_prevention_report.py;
+    these just confirm the endpoint reads memory["audit_log"] and shapes
+    the response correctly."""
+
+    def _get(self, path):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.get(path)
+
+        return asyncio.run(_call())
+
+    def test_empty_audit_log_returns_zeroed_report(self):
+        memory = {"decisions": [], "audit_log": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/demo/prevention-report")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["project"] == "demo"
+        assert body["total_prevented"] == 0
+        assert body["override_count"] == 0
+        assert body["override_rate"] == 0.0
+        assert body["overrides"] == []
+
+    def test_report_reflects_real_audit_log_events(self):
+        memory = {
+            "decisions": [],
+            "audit_log": [
+                {"event_type": "gate_blocked", "timestamp": _NOW,
+                 "decision_ids": ["d1"], "severity_counts": {"high": 2, "medium": 0, "low": 0}},
+                {"event_type": "gate_warned", "timestamp": _NOW,
+                 "decision_ids": ["d2"], "severity_counts": {"high": 0, "medium": 1, "low": 0}},
+                {"event_type": "contradiction_escalated", "timestamp": _NOW,
+                 "decision_id": "d3", "severity_counts": {"high": 1}},
+                {"event_type": "override", "timestamp": _NOW, "override_id": "o1",
+                 "decision_id": "d1", "rationale": "known false positive", "agent_name": "claude"},
+            ],
+        }
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/proj/prevention-report")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["gate_blocked_count"] == 2
+        assert body["gate_warned_count"] == 1
+        assert body["contradiction_escalated_count"] == 1
+        assert body["override_count"] == 1
+        assert body["total_prevented"] == 4
+        assert body["severity_distribution"] == {"high": 3, "medium": 1, "low": 0}
+        assert body["overrides"][0]["rationale"] == "known false positive"
+        # gate_signal_count=3, override_count=1 -> 1/4
+        assert body["override_rate"] == 0.25
+
+    def test_report_ignores_unrelated_event_types(self):
+        memory = {
+            "decisions": [],
+            "audit_log": [
+                {"event_type": "decision_created", "timestamp": _NOW, "decision_id": "d1"},
+                {"event_type": "review_submitted", "timestamp": _NOW, "decision_id": "d1"},
+            ],
+        }
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/proj/prevention-report")
+
+        assert resp.status_code == 200
+        assert resp.json()["total_prevented"] == 0
+
+    def test_404_unknown_project(self):
+        from fastapi import HTTPException
+
+        def _mock_load(project):
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+
+        with patch("core.ghost.preventive_router._load_memory", side_effect=_mock_load):
+            resp = self._get("/api/memory/nonexistent/prevention-report")
+
+        assert resp.status_code == 404

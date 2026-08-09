@@ -71,11 +71,11 @@ async def capture_decision(
     project: str,
     decision: str,
     context: str = "",
-    risk_level: str = "low",
-    reversibility: bool = True,
-    affected_systems: list[str] = None,
+    risk_level: str | None = None,
+    reversibility: bool | None = None,
+    affected_systems: list[str] | None = None,
     safety_category: str | None = None,
-    requires_review: bool = False,
+    requires_review: bool | None = None,
     alignment_considerations: str = "",
     goal_id: str | None = None,
 ) -> dict[str, Any]:
@@ -85,9 +85,15 @@ async def capture_decision(
         project: Project name (created automatically if it doesn't exist).
         decision: What was decided, in one sentence (e.g. "Use Postgres for the primary database").
         context: Why it was decided — optional but recommended for future recall.
-        risk_level: Risk level: low, medium, high, or critical. Default: low.
-        reversibility: Whether this decision can be easily reversed. Default: True.
+        risk_level: Risk level: low, medium, high, or critical. Left unset, the
+            server auto-classifies it from the decision text.
+        reversibility: Whether this decision can be easily reversed. Left unset,
+            the server auto-classifies it — UNLESS the resolved risk_level lands
+            on high/critical, in which case this becomes required (#54): the
+            call gets rejected with the auto-classifier's guess attached, which
+            you should read and either accept (retry with it) or override.
         affected_systems: List of systems/components affected (e.g., ["memory", "api"]).
+            Same high/critical-risk requirement as reversibility.
         safety_category: Safety category: general, adversarial, robustness, monitoring, governance, alignment.
             Not optional in practice — omitting it gets the call rejected with a
             suggested category attached, which you should read and either accept
@@ -95,20 +101,27 @@ async def capture_decision(
             defaulted to "general" for you; that was a real bug where every
             decision anyone forgot to classify was recorded as generically
             classified, silently.
-        requires_review: Whether this decision requires human review. Default: False.
+        requires_review: Whether this decision requires human review. Same
+            high/critical-risk requirement as reversibility.
         alignment_considerations: Notes on alignment/safety considerations.
         goal_id: Optional id of a Goal (see propose_goal) this decision serves.
             Rejected with a 404 if it doesn't exist in this project.
     """
-    safety_metadata = {
-        "risk_level": risk_level,
-        "reversibility": reversibility,
-        "affected_systems": affected_systems or [],
-        "rationale_quality": 0.5,
-        "alignment_considerations": alignment_considerations,
-        "requires_review": requires_review,
-        "safety_category": safety_category,
-    }
+    # Only include fields the caller actually set. Filling in bool/list
+    # defaults here (reversibility=True, affected_systems=[], etc.) would
+    # make every field look "explicitly provided" to the server's #54 gate
+    # even when the caller never thought about it — the exact silent-
+    # default bug that gate exists to prevent, just moved one layer up.
+    safety_metadata: dict[str, Any] = {"alignment_considerations": alignment_considerations}
+    if risk_level is not None:
+        safety_metadata["risk_level"] = risk_level
+    if reversibility is not None:
+        safety_metadata["reversibility"] = reversibility
+    if affected_systems is not None:
+        safety_metadata["affected_systems"] = affected_systems
+    if requires_review is not None:
+        safety_metadata["requires_review"] = requires_review
+    safety_metadata["safety_category"] = safety_category
 
     return await _request(
         "POST", f"/api/memory/{quote(project, safe='')}/decisions",
@@ -210,6 +223,30 @@ async def check_diff_for_conflicts(project: str, diff: str) -> dict[str, Any]:
     return await _request(
         "POST", f"/api/memory/{quote(project, safe='')}/ghost-check",
         json={"diff": diff},
+    )
+
+
+@mcp.tool()
+async def override_ghost_warning(
+    project: str, decision_id: str, rationale: str, agent: str = "unspecified"
+) -> dict[str, Any]:
+    """Explicitly override a blocked ghost/contradiction warning for one decision.
+
+    check_diff_for_conflicts raises an error instead of returning normally
+    when a high-severity warning has no recorded override (see #53's
+    enforceable gate policy) — call this first with your reasoning, then
+    retry check_diff_for_conflicts. The override is written into the
+    project's audit trail, not silently applied.
+
+    Args:
+        project: Project name.
+        decision_id: The decision the warning was raised against.
+        rationale: Why this warning is being overridden.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini").
+    """
+    return await _request(
+        "POST", f"/api/memory/{quote(project, safe='')}/decisions/{quote(decision_id, safe='')}/override",
+        json={"rationale": rationale, "agent_name": agent},
     )
 
 

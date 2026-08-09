@@ -1,25 +1,8 @@
 """Time-Travel Debugger — snapshot models and types for reconstructing past memory state."""
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar, Union
+from typing import Any
 
-T = TypeVar("T")
-
-
-# --- Result type (business logic) ---
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 
 # --- Domain exceptions (IO boundaries) ---

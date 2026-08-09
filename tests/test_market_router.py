@@ -108,3 +108,26 @@ class TestAgentNameNormalization:
         leaderboard = client.get("/api/memory/demo/market/leaderboard").json()
         assert leaderboard["count"] == 1
         assert leaderboard["leaderboard"][0]["agent_name"] == "Claude"
+
+
+class TestSaveMemoryErrorHandling:
+    """_save_memory previously had no try/except at all (found during an
+    error-handling audit) -- a disk/lock failure on write would surface as
+    a raw unhandled exception instead of a clean, logged 500. This proves
+    the fix: a deliberately raised HTTPException(500, detail=str(exc)) is
+    what FastAPI actually returns, not Starlette's generic unhandled-error
+    body (raise_server_exceptions=False means both LOOK like a 500 from
+    the outside, but only the guarded path produces this exact JSON
+    shape with our own message in `detail`)."""
+
+    def test_save_failure_returns_clean_500(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        def _boom(self, project, memory):
+            raise OSError("disk full (simulated)")
+
+        monkeypatch.setattr(MemoryManager, "save_project_memory", _boom)
+
+        resp = client.post("/api/memory/demo/market/bet", json={
+            "decision_id": "d0", "agent_name": "claude", "confidence": 0.5, "category": "test",
+        })
+        assert resp.status_code == 500
+        assert "disk full (simulated)" in resp.json()["detail"]

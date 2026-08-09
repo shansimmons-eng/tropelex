@@ -77,7 +77,11 @@ def _load_memory(project: str) -> dict[str, Any]:
 
 
 def _save_memory(project: str, memory: dict[str, Any]) -> None:
-    _mm.save_project_memory(project, memory)
+    try:
+        _mm.save_project_memory(project, memory)
+    except Exception as exc:
+        logger.error("goals save failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 def _err_to_http(result: Err) -> HTTPException:

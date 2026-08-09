@@ -13,30 +13,11 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Generic, TypeVar, Union
+from typing import Any
+
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 logger = logging.getLogger("tropelex.prefetch.genealogy")
-
-T = TypeVar("T")
-
-# ── Result types (mirrors core/ghost/preventive.py) ──────────────────────
-
-
-@dataclass(frozen=True)
-class Ok(Generic[T]):
-    """Success wrapper — carries the resulting value."""
-    value: T
-
-
-@dataclass(frozen=True)
-class Err:
-    """Error wrapper — carries an error message and code."""
-    error: str
-    code: str = "UNKNOWN"
-    details: dict[str, Any] | None = None
-
-
-Result = Union[Ok[T], Err]
 
 
 # ── Domain exception ─────────────────────────────────────────────────────

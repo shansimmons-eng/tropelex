@@ -87,16 +87,27 @@ class TestGhostRouter:
 
 
 class TestContradictionsRouter:
-    def test_returns_contradictions(self, project_memory):
-        """GET /{project}/contradictions returns results."""
-        with patch("core.contradictions.router._mm", project_memory):
+    def test_returns_contradictions(self, project_memory, tmp_path):
+        """GET /{project}/contradictions returns results.
+
+        #57 made this endpoint call core.llm.embed — must be mocked, or
+        this test silently makes a real OpenAI network call on every run.
+        Also redirect _EMBED_STORE_DIR so nothing writes into the real
+        repo's memory/embeddings/ directory during tests.
+        """
+        with patch("core.contradictions.router._mm", project_memory), \
+             patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
+             patch("core.contradictions.router.embed", return_value=None):
             from core.contradictions.router import contradiction_router
             client = _make_client(contradiction_router)
             resp = client.get("/api/memory/test-proj/contradictions")
             assert resp.status_code == 200
+            assert resp.json()["semantic_augmented"] is False
 
-    def test_404_for_missing_project(self, project_memory):
-        with patch("core.contradictions.router._mm", project_memory):
+    def test_404_for_missing_project(self, project_memory, tmp_path):
+        with patch("core.contradictions.router._mm", project_memory), \
+             patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
+             patch("core.contradictions.router.embed", return_value=None):
             from core.contradictions.router import contradiction_router
             client = _make_client(contradiction_router)
             resp = client.get("/api/memory/nonexistent/contradictions")

@@ -7,17 +7,19 @@ risk/reversibility (properties of something that already happened), Goal
 has a status lifecycle (proposed -> active -> achieved|abandoned) and no
 risk metadata, because nothing has happened yet.
 
-Result/Ok/Err are intentionally NOT redefined here — reuse core.market's
-canonical definitions. core/ghost/preventive.py redefines its own copy of
-the same three types; that's a pre-existing inconsistency in this
-codebase, not a pattern to repeat.
+Result/Ok/Err are intentionally NOT redefined here — imported from
+core.result, the single canonical definition every business-logic module
+should use. Prior to core.result existing, this imported from
+core.market instead (which itself just held its own copy, one of 17
+independent copies of the same type found across the codebase during an
+error-handling audit) — updated to import from the real shared source.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from core.market import Err, Ok, Result  # noqa: F401 - re-exported for core.goals.* consumers
+from core.result import Err, Ok, Result  # noqa: F401 - re-exported for core.goals.* consumers
 
 GOAL_STATUSES = {"proposed", "active", "achieved", "abandoned"}
 GOAL_PRIORITIES = {"low", "medium", "high", "critical"}  # mirrors SafetyMetadata.risk_level's vocabulary

@@ -27,3 +27,4 @@ memory/replays/
 !memory/.gitkeep.tmp/
 UI/UI2/
 .tmp/
+session-report-*.html

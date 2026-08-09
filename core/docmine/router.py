@@ -12,8 +12,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from dataclasses import asdict
+
+from core.docmine.combined import combine_doc_and_ghost_findings
 from core.docmine.detector import mine_markdown_files
 from core.docmine.extractor import extract_claims
+from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.docmine")
@@ -42,6 +46,18 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
     """Flip requires_review=True on decisions a high-severity doc-vs-decision
     finding contradicts, if not already flagged. Same escalation rule as
     Contradictions — mutates memory in place, returns count newly escalated.
+
+    A human already reviewed this decision at least once — respect that
+    resolution rather than re-flagging it every time the doc drift is
+    re-scanned. Without this check, approving a decision (which sets
+    requires_review=False) gets undone on the very next /docmine/scan call
+    as long as the doc/decision mismatch is still there — this router's own
+    copy of the exact bug already fixed once in Contradiction Detection's
+    _escalate_to_review and in _apply_persona_market_escalation, just never
+    applied here too. Confirmed live against the real tropelex project:
+    4 previously-approved decisions were still matched by current
+    high-severity doc_vs_decision findings, meaning the next approval would
+    have been silently undone on the next scan.
     """
     escalated = 0
     for d in memory.get("decisions", []):
@@ -49,6 +65,8 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
             continue
         safety = d.setdefault("safety_metadata", {})
         if safety.get("requires_review"):
+            continue
+        if d.get("safety_reviews"):
             continue
         safety["requires_review"] = True
         if safety.get("risk_level", "low") == "low":
@@ -76,23 +94,15 @@ class DocMineRequest(BaseModel):
     paths: list[str] = Field(default_factory=list, max_length=200)
 
 
-@docmine_router.post("/{project}/docmine/scan")
-async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
-    """Mine markdown files for drift, contradictions, and undocumented
-    decisions against a project's decision graph.
-
-    Compares every extracted claim against every recorded decision (reusing
-    the same matching logic as Contradiction Detection), against claims from
-    every *other* markdown file, and flags decision-shaped claims that don't
-    match anything in the decision graph at all — knowledge sitting in prose
-    docs that never made it into tracked decisions.
+def _resolve_scan_targets(paths: list[str]) -> list[Path]:
+    """Resolve a docmine request's `paths` (or, if empty, every .md file in
+    the repo) into a concrete list of files to read. Shared by scan_markdown
+    and combined_drift_check so the "no scope-escape, no missing target"
+    validation only lives in one place.
     """
-    memory = _load_memory(project)
-    decisions = memory.get("decisions", [])
-
-    if body.paths:
+    if paths:
         targets: list[Path] = []
-        for raw in body.paths:
+        for raw in paths:
             candidate = (BASE_DIR / raw).resolve()
             if BASE_DIR.resolve() not in candidate.parents and candidate != BASE_DIR.resolve():
                 raise HTTPException(status_code=422, detail=f"Path escapes repo root: {raw}")
@@ -107,6 +117,14 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
 
     if not targets:
         raise HTTPException(status_code=404, detail="No markdown files found to scan")
+    return targets
+
+
+def _run_docmine(paths: list[str], decisions: list[dict[str, Any]]):
+    """Resolve targets, extract claims, and run the detector — the part of
+    scan_markdown that combined_drift_check also needs. Returns a
+    DocMineReport (core/docmine/__init__.py)."""
+    targets = _resolve_scan_targets(paths)
 
     claims = []
     for path in targets:
@@ -118,7 +136,24 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
         rel_path = str(path.relative_to(BASE_DIR))
         claims.extend(extract_claims(text, rel_path))
 
-    report = mine_markdown_files(claims, decisions)
+    return mine_markdown_files(claims, decisions)
+
+
+@docmine_router.post("/{project}/docmine/scan")
+async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
+    """Mine markdown files for drift, contradictions, and undocumented
+    decisions against a project's decision graph.
+
+    Compares every extracted claim against every recorded decision (reusing
+    the same matching logic as Contradiction Detection), against claims from
+    every *other* markdown file, and flags decision-shaped claims that don't
+    match anything in the decision graph at all — knowledge sitting in prose
+    docs that never made it into tracked decisions.
+    """
+    memory = _load_memory(project)
+    decisions = memory.get("decisions", [])
+
+    report = _run_docmine(body.paths, decisions)
     severity_distribution = {"high": 0, "medium": 0, "low": 0}
     for f in report.findings:
         if f.severity in severity_distribution:
@@ -167,4 +202,54 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
         ],
         "uncaptured_count": len(report.uncaptured_claims),
         "escalated_to_review": escalated_count,
+    }
+
+
+class CombinedDriftRequest(BaseModel):
+    """Request body for the combined Doc Mining + Ghost drift check (#55).
+
+    diff: unified diff text to check against decisions, same as ghost-check.
+    paths: same as DocMineRequest — specific files/directories to scan,
+        relative to the repo root; omit to scan every .md file in the repo.
+    """
+    diff: str = Field(..., min_length=1, max_length=100000)
+    paths: list[str] = Field(default_factory=list, max_length=200)
+
+
+@docmine_router.post("/{project}/drift/combined-check")
+async def combined_drift_check(project: str, body: CombinedDriftRequest) -> dict[str, Any]:
+    """Run Doc Mining and Preventive Ghost Checks together and flag any
+    decision both independently drifted from (#55).
+
+    A single-source finding is a signal; the same decision getting flagged
+    by both an out-of-date doc AND a proposed code diff at once is
+    stronger evidence than either alone. This is a pure join over the two
+    detectors' existing output — no new detection logic, no persistence
+    beyond what each detector already does (Doc Mining's own
+    high-severity auto-escalation still runs exactly as it does in
+    /docmine/scan; this endpoint doesn't add a second escalation path).
+    """
+    memory = _load_memory(project)
+    decisions = memory.get("decisions", [])
+
+    doc_report = _run_docmine(body.paths, decisions)
+
+    ghost_result = check_diff_for_warnings(memory, body.diff)
+    if hasattr(ghost_result, "error"):
+        code = getattr(ghost_result, "code", "UNKNOWN")
+        status = 404 if code == "NOT_FOUND" else 500
+        raise HTTPException(status_code=status, detail=ghost_result.error)
+    ghost_warnings = ghost_result.value
+
+    combined = combine_doc_and_ghost_findings(
+        [asdict(f) for f in doc_report.findings],
+        ghost_warnings,
+    )
+
+    return {
+        "project": project,
+        "combined_alerts": [asdict(c) for c in combined],
+        "total_combined": len(combined),
+        "doc_findings_total": len(doc_report.findings),
+        "ghost_warnings_total": len(ghost_warnings),
     }

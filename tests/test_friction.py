@@ -27,6 +27,7 @@ from core.friction.miner import (
     compute_friction_score,
     detect_friction_signals,
     group_signals_by_zone,
+    suggest_decision_from_zone,
 )
 from core.friction.router import friction_router
 
@@ -684,6 +685,49 @@ class TestBuildZone:
 
 
 # ===========================================================================
+#  9.6. suggest_decision_from_zone (#56) — friction → decision promotion
+# ===========================================================================
+
+
+class TestSuggestDecisionFromZone:
+    def test_low_severity_zone_returns_none(self):
+        zone = _build_zone([_sig("rephrase", 1, severity="low")])
+        assert suggest_decision_from_zone(zone) is None
+
+    def test_medium_severity_zone_returns_none(self):
+        zone = _build_zone([_sig("rapid_edit", 1, severity="medium")])
+        assert suggest_decision_from_zone(zone) is None
+
+    def test_high_severity_zone_returns_a_suggestion(self):
+        zone = _build_zone([_sig("escalation", 1, severity="high", text="this is broken, fix it now")])
+        suggestion = suggest_decision_from_zone(zone)
+        assert suggestion is not None
+        assert suggestion["type"] == "friction_promotion"
+        assert suggestion["confidence"] == "medium"
+        assert "this is broken, fix it now" in suggestion["content"]
+        assert suggestion["zone_description"] == zone.description
+
+    def test_content_joins_up_to_three_snippets(self):
+        zone = _build_zone([
+            _sig("escalation", 1, severity="high", text="first snippet"),
+            _sig("escalation", 2, severity="high", text="second snippet"),
+            _sig("escalation", 3, severity="high", text="third snippet"),
+            _sig("escalation", 4, severity="high", text="fourth snippet"),
+        ])
+        suggestion = suggest_decision_from_zone(zone)
+        assert "first snippet" in suggestion["content"]
+        assert "second snippet" in suggestion["content"]
+        assert "third snippet" in suggestion["content"]
+        assert "fourth snippet" not in suggestion["content"]
+
+    def test_content_is_capped_at_500_chars(self):
+        long_text = "x" * 600
+        zone = _build_zone([_sig("escalation", 1, severity="high", text=long_text)])
+        suggestion = suggest_decision_from_zone(zone)
+        assert len(suggestion["content"]) <= 500
+
+
+# ===========================================================================
 #  9.5. compute_friction_by_agent — pure filter/aggregate over friction_history
 # ===========================================================================
 
@@ -785,6 +829,32 @@ class TestFrictionRouterScan:
         assert isinstance(body["friction_score"], float)
         assert 0.0 <= body["friction_score"] <= 1.0
         assert isinstance(body["zones"], list)
+        # #56: "Build the signup page" repeats (>= _RETRY_MIN_LINES) → a
+        # high-severity retry zone → a suggested decision candidate.
+        assert "suggested_decisions" in body
+        assert len(body["suggested_decisions"]) >= 1
+        assert body["suggested_decisions"][0]["type"] == "friction_promotion"
+
+    def test_router_scan_low_severity_only_yields_no_suggestions(self):
+        """A transcript with only mild, non-repeating friction shouldn't
+        produce a promotion candidate — noise, not signal."""
+        transcript = "Actually, let's rename this variable to something clearer please today\n"
+        mock_memory = {"decisions": [], "session_history": []}
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory"):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": transcript},
+                    )
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        assert resp.json()["suggested_decisions"] == []
 
     def test_router_scan_empty_transcript(self):
         """POST with empty transcript → 422 validation error."""
@@ -996,7 +1066,245 @@ class TestFrictionSummaryByAgentRouter:
 
 
 # ===========================================================================
-#  11. Integration — end-to-end miner flow
+#  11. Friction Zone Persistence + Review Queue (#62)
+# ===========================================================================
+
+from core.friction.router import _bound_friction_zones
+
+
+class TestBoundFrictionZones:
+    def _zone(self, status, ts="2026-08-09T00:00:00+00:00"):
+        return {"id": "z", "review_status": status, "timestamp": ts}
+
+    def test_pending_never_dropped_even_over_cap(self):
+        zones = [self._zone("pending") for _ in range(250)]
+
+        result = _bound_friction_zones(zones, max_reviewed=200)
+
+        assert len(result) == 250
+
+    def test_reviewed_capped_pending_unaffected(self):
+        zones = [self._zone("pending") for _ in range(5)] + [self._zone("dismissed") for _ in range(250)]
+
+        result = _bound_friction_zones(zones, max_reviewed=200)
+
+        assert sum(1 for z in result if z["review_status"] == "pending") == 5
+        assert sum(1 for z in result if z["review_status"] == "dismissed") == 200
+
+    def test_reviewed_cap_keeps_most_recent(self):
+        zones = [self._zone("kept", ts=f"2026-08-{i:02d}T00:00:00+00:00") for i in range(1, 11)]
+
+        result = _bound_friction_zones(zones, max_reviewed=3)
+
+        assert len(result) == 3
+        assert [z["timestamp"][8:10] for z in result] == ["08", "09", "10"]
+
+
+class TestFrictionScanPersistsZones:
+    def test_high_severity_zone_persisted_with_pending_status(self):
+        transcript = (
+            "Please build the login page properly\n"
+            "no, that's wrong, build the signup page\n"
+            "Build the signup page\n"
+            "Build the signup page\n"
+        )
+        mock_memory = {"decisions": [], "session_history": []}
+
+        def _fake_save(project, memory):
+            mock_memory.update(memory)
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory", side_effect=_fake_save):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": transcript, "agent_name": "claude"},
+                    )
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        persisted = mock_memory["friction_zones"]
+        assert len(persisted) >= 1
+        high = [z for z in persisted if z["zone_severity"] == "high"][0]
+        assert high["review_status"] == "pending"
+        assert high["agent_name"] == "Claude"  # normalize_agent_name capitalizes
+        assert len(high["signals"]) >= 1
+        assert high["suggested_decision"] is not None
+        assert "id" in high and high["id"]
+
+    def test_scan_never_drops_a_zone_that_was_already_pending(self):
+        """A second scan must not silently overwrite/lose a zone still
+        awaiting review from a prior scan -- #62's whole point."""
+        mock_memory = {
+            "decisions": [],
+            "friction_zones": [{
+                "id": "already-pending",
+                "start_line": 1, "end_line": 1,
+                "zone_severity": "high", "description": "prior zone",
+                "signals": [], "suggested_decision": None,
+                "agent_name": "claude", "timestamp": "2026-08-01T00:00:00+00:00",
+                "review_status": "pending",
+            }],
+        }
+        transcript = "Actually, let's rename this variable to something clearer please today\n"
+
+        def _fake_save(project, memory):
+            mock_memory.update(memory)
+
+        with patch("core.friction.router._load_memory", return_value=mock_memory), \
+             patch("core.friction.router._mm.save_project_memory", side_effect=_fake_save):
+            async def _call():
+                async with AsyncClient(
+                    transport=ASGITransport(app=_app()), base_url="http://test"
+                ) as client:
+                    return await client.post(
+                        "/api/memory/test-project/friction/scan",
+                        json={"transcript": transcript},
+                    )
+            asyncio.run(_call())
+
+        ids = {z["id"] for z in mock_memory["friction_zones"]}
+        assert "already-pending" in ids
+
+
+class TestFrictionZoneKeepDismiss:
+    def _memory(self, severity="high", status="pending"):
+        return {
+            "friction_zones": [{
+                "id": "zone-1",
+                "start_line": 1, "end_line": 3,
+                "zone_severity": severity, "description": "test zone",
+                "signals": [], "suggested_decision": None,
+                "agent_name": "claude", "timestamp": "2026-08-09T00:00:00+00:00",
+                "review_status": status,
+            }],
+        }
+
+    def _post(self, path, json_body=None):
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(path, json=json_body or {})
+        return asyncio.run(_call())
+
+    def _get(self, path):
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.get(path)
+        return asyncio.run(_call())
+
+    def test_keep_marks_zone_kept_no_rationale_needed(self):
+        memory = self._memory()
+        with patch("core.friction.router._load_memory", return_value=memory), \
+             patch("core.friction.router._mm.save_project_memory", return_value=None):
+            resp = self._post("/api/memory/proj/friction/zones/zone-1/keep")
+
+        assert resp.status_code == 200
+        assert resp.json()["zone"]["review_status"] == "kept"
+        assert memory["friction_zones"][0]["review_status"] == "kept"
+
+    def test_keep_unknown_zone_404s(self):
+        memory = self._memory()
+        with patch("core.friction.router._load_memory", return_value=memory):
+            resp = self._post("/api/memory/proj/friction/zones/does-not-exist/keep")
+
+        assert resp.status_code == 404
+
+    def test_dismiss_high_severity_without_reason_422s(self):
+        memory = self._memory(severity="high")
+        with patch("core.friction.router._load_memory", return_value=memory):
+            resp = self._post("/api/memory/proj/friction/zones/zone-1/dismiss", {})
+
+        assert resp.status_code == 422
+        assert memory["friction_zones"][0]["review_status"] == "pending"
+
+    def test_dismiss_high_severity_with_reason_succeeds_and_audits(self):
+        memory = self._memory(severity="high")
+        with patch("core.friction.router._load_memory", return_value=memory), \
+             patch("core.friction.router._mm.save_project_memory", return_value=None):
+            resp = self._post(
+                "/api/memory/proj/friction/zones/zone-1/dismiss",
+                {"agent_name": "claude", "reason": "known false positive, transcript quoted user frustration in a code comment"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["zone"]["review_status"] == "dismissed"
+
+        event_types = [e["event_type"] for e in memory["audit_log"]]
+        assert "friction_dismissed" in event_types
+        event = next(e for e in memory["audit_log"] if e["event_type"] == "friction_dismissed")
+        assert event["zone_id"] == "zone-1"
+        assert event["agent_name"] == "claude"
+        assert "false positive" in event["reason"]
+
+    def test_dismiss_medium_severity_needs_no_reason_and_no_audit_event(self):
+        memory = self._memory(severity="medium")
+        with patch("core.friction.router._load_memory", return_value=memory), \
+             patch("core.friction.router._mm.save_project_memory", return_value=None):
+            resp = self._post("/api/memory/proj/friction/zones/zone-1/dismiss", {})
+
+        assert resp.status_code == 200
+        assert resp.json()["zone"]["review_status"] == "dismissed"
+        assert "audit_log" not in memory or memory["audit_log"] == []
+
+    def test_dismiss_unknown_zone_404s(self):
+        memory = self._memory()
+        with patch("core.friction.router._load_memory", return_value=memory):
+            resp = self._post("/api/memory/proj/friction/zones/does-not-exist/dismiss", {"agent_name": "x", "reason": "x"})
+
+        assert resp.status_code == 404
+
+    def test_list_zones_filters_by_status(self):
+        memory = {
+            "friction_zones": [
+                {**self._memory()["friction_zones"][0], "id": "z1", "review_status": "pending"},
+                {**self._memory()["friction_zones"][0], "id": "z2", "review_status": "kept"},
+                {**self._memory()["friction_zones"][0], "id": "z3", "review_status": "dismissed"},
+            ],
+        }
+        with patch("core.friction.router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/proj/friction/zones?status=pending")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["zones"][0]["id"] == "z1"
+
+    def test_list_zones_no_filter_returns_all_newest_first(self):
+        memory = {
+            "friction_zones": [
+                {**self._memory()["friction_zones"][0], "id": "old", "timestamp": "2026-08-01T00:00:00+00:00"},
+                {**self._memory()["friction_zones"][0], "id": "new", "timestamp": "2026-08-09T00:00:00+00:00"},
+            ],
+        }
+        with patch("core.friction.router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/proj/friction/zones")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+        assert body["zones"][0]["id"] == "new"
+
+    def test_list_zones_404_missing_project(self):
+        from fastapi import HTTPException
+
+        def _raise_404(project):
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+
+        with patch("core.friction.router._load_memory", side_effect=_raise_404):
+            resp = self._get("/api/memory/nonexistent/friction/zones")
+
+        assert resp.status_code == 404
+
+
+# ===========================================================================
+#  12. Integration — end-to-end miner flow
 # ===========================================================================
 
 
