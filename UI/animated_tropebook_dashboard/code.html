@@ -6572,8 +6572,14 @@ document.getElementById('btn-save-session').addEventListener('click', async () =
     btn.textContent = 'Analyzing...';
     btn.disabled = true;
     
-    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/sessions`, 'POST', {
-        summary
+    // /sessions/record is now the one way to end a session (agent MCP tool
+    // and dashboard both land here) -- it does the Time Travel snapshot and
+    // the pattern learning in one call, instead of two disconnected
+    // endpoints that each only did half the job.
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/sessions/record`, 'POST', {
+        summary,
+        session_type: 'manual',
+        agent_name: state.currentAgent || 'unspecified',
     });
     
     btn.textContent = 'Save & Analyze';

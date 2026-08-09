@@ -88,6 +88,7 @@ class PatternLearner:
         day_of_week = now.strftime("%A").lower()  # monday, tuesday, etc.
 
         updates = {
+            "summary": session_summary,
             "detected_categories": detected_categories,
             "key_insights": key_insights,
             "session_date": now.isoformat(),
@@ -115,13 +116,22 @@ class PatternLearner:
         if day:
             self._increment_pattern(project_memory, f"day:{day}")
 
-        # Track key insights
+        # Record the session itself. The raw summary is what Search
+        # (core/search_router.py), RAG (core/rag.py), and Explainable Memory
+        # (core/explain/explainer.py) all actually read (session.summary) --
+        # previously only key_insights (auto-extracted, often empty) got
+        # stored here, so a session with real content but no keyword hits
+        # was invisible to all three. Gated on summary now, not insights:
+        # an ended session with no detected keywords still deserves a
+        # session_history entry, just with an empty insights list.
+        summary = session_data.get("summary", "")
         insights = session_data.get("key_insights", [])
-        if insights:
+        if summary:
             project_memory.setdefault("session_history", []).append(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "type": "session_summary",
+                    "summary": summary,
                     "insights": insights,
                     "day": day,
                 }

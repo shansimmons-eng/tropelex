@@ -798,10 +798,6 @@ class DecisionCreate(BaseModel):
     )
 
 
-class SessionCreate(BaseModel):
-    summary: str = Field(..., max_length=2000)
-
-
 def _auto_classify_safety(decision: str, context: str) -> dict:
     """
     Auto-classify safety metadata for a decision based on content analysis.
@@ -1041,37 +1037,8 @@ async def add_decision(project: str, data: DecisionCreate):
     return {"added": True, "decision": decision_entry}
 
 
-@app.post("/api/memory/{project}/sessions")
-async def add_session(project: str, data: SessionCreate):
-    """Add a session summary and trigger pattern learning."""
-    project = _sanitise_project(project)
-    mm = get_memory_manager()
 
-    try:
-        from core.learner.learner import PatternLearner
 
-        learner = PatternLearner(mm)
-        analysis = learner.analyze_session(project, data.summary)
-        learner.update_project_from_session(project, analysis)
-
-        return {
-            "added": True,
-            "insights": analysis.get("insights", []),
-            "categories": analysis.get("categories", []),
-        }
-    except Exception as e:
-        logger.error(f"Session analysis failed: {e}")
-        # Still add the session even if analysis fails
-        memory = mm.get_project_memory(project)
-        session_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "type": "session_summary",
-            "summary": data.summary,
-        }
-        memory.setdefault("session_history", []).append(session_entry)
-        memory["last_updated"] = datetime.now(timezone.utc).isoformat()
-        mm.save_project_memory(project, memory)
-        return {"added": True, "error": str(e)}
 
 
 class QuickCapture(BaseModel):
@@ -5012,10 +4979,17 @@ class SessionRecordRequest(BaseModel):
 
 @app.post("/api/memory/{project}/sessions/record")
 async def record_session(project: str, req: SessionRecordRequest):
-    """Record current memory state as a session snapshot."""
+    """Record a session: a Time Travel snapshot (before/after diff) *and*
+    pattern learning (category/day patterns, session_history with the raw
+    summary). The single way to end a session, agent or dashboard alike --
+    this used to be two disconnected endpoints (this one, snapshot-only,
+    and the now-removed POST /sessions, pattern-learning-only), so ending a
+    session through one path silently skipped what the other did.
+    """
     project = _sanitise_project(project)
     mm = get_memory_manager()
     from core.agent_identity import normalize_agent_name
+    from core.learner.learner import PatternLearner
     from core.session_replay import SessionReplay
 
     replay = SessionReplay(str(BASE_DIR))
@@ -5035,8 +5009,17 @@ async def record_session(project: str, req: SessionRecordRequest):
         session_type=req.session_type,
         agent=normalize_agent_name(req.agent_name),
     )
+
+    learner = PatternLearner(mm)
+    analysis = learner.analyze_session(project, req.summary)
+    learner.update_project_from_session(project, analysis)
+
     _emit_telemetry("OK", f"Session recorded for {project}")
-    return result
+    return {
+        **result,
+        "detected_categories": analysis["detected_categories"],
+        "key_insights": analysis["key_insights"],
+    }
 
 
 @app.post("/api/memory/{project}/sessions/{session_id}/rollback")

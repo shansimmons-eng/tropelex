@@ -50,6 +50,11 @@ class TestAnalyzeSession:
         result = learner.analyze_session("proj", "Added API endpoint")
         assert len(result["key_insights"]) > 0
 
+    def test_result_carries_raw_summary(self, setup):
+        _, learner = setup
+        result = learner.analyze_session("proj", "Added API endpoint")
+        assert result["summary"] == "Added API endpoint"
+
 
 class TestUpdateFromSession:
     def test_increments_pattern(self, setup):
@@ -78,6 +83,42 @@ class TestUpdateFromSession:
         learner.update_project_from_session("proj", analysis)
         memory = mm.get_project_memory("proj")
         assert len(memory["session_history"]) >= 1
+
+    def test_session_history_stores_raw_summary_text(self, setup):
+        """Regression: the entry previously stored only auto-extracted
+        key_insights, never the actual summary text a human/agent wrote --
+        silently breaking Search (core/search_router.py), RAG (core/rag.py),
+        and Explainable Memory (core/explain/explainer.py), all of which
+        read session.summary specifically."""
+        mm, learner = setup
+        mm.add_decision("proj", "init", "ctx")
+        analysis = learner.analyze_session("proj", "Built the new UI component for the dashboard")
+        learner.update_project_from_session("proj", analysis)
+        memory = mm.get_project_memory("proj")
+        assert memory["session_history"][-1]["summary"] == "Built the new UI component for the dashboard"
+
+    def test_session_with_no_keyword_matches_still_recorded(self, setup):
+        """A summary that matches none of the pattern_keywords produces an
+        empty key_insights list -- previously that meant no session_history
+        entry got written at all, even though real content was ended.
+        Gate on the summary existing, not on keyword-extraction succeeding."""
+        mm, learner = setup
+        mm.add_decision("proj", "init", "ctx")
+        analysis = learner.analyze_session("proj", "Had lunch today")
+        assert analysis["key_insights"] == []
+        learner.update_project_from_session("proj", analysis)
+        memory = mm.get_project_memory("proj")
+        assert len(memory["session_history"]) == 1
+        assert memory["session_history"][0]["summary"] == "Had lunch today"
+        assert memory["session_history"][0]["insights"] == []
+
+    def test_empty_summary_does_not_add_session_history_entry(self, setup):
+        mm, learner = setup
+        mm.add_decision("proj", "init", "ctx")
+        analysis = learner.analyze_session("proj", "")
+        learner.update_project_from_session("proj", analysis)
+        memory = mm.get_project_memory("proj")
+        assert memory.get("session_history", []) == []
 
 
 class TestGetCommonPatterns:
