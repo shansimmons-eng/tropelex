@@ -263,6 +263,29 @@ class TestNeedsAttentionEndpoint:
         assert data["count"] == 1
         assert data["items"][0]["kind"] == "untagged_decision"
         assert data["items"][0]["label"] == "Rolled back the last deploy"
+        assert data["items"][0]["detail"] == "no safety category set"
+
+    def test_untagged_decision_that_was_already_reviewed_gets_distinct_wording(self, client, project):
+        """A decision can carry safety_reviews and still be untagged --
+        requires_review and safety_category are independent flags. Without
+        distinct wording this reads as "I just handled this, why is it
+        still here" when it's actually a second, unrelated gap."""
+        client.post("/api/memory", json={"project_name": project})
+        client.post(f"/api/memory/{project}/slack/capture", json={
+            "decision_text": "Rolled back the last deploy",
+            "context": "",
+            "channel": "emacs",
+        })
+        decision_id = client.get(f"/api/memory/{project}/decisions/untagged").json()["decisions"][0]["id"]
+        client.post(
+            f"/api/memory/{project}/decisions/{decision_id}/approve",
+            params={"reviewer": "shan"},
+        )
+
+        resp = client.get(f"/api/memory/{project}/needs-attention")
+        data = resp.json()
+        assert data["items"][0]["kind"] == "untagged_decision"
+        assert data["items"][0]["detail"] == "already reviewed — still needs a safety category"
 
     def test_both_kinds_combine(self, client, project):
         client.post(f"/api/memory/{project}/decisions", json={

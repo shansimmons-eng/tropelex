@@ -378,6 +378,16 @@ async def health():
     return {"status": "ok", "version": "1.2.0"}
 
 
+@app.get("/api/tests/count")
+async def get_test_suite_count():
+    """Real pytest test count via `--collect-only` -- replaces the
+    hardcoded "1455 Passed" the dashboard's Run Diagnostics panel and
+    Getting Started card used to show regardless of the suite's actual
+    size. Collection-only: fast, no execution side effects."""
+    from core.test_suite_status import get_test_count
+    return get_test_count(str(BASE_DIR))
+
+
 @app.get("/api/debug/env")
 async def debug_env():
     """Debug endpoint to check environment variables (localhost only, DEBUG=1 required)."""
@@ -2448,7 +2458,16 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             "kind": "untagged_decision",
             "id": d.get("id"),
             "label": d.get("decision"),
-            "detail": "no safety category set",
+            # A decision can carry safety_reviews (already been through the
+            # review workflow) and still show up here, since requires_review
+            # and safety_category are independent flags -- without this
+            # note it reads as "I just handled this, why is it still here"
+            # when what's actually true is a second, unrelated gap.
+            "detail": (
+                "already reviewed — still needs a safety category"
+                if d.get("safety_reviews")
+                else "no safety category set"
+            ),
         }
         for d in untagged["decisions"]
     ]

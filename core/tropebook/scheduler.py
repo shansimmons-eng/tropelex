@@ -66,10 +66,15 @@ class FeedScheduler:
             return []
 
     def run_feed(self, feed: ResearchFeed) -> FeedRun:
-        """Execute a single feed: search, deduplicate, ingest, render markdown.
+        """Execute a single feed: search, ingest new citations, render
+        markdown from the full raw result set.
 
-        For deep_research feeds, the run stores rich HTML output in the
-        feed's markdown file alongside ingested citations.
+        Deduplication (_deduplicate) only gates what becomes a *new*
+        Tropebook citation record now -- it no longer hides repeat results
+        from the feed's own markdown. A source reappearing across runs is
+        itself informative (multiple runs agreeing on it), not noise to
+        silently discard; previously a rerun would drop it entirely,
+        leaving no trace it was found again.
         """
         start = time.time()
         run_id = f"run_{uuid.uuid4().hex[:12]}"
@@ -85,12 +90,15 @@ class FeedScheduler:
 
             is_deep = feed.research_provider == "deep_research"
 
-            # Extract the rich HTML result (if any) before building results_dicts
+            # Extract the rich HTML result (if any) from the *raw* results --
+            # rendering below uses search_results, not deduped, so repeats
+            # still show up in the markdown even though they weren't
+            # re-ingested as citations.
             deep_html = ""
             filtered: list[SearchResult] = []
-            for r in deduped:
+            for r in search_results:
                 if r.source == "deep_research_html":
-                    deep_html = r.description  # Stored HTML preview
+                    deep_html = r.description
                 else:
                     filtered.append(r)
 
@@ -101,18 +109,19 @@ class FeedScheduler:
                 source_breakdown=self._count_sources(filtered),
             )
 
+            results_dicts = [
+                {"title": r.title, "url": r.url, "description": r.description,
+                 "source": r.source}
+                for r in filtered
+            ]
             if is_deep and deep_html:
-                self._append_deep_research_markdown(feed.id, run, deep_html)
+                self._append_deep_research_markdown(feed.id, run, deep_html, results_dicts)
             else:
-                results_dicts = [
-                    {"title": r.title, "url": r.url, "description": r.description,
-                     "source": r.source}
-                    for r in filtered
-                ]
                 self.feeds.append_to_markdown(feed.id, run, results_dicts)
 
             self.feeds.record_run(run)
-            logger.info("Feed %s completed: %d new citations", feed.name, len(citations_added))
+            logger.info("Feed %s completed: %d found, %d new citations",
+                        feed.name, len(filtered), len(citations_added))
             return run
 
         except Exception as e:
@@ -126,9 +135,17 @@ class FeedScheduler:
             return run
 
     def _append_deep_research_markdown(
-        self, feed_id: str, run: FeedRun, html: str,
+        self, feed_id: str, run: FeedRun, html: str, results: list[dict],
     ) -> None:
-        """Append deep research HTML output directly to the feed's markdown."""
+        """Append deep research HTML output *and* the citations found this
+        run to the feed's markdown.
+
+        Previously only the HTML blob (truncated to 2000 chars) was
+        written -- the citations existed (results_count/citations_added
+        reflected them) but never actually reached the markdown the Intel
+        tab renders, which is why it showed "Citations collected: N" with
+        nothing backing that number up.
+        """
         from pathlib import Path
         fm = self.feeds
         feed = fm.feeds.get(feed_id)
@@ -140,13 +157,23 @@ class FeedScheduler:
                 md_file.write_text(fm._generate_feed_header(feed))
 
             run_date = datetime.fromisoformat(run.timestamp).strftime("%Y-%m-%d")
-            section = (
-                f"\n\n## {run_date} — Deep Research\n\n"
-                f"**Citations collected:** {run.results_count}\n\n"
-                f"{html}\n\n---\n"
-            )
+            section = [
+                f"\n\n## {run_date} — Deep Research "
+                f"({len(results)} citation(s), {run.results_count} new)\n\n",
+                f"{html}\n\n",
+            ]
+            if results:
+                section.append("### Citations\n\n")
+                for i, r in enumerate(results, 1):
+                    title, url = r.get("title", "Untitled"), r.get("url", "")
+                    line = f"{i}. **{title}**"
+                    if url:
+                        line += f" — [Source]({url})"
+                    section.append(line + "\n")
+            section.append("\n---\n")
+
             with open(md_file, "a") as f:
-                f.write(section)
+                f.write("".join(section))
         except Exception as e:
             logger.error("Failed to append deep research markdown for feed %s: %s",
                          feed_id, e)
@@ -203,26 +230,30 @@ class FeedScheduler:
                 feed.query, timeout=180,  # 3 minutes default for deep research
             )
 
-            results: list[SearchResult] = []
-            for c in citations:
-                results.append(SearchResult(
-                    title=c.get("title", "Untitled"),
-                    url=c.get("url", ""),
-                    description="",
-                    source="deep_research",
-                ))
+            results: list[SearchResult] = [
+                SearchResult(title=c.get("title", "Untitled"), url=c.get("url", ""),
+                             description="", source="deep_research")
+                for c in citations
+            ]
+            results = results[:feed.max_results_per_run]
 
-            # Store the rich HTML as a synthetic result for markdown rendering
+            # Store the rich HTML as a synthetic result for markdown rendering.
+            # Appended *after* the max_results_per_run slice above, and no
+            # longer truncated to 2000 chars -- a full citation list on a
+            # feed with a low per-run cap used to be able to push this
+            # synthetic entry out of the slice entirely, silently dropping
+            # the narrative itself; truncating the narrative text was its
+            # own separate loss of the actual research content.
             if html_output:
                 results.append(SearchResult(
                     title=f"📊 Deep Research: {feed.name}",
                     url="",
-                    description=html_output[:2000],
+                    description=html_output,
                     source="deep_research_html",
                 ))
 
-            logger.info("Deep research found %d citations for '%s'", len(results), feed.query)
-            return results[:feed.max_results_per_run]
+            logger.info("Deep research found %d citations for '%s'", len(citations), feed.query)
+            return results
 
         except ImportError as e:
             logger.error("last30days runner not available: %s", e)

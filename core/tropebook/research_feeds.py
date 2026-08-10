@@ -366,13 +366,20 @@ class ResearchFeedManager:
         )
 
     def _render_run_section(self, run: FeedRun, results: list[dict]) -> str:
-        """Render a single run as a markdown section."""
+        """Render a single run as a markdown section.
+
+        `results` is the full raw result set for this run, not deduplicated
+        against prior runs -- a source reappearing across runs is itself
+        informative (multiple runs agreeing on it), not noise to hide.
+        `run.results_count` stays the *new*-citations-ingested count (a
+        distinct, still-useful number), so the header shows both.
+        """
         run_date = datetime.fromisoformat(run.timestamp).strftime("%Y-%m-%d")
-        lines = [f"\n\n## {run_date} Run ({run.results_count} results)\n\n"]
+        lines = [f"\n\n## {run_date} Run ({len(results)} found, {run.results_count} new)\n\n"]
 
         if run.status == "success" and results:
             lines.append("### Key Findings\n\n")
-            for i, r in enumerate(results[:10], 1):
+            for i, r in enumerate(results, 1):
                 title, url = r.get("title", "Untitled"), r.get("url", "")
                 snippet = r.get("description", r.get("snippet", ""))
                 lines.append(f"{i}. **{title}**")

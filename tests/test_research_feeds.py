@@ -392,6 +392,109 @@ class TestFeedScheduler:
         assert "Article" in md
         assert "2026-" in md
 
+    @patch.object(BraveSearch, "search")
+    def test_repeat_result_across_runs_still_shown_in_markdown(self, mock_search, fm, scheduler):
+        """Regression: _deduplicate previously gated markdown rendering
+        too, so a source seen in an earlier run silently vanished from
+        every later run's output -- even though the search legitimately
+        found it again. Dedup should only gate what gets re-ingested as a
+        new Tropebook citation, not what's shown in the feed markdown."""
+        mock_search.return_value = [SearchResult("Repeated", "https://same.com", "D", "web")]
+        feed = fm.create(name="Repeat", query="q")
+
+        first = scheduler.run_feed(feed)
+        second = scheduler.run_feed(feed)
+
+        assert first.results_count == 1  # new citation ingested
+        assert second.results_count == 0  # already-seen URL, nothing new ingested
+
+        md = fm.get_feed_markdown(feed.id)
+        assert md.count("Repeated") == 2  # shown in *both* runs' markdown
+
+    @patch.object(BraveSearch, "search")
+    def test_more_than_ten_results_all_rendered(self, mock_search, fm, scheduler):
+        """Regression: _render_run_section used to cap Key Findings at 10,
+        silently dropping the rest of a run's raw results."""
+        mock_search.return_value = [
+            SearchResult(f"Result {i}", f"https://r{i}.com", "D", "web") for i in range(15)
+        ]
+        feed = fm.create(name="Many", query="q", max_results_per_run=20)
+        scheduler.run_feed(feed)
+        md = fm.get_feed_markdown(feed.id)
+        for i in range(15):
+            assert f"Result {i}" in md
+
+    @patch.object(BraveSearch, "search")
+    def test_run_section_header_shows_found_and_new_counts(self, mock_search, fm, scheduler):
+        mock_search.return_value = [SearchResult("R", "https://r.com", "D", "web")]
+        feed = fm.create(name="Header", query="q")
+        scheduler.run_feed(feed)
+        md = fm.get_feed_markdown(feed.id)
+        assert "1 found, 1 new" in md
+
+
+class TestDeepResearchFeedMarkdown:
+    """Regression coverage for the deep_research-provider feed path: the
+    citations found were previously silently dropped from the feed's own
+    markdown (only a truncated HTML blob + a bare count survived), which is
+    exactly what showed up as "Citations collected: 4" with nothing behind
+    it in the Intel tab."""
+
+    @pytest.fixture
+    def fm(self, tmp_path):
+        return ResearchFeedManager(storage_path=str(tmp_path / "feeds"))
+
+    @pytest.fixture
+    def scheduler(self, fm):
+        return FeedScheduler(
+            feed_manager=fm,
+            brave_api_key=None,
+            storage_path=str(fm.storage_path.parent / "tropebook"),
+        )
+
+    @patch("core.last30days.runner.run_query_and_extract_citations")
+    def test_citations_appear_in_markdown_not_just_the_count(self, mock_run, fm, scheduler):
+        mock_run.return_value = (
+            "## Findings\n\nSynthesized analysis of the topic.",
+            [
+                {"title": "Source A", "url": "https://a.com"},
+                {"title": "Source B", "url": "https://b.com"},
+            ],
+        )
+        feed = fm.create(name="Deep", query="q", research_provider="deep_research")
+        run = scheduler.run_feed(feed)
+
+        assert run.status == "success"
+        md = fm.get_feed_markdown(feed.id)
+        assert "Synthesized analysis of the topic" in md
+        assert "Source A" in md
+        assert "https://a.com" in md
+        assert "Source B" in md
+
+    @patch("core.last30days.runner.run_query_and_extract_citations")
+    def test_html_narrative_not_truncated_to_2000_chars(self, mock_run, fm, scheduler):
+        long_narrative = "x" * 5000
+        mock_run.return_value = (long_narrative, [])
+        feed = fm.create(name="Long", query="q", research_provider="deep_research")
+        scheduler.run_feed(feed)
+        md = fm.get_feed_markdown(feed.id)
+        assert long_narrative in md
+
+    @patch("core.last30days.runner.run_query_and_extract_citations")
+    def test_narrative_survives_when_citations_exceed_max_results_per_run(self, mock_run, fm, scheduler):
+        """Regression: the synthetic HTML-carrying result used to be
+        appended *before* the max_results_per_run slice, so a feed with a
+        low cap and many citations could silently lose the narrative
+        entirely (deep_html would come back empty)."""
+        mock_run.return_value = (
+            "The narrative that must survive.",
+            [{"title": f"Source {i}", "url": f"https://s{i}.com"} for i in range(10)],
+        )
+        feed = fm.create(name="Capped", query="q", research_provider="deep_research", max_results_per_run=3)
+        scheduler.run_feed(feed)
+        md = fm.get_feed_markdown(feed.id)
+        assert "The narrative that must survive" in md
+
 
 # ─── Security / invariants ──────────────────────────────────────────────────
 

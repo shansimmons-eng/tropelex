@@ -951,7 +951,6 @@ void main() {
         </div>
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="content-tab-strip">
             <button class="content-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="dashboard" onclick="switchGenericTab('content', 'dashboard')">Overview</button>
-            <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="tropebook" onclick="switchGenericTab('content', 'tropebook')">Tropebook</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="memory" onclick="switchGenericTab('content', 'memory')">Memory</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="goals" onclick="switchGenericTab('content', 'goals')">Goals</button>
             <button class="content-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="patterns" onclick="switchGenericTab('content', 'patterns')">Patterns</button>
@@ -1138,136 +1137,12 @@ void main() {
                     <button class="font-mono text-xs text-accent-lavender hover:underline cursor-pointer" onclick="switchSection('research')">View All →</button>
                 </div>
                 <div id="dash-active-feeds" class="space-y-2 max-h-48 overflow-y-auto">
-                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
-                        <span class="text-on-surface font-sans text-xs">AI Agent Architecture Trends</span>
-                        <span class="text-accent-sky font-mono text-[10px] uppercase">WEEKLY</span>
-                    </div>
+                    <p class="text-sm text-outline">Loading feeds…</p>
                 </div>
             </div>
         </div>
     </div>
 
-        <div id="content-tropebook" class="content-tab-panel" style="display: none;">
-<div class="flex items-center justify-between mb-6">
-            <h2 class="font-mono text-2xl text-accent-lavender">Tropebook</h2>
-            <span id="tropebook-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- Sidebar -->
-            <aside class="lg:col-span-3 space-y-6">
-                <!-- Search -->
-                <div class="glass-panel rounded-xl p-4">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="material-symbols-outlined text-accent-periwinkle">search</span>
-                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Search</span>
-                    </div>
-                    <input type="text" id="search-input" placeholder="Search citations or web..." 
-                        autocomplete="off" data-1p-ignore data-lpignore="true"
-                        class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 text-sm font-mono text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none transition-colors"/>
-                    
-                    <div class="flex items-center gap-2 mt-3">
-                        <select id="search-mode" class="flex-1 bg-surface-raised border-2 border-accent-periwinkle/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-periwinkle focus:outline-none cursor-pointer hover:border-accent-periwinkle/50 transition-colors">
-                            <option value="local">📍 Local Only</option>
-                            <option value="web">🌐 Web Only</option>
-                            <option value="fallback" selected>🔄 Local → Web</option>
-                        </select>
-                        <select id="search-count" class="bg-surface-raised border-2 border-accent-sky/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer hover:border-accent-sky/50 transition-colors">
-                            <option value="20" selected>20</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
-                    
-                    <button id="search-btn" class="w-full mt-3 glass-panel hover:bg-surface-high py-2 rounded-lg text-accent-lavender font-mono text-sm uppercase tracking-wider transition-all hover:glow cursor-pointer">
-                        Search
-                    </button>
-                </div>
-
-                <!-- System Status -->
-                <div class="glass-panel rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Neural Engine</span>
-                        <span class="font-mono text-xs text-accent-lime">ACTIVE</span>
-                    </div>
-                    <div class="space-y-2 text-sm font-mono">
-                        <div class="flex justify-between">
-                            <span class="text-outline">Citations</span>
-                            <span class="text-accent-sky" id="citation-count">0</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-outline">Entities</span>
-                            <span class="text-accent-sky" id="entity-count">0</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-outline">Relationships</span>
-                            <span class="text-accent-sky" id="relationship-count">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="glass-panel rounded-xl p-4">
-                    <span class="font-mono text-sm text-outline uppercase tracking-wider mb-4 block">Quick Actions</span>
-                    <div class="space-y-2">
-                        <button id="btn-add-citation" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-accent-lavender">add_circle</span>
-                            <span class="font-mono text-sm">Add Citation</span>
-                        </button>
-                        <button id="btn-import" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-accent-sky">upload</span>
-                            <span class="font-mono text-sm">Import</span>
-                        </button>
-                        <button id="btn-export" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-accent-periwinkle">download</span>
-                            <span class="font-mono text-sm">Export</span>
-                        </button>
-                        <button id="btn-sync" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-accent-lime">sync</span>
-                            <span class="font-mono text-sm">Force Sync</span>
-                        </button>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Feed -->
-            <div class="lg:col-span-9 space-y-6">
-                <!-- Sort/Filter Bar -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <span class="font-mono text-sm text-outline" id="results-count">0 results</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select id="sort-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
-                            <option value="relevance">Relevance</option>
-                            <option value="date">Date</option>
-                            <option value="source">Source</option>
-                        </select>
-                        <select id="filter-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
-                            <option value="all">All Sources</option>
-                            <option value="manual">Manual</option>
-                            <option value="web">Web Scraped</option>
-                            <option value="imported">Imported</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Results Grid -->
-                <div id="citations-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Citation cards will be injected here -->
-                </div>
-
-                <!-- Empty State -->
-                <div id="empty-state" class="glass-panel rounded-xl p-12 text-center">
-                    <span class="material-symbols-outlined text-6xl text-outline mb-4">library_books</span>
-                    <h3 class="text-xl font-semibold mb-2">No citations yet</h3>
-                    <p class="text-outline mb-6">Start building your knowledge graph by adding research citations.</p>
-                    <button id="btn-add-first" class="glass-panel px-6 py-3 rounded-lg text-accent-lavender font-mono hover:bg-surface-raised transition-all hover:glow cursor-pointer">
-                        Add Your First Citation
-                    </button>
-                </div>
-            </div>
-        </div>
-        </div>
 
         <div id="content-memory" class="content-tab-panel" style="display: none;">
 <div class="flex items-center justify-between mb-6">
@@ -1321,12 +1196,12 @@ void main() {
                         <textarea id="decision-context" rows="2" placeholder="Why? (optional context)" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none resize-none mb-3"></textarea>
                         <select id="decision-category" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-1 cursor-pointer">
                             <option value="">Safety category — required, choose one</option>
-                            <option value="general">general</option>
-                            <option value="adversarial">adversarial</option>
-                            <option value="robustness">robustness</option>
-                            <option value="monitoring">monitoring</option>
-                            <option value="governance">governance</option>
-                            <option value="alignment">alignment</option>
+                            <option value="general" title="Doesn't fit a more specific category">general</option>
+                            <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                            <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                            <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                            <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                            <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
                         </select>
                         <p id="decision-category-suggestion" class="text-[10px] font-mono text-outline mb-3"></p>
                         <select id="decision-goal-link" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-3 cursor-pointer">
@@ -1403,12 +1278,12 @@ void main() {
                     </select>
                     <select id="goal-category-select" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
                         <option value="">unclassified</option>
-                        <option value="general">general</option>
-                        <option value="adversarial">adversarial</option>
-                        <option value="robustness">robustness</option>
-                        <option value="monitoring">monitoring</option>
-                        <option value="governance">governance</option>
-                        <option value="alignment">alignment</option>
+                        <option value="general" title="Doesn't fit a more specific category">general</option>
+                        <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                        <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                        <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                        <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                        <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
                         <option value="nonsafety:bug">🐛 bug</option>
                         <option value="__nonsafety__">other (non-safety)…</option>
                     </select>
@@ -2337,6 +2212,7 @@ void main() {
         <div class="flex flex-wrap gap-2 mb-8 border-b border-glass-border pb-4" id="research-tab-strip">
             <button class="research-tab-btn active px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="feeds" onclick="switchGenericTab('research', 'feeds')">Research Feeds</button>
             <button class="research-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="deepresearch" onclick="switchGenericTab('research', 'deepresearch')">Deep Research</button>
+            <button class="research-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="tropebook" onclick="switchGenericTab('research', 'tropebook')">Tropebook</button>
         </div>
 
         <div id="research-feeds" class="research-tab-panel active">
@@ -2488,6 +2364,9 @@ void main() {
             <h2 class="font-mono text-xl text-accent-periwinkle uppercase tracking-wider">Deep Research</h2>
         </div>
         <p class="text-outline mb-6">Two independent research engines, side by side — run either on its own, or run both and let the LLM merge them into one deduplicated report.</p>
+        <button id="btn-copy-both-research" class="mb-6 px-3 py-1.5 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">content_copy</span> Copy Both Results
+        </button>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <!-- Left column: last30days multi-source scan -->
@@ -2562,6 +2441,128 @@ void main() {
             </h3>
             <div id="deepresearch-history" class="space-y-2 max-h-64 overflow-y-auto">
                 <p class="text-sm text-outline">No runs yet.</p>
+            </div>
+        </div>
+        </div>
+
+        <div id="research-tropebook" class="research-tab-panel" style="display: none;">
+<div class="flex items-center justify-between mb-6">
+            <h2 class="font-mono text-2xl text-accent-lavender">Tropebook</h2>
+            <span id="tropebook-project-indicator" class="font-mono text-xs text-outline px-3 py-1.5 rounded bg-surface-raised">No project</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Sidebar -->
+            <aside class="lg:col-span-3 space-y-6">
+                <!-- Search -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-accent-periwinkle">search</span>
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Search</span>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Search citations or web..." 
+                        autocomplete="off" data-1p-ignore data-lpignore="true"
+                        class="w-full bg-surface-raised border border-glass-border rounded-lg px-4 py-2.5 text-sm font-mono text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none transition-colors"/>
+                    
+                    <div class="flex items-center gap-2 mt-3">
+                        <select id="search-mode" class="flex-1 bg-surface-raised border-2 border-accent-periwinkle/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-periwinkle focus:outline-none cursor-pointer hover:border-accent-periwinkle/50 transition-colors">
+                            <option value="local">📍 Local Only</option>
+                            <option value="web">🌐 Web Only</option>
+                            <option value="fallback" selected>🔄 Local → Web</option>
+                        </select>
+                        <select id="search-count" class="bg-surface-raised border-2 border-accent-sky/30 rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer hover:border-accent-sky/50 transition-colors">
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    
+                    <button id="search-btn" class="w-full mt-3 glass-panel hover:bg-surface-high py-2 rounded-lg text-accent-lavender font-mono text-sm uppercase tracking-wider transition-all hover:glow cursor-pointer">
+                        Search
+                    </button>
+                </div>
+
+                <!-- System Status -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-sm text-outline uppercase tracking-wider">Neural Engine</span>
+                        <span class="font-mono text-xs text-accent-lime">ACTIVE</span>
+                    </div>
+                    <div class="space-y-2 text-sm font-mono">
+                        <div class="flex justify-between">
+                            <span class="text-outline">Citations</span>
+                            <span class="text-accent-sky" id="citation-count">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-outline">Entities</span>
+                            <span class="text-accent-sky" id="entity-count">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-outline">Relationships</span>
+                            <span class="text-accent-sky" id="relationship-count">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="glass-panel rounded-xl p-4">
+                    <span class="font-mono text-sm text-outline uppercase tracking-wider mb-4 block">Quick Actions</span>
+                    <div class="space-y-2">
+                        <button id="btn-add-citation" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-lavender">add_circle</span>
+                            <span class="font-mono text-sm">Add Citation</span>
+                        </button>
+                        <button id="btn-import" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-sky">upload</span>
+                            <span class="font-mono text-sm">Import</span>
+                        </button>
+                        <button id="btn-export" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-periwinkle">download</span>
+                            <span class="font-mono text-sm">Export</span>
+                        </button>
+                        <button id="btn-sync" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-accent-lime">sync</span>
+                            <span class="font-mono text-sm">Force Sync</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Feed -->
+            <div class="lg:col-span-9 space-y-6">
+                <!-- Sort/Filter Bar -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="font-mono text-sm text-outline" id="results-count">0 results</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="sort-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
+                            <option value="relevance">Relevance</option>
+                            <option value="date">Date</option>
+                            <option value="source">Source</option>
+                        </select>
+                        <select id="filter-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
+                            <option value="all">All Sources</option>
+                            <option value="manual">Manual</option>
+                            <option value="web">Web Scraped</option>
+                            <option value="imported">Imported</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Results Grid -->
+                <div id="citations-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Citation cards will be injected here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="glass-panel rounded-xl p-12 text-center">
+                    <span class="material-symbols-outlined text-6xl text-outline mb-4">library_books</span>
+                    <h3 class="text-xl font-semibold mb-2">No citations yet</h3>
+                    <p class="text-outline mb-6">Start building your knowledge graph by adding research citations.</p>
+                    <button id="btn-add-first" class="glass-panel px-6 py-3 rounded-lg text-accent-lavender font-mono hover:bg-surface-raised transition-all hover:glow cursor-pointer">
+                        Add Your First Citation
+                    </button>
+                </div>
             </div>
         </div>
         </div>
@@ -3144,7 +3145,7 @@ void main() {
                         </div>
                         <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
                             <span class="text-outline">Pytest Suite</span>
-                            <span class="text-accent-sky font-bold">1455 Passed</span>
+                            <span class="text-outline font-bold">Not yet tested</span>
                         </div>
                     </div>
 
@@ -4175,7 +4176,8 @@ const _PERSIST_RESULT_IDS = [
     'compaction-results', 'handoff-results',
     'ghost-results', 'contradictions-results',
     'explain-results', 'market-leaderboard',
-    'prefetch-results',
+    'prefetch-results', 'webresearch-results',
+    'hybrid-results',
 ];
 
 const GLOBAL_PROJECT_INPUT_IDS = new Set([
@@ -4281,6 +4283,13 @@ async function runSystemDiagnostic() {
     try {
         const health = await api('/health');
         const memory = await api('/memory');
+        // Real count via pytest --collect-only, not the old hardcoded
+        // "1455 Passed" that never reflected the suite's actual size.
+        const testStatus = await api('/tests/count');
+        const testLabel = testStatus?.ok
+            ? `${testStatus.count} Collected`
+            : (testStatus ? 'Error' : 'N/A');
+        const testColor = testStatus?.ok ? 'text-accent-sky' : 'text-red-400';
         if (container) {
             container.innerHTML = `
                 <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
@@ -4293,7 +4302,7 @@ async function runSystemDiagnostic() {
                 </div>
                 <div class="p-3 rounded-xl bg-surface-raised border border-glass-border flex items-center justify-between text-xs font-mono">
                     <span class="text-outline">Pytest Suite</span>
-                    <span class="text-accent-sky font-bold">1455 Passed</span>
+                    <span class="${testColor} font-bold">${testLabel}</span>
                 </div>
             `;
         }
@@ -4309,7 +4318,7 @@ async function runSystemDiagnostic() {
 // Callers that still pass a leaf ID (e.g. switchSection('memory')) get
 // resolved to the group that now contains it, with that tab pre-selected.
 const LEAF_TO_GROUP = {
-    dashboard: 'content', tropebook: 'content', memory: 'content',
+    dashboard: 'content', memory: 'content',
     patterns: 'content', graph: 'content', pipeline: 'content',
     insights: 'quality', health: 'quality', impact: 'quality',
     ghost: 'quality', preventive: 'quality', friction: 'quality',
@@ -4317,7 +4326,7 @@ const LEAF_TO_GROUP = {
     explain: 'explainability', prefetch: 'explainability', docmine: 'explainability',
     lineage: 'explainability',
     timetravel: 'lifecycle', compaction: 'lifecycle',
-    feeds: 'research', deepresearch: 'research',
+    feeds: 'research', deepresearch: 'research', tropebook: 'research',
     handoff: 'team', prbot: 'team', narrative: 'team',
     market: 'team', slack: 'team', personas: 'team',
     git: 'integrations', federation: 'integrations', costs: 'integrations',
@@ -4802,12 +4811,12 @@ async function scanFriction() {
                     <span class="flex items-center gap-1 shrink-0">
                         <select class="friction-suggestion-category-select bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-outline cursor-pointer" title="Safety category — required to add">
                             <option value="">category…</option>
-                            <option value="general">general</option>
-                            <option value="adversarial">adversarial</option>
-                            <option value="robustness">robustness</option>
-                            <option value="monitoring">monitoring</option>
-                            <option value="governance">governance</option>
-                            <option value="alignment">alignment</option>
+                            <option value="general" title="Doesn't fit a more specific category">general</option>
+                            <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                            <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                            <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                            <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                            <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
                         </select>
                         <button class="btn-friction-suggestion-propose px-2 py-1 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-all cursor-pointer" data-text="${escapeAttr(s.content)}" title="Capture this as a decision">Propose</button>
                         <button class="btn-friction-suggestion-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" title="Dismiss from this list">Remove</button>
@@ -5082,6 +5091,10 @@ async function runDeepResearch() {
             </div>`;
         const frame = document.getElementById('deepresearch-frame');
         if (frame) frame.srcdoc = data.output || '<p style="font-family:monospace;padding:1rem;">No output returned.</p>';
+        // Multi-Source Scan renders into a sandboxed iframe (deliberately —
+        // it's raw scraped HTML), which JS can't read back out of. Stash
+        // the raw text separately so "Copy Both" has something to read.
+        try { localStorage.setItem('tropelex-deepresearch-raw-multisource', data.output || ''); } catch {}
         // Refresh history
         loadDeepResearchHistory();
     } catch (e) {
@@ -9761,6 +9774,28 @@ async function loadFeeds() {
     feedsState.feeds = data.feeds || [];
     renderFeedList();
     loadFeedStats();
+    renderActiveFeedsWidget();
+}
+
+// Engine Core Overview's "Active Research Feeds" card (#dash-active-feeds)
+// was never wired to real data -- it showed the same hardcoded placeholder
+// feed forever, regardless of what actually existed. Feeds it here off
+// feedsState, which loadFeeds() already keeps current.
+function renderActiveFeedsWidget() {
+    const el = document.getElementById('dash-active-feeds');
+    if (!el) return;
+    const active = feedsState.feeds.filter(f => f.enabled);
+    if (!active.length) {
+        el.innerHTML = '<p class="text-sm text-outline">No active feeds. <a href="#" onclick="switchSection(\'research\'); return false;" class="text-accent-lavender hover:underline">Create one →</a></p>';
+        return;
+    }
+    const intervalLabel = {daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', manual: 'Manual'};
+    el.innerHTML = active.map(f => `
+        <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between gap-2">
+            <span class="text-on-surface font-sans text-xs truncate">${escapeHtml(f.name)}</span>
+            <span class="text-accent-sky font-mono text-[10px] uppercase shrink-0">${intervalLabel[f.interval] || f.interval}</span>
+        </div>
+    `).join('');
 }
 
 function renderFeedList() {
@@ -10038,23 +10073,11 @@ document.getElementById('btn-feed-intel')?.addEventListener('click', async () =>
 
 // ── Dashboard ──
 async function loadDashboard() {
-    // Reuse already-loaded data instead of re-fetching
-    const projects = state.projects || [];
-    document.getElementById('dash-projects').textContent = projects.length;
-    let totalDecisions = 0;
-    for (const p of projects) {
-        const name = p.name || p;
-        const proj = await api(`/memory/${encodeURIComponent(name)}`);
-        if (proj) totalDecisions += (proj.decisions || []).length;
-    }
-    document.getElementById('dash-decisions').textContent = totalDecisions;
-    // Use citation count from already-loaded state
-    document.getElementById('dash-citations').textContent = state.citations.length;
-    document.getElementById('dash-feeds').textContent = (feedsState.feeds || []).length;
-    // Populate status cards for current project
+    // Populate status cards for current project. Also independently
+    // triggered by selectProject() on project switch -- kept here too as
+    // the fallback for the window before any project is auto-selected.
     try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards init failed:', e); }
     try { await updateOnboarding(); } catch(e) { console.error('Onboarding init failed:', e); }
-    try { await loadDashInterfaces(); } catch(e) { console.error('Interfaces card init failed:', e); }
 }
 
 // ── Overview: Decision Risk Mix donut ──
@@ -10363,12 +10386,12 @@ async function loadNeedsAttention() {
             </div>
             <select class="attn-category-select bg-surface border border-glass-border rounded px-2 py-1 font-mono text-xs text-outline cursor-pointer shrink-0">
                 <option value="">category…</option>
-                <option value="general">general</option>
-                <option value="adversarial">adversarial</option>
-                <option value="robustness">robustness</option>
-                <option value="monitoring">monitoring</option>
-                <option value="governance">governance</option>
-                <option value="alignment">alignment</option>
+                <option value="general" title="Doesn't fit a more specific category">general</option>
+                <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
             </select>
             <button class="attn-tag-save-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(item.id)}">Save</button>
         </div>`;
@@ -10640,12 +10663,12 @@ document.getElementById('btn-cancel-goal-detect')?.addEventListener('click', () 
 
 const _GOAL_CANDIDATE_CATEGORY_OPTIONS = `
     <option value="">category…</option>
-    <option value="general">general</option>
-    <option value="adversarial">adversarial</option>
-    <option value="robustness">robustness</option>
-    <option value="monitoring">monitoring</option>
-    <option value="governance">governance</option>
-    <option value="alignment">alignment</option>
+    <option value="general" title="Doesn't fit a more specific category">general</option>
+    <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+    <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+    <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+    <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+    <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
     <option value="nonsafety:bug">🐛 bug</option>
     <option value="__nonsafety__">other (non-safety)…</option>
 `;
@@ -10730,22 +10753,6 @@ document.getElementById('goal-candidates')?.addEventListener('click', async (e) 
     }
 });
 
-// ── Interfaces card: live connection status ──
-async function loadDashInterfaces() {
-    const el = document.getElementById('dash-interfaces');
-    if (!el) return;
-    const data = await api('/interfaces/status');
-    const labels = { mcp: 'MCP Server', tui: 'Terminal UI', opencode: 'OpenCode', emacs: 'Emacs' };
-    el.innerHTML = `<div class="mb-1"><span class="text-accent-lime">●</span> <span class="text-xs">Web Dashboard — active (you're here)</span></div>` +
-        Object.entries(data?.interfaces || {}).map(([key, info]) => {
-            const seen = info.seconds_ago;
-            const active = seen !== null && seen < 300; // seen in the last 5 minutes
-            const dot = active ? 'text-accent-lime' : 'text-outline';
-            const label = seen === null ? 'never connected' : active ? `active ${seen}s ago` : `last seen ${Math.round(seen / 60)}m ago`;
-            return `<div class="mb-1"><span class="${dot}">●</span> <span class="text-xs">${escapeHtml(labels[key] || key)} — ${label}</span></div>`;
-        }).join('');
-}
-
 // ── Contradictions dashboard card: Scan ──
 document.getElementById('btn-dash-contradictions')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
@@ -10817,11 +10824,24 @@ async function updateOnboarding() {
     const checks = {
         project: state.projects.length > 0,
         decision: false,
-        apikeys: !!localStorage.getItem('tropelex-settings'),
+        apikeys: false,
         feeds: (feedsState.feeds || []).length > 0,
         emacs: !!localStorage.getItem('tropelex-emacs-done'),
         session: false,
     };
+    // apikeys was previously checked via localStorage.getItem('tropelex-settings'),
+    // but that key only ever stores UI preferences (theme, compression level,
+    // etc.) -- never actual key values. Real key status is server-side; ask
+    // it directly, the same way loadKeyStatus() does for the Settings page's
+    // own per-field indicators.
+    try {
+        const settingsData = await api('/settings');
+        if (settingsData?.keys) {
+            checks.apikeys = Object.values(settingsData.keys).some(k => k?.configured);
+        }
+    } catch (e) {
+        console.warn('Failed to fetch key status for onboarding check:', e);
+    }
     // Fetch current project data to check decisions and sessions
     if (state.currentProject) {
         try {
@@ -11019,9 +11039,30 @@ document.getElementById('btn-run-webresearch')?.addEventListener('click', async 
         results.classList.remove('hidden');
         results.innerHTML = `<p class="text-xs text-outline mb-3">${data.steps_run} step(s) run · ${data.sources_found} source(s) found · ${data.sources_imported} imported into Tropebook</p>
             <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
+        try { localStorage.setItem('tropelex-deepresearch-raw-citationgrade', data.report_markdown || ''); } catch {}
         showToast(`Web research complete: ${data.sources_imported} sources imported`);
         loadDeepResearchHistory();
     }
+});
+
+// ── Copy Both (Multi-Source + Citation-Grade) ──
+// Multi-Source Scan renders into a sandboxed iframe on purpose (raw
+// scraped HTML), so its text isn't readable from the parent DOM -- both
+// results are stashed to localStorage at run time instead, giving this
+// one consistent place to read from regardless of how each result renders.
+document.getElementById('btn-copy-both-research')?.addEventListener('click', () => {
+    const multi = localStorage.getItem('tropelex-deepresearch-raw-multisource') || '';
+    const grade = localStorage.getItem('tropelex-deepresearch-raw-citationgrade') || '';
+    if (!multi && !grade) {
+        showToast('Nothing to copy yet — run a research query first');
+        return;
+    }
+    const parts = [];
+    if (multi) parts.push('# Multi-Source Scan\n\n' + multi);
+    if (grade) parts.push('# Citation-Grade Web Research\n\n' + grade);
+    navigator.clipboard.writeText(parts.join('\n\n---\n\n')).then(() => {
+        showToast('Both results copied to clipboard');
+    }).catch(() => showToast('Copy failed — clipboard permission blocked'));
 });
 
 // ── Hybrid Deep Research: run both + LLM merge ──
@@ -11110,12 +11151,12 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
                 <span class="flex items-center gap-1 shrink-0">
                     <select class="claim-category-select bg-surface border border-glass-border rounded px-1 py-1 font-mono text-[10px] text-outline cursor-pointer" title="Safety category — required to add">
                         <option value="">category…</option>
-                        <option value="general">general</option>
-                        <option value="adversarial">adversarial</option>
-                        <option value="robustness">robustness</option>
-                        <option value="monitoring">monitoring</option>
-                        <option value="governance">governance</option>
-                        <option value="alignment">alignment</option>
+                        <option value="general" title="Doesn't fit a more specific category">general</option>
+                        <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                        <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                        <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                        <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                        <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
                     </select>
                     <button class="btn-uncaptured-add px-2 py-1 rounded border border-accent-lime/30 text-accent-lime hover:bg-accent-lime/10 transition-all cursor-pointer" data-text="${escapeAttr(c.text)}" data-source="${escapeAttr(c.source_file)}" data-line="${c.line_number}" title="Capture this as a decision">Add</button>
                     <button class="btn-uncaptured-remove px-2 py-1 rounded border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" title="Dismiss from this list">Remove</button>
