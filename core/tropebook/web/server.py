@@ -205,6 +205,7 @@ from core.benchmarks.router import benchmarks_router        # noqa: E402
 from core.tropebook.web_researcher_router import web_research_router  # noqa: E402
 from core.docmine.router import docmine_router                     # noqa: E402
 from core.agent_audit.router import agent_audit_router              # noqa: E402
+from core.driftbench.router import driftbench_router                # noqa: E402
 from core.telemetry import telemetry_router, _emit_telemetry        # noqa: E402
 from core.triggers.tag_gate import require_tag, TagRequiredError, SAFETY_CATEGORIES  # noqa: E402
 from core.safety import require_safety_metadata, SafetyMetadataRequiredError  # noqa: E402
@@ -248,6 +249,7 @@ app.include_router(benchmarks_router)
 app.include_router(web_research_router)
 app.include_router(docmine_router)
 app.include_router(agent_audit_router)
+app.include_router(driftbench_router)
 app.include_router(telemetry_router)
 app.include_router(session_shape_router)
 

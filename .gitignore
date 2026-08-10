@@ -23,6 +23,7 @@ memory/research_feeds/
 memory/feeds/
 memory/agent_skills/
 memory/replays/
+memory/driftbench/
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
 UI/UI2/

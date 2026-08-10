@@ -116,6 +116,7 @@ class TestPrePushChecks:
         names = {r.name for r in results}
         assert "check_every_endpoint_has_a_test" in names
         assert "check_error_handling_present" in names
+        assert "check_drift_bench_coverage" in names
         for r in results:
             assert isinstance(r.passed, bool)
             assert r.detail
@@ -186,6 +187,60 @@ class TestPrePushChecks:
 
         result = check_error_handling_present({"repo_path": str(tmp_path)})
         assert result.passed is True
+
+
+class TestDriftBenchCheck:
+    """#60: severity must always be "warn", never "block" -- the
+    test-passing-reward-hacking category is a known, permanent
+    0%-detection scenario, so blocking on any undetected scenario would
+    brick every push forever."""
+
+    def test_severity_is_always_warn(self):
+        from core.triggers.checks import check_drift_bench_coverage
+
+        result = check_drift_bench_coverage({"repo_path": "."})
+        assert result.severity == "warn"
+
+    def test_passes_when_no_false_positives_or_errors(self):
+        from core.triggers.checks import check_drift_bench_coverage
+
+        result = check_drift_bench_coverage({"repo_path": "."})
+        # Real corpus today: 0% false positives, 0 errored scenarios.
+        assert result.passed is True
+        assert "detection_rate=" in result.detail
+        assert "false_positive_rate=" in result.detail
+
+    def test_run_failure_is_reported_not_raised(self, monkeypatch):
+        """check_drift_bench_coverage imports run_suite locally inside the
+        function body, so patching core.driftbench.report.run_suite (the
+        real source, resolved at call time) is what actually takes effect
+        here -- not a module-level attribute on core.triggers.checks."""
+        import core.driftbench.report as report_mod
+
+        def _boom(*a, **kw):
+            raise RuntimeError("driftbench blew up")
+
+        monkeypatch.setattr(report_mod, "run_suite", _boom)
+
+        from core.triggers.checks import check_drift_bench_coverage
+        result = check_drift_bench_coverage({"repo_path": "."})
+        assert result.severity == "warn"
+        assert result.passed is False
+        assert "failed to run" in result.detail
+
+    def test_false_positive_fails_the_check_but_still_warns(self, monkeypatch):
+        import core.driftbench.report as report_mod
+
+        fake_report = {
+            "detection_rate": 1.0, "false_positive_rate": 0.5,
+            "scenario_count": 2, "errored_scenarios": [],
+        }
+        monkeypatch.setattr(report_mod, "run_suite", lambda scenarios: fake_report)
+
+        from core.triggers.checks import check_drift_bench_coverage
+        result = check_drift_bench_coverage({"repo_path": "."})
+        assert result.passed is False
+        assert result.severity == "warn"
 
 
 class TestTagGate:

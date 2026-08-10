@@ -3510,6 +3510,7 @@ void main() {
             <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="reviews" onclick="switchSafetyTab('reviews')">Reviews</button>
             <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="synthetic-data" onclick="switchSafetyTab('synthetic-data')">Synthetic Data</button>
             <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="agent-audit" onclick="switchSafetyTab('agent-audit')">Agent Audit</button>
+            <button class="safety-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="driftbench" onclick="switchSafetyTab('driftbench'); loadDriftBenchLatest();">Drift-Bench</button>
         </div>
 
     <div id="section-safety-dashboard" class="safety-tab-panel">
@@ -3970,6 +3971,50 @@ void main() {
                     <button class="copy-btn px-2 py-1 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 transition-all cursor-pointer flex items-center gap-1" type="button" title="Copy report" id="btn-copy-audit"><span class="material-symbols-outlined text-xs">content_copy</span> Copy Report</button>
                 </div>
                 <div id="audit-findings" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drift-Bench Evaluation Harness -->
+    <div id="section-driftbench" class="safety-tab-panel">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-red-400 text-2xl">rule</span>
+            <h2 class="font-mono text-xl text-red-400 uppercase tracking-wider">Drift-Bench</h2>
+        </div>
+        <p class="text-outline mb-6">A small, deterministic scenario suite measuring how well Ghost, Contradictions, Injection Sentinel, and a handoff-completeness check actually catch five drift/injection threat categories — run against real detectors, not simulated. Also runs on every local pre-push (warns, never blocks).</p>
+
+        <div class="glass-panel rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <p class="text-xs text-outline">Runs a fixed, self-contained scenario corpus. No project selection needed.</p>
+                <button id="btn-run-driftbench" onclick="runDriftBench()" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 font-mono text-sm hover:bg-red-500/30 transition-all cursor-pointer flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">radar</span> Run Now
+                </button>
+            </div>
+        </div>
+
+        <div id="driftbench-empty" class="glass-panel rounded-xl p-6 text-sm text-outline">Never run yet. Click "Run Now", or it runs automatically on the next local pre-push.</div>
+
+        <div id="driftbench-results" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Detection Rate</span>
+                    <span class="font-mono text-3xl" id="driftbench-detection-rate">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">False Positive Rate</span>
+                    <span class="font-mono text-3xl" id="driftbench-fp-rate">—</span>
+                </div>
+                <div class="glass-panel rounded-xl p-4 dash-metric-card">
+                    <span class="font-mono text-xs text-outline uppercase">Scenarios</span>
+                    <span class="font-mono text-3xl text-accent-periwinkle" id="driftbench-count">—</span>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-mono text-sm text-outline uppercase">By Category</h3>
+                    <span class="text-xs text-outline font-mono" id="driftbench-generated-at"></span>
+                </div>
+                <div id="driftbench-categories" class="space-y-2"></div>
             </div>
         </div>
     </div>
@@ -9449,6 +9494,92 @@ function renderAgentAudit(data) {
         ...data.findings.map(f => `[${f.severity.toUpperCase()}] ${f.category} — ${f.file}:${f.line}\n  ${f.description}\n  -> ${f.recommendation}`),
     ].join('\n');
     document.getElementById('btn-copy-audit').dataset.copyText = reportText;
+}
+
+// ==================== DRIFT-BENCH JS (#60) ====================
+
+const DRIFTBENCH_RATE_COLOR = (rate) => {
+    if (rate === null || rate === undefined) return 'text-outline';
+    return rate >= 0.8 ? 'text-accent-lime' : rate >= 0.5 ? 'text-yellow-400' : 'text-red-400';
+};
+const DRIFTBENCH_FP_COLOR = (rate) => {
+    if (rate === null || rate === undefined) return 'text-outline';
+    return rate === 0 ? 'text-accent-lime' : rate <= 0.1 ? 'text-yellow-400' : 'text-red-400';
+};
+
+async function loadDriftBenchLatest() {
+    try {
+        const res = await fetch('/api/driftbench/latest');
+        if (res.status === 404) return; // never run yet -- leave the empty state showing
+        if (!res.ok) return;
+        renderDriftBenchReport(await res.json());
+    } catch (e) {
+        console.error('Drift-Bench latest load failed:', e);
+    }
+}
+
+async function runDriftBench() {
+    const btn = document.getElementById('btn-run-driftbench');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin align-middle">sync</span> Running...';
+    try {
+        const res = await fetch('/api/driftbench/run', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.detail || 'Drift-Bench run failed'); return; }
+        renderDriftBenchReport(data);
+        showToast('Drift-Bench run complete');
+    } catch (e) {
+        showToast(`Drift-Bench error: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">radar</span> Run Now';
+    }
+}
+
+function renderDriftBenchReport(data) {
+    if (!data || typeof data !== 'object') return;
+    document.getElementById('driftbench-empty')?.classList.add('hidden');
+    document.getElementById('driftbench-results')?.classList.remove('hidden');
+
+    const pct = (r) => (r === null || r === undefined) ? 'N/A' : `${Math.round(r * 100)}%`;
+
+    const detEl = document.getElementById('driftbench-detection-rate');
+    detEl.textContent = pct(data.detection_rate);
+    detEl.className = `font-mono text-3xl ${DRIFTBENCH_RATE_COLOR(data.detection_rate)}`;
+
+    const fpEl = document.getElementById('driftbench-fp-rate');
+    fpEl.textContent = pct(data.false_positive_rate);
+    fpEl.className = `font-mono text-3xl ${DRIFTBENCH_FP_COLOR(data.false_positive_rate)}`;
+
+    document.getElementById('driftbench-count').textContent = data.scenario_count ?? '—';
+    const genEl = document.getElementById('driftbench-generated-at');
+    if (genEl) {
+        let when = '';
+        try { if (data.generated_at) when = new Date(data.generated_at).toLocaleString(); } catch {}
+        genEl.textContent = when;
+    }
+
+    const catsEl = document.getElementById('driftbench-categories');
+    if (!catsEl) return;
+    const byCategory = (data.by_category && typeof data.by_category === 'object') ? data.by_category : {};
+    const entries = Object.entries(byCategory);
+    if (!entries.length) {
+        catsEl.innerHTML = '<p class="text-sm text-outline">No category data.</p>';
+        return;
+    }
+    catsEl.innerHTML = entries.map(([category, stats]) => {
+        if (!stats || typeof stats !== 'object') return '';
+        const label = String(category).replace(/_/g, ' ');
+        return `
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-raised">
+            <span class="text-sm text-on-surface capitalize">${escapeHtml(label)}</span>
+            <span class="flex items-center gap-4 font-mono text-xs">
+                <span class="${DRIFTBENCH_RATE_COLOR(stats.detection_rate)}">detect ${pct(stats.detection_rate)}</span>
+                <span class="${DRIFTBENCH_FP_COLOR(stats.false_positive_rate)}">fp ${pct(stats.false_positive_rate)}</span>
+            </span>
+        </div>`;
+    }).join('');
 }
 
 // ==================== SYNTHETIC DATA POLICY JS ====================

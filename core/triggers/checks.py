@@ -110,3 +110,50 @@ def check_error_handling_present(context: dict[str, Any]) -> CheckResult:
         passed=True,
         detail="every route body contains a try/except",
     )
+
+
+@registry.check(PRE_PUSH)
+def check_drift_bench_coverage(context: dict[str, Any]) -> CheckResult:
+    """Runs the Drift-Bench scenario corpus (wishlist #60, core/driftbench/)
+    and reports detection/false-positive rates. Always severity="warn",
+    never "block": the test-passing-reward-hacking category is a known,
+    permanent 0%-detection scenario -- nothing in this codebase defends
+    against it yet, disclosed on purpose, not a regression to block on.
+    Blocking on "any undetected scenario" would brick every push forever.
+    A false positive or a scenario that errors outright is unambiguously
+    worth attention regardless of that baseline, so those are what flip
+    `passed` to False.
+    """
+    try:
+        from core.driftbench.report import run_suite
+        from core.driftbench.scenarios import build_corpus
+
+        report = run_suite(build_corpus())
+    except Exception as exc:
+        return CheckResult(
+            name="check_drift_bench_coverage",
+            event=PRE_PUSH,
+            passed=False,
+            detail=f"Drift-Bench suite failed to run: {exc}",
+            severity="warn",
+        )
+
+    fp_rate = report.get("false_positive_rate")
+    detection_rate = report.get("detection_rate")
+    errored = report.get("errored_scenarios") or []
+    ok = fp_rate in (0.0, None) and not errored
+
+    detail = (
+        f"detection_rate={detection_rate}, false_positive_rate={fp_rate}, "
+        f"{report.get('scenario_count', 0)} scenario(s)"
+    )
+    if errored:
+        detail += f"; {len(errored)} scenario(s) errored: {', '.join(errored)}"
+
+    return CheckResult(
+        name="check_drift_bench_coverage",
+        event=PRE_PUSH,
+        passed=ok,
+        detail=detail,
+        severity="warn",
+    )
