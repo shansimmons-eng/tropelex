@@ -69,6 +69,14 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
     )
 
     # Convert dataclasses to dicts for JSON serialization
+    completeness_findings = [
+        {
+            "id": f.id, "severity": f.severity, "decision_id": f.decision_id,
+            "decision_text": f.decision_text, "category": f.category,
+            "description": f.description, "recommendation": f.recommendation,
+        }
+        for f in packet.completeness_findings
+    ]
     response = {
         "role": packet.role,
         "project": packet.project,
@@ -87,6 +95,7 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
         "token_budget": packet.token_budget,
         "skills_summary": packet.skills_summary,
         "generated_at": packet.generated_at,
+        "completeness_findings": completeness_findings,
     }
 
     agent_name = normalize_agent_name(req.agent_name)
@@ -96,6 +105,16 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
             memory, "handoff_created",
             role=req.role, agent_name=agent_name, packet_hash=packet_hash,
         )
+        # #69: a must-survive decision dropped despite protection should
+        # never happen through the real pipeline (see _check_completeness'
+        # own docstring) -- if it ever does, it's audited, not silently
+        # swallowed. Flag, don't block: generate_handoff still returns 200.
+        for finding in completeness_findings:
+            append_audit_event(
+                memory, "handoff_completeness_violation",
+                packet_hash=packet_hash, role=req.role, agent_name=agent_name,
+                decision_id=finding["decision_id"], description=finding["description"],
+            )
         _mm.save_project_memory(project, memory)
     except Exception as exc:
         # Audit logging must never break the actual handoff generation that
@@ -201,6 +220,41 @@ async def list_unacknowledged_handoffs(project: str) -> dict[str, Any]:
     memory = _mm.get_project_memory(project)
     handoffs = _unacknowledged_handoffs(memory)
     return {"handoffs": handoffs, "count": len(handoffs)}
+
+
+def _completeness_violations(memory: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pure helper: handoff_completeness_violation audit entries (#69).
+    Same defensive posture as _unacknowledged_handoffs -- persisted,
+    agent-supplied-adjacent data."""
+    audit_log = memory.get("audit_log", [])
+    if not isinstance(audit_log, list):
+        return []
+    return [
+        {
+            "decision_id": e.get("decision_id"),
+            "packet_hash": e.get("packet_hash"),
+            "role": e.get("role"),
+            "agent_name": e.get("agent_name"),
+            "description": e.get("description"),
+            "flagged_at": e.get("timestamp"),
+        }
+        for e in audit_log
+        if isinstance(e, dict) and e.get("event_type") == "handoff_completeness_violation"
+    ]
+
+
+@handoff_router.get("/{project}/handoff/completeness-violations")
+async def list_completeness_violations(project: str) -> dict[str, Any]:
+    """List recorded handoff-completeness violations (#69) -- the triage
+    queue behind Needs Attention's handoff_completeness_violation source.
+
+    Same lenient get_project_memory read as list_unacknowledged_handoffs,
+    for the same reason: get_needs_attention calls this for every project,
+    including ones with no memory file on disk yet.
+    """
+    memory = _mm.get_project_memory(project)
+    violations = _completeness_violations(memory)
+    return {"violations": violations, "count": len(violations)}
 
 
 @handoff_router.get("/{project}/handoff/roles")

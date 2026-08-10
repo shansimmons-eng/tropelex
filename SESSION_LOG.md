@@ -4461,3 +4461,111 @@ dad6e1e fix: contradiction re-escalation loop, last30days timeout, FOUC on hidde
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-10 14:05 CDT
+
+**Branch:** `master`
+
+**Diff summary:** 
+
+**Recent commits:**
+```
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+81ca6a6 feat: Knowledge Decay Loop Closure (wishlist #58)
+271a0b4 fix: dashboard punch-list — feed dedup, test count, onboarding, category tooltips, IA cleanup
+```
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 17:50 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 305 insertions(+), 7 deletions(-)
+
+**Recent commits:**
+```
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+81ca6a6 feat: Knowledge Decay Loop Closure (wishlist #58)
+271a0b4 fix: dashboard punch-list — feed dedup, test count, onboarding, category tooltips, IA cleanup
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/triggers/checks.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_triggers.py wishlist.md core/driftbench/ tests/test_driftbench.py tests/test_driftbench_router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 17:51 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 90 insertions(+)
+
+**Recent commits:**
+```
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+81ca6a6 feat: Knowledge Decay Loop Closure (wishlist #58)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 18:17 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 220 insertions(+), 2 deletions(-)
+
+**Recent commits:**
+```
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+81ca6a6 feat: Knowledge Decay Loop Closure (wishlist #58)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json wishlist.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 18:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  10 files changed, 926 insertions(+), 53 deletions(-)
+
+**Recent commits:**
+```
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+81ca6a6 feat: Knowledge Decay Loop Closure (wishlist #58)
+```
+
+**Files in play:** `SESSION_LOG.md core/driftbench/scenarios.py core/handoff/packet_builder.py core/handoff/router.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_driftbench.py tests/test_handoff_needs_attention.py tests/test_handoff_packets.py wishlist.md `
+
+**Open questions / next steps:** <!-- fill in -->
+

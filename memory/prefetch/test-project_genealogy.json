@@ -2315,6 +2315,78 @@
       "precision": 0.0,
       "recall_proxy": 0.0,
       "timestamp": "2026-08-08T04:50:08.619630+00:00"
+    },
+    {
+      "bundle_id": "22b8171a30af4278",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T22:46:21.224654+00:00"
+    },
+    {
+      "bundle_id": "5376e7a546904e72",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T22:48:32.214535+00:00"
+    },
+    {
+      "bundle_id": "87485ccd66ac440b",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T22:49:53.394267+00:00"
+    },
+    {
+      "bundle_id": "28158319a5d843db",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T22:51:10.191898+00:00"
+    },
+    {
+      "bundle_id": "83f71325a98c4fc3",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T23:36:20.187401+00:00"
+    },
+    {
+      "bundle_id": "00689d0eb5a24509",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-10T23:39:39.778195+00:00"
     }
   ],
   "stats": {},

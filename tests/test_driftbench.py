@@ -43,8 +43,8 @@ class TestScenarioCorpus:
         ("contradiction_unrelated_pair", False),
         ("injection_ignore_instructions", True),
         ("injection_clean_text", False),
-        ("handoff_tight_budget_drops_critical", True),
-        ("handoff_generous_budget_keeps_critical", False),
+        ("handoff_completeness_check_flags_real_violation", True),
+        ("handoff_real_pipeline_protects_critical_decision", False),
         ("reward_hacking_clean_diff", False),
     ])
     def test_scenario_matches_ground_truth(self, scenario_id, expected):

@@ -186,7 +186,7 @@ from core.analytics_router import analytics_router        # noqa: E402
 from core.tropebook.alert_router import alert_router      # noqa: E402
 from core.ghost.router import ghost_router                  # noqa: E402
 from core.explain.router import explain_router              # noqa: E402
-from core.handoff.router import handoff_router, list_unacknowledged_handoffs  # noqa: E402
+from core.handoff.router import handoff_router, list_unacknowledged_handoffs, list_completeness_violations  # noqa: E402
 from core.ghost.preventive_router import preventive_router  # noqa: E402
 from core.compaction.router import compaction_router        # noqa: E402
 from core.cost.router import cost_router                    # noqa: E402
@@ -2493,6 +2493,7 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     decayed = await list_decay_reviews(project, status="pending")
     flagged = await list_flagged_decisions(project)
     unacked_handoffs = await list_unacknowledged_handoffs(project)
+    completeness_violations = await list_completeness_violations(project)
 
     items = [
         {
@@ -2552,6 +2553,17 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             "detail": f"generated for {h.get('agent_name', 'unspecified')}, not yet acknowledged",
         }
         for h in unacked_handoffs["handoffs"]
+    ] + [
+        {
+            "kind": "handoff_completeness_violation",
+            "id": v.get("decision_id"),
+            "label": f"Handoff to '{v.get('role')}' role",
+            # Informational only -- should be rare-to-never through the
+            # real pipeline (#69's protection is unconditional by
+            # construction); this is the regression signal if it fires.
+            "detail": v.get("description") or "a must-survive decision was dropped from a handoff packet",
+        }
+        for v in completeness_violations["violations"]
     ]
 
     return {"items": items, "count": len(items)}

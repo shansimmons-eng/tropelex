@@ -6,6 +6,7 @@ Pure functions only -- no I/O, no network, no file access.
 Builds token-budgeted context packets tailored to each agent role.
 """
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -64,7 +65,7 @@ class ContextSlice:
     """A single piece of context in the handoff packet."""
     category: str
     content: str
-    priority: int  # 1=highest
+    priority: int  # 0=must-survive (#69), 1=role match, higher=lower priority
     token_estimate: int
 
 
@@ -80,6 +81,24 @@ class HandoffPacket:
     token_budget: int
     skills_summary: dict[str, Any] | None
     generated_at: str
+    completeness_findings: list["HandoffCompletenessFinding"] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class HandoffCompletenessFinding:
+    """A must-survive decision (#69) that didn't make it into the final
+    context_slices -- same field shape as GhostWarning/Contradiction.
+    Should never actually occur through the real pipeline once
+    _select_decisions/_trim_to_budget both protect priority-0 content;
+    this exists as a regression safety net verifying the observable
+    outcome, not the mechanism."""
+    id: str
+    severity: str
+    decision_id: str
+    decision_text: str
+    category: str
+    description: str
+    recommendation: str
 
 
 def _estimate_tokens(text: str) -> int:
@@ -98,6 +117,19 @@ def _decision_matches_category(decision: dict[str, Any], categories: list[str]) 
         return True
     text = f"{decision.get('decision', '')} {decision.get('context', '')}".lower()
     return any(cat.lower() in text for cat in categories)
+
+
+def _is_must_survive(decision: dict[str, Any]) -> bool:
+    """A decision that must not be trimmed out of a handoff packet (#69):
+    explicitly flagged, or derived from its existing risk_level -- no
+    schema migration needed, works on every decision that already carries
+    safety metadata (#35/#54)."""
+    if decision.get("must_survive") is True:
+        return True
+    safety = decision.get("safety_metadata")
+    if not isinstance(safety, dict):
+        return False
+    return safety.get("risk_level") in ("high", "critical")
 
 
 def _select_decisions(
@@ -139,6 +171,18 @@ def _select_decisions(
     max_d = profile.get("max_decisions", 15)
     selected = combined[:max_d]
 
+    # #69: must-survive decisions are exempt from the cap -- a critical
+    # decision that doesn't match this role's priority_categories would
+    # otherwise never even reach _build_context_slices/_trim_to_budget.
+    # Protection over budget is an explicit, intentional tradeoff here,
+    # not a bug -- the returned list can exceed max_decisions.
+    selected_ids = {id(d) for d in selected}
+    must_survive_cut = [
+        d for d in combined[max_d:]
+        if _is_must_survive(d) and id(d) not in selected_ids
+    ]
+    selected = selected + must_survive_cut
+
     return [_enrich(d) for d in selected]
 
 
@@ -175,7 +219,8 @@ def _build_context_slices(
     slices: list[ContextSlice] = []
     priority_cats = profile.get("priority_categories", [])
 
-    # Decision slices: priority 1 if matches role categories, else 2
+    # Decision slices: priority 0 if must-survive (#69), else 1 if matches
+    # role categories, else 2
     for d in decisions:
         text = d.get("decision", "")
         context = d.get("context", "")
@@ -187,11 +232,16 @@ def _build_context_slices(
         if context:
             content += f"\nContext: {context}"
 
-        is_priority = _decision_matches_category(d, priority_cats)
+        if _is_must_survive(d):
+            priority = 0
+        elif _decision_matches_category(d, priority_cats):
+            priority = 1
+        else:
+            priority = 2
         slices.append(ContextSlice(
             category="decision",
             content=content,
-            priority=1 if is_priority else 2,
+            priority=priority,
             token_estimate=_estimate_tokens(content),
         ))
 
@@ -233,8 +283,11 @@ def _trim_to_budget(
     token_budget: int,
 ) -> tuple[list[ContextSlice], int]:
     """Trim context slices to fit within token budget.
-    Remove lowest-priority slices first.
-    Returns (trimmed_slices, total_tokens).
+    Remove lowest-priority slices first. Priority-0 (must-survive, #69)
+    slices are never removed, even if that means the returned total
+    exceeds token_budget -- protection wins over the budget as a last
+    resort, rather than silently dropping something that was marked
+    non-negotiable. Returns (trimmed_slices, total_tokens).
     """
     if not slices:
         return ([], 0)
@@ -250,12 +303,56 @@ def _trim_to_budget(
 
     while running_total > token_budget and remaining:
         worst_idx = _find_worst_slice(remaining)
+        if remaining[worst_idx].priority == 0:
+            # Nothing left to remove but must-survive content -- stop,
+            # even though running_total is still over token_budget.
+            break
         running_total -= remaining[worst_idx].token_estimate
         remaining.pop(worst_idx)
 
     # Return sorted by priority (best first)
     remaining.sort(key=lambda s: (s.priority, -s.token_estimate))
     return (remaining, running_total)
+
+
+def _check_completeness(
+    must_survive_decisions: list[dict[str, Any]],
+    context_slices: list[ContextSlice],
+) -> list[HandoffCompletenessFinding]:
+    """Verify every must-survive decision's text actually landed in the
+    final context_slices -- checks the observable OUTCOME, independent of
+    which upstream mechanism (selection cap, token trim) might have
+    dropped it. Pure function, no dependency on _select_decisions/
+    _trim_to_budget's internals, so it stays a real regression check even
+    if those functions change later.
+    """
+    findings: list[HandoffCompletenessFinding] = []
+    for d in must_survive_decisions:
+        if not isinstance(d, dict):
+            continue
+        text = d.get("decision", "")
+        if not text:
+            continue
+        survived = any(
+            isinstance(s.content, str) and text in s.content
+            for s in context_slices
+            if s is not None
+        )
+        if survived:
+            continue
+        decision_id = d.get("id", "")
+        raw = f"handoff_completeness{decision_id}{text}"
+        fid = hashlib.sha256(raw.encode()).hexdigest()[:12]
+        findings.append(HandoffCompletenessFinding(
+            id=fid,
+            severity="high",
+            decision_id=decision_id,
+            decision_text=text,
+            category="handoff_completeness",
+            description=f"Must-survive decision was dropped from the handoff packet: {text[:100]}",
+            recommendation="Increase the token budget, or review why this decision wasn't protected (#69).",
+        ))
+    return findings
 
 
 def _format_skills_summary(
@@ -330,6 +427,11 @@ def build_handoff_packet(
     # 7. Format skills summary
     skills = _format_skills_summary(memory, profile)
 
+    # 7.5. Verify must-survive decisions actually made it into the final
+    # slices (#69) -- regression safety net, see _check_completeness.
+    must_survive_decisions = [d for d in selected_decisions if _is_must_survive(d)]
+    completeness_findings = _check_completeness(must_survive_decisions, trimmed)
+
     # 8. Return HandoffPacket
     now = datetime.now(timezone.utc).isoformat()
     return HandoffPacket(
@@ -342,4 +444,5 @@ def build_handoff_packet(
         token_budget=effective_budget,
         skills_summary=skills,
         generated_at=now,
+        completeness_findings=completeness_findings,
     )

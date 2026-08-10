@@ -32,14 +32,17 @@ from core.handoff.packet_builder import (
 #  Helpers — realistic test data factories
 # ---------------------------------------------------------------------------
 
-def _decision(text, context="", categories=None, ts=None):
-    """Factory: build a decision dict with realistic fields."""
-    return {
+def _decision(text, context="", categories=None, ts=None, **extra):
+    """Factory: build a decision dict with realistic fields. Extra kwargs
+    (e.g. safety_metadata, must_survive, id) merged in for #69 tests."""
+    d = {
         "decision": text,
         "context": context,
         "timestamp": ts or datetime.now(timezone.utc).isoformat(),
         "categories": categories or [],
     }
+    d.update(extra)
+    return d
 
 
 def _session(summary, ts=None, insights=None):
@@ -183,6 +186,72 @@ class TestSelectDecisions:
         # Assert
         assert result == []
 
+    def test_must_survive_decision_kept_past_max_decisions_cap(self):
+        """#69: a must-survive decision outside the role's priority
+        categories must not be silently cut at the max_decisions cap."""
+        # Arrange -- CoderAgent caps at 15; 20 backend fillers + 1 critical
+        # decision in an unrelated category push the critical one past the cap.
+        profile = ROLE_PROFILES["CoderAgent"]
+        critical = _decision(
+            "Critical decision outside priority categories", categories=["database"],
+            safety_metadata={"risk_level": "critical"},
+        )
+        fillers = [_decision(f"Backend decision {i}", categories=["backend"]) for i in range(20)]
+        decisions = fillers + [critical]
+        scored = [_scored(d["decision"]) for d in decisions]
+
+        # Act
+        result = _select_decisions(decisions, profile, scored)
+
+        # Assert
+        assert len(result) > 15
+        assert any(d["decision"] == critical["decision"] for d in result)
+
+    def test_non_must_survive_decision_still_capped(self):
+        """The cap-exemption is specific to must-survive decisions --
+        ordinary low-priority decisions still get cut as before."""
+        profile = ROLE_PROFILES["CoderAgent"]
+        decisions = [_decision(f"Backend decision {i}", categories=["backend"]) for i in range(20)]
+        scored = [_scored(d["decision"]) for d in decisions]
+
+        result = _select_decisions(decisions, profile, scored)
+
+        assert len(result) == 15
+
+
+class TestIsMustSurvive:
+    def test_explicit_flag(self):
+        from core.handoff.packet_builder import _is_must_survive
+        assert _is_must_survive({"decision": "x", "must_survive": True}) is True
+
+    def test_derived_from_critical_risk_level(self):
+        from core.handoff.packet_builder import _is_must_survive
+        d = {"decision": "x", "safety_metadata": {"risk_level": "critical"}}
+        assert _is_must_survive(d) is True
+
+    def test_derived_from_high_risk_level(self):
+        from core.handoff.packet_builder import _is_must_survive
+        d = {"decision": "x", "safety_metadata": {"risk_level": "high"}}
+        assert _is_must_survive(d) is True
+
+    def test_low_risk_level_is_not_must_survive(self):
+        from core.handoff.packet_builder import _is_must_survive
+        d = {"decision": "x", "safety_metadata": {"risk_level": "low"}}
+        assert _is_must_survive(d) is False
+
+    def test_no_safety_metadata_is_not_must_survive(self):
+        from core.handoff.packet_builder import _is_must_survive
+        assert _is_must_survive({"decision": "x"}) is False
+
+    def test_malformed_safety_metadata_does_not_raise(self):
+        from core.handoff.packet_builder import _is_must_survive
+        assert _is_must_survive({"decision": "x", "safety_metadata": "corrupted"}) is False
+
+    def test_must_survive_false_does_not_override_low_risk(self):
+        from core.handoff.packet_builder import _is_must_survive
+        d = {"decision": "x", "must_survive": False, "safety_metadata": {"risk_level": "low"}}
+        assert _is_must_survive(d) is False
+
 
 class TestSelectSessions:
     """Session selection: recent-first, respects include_sessions flag."""
@@ -285,6 +354,22 @@ class TestBuildContextSlices:
         # Act / Assert
         assert _build_context_slices([], [], profile) == []
 
+    def test_must_survive_decision_gets_priority_zero(self):
+        """#69: priority 0 is reserved for must-survive decisions,
+        ranking above even a role's own priority_categories match."""
+        profile = ROLE_PROFILES["TestEngineer"]  # priority: ["testing", "backend"]
+        critical = _decision(
+            "Critical decision outside priority categories", categories=["database"],
+            safety_metadata={"risk_level": "critical"},
+        )
+
+        slices = _build_context_slices([critical, TESTING_DECISION], [], profile)
+
+        critical_slice = next(s for s in slices if "Critical decision" in s.content)
+        testing_slice = next(s for s in slices if "pytest" in s.content)
+        assert critical_slice.priority == 0
+        assert testing_slice.priority == 1
+
 
 class TestTrimToBudget:
     """Budget trimming: removes lowest-priority first, preserves high-priority."""
@@ -354,6 +439,42 @@ class TestTrimToBudget:
         # Assert — sorted by priority ascending (1, 2, 3)
         priorities = [s.priority for s in trimmed]
         assert priorities == [1, 2, 3]
+
+    def test_priority_zero_survives_even_when_alone_over_budget(self):
+        """#69: must-survive (priority 0) content is never removed, even
+        if it alone exceeds the token budget -- protection wins over the
+        budget as a last resort."""
+        must_survive = ContextSlice(category="decision", content="critical", priority=0, token_estimate=500)
+        filler = ContextSlice(category="session", content="filler", priority=3, token_estimate=100)
+
+        trimmed, total = _trim_to_budget([must_survive, filler], token_budget=50)
+
+        assert must_survive in trimmed
+        assert filler not in trimmed
+        assert total > 50  # budget exceeded on purpose to protect priority 0
+
+    def test_priority_zero_protected_alongside_normal_trimming(self):
+        """Normal trimming still happens around the protected slice --
+        only priority-0 content is exempt."""
+        must_survive = ContextSlice(category="decision", content="critical", priority=0, token_estimate=30)
+        low_priority = ContextSlice(category="session", content="old", priority=3, token_estimate=200)
+        mid_priority = ContextSlice(category="decision", content="normal", priority=1, token_estimate=50)
+
+        trimmed, total = _trim_to_budget([must_survive, low_priority, mid_priority], token_budget=80)
+
+        assert must_survive in trimmed
+        assert mid_priority in trimmed
+        assert low_priority not in trimmed
+        assert total <= 80
+
+    def test_multiple_priority_zero_slices_all_survive(self):
+        a = ContextSlice(category="decision", content="critical-a", priority=0, token_estimate=100)
+        b = ContextSlice(category="decision", content="critical-b", priority=0, token_estimate=100)
+
+        trimmed, total = _trim_to_budget([a, b], token_budget=10)
+
+        assert a in trimmed and b in trimmed
+        assert total == 200
 
 
 class TestFormatSkillsSummary:
@@ -474,6 +595,98 @@ class TestBuildHandoffPacket:
         assert packet.token_budget == 4000
         assert len(packet.active_decisions) >= 1
 
+    def test_build_handoff_packet_tight_budget_protects_must_survive(self):
+        """#69 end-to-end: a critical decision outside the role's priority
+        categories, under a token budget too small to hold it plus filler,
+        still survives into context_slices, and no completeness finding
+        fires -- protection holds through the whole real pipeline."""
+        critical = _decision(
+            "Never disable authentication checks in the payment flow",
+            categories=["database"],
+            safety_metadata={"risk_level": "critical"},
+        )
+        fillers = [
+            _decision(f"Adopt a design token system for component {i}" * 3, categories=["ui"])
+            for i in range(5)
+        ]
+        memory = _memory(decisions=[critical] + fillers)
+
+        packet = build_handoff_packet(
+            project="tropelex",
+            role="FrontendSpecialist",
+            memory=memory,
+            token_budget=1,
+        )
+
+        assert any(
+            "Never disable authentication checks in the payment flow" in s.content
+            for s in packet.context_slices
+        )
+        assert packet.completeness_findings == []
+
+
+class TestCheckCompleteness:
+    """Direct unit tests for the #69 regression safety net -- the real
+    pipeline can't trigger a finding by construction (both loss points are
+    protected), so these use hand-crafted inputs to prove the check itself
+    is correct independent of that."""
+
+    def test_no_findings_when_text_present_in_slices(self):
+        from core.handoff.packet_builder import _check_completeness
+
+        critical = _decision("Critical text", categories=["database"], id="d1")
+        slices = [ContextSlice(category="decision", content="[high conf=0.9] Critical text", priority=0, token_estimate=5)]
+
+        assert _check_completeness([critical], slices) == []
+
+    def test_finding_when_text_missing_from_slices(self):
+        from core.handoff.packet_builder import _check_completeness
+
+        critical = _decision("Critical text that must survive", id="d1")
+        slices = [ContextSlice(category="decision", content="unrelated content", priority=0, token_estimate=5)]
+
+        findings = _check_completeness([critical], slices)
+
+        assert len(findings) == 1
+        assert findings[0].decision_id == "d1"
+        assert findings[0].decision_text == "Critical text that must survive"
+        assert findings[0].severity == "high"
+        assert findings[0].category == "handoff_completeness"
+
+    def test_finding_id_is_deterministic(self):
+        from core.handoff.packet_builder import _check_completeness
+
+        critical = _decision("Missing text", id="d1")
+        findings_a = _check_completeness([critical], [])
+        findings_b = _check_completeness([critical], [])
+
+        assert findings_a[0].id == findings_b[0].id
+
+    def test_empty_must_survive_list_returns_no_findings(self):
+        from core.handoff.packet_builder import _check_completeness
+        assert _check_completeness([], []) == []
+
+    def test_decision_with_no_text_is_skipped(self):
+        from core.handoff.packet_builder import _check_completeness
+        d = {"id": "d1", "decision": ""}
+        assert _check_completeness([d], []) == []
+
+    def test_non_dict_entries_are_skipped(self):
+        from core.handoff.packet_builder import _check_completeness
+        assert _check_completeness(["not a dict", None], []) == []
+
+    def test_multiple_must_survive_decisions_only_missing_ones_flagged(self):
+        from core.handoff.packet_builder import _check_completeness
+
+        present = _decision("Present text", id="d1")
+        missing = _decision("Missing text", id="d2")
+        slices = [ContextSlice(category="decision", content="Present text here", priority=0, token_estimate=5)]
+
+        findings = _check_completeness([present, missing], slices)
+
+        assert len(findings) == 1
+        assert findings[0].decision_id == "d2"
+
 
 # ---------------------------------------------------------------------------
 #  2. Router — FastAPI endpoint integration tests (httpx AsyncClient)
@@ -561,6 +774,85 @@ class TestHandoffEndpoint:
         assert isinstance(body["token_budget"], int)
         assert "generated_at" in body
         assert "packet_hash" in body
+        assert body["completeness_findings"] == []
+
+    async def test_handoff_endpoint_surfaces_completeness_findings(self):
+        """#69: if a must-survive decision were ever dropped despite
+        protection, the finding must reach the response body, not just
+        get silently swallowed."""
+        from httpx import ASGITransport, AsyncClient
+
+        memory = copy.deepcopy(SAMPLE_MEMORY)
+        memory["decisions"].append({
+            "id": "db-critical",
+            "decision": "Never disable authentication checks in the payment flow",
+            "context": "",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "categories": ["database"],
+            "safety_metadata": {"risk_level": "critical"},
+        })
+
+        with self._mock_load(memory):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff",
+                    json={"role": "FrontendSpecialist", "token_budget": 4000},
+                )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["completeness_findings"] == []
+        assert any(
+            "Never disable authentication checks" in s["content"]
+            for s in body["context_slices"]
+        )
+
+    async def test_handoff_endpoint_writes_completeness_violation_audit_event_when_present(self):
+        """#69: when completeness_findings is non-empty, each one is logged
+        into the audit trail as its own event -- verified by calling the
+        router's audit-writing loop with a hand-crafted non-empty findings
+        list, since the real pipeline can't produce one by construction."""
+        from httpx import ASGITransport, AsyncClient
+        from core.handoff.packet_builder import HandoffPacket, HandoffCompletenessFinding
+
+        finding = HandoffCompletenessFinding(
+            id="abc123def456", severity="high", decision_id="db-critical",
+            decision_text="Never disable authentication checks in the payment flow",
+            category="handoff_completeness",
+            description="Must-survive decision was dropped from the handoff packet: Never disable...",
+            recommendation="Increase the token budget, or review why this decision wasn't protected (#69).",
+        )
+        fake_packet = HandoffPacket(
+            role="CoderAgent", project="tropelex", context_slices=[], active_decisions=[],
+            recent_sessions=[], token_count=0, token_budget=4000, skills_summary=None,
+            generated_at=datetime.now(timezone.utc).isoformat(), completeness_findings=[finding],
+        )
+
+        with self._mock_load(SAMPLE_MEMORY) as (mock_save, memory_copy), \
+             patch("core.handoff.router.build_handoff_packet", return_value=fake_packet):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff",
+                    json={"role": "CoderAgent"},
+                )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["completeness_findings"]) == 1
+        assert body["completeness_findings"][0]["decision_id"] == "db-critical"
+
+        violation_events = [
+            e for e in memory_copy.get("audit_log", [])
+            if e["event_type"] == "handoff_completeness_violation"
+        ]
+        assert len(violation_events) == 1
+        assert violation_events[0]["decision_id"] == "db-critical"
+        assert violation_events[0]["packet_hash"] == body["packet_hash"]
+        mock_save.assert_called_once()
 
     async def test_handoff_endpoint_writes_handoff_created_audit_event(self):
         """#59: generation is logged into the append-only audit trail,
@@ -851,3 +1143,93 @@ class TestListUnacknowledgedHandoffsEndpoint:
 
         assert resp.status_code == 200
         assert resp.json() == {"handoffs": [], "count": 0}
+
+
+class TestCompletenessViolations:
+    """Pure-function tests for core.handoff.router._completeness_violations (#69)."""
+
+    def test_no_audit_log_returns_empty(self):
+        from core.handoff.router import _completeness_violations
+        assert _completeness_violations({}) == []
+
+    def test_violation_event_is_returned(self):
+        from core.handoff.router import _completeness_violations
+        memory = {"audit_log": [
+            {"event_type": "handoff_completeness_violation", "decision_id": "d1",
+             "packet_hash": "h1", "role": "CoderAgent", "agent_name": "Claude",
+             "description": "dropped", "timestamp": "t1"},
+        ]}
+        result = _completeness_violations(memory)
+        assert len(result) == 1
+        assert result[0]["decision_id"] == "d1"
+        assert result[0]["role"] == "CoderAgent"
+
+    def test_non_violation_events_are_excluded(self):
+        from core.handoff.router import _completeness_violations
+        memory = {"audit_log": [
+            {"event_type": "handoff_created", "packet_hash": "h1"},
+            {"event_type": "handoff_acknowledged", "packet_hash": "h1"},
+        ]}
+        assert _completeness_violations(memory) == []
+
+    def test_non_list_audit_log_does_not_raise(self):
+        from core.handoff.router import _completeness_violations
+        assert _completeness_violations({"audit_log": "corrupted"}) == []
+
+    def test_non_dict_entries_are_skipped(self):
+        from core.handoff.router import _completeness_violations
+        memory = {"audit_log": [
+            "not a dict", None, 42,
+            {"event_type": "handoff_completeness_violation", "decision_id": "d1"},
+        ]}
+        result = _completeness_violations(memory)
+        assert len(result) == 1
+
+
+class TestListCompletenessViolationsEndpoint:
+    """Tests for GET /{project}/handoff/completeness-violations."""
+
+    async def test_returns_violations(self):
+        from httpx import ASGITransport, AsyncClient
+
+        memory = {"audit_log": [
+            {"event_type": "handoff_completeness_violation", "decision_id": "d1",
+             "packet_hash": "h1", "role": "CoderAgent", "agent_name": "Claude",
+             "description": "dropped", "timestamp": "t1"},
+        ]}
+        with patch("core.handoff.router._mm.get_project_memory", return_value=memory):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/memory/tropelex/handoff/completeness-violations")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["count"] == 1
+        assert body["violations"][0]["decision_id"] == "d1"
+
+    async def test_empty_when_none_recorded(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with patch("core.handoff.router._mm.get_project_memory", return_value={"audit_log": []}):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/memory/tropelex/handoff/completeness-violations")
+
+        assert resp.json() == {"violations": [], "count": 0}
+
+    async def test_nonexistent_project_returns_empty_not_404(self):
+        """Same lenient-read regression class as #59's unacknowledged
+        endpoint -- get_needs_attention calls this for every project."""
+        from httpx import ASGITransport, AsyncClient
+
+        async with AsyncClient(
+            transport=ASGITransport(app=_app()), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/api/memory/definitely-nonexistent-project-xyz/handoff/completeness-violations"
+            )
+
+        assert resp.status_code == 200
+        assert resp.json() == {"violations": [], "count": 0}

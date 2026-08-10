@@ -110,3 +110,48 @@ class TestHandoffLifecycleEndToEnd:
         attention = client.get(f"/api/memory/{project}/needs-attention")
         assert attention.status_code == 200
         assert not any(i["kind"] == "unacknowledged_handoff" for i in attention.json()["items"])
+
+
+class TestCompletenessViolationSurfacing:
+    """#69's sixth Needs Attention source. Protection at both loss points
+    (_select_decisions/_trim_to_budget) is unconditional by construction,
+    so a real generate_handoff call can never produce a violation to
+    surface here -- same reasoning as #69's Drift-Bench positive scenario.
+    Seeds a handoff_completeness_violation audit entry directly via
+    MemoryManager, the same approach already used to verify #59's
+    unacknowledged_handoff source before it shipped."""
+
+    def _seed_violation(self, project, decision_id="d1", description="dropped"):
+        from core.memory.manager import MemoryManager
+        from core.audit import append_audit_event
+
+        mm = MemoryManager()
+        memory = mm.get_project_memory(project)
+        append_audit_event(
+            memory, "handoff_completeness_violation",
+            packet_hash="seeded-hash", role="CoderAgent", agent_name="Claude",
+            decision_id=decision_id, description=description,
+        )
+        mm.save_project_memory(project, memory)
+
+    def test_seeded_violation_surfaces_in_needs_attention(self, client, project):
+        self._seed_violation(project, decision_id="db-critical", description="a critical decision was dropped")
+
+        attention = client.get(f"/api/memory/{project}/needs-attention")
+        items = [i for i in attention.json()["items"] if i["kind"] == "handoff_completeness_violation"]
+        assert len(items) == 1
+        assert items[0]["id"] == "db-critical"
+        assert "a critical decision was dropped" in items[0]["detail"]
+
+    def test_no_violations_no_items(self, client, project):
+        attention = client.get(f"/api/memory/{project}/needs-attention")
+        assert attention.status_code == 200
+        assert not any(i["kind"] == "handoff_completeness_violation" for i in attention.json()["items"])
+
+    def test_seeded_violation_matches_completeness_violations_endpoint(self, client, project):
+        self._seed_violation(project, decision_id="db-critical")
+
+        listed = client.get(f"/api/memory/{project}/handoff/completeness-violations")
+        assert listed.status_code == 200
+        assert listed.json()["count"] == 1
+        assert listed.json()["violations"][0]["decision_id"] == "db-critical"
