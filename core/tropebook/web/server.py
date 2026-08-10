@@ -210,6 +210,7 @@ from core.triggers.tag_gate import require_tag, TagRequiredError, SAFETY_CATEGOR
 from core.safety import require_safety_metadata, SafetyMetadataRequiredError  # noqa: E402
 from core.goals.drift import score_trend_drift  # noqa: E402
 from core.friction.miner import compute_friction_penalty  # noqa: E402
+from core.session_shape.router import session_shape_router  # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -248,6 +249,7 @@ app.include_router(web_research_router)
 app.include_router(docmine_router)
 app.include_router(agent_audit_router)
 app.include_router(telemetry_router)
+app.include_router(session_shape_router)
 
 
 # --- Request body models ---
@@ -4971,17 +4973,37 @@ async def get_session_changes(project: str, session_id: str):
     return {"changes": changes, "count": len(changes)}
 
 
+class SessionShapeInput(BaseModel):
+    """Behavioral telemetry captured by mcp_server/server.py's _request()
+    wrapper across one MCP session — see wishlist.md #45. Fully optional on
+    SessionRecordRequest: only MCP-routed sessions can populate this (the
+    dashboard's manual "End Session" button, VSCode/Emacs/OpenCode clients
+    don't route through that chokepoint), which is an honest scope limit,
+    not a bug.
+    """
+
+    tool_call_count: int = Field(..., ge=0)
+    unique_tools_used: int = Field(..., ge=0)
+    avg_call_duration_ms: float = Field(..., ge=0)
+    max_call_duration_ms: float = Field(..., ge=0)
+    error_count: int = Field(..., ge=0)
+    avg_output_bytes: float = Field(..., ge=0)
+    total_duration_s: float = Field(..., ge=0)
+
+
 class SessionRecordRequest(BaseModel):
     summary: str = Field("", max_length=2000)
     session_type: str = Field("manual", max_length=50)
     agent_name: str = Field("unspecified", max_length=100)
+    session_shape: SessionShapeInput | None = None
 
 
 @app.post("/api/memory/{project}/sessions/record")
 async def record_session(project: str, req: SessionRecordRequest):
-    """Record a session: a Time Travel snapshot (before/after diff) *and*
+    """Record a session: a Time Travel snapshot (before/after diff),
     pattern learning (category/day patterns, session_history with the raw
-    summary). The single way to end a session, agent or dashboard alike --
+    summary), and — when the caller supplies it — session-shape baselining
+    (#45). The single way to end a session, agent or dashboard alike --
     this used to be two disconnected endpoints (this one, snapshot-only,
     and the now-removed POST /sessions, pattern-learning-only), so ending a
     session through one path silently skipped what the other did.
@@ -5014,11 +5036,40 @@ async def record_session(project: str, req: SessionRecordRequest):
     analysis = learner.analyze_session(project, req.summary)
     learner.update_project_from_session(project, analysis)
 
+    # session_shape is written last and against a FRESH read, not the
+    # `current` captured at the top of this handler: learner.
+    # update_project_from_session() just did its own independent
+    # get_project_memory -> mutate -> save_project_memory cycle
+    # (MemoryManager.get_project_memory re-reads from disk every call, no
+    # shared-object caching -- confirmed against core/memory/manager.py).
+    # Reusing the stale `current` here would silently clobber whatever the
+    # learner just wrote. This is an ordering fix, not a new locking
+    # mechanism -- the same accepted per-router read/mutate/save risk
+    # profile every other router in this codebase already lives with.
+    shape_result = None
+    if req.session_shape is not None:
+        try:
+            from core.session_shape.baseline import record_session_shape
+
+            fresh_memory = mm.get_project_memory(project)
+            fresh_memory, shape_result = record_session_shape(
+                fresh_memory, req.agent_name, req.session_shape.model_dump()
+            )
+            mm.save_project_memory(project, fresh_memory)
+        except Exception as exc:
+            # Session-shape is additive telemetry, not the point of this
+            # endpoint -- a bug here must never fail the actual session
+            # recording (snapshot + pattern learning) that already
+            # succeeded above.
+            logger.error("session-shape recording failed for %s: %s", project, exc)
+            shape_result = None
+
     _emit_telemetry("OK", f"Session recorded for {project}")
     return {
         **result,
         "detected_categories": analysis["detected_categories"],
         "key_insights": analysis["key_insights"],
+        **({"session_shape": shape_result} if shape_result else {}),
     }
 
 

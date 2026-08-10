@@ -1699,6 +1699,7 @@ void main() {
             <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="preventive" onclick="switchGenericTab('quality', 'preventive')">Pre-Write Guard</button>
             <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="friction" onclick="switchGenericTab('quality', 'friction')">Friction Mining</button>
             <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="contradictions" onclick="switchGenericTab('quality', 'contradictions')">Contradictions</button>
+            <button class="quality-tab-btn px-3 py-1.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer" data-tab="sessionshape" onclick="switchGenericTab('quality', 'sessionshape')">Session Shape</button>
         </div>
 
         <div id="quality-insights" class="quality-tab-panel active">
@@ -2092,6 +2093,23 @@ void main() {
             <span class="material-symbols-outlined text-4xl text-outline mb-3">compare</span>
             <p class="text-outline text-sm">No contradiction data yet. Select a project and scan for contradictions.</p>
             <a href="/guide#contradictions" class="font-mono text-xs text-accent-periwinkle hover:text-accent-lavender transition-colors mt-2 inline-block">Learn more →</a>
+        </div>
+        </div>
+
+        <div id="quality-sessionshape" class="quality-tab-panel" style="display: none;">
+<div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-accent-sky text-2xl">monitoring</span>
+            <h2 class="font-mono text-xl text-accent-sky uppercase tracking-wider">Session Shape</h2>
+        </div>
+        <p class="text-outline mb-6">Baselines the shape of a normal agent session — tool-call counts, latency, hang duration, output size — per agent, so a deviation becomes a visible signal instead of something only noticed in hindsight. Data comes from Tropelex's MCP tools specifically; sessions that never route through those (dashboard-only, other REST clients) won't populate a baseline for that agent.</p>
+        <div class="glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="font-mono text-sm text-outline">Agent</span>
+                <select id="sessionshape-agent-select" class="bg-surface-raised border border-glass-border rounded-lg px-3 py-1.5 font-mono text-xs text-on-surface cursor-pointer focus:outline-none">
+                    <option value="">Select an agent…</option>
+                </select>
+            </div>
+            <div id="sessionshape-results" class="text-sm text-outline">Select an agent to see their session-shape baseline.</div>
         </div>
         </div>
 
@@ -4432,6 +4450,9 @@ function switchGenericTab(parent, tab) {
     if (tab === 'market' && typeof populateMarketDecisionSelect === 'function') populateMarketDecisionSelect();
     if (tab === 'goals' && typeof loadGoals === 'function') loadGoals();
     if (tab === 'friction' && typeof loadFrictionZones === 'function') loadFrictionZones();
+    if (tab === 'sessionshape' && typeof populateSessionShapeSelector === 'function') {
+        populateSessionShapeSelector(getCurrentProject());
+    }
 }
 
 
@@ -8101,6 +8122,75 @@ async function loadAgentSkills(project, agent = '') {
 
 document.getElementById('agent-skills-agent-select').addEventListener('change', (e) => {
     loadAgentSkills(getInsightsProject(), e.target.value);
+});
+
+// ── Session Shape (#45) — baselines an agent's tool-call pattern per project ──
+async function populateSessionShapeSelector(project) {
+    const sel = document.getElementById('sessionshape-agent-select');
+    if (!sel || !project) return;
+    const current = sel.value;
+    const data = await api(`/memory/${project}/agents`);
+    sel.innerHTML = '<option value="">Select an agent…</option>' +
+        (data?.agents || []).map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+    if (data?.agents?.includes(current)) sel.value = current;
+}
+
+const SESSION_SHAPE_METRIC_LABELS = {
+    tool_call_count: 'Tool calls',
+    unique_tools_used: 'Unique tools used',
+    avg_call_duration_ms: 'Avg call duration (ms)',
+    max_call_duration_ms: 'Max call duration (ms)',
+    error_count: 'Errors',
+    avg_output_bytes: 'Avg output size (bytes)',
+    total_duration_s: 'Total session span (s)',
+};
+
+async function loadSessionShape(project, agent) {
+    const el = document.getElementById('sessionshape-results');
+    if (!el || !project) return;
+    if (!agent) {
+        el.innerHTML = '<p class="text-sm text-outline">Select an agent to see their session-shape baseline.</p>';
+        return;
+    }
+    el.innerHTML = '<p class="text-sm text-outline animate-pulse">Loading…</p>';
+    const data = await api(`/memory/${project}/agents/${encodeURIComponent(agent)}/session-shape`);
+    if (!data) return;
+
+    if (data.status === 'insufficient_data') {
+        const have = data.sample_size ?? 0;
+        const need = data.required ?? 5;
+        el.innerHTML = `<p class="text-sm text-outline">Not enough sessions yet to establish a baseline for ${escapeHtml(agent)} — ${have}/${need} so far. Session-shape data only comes from sessions ended through Tropelex's MCP tools.</p>`;
+        return;
+    }
+
+    const sev = data.deviation?.overall_severity || 'normal';
+    const sevText = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-accent-sky', normal: 'text-accent-lime' }[sev] || 'text-outline';
+    const sevBg = { high: 'bg-red-400/10 border-red-400/30', medium: 'bg-yellow-400/10 border-yellow-400/30', low: 'bg-accent-sky/10 border-accent-sky/30', normal: 'bg-accent-lime/10 border-accent-lime/30' }[sev] || 'bg-surface-raised border-glass-border';
+
+    const metricRows = Object.entries(data.deviation?.metrics || {}).map(([metric, m]) => {
+        const mSevColor = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-accent-sky', normal: 'text-outline' }[m.severity] || 'text-outline';
+        return `
+            <div class="flex items-center justify-between py-2 border-b border-glass-border">
+                <span class="text-xs text-outline">${escapeHtml(SESSION_SHAPE_METRIC_LABELS[metric] || metric)}</span>
+                <div class="flex items-center gap-3 font-mono text-xs">
+                    <span>${Number(m.value).toFixed(1)}</span>
+                    <span class="text-outline">baseline ${Number(m.baseline_median).toFixed(1)}</span>
+                    <span class="uppercase px-1.5 py-0.5 rounded ${mSevColor}">${escapeHtml(m.severity)}</span>
+                </div>
+            </div>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-4 p-3 rounded-lg border ${sevBg}">
+            <span class="text-sm">Latest session vs. baseline (${data.sample_size} prior session(s))</span>
+            <span class="font-mono text-xs uppercase font-bold ${sevText}">${escapeHtml(sev)}</span>
+        </div>
+        ${metricRows}
+    `;
+}
+
+document.getElementById('sessionshape-agent-select')?.addEventListener('change', (e) => {
+    loadSessionShape(getCurrentProject(), e.target.value);
 });
 
 // Decision Timeline

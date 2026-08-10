@@ -12,7 +12,10 @@ Configure a different URL with the TROPELEX_URL environment variable.
 
 from __future__ import annotations
 
+import json as _json
 import os
+import time
+from collections import Counter
 from typing import Any
 from urllib.parse import quote
 
@@ -23,37 +26,132 @@ TROPELEX_URL = os.environ.get("TROPELEX_URL", "http://localhost:8766").rstrip("/
 
 mcp = FastMCP("tropelex")
 
+# ── Session-shape capture (wishlist.md #45) ─────────────────────────────────
+# One MCP server process is already one real agent session -- Claude Code
+# (and other MCP-capable clients) spawn a fresh subprocess per session, so
+# this module-level state needs no explicit session-id threaded through
+# every tool call. Reset on end_session flush; process exit is the implicit
+# fallback boundary for sessions that never call it. Same "in-memory,
+# process-scoped" convention core/telemetry.py's own log already uses.
+_call_count = 0
+_error_count = 0
+_tool_names: Counter[str] = Counter()
+_durations_ms: list[float] = []  # every call, including errors/timeouts
+_output_bytes: list[int] = []  # success calls only
+_first_call_monotonic: float | None = None
+_last_call_monotonic: float | None = None
 
-async def _request(method: str, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def _record_tool_call(tool_name: str, duration_ms: float, error: bool, output_bytes: int) -> None:
+    global _call_count, _error_count, _first_call_monotonic, _last_call_monotonic
+    now = time.monotonic()
+    _call_count += 1
+    if error:
+        _error_count += 1
+    _tool_names[tool_name] += 1
+    _durations_ms.append(duration_ms)
+    if not error:
+        _output_bytes.append(output_bytes)
+    if _first_call_monotonic is None:
+        _first_call_monotonic = now
+    _last_call_monotonic = now
+
+
+def _build_session_shape() -> dict[str, Any] | None:
+    """Snapshot the current session's shape, or None if nothing happened
+    this session -- an all-zero record would poison the baseline rather
+    than honestly representing "no data"."""
+    if _call_count == 0:
+        return None
+    total_duration_s = 0.0
+    if _first_call_monotonic is not None and _last_call_monotonic is not None and _call_count >= 2:
+        total_duration_s = _last_call_monotonic - _first_call_monotonic
+    return {
+        "tool_call_count": _call_count,
+        "unique_tools_used": len(_tool_names),
+        "avg_call_duration_ms": sum(_durations_ms) / len(_durations_ms) if _durations_ms else 0.0,
+        "max_call_duration_ms": max(_durations_ms) if _durations_ms else 0.0,
+        "error_count": _error_count,
+        "avg_output_bytes": sum(_output_bytes) / len(_output_bytes) if _output_bytes else 0.0,
+        "total_duration_s": total_duration_s,
+    }
+
+
+def _reset_session_shape() -> None:
+    global _call_count, _error_count, _first_call_monotonic, _last_call_monotonic
+    _call_count = 0
+    _error_count = 0
+    _tool_names.clear()
+    _durations_ms.clear()
+    _output_bytes.clear()
+    _first_call_monotonic = None
+    _last_call_monotonic = None
+
+
+async def _request(
+    tool_name: str, method: str, path: str, json: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Call the Tropelex REST API and return the parsed JSON body.
 
     Raises a clear, agent-readable error (rather than a raw exception) if
     Tropelex isn't reachable or the API returns an error status.
+
+    tool_name is threaded explicitly by every caller (not inferred via
+    inspect.stack()) so session-shape capture has an unambiguous label —
+    explicit over clever. Capture happens in `finally` so every exit path
+    (success, connect error, 4xx/5xx, timeout) is recorded; a call that
+    dies after the full 30s timeout *is* the "hang duration" signal this
+    feature exists to catch, so it isn't excluded.
     """
-    url = f"{TROPELEX_URL}{path}"
+    start = time.monotonic()
+    error = False
+    output_bytes = 0
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.request(
-                method, url, json=json, headers={"X-Tropelex-Client": "mcp"}
-            )
-    except httpx.ConnectError as exc:
-        raise RuntimeError(
-            f"Could not reach the Tropelex server at {TROPELEX_URL}. "
-            f"Is it running? (python3 -m core.tropebook.web.server). Detail: {exc}"
-        )
-    if resp.status_code >= 400:
+        url = f"{TROPELEX_URL}{path}"
         try:
-            detail = resp.json().get("detail", resp.text)
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.request(
+                    method, url, json=json, headers={"X-Tropelex-Client": "mcp"}
+                )
+        except httpx.ConnectError as exc:
+            error = True
+            raise RuntimeError(
+                f"Could not reach the Tropelex server at {TROPELEX_URL}. "
+                f"Is it running? (python3 -m core.tropebook.web.server). Detail: {exc}"
+            )
+        if resp.status_code >= 400:
+            error = True
+            try:
+                detail = resp.json().get("detail", resp.text)
+            except Exception:
+                detail = resp.text
+            raise RuntimeError(f"Tropelex API error {resp.status_code} on {path}: {detail}")
+        result = resp.json()
+        try:
+            output_bytes = len(_json.dumps(result).encode())
+        except (TypeError, ValueError):
+            # Byte-sizing is a metrics nicety, not part of the actual tool
+            # call -- never let it mask the real result on the vanishingly
+            # unlikely chance the response isn't cleanly re-serializable.
+            output_bytes = 0
+        return result
+    except Exception:
+        error = True
+        raise
+    finally:
+        # Capture must never break the tool call it's instrumenting --
+        # a bug in this bookkeeping is not worth taking down every MCP
+        # call in production over.
+        try:
+            _record_tool_call(tool_name, (time.monotonic() - start) * 1000, error, output_bytes)
         except Exception:
-            detail = resp.text
-        raise RuntimeError(f"Tropelex API error {resp.status_code} on {path}: {detail}")
-    return resp.json()
+            pass
 
 
 @mcp.tool()
 async def list_projects() -> dict[str, Any]:
     """List all Tropelex projects and basic stats for each."""
-    return await _request("GET", "/api/memory")
+    return await _request("list_projects", "GET", "/api/memory")
 
 
 @mcp.tool()
@@ -63,7 +161,7 @@ async def get_project_memory(project: str) -> dict[str, Any]:
     Call this first when starting work on a project to load its accumulated
     context instead of starting from scratch.
     """
-    return await _request("GET", f"/api/memory/{quote(project, safe='')}")
+    return await _request("get_project_memory", "GET", f"/api/memory/{quote(project, safe='')}")
 
 
 @mcp.tool()
@@ -124,7 +222,7 @@ async def capture_decision(
     safety_metadata["safety_category"] = safety_category
 
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/decisions",
+        "capture_decision", "POST", f"/api/memory/{quote(project, safe='')}/decisions",
         json={
             "decision": decision,
             "context": context,
@@ -155,7 +253,7 @@ async def propose_goal(
             for goals that don't have one. Omit if unclassified.
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/goals",
+        "propose_goal", "POST", f"/api/memory/{quote(project, safe='')}/goals",
         json={"text": text, "priority": priority, "category": category},
     )
 
@@ -174,10 +272,30 @@ async def end_session(project: str, summary: str, agent: str = "unspecified") ->
             this session to you specifically, so per-agent skill and persona
             tracking has real data instead of lumping every agent together.
     """
-    return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/sessions/record",
-        json={"summary": summary, "session_type": "manual", "agent_name": agent},
-    )
+    try:
+        shape = _build_session_shape()
+    except Exception:
+        # Session-shape is an enhancement on top of end_session's real job
+        # (recording the summary) -- a bug here must never stop that from
+        # happening.
+        shape = None
+    body: dict[str, Any] = {"summary": summary, "session_type": "manual", "agent_name": agent}
+    if shape is not None:
+        body["session_shape"] = shape
+    try:
+        return await _request(
+            "end_session", "POST", f"/api/memory/{quote(project, safe='')}/sessions/record",
+            json=body,
+        )
+    finally:
+        # Reset regardless of success -- a failed flush's telemetry is lost
+        # rather than retried (best-effort behavioral data, not audit-critical).
+        # Guarded so a reset bug can't mask the real return value/exception
+        # above (an exception raised in `finally` overrides one from `try`).
+        try:
+            _reset_session_shape()
+        except Exception:
+            pass
 
 
 @mcp.tool()
@@ -193,7 +311,7 @@ async def get_context_bundle(project: str, task: str, token_budget: int = 4000) 
         token_budget: Maximum token budget for the assembled bundle (500-50000).
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/prefetch",
+        "get_context_bundle", "POST", f"/api/memory/{quote(project, safe='')}/prefetch",
         json={"task": task, "token_budget": token_budget},
     )
 
@@ -205,7 +323,7 @@ async def check_contradictions(project: str) -> dict[str, Any]:
     Returns conflicting decision pairs (e.g. "use MySQL" vs "use Postgres"
     both still active) with severity and a resolution suggestion.
     """
-    return await _request("GET", f"/api/memory/{quote(project, safe='')}/contradictions")
+    return await _request("check_contradictions", "GET", f"/api/memory/{quote(project, safe='')}/contradictions")
 
 
 @mcp.tool()
@@ -221,7 +339,7 @@ async def check_diff_for_conflicts(project: str, diff: str) -> dict[str, Any]:
         diff: Unified diff text of the proposed change.
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/ghost-check",
+        "check_diff_for_conflicts", "POST", f"/api/memory/{quote(project, safe='')}/ghost-check",
         json={"diff": diff},
     )
 
@@ -245,7 +363,8 @@ async def override_ghost_warning(
         agent: Your own name (e.g. "Claude", "Cursor", "Gemini").
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/decisions/{quote(decision_id, safe='')}/override",
+        "override_ghost_warning", "POST",
+        f"/api/memory/{quote(project, safe='')}/decisions/{quote(decision_id, safe='')}/override",
         json={"rationale": rationale, "agent_name": agent},
     )
 
@@ -262,7 +381,7 @@ async def friction_scan(project: str, transcript: str, agent: str = "unspecified
             this scan to you specifically for per-agent friction tracking.
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/friction/scan",
+        "friction_scan", "POST", f"/api/memory/{quote(project, safe='')}/friction/scan",
         json={"transcript": transcript, "agent_name": agent},
     )
 
@@ -292,7 +411,7 @@ async def record_skill_outcome(
             this outcome to you specifically.
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/agent-skills/record",
+        "record_skill_outcome", "POST", f"/api/memory/{quote(project, safe='')}/agent-skills/record",
         json={
             "session_type": session_type,
             "categories": categories,
@@ -313,7 +432,7 @@ async def get_handoff_packet(project: str, role: str, token_budget: int = 4000) 
         token_budget: Maximum token budget for the packet.
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/handoff",
+        "get_handoff_packet", "POST", f"/api/memory/{quote(project, safe='')}/handoff",
         json={"role": role, "token_budget": token_budget},
     )
 
@@ -328,7 +447,7 @@ async def explain_why(project: str, question: str) -> dict[str, Any]:
         question: e.g. "why do we use Postgres instead of MySQL?"
     """
     return await _request(
-        "POST", f"/api/memory/{quote(project, safe='')}/explain",
+        "explain_why", "POST", f"/api/memory/{quote(project, safe='')}/explain",
         json={"question": question},
     )
 
