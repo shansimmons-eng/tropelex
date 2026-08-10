@@ -1045,13 +1045,7 @@ void main() {
                     <span class="font-mono text-[10px] text-accent-sky bg-accent-sky/10 px-2 py-0.5 rounded">LIVE TELEMETRY</span>
                 </div>
                 <div id="dash-recent-activity" class="space-y-2.5 max-h-72 overflow-y-auto">
-                    <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender flex items-center justify-between">
-                        <div>
-                            <span class="text-on-surface font-mono text-xs block">Migrated UI to Horizontal Sub-Navigation Layout</span>
-                            <span class="text-outline text-[11px]">Standardized tab strips across all 8 core categories</span>
-                        </div>
-                        <span class="text-outline text-[10px] font-mono whitespace-nowrap ml-2">Just now</span>
-                    </div>
+                    <p class="text-sm text-outline">Select a project to see recent activity.</p>
                 </div>
             </div>
 
@@ -1065,14 +1059,7 @@ void main() {
                     <span class="font-mono text-[10px] text-accent-lime bg-accent-lime/10 px-2 py-0.5 rounded">ACTIVE</span>
                 </div>
                 <div id="dash-patterns" class="space-y-2 max-h-72 overflow-y-auto">
-                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
-                        <span class="text-accent-sky font-mono text-xs">category:ui</span>
-                        <span class="text-accent-lime font-mono text-xs font-bold">12x</span>
-                    </div>
-                    <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
-                        <span class="text-accent-sky font-mono text-xs">category:backend</span>
-                        <span class="text-accent-lime font-mono text-xs font-bold">8x</span>
-                    </div>
+                    <p class="text-sm text-outline">Select a project to see detected patterns.</p>
                 </div>
             </div>
         </div>
@@ -10392,6 +10379,67 @@ async function loadDashboardStatusCards() {
     try { await renderAgentActivityChart(document.getElementById('dash-agent-activity'), project); } catch (e) { console.error('Agent activity chart failed:', e); }
     try { await renderCostTotalCard(project); } catch (e) { console.error('Cost total card failed:', e); }
     try { await loadNeedsAttention(); } catch (e) { console.error('Needs Attention failed:', e); }
+    try { await renderRecentActivityStream(document.getElementById('dash-recent-activity'), project); } catch (e) { console.error('Recent activity stream failed:', e); }
+    try { await renderPatternLearnerCard(document.getElementById('dash-patterns'), project); } catch (e) { console.error('Pattern Learner card failed:', e); }
+}
+
+// Ghost Decisions & Activity Stream — real recent session activity. This
+// card shipped with hardcoded placeholder HTML ("Migrated UI to..." /
+// "Just now") that nothing ever replaced -- same class of dead-placeholder
+// bug already found and fixed this session for Active Research Feeds and
+// the Interfaces card. Ghost Decisions' own post-hoc detector
+// (core/ghost/detector.py) is separately known-broken (always called with
+// an empty diff_data, wishlist.md #55) -- not faked here either; this
+// shows real session_history instead of pretending ghost data exists.
+async function renderRecentActivityStream(el, project) {
+    if (!el || !project) return;
+    const proj = await api(`/memory/${encodeURIComponent(project)}`);
+    const sessions = Array.isArray(proj?.session_history)
+        ? [...proj.session_history].reverse().slice(0, 8)
+        : [];
+    if (!sessions.length) {
+        el.innerHTML = '<p class="text-sm text-outline">No session activity recorded yet.</p>';
+        return;
+    }
+    el.innerHTML = sessions.map(s => {
+        if (!s || typeof s !== 'object') return '';
+        const summary = String(s.summary || '(no summary)');
+        const truncated = summary.length > 140 ? summary.slice(0, 140) + '…' : summary;
+        const agent = s.agent_name || 'unspecified';
+        let when = 'unknown time';
+        try { if (s.timestamp) when = new Date(s.timestamp).toLocaleString(); } catch {}
+        return `
+        <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <span class="text-on-surface font-mono text-xs block truncate" title="${escapeAttr(summary)}">${escapeHtml(truncated)}</span>
+                <span class="text-outline text-[11px]">${escapeHtml(agent)}</span>
+            </div>
+            <span class="text-outline text-[10px] font-mono whitespace-nowrap shrink-0">${escapeHtml(when)}</span>
+        </div>`;
+    }).join('');
+}
+
+// Pattern Learner card — real detected patterns (memory["patterns"]),
+// sorted by frequency. Same dead-placeholder bug as the activity stream
+// above ("category:ui 12x" / "category:backend 8x" were hardcoded).
+async function renderPatternLearnerCard(el, project) {
+    if (!el || !project) return;
+    const proj = await api(`/memory/${encodeURIComponent(project)}`);
+    const patterns = Array.isArray(proj?.patterns)
+        ? [...proj.patterns]
+            .filter(p => p && typeof p === 'object')
+            .sort((a, b) => (b.count || 0) - (a.count || 0))
+            .slice(0, 6)
+        : [];
+    if (!patterns.length) {
+        el.innerHTML = '<p class="text-sm text-outline">No patterns detected yet.</p>';
+        return;
+    }
+    el.innerHTML = patterns.map(p => `
+        <div class="p-2.5 rounded-lg bg-surface-raised flex items-center justify-between">
+            <span class="text-accent-sky font-mono text-xs">${escapeHtml(p.name || 'unknown')}</span>
+            <span class="text-accent-lime font-mono text-xs font-bold">${Number(p.count) || 0}x</span>
+        </div>`).join('');
 }
 
 // Needs Attention (Overview page) — an ongoing panel, not a one-time setup
@@ -11498,15 +11546,96 @@ document.getElementById('btn-timetravel')?.addEventListener('click', async () =>
     }
     if (data) {
         document.getElementById('timetravel-empty')?.classList.add('hidden');
-        const results = document.getElementById('timetravel-results');
-        results.classList.remove('hidden');
-        results.innerHTML = `<div class="space-y-2">
-            <div class="flex justify-between"><span class="text-outline">As of</span><span class="font-mono text-accent-sky">${escapeHtml(data.date || date)}</span></div>
-            <div class="flex justify-between"><span class="text-outline">Decisions</span><span class="font-mono">${data.decision_count ?? 0}</span></div>
-            <div class="flex justify-between"><span class="text-outline">Sessions</span><span class="font-mono">${data.session_count ?? 0}</span></div>
-        </div>`;
+        renderTimeTravelResults(data, date);
     }
 });
+
+// The backend (core/timetravel/router.py) already reconstructs and returns
+// the FULL memory state as of the target date (data.memory -- real
+// decisions, session_history, everything), not just counts. The dashboard
+// used to discard all of it and render just decision_count/session_count.
+// This renders the two summary numbers as before, plus toggleable detail
+// lists for both, using the real reconstructed data that was already
+// there for free.
+function renderTimeTravelResults(data, date) {
+    const results = document.getElementById('timetravel-results');
+    if (!results) return;
+    results.classList.remove('hidden');
+
+    const memory = (data && typeof data.memory === 'object' && data.memory) ? data.memory : {};
+    const decisions = Array.isArray(memory.decisions) ? memory.decisions : [];
+    const sessions = Array.isArray(memory.session_history) ? memory.session_history : [];
+
+    results.innerHTML = `
+        <div class="glass-panel rounded-xl p-6 space-y-2">
+            <div class="flex justify-between"><span class="text-outline">As of</span><span class="font-mono text-accent-sky">${escapeHtml(data.date || date)}</span></div>
+            <div class="flex justify-between items-center">
+                <span class="text-outline">Decisions</span>
+                <span class="flex items-center gap-2">
+                    <span class="font-mono">${data.decision_count ?? decisions.length ?? 0}</span>
+                    ${decisions.length ? `<button id="btn-timetravel-toggle-decisions" class="text-xs text-accent-sky hover:underline cursor-pointer">show</button>` : ''}
+                </span>
+            </div>
+            <div id="timetravel-decisions-list" class="hidden pt-2 space-y-2 max-h-96 overflow-y-auto"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-outline">Sessions</span>
+                <span class="flex items-center gap-2">
+                    <span class="font-mono">${data.session_count ?? sessions.length ?? 0}</span>
+                    ${sessions.length ? `<button id="btn-timetravel-toggle-sessions" class="text-xs text-accent-sky hover:underline cursor-pointer">show</button>` : ''}
+                </span>
+            </div>
+            <div id="timetravel-sessions-list" class="hidden pt-2 space-y-2 max-h-96 overflow-y-auto"></div>
+        </div>`;
+
+    const decisionsList = document.getElementById('timetravel-decisions-list');
+    if (decisionsList && decisions.length) {
+        decisionsList.innerHTML = decisions.map(d => {
+            if (!d || typeof d !== 'object') return '';
+            const safety = (d.safety_metadata && typeof d.safety_metadata === 'object') ? d.safety_metadata : {};
+            const risk = safety.risk_level || 'unknown';
+            const riskColor = { critical: 'text-red-400', high: 'text-red-400', medium: 'text-yellow-400', low: 'text-accent-lime' }[risk] || 'text-outline';
+            let when = '';
+            try { if (d.timestamp) when = new Date(d.timestamp).toLocaleString(); } catch {}
+            return `
+            <div class="p-3 rounded-lg bg-surface-raised border border-glass-border">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high text-outline uppercase">${escapeHtml(safety.safety_category || 'untagged')}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high uppercase ${riskColor}">${escapeHtml(risk)}</span>
+                    <span class="text-outline text-[10px] font-mono ml-auto">${escapeHtml(when)}</span>
+                </div>
+                <p class="text-sm text-on-surface">${escapeHtml(d.decision || '(no text)')}</p>
+                ${d.context ? `<p class="text-xs text-outline mt-1">${escapeHtml(d.context)}</p>` : ''}
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('btn-timetravel-toggle-decisions')?.addEventListener('click', (e) => {
+        const list = document.getElementById('timetravel-decisions-list');
+        const hidden = list.classList.toggle('hidden');
+        e.target.textContent = hidden ? 'show' : 'hide';
+    });
+
+    const sessionsList = document.getElementById('timetravel-sessions-list');
+    if (sessionsList && sessions.length) {
+        sessionsList.innerHTML = [...sessions].reverse().map(s => {
+            if (!s || typeof s !== 'object') return '';
+            let when = '';
+            try { if (s.timestamp) when = new Date(s.timestamp).toLocaleString(); } catch {}
+            return `
+            <div class="p-3 rounded-lg bg-surface-raised border border-glass-border">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs text-outline">${escapeHtml(s.agent_name || 'unspecified')}</span>
+                    <span class="text-outline text-[10px] font-mono">${escapeHtml(when)}</span>
+                </div>
+                <p class="text-sm text-on-surface mt-1">${escapeHtml(s.summary || '(no summary)')}</p>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('btn-timetravel-toggle-sessions')?.addEventListener('click', (e) => {
+        const list = document.getElementById('timetravel-sessions-list');
+        const hidden = list.classList.toggle('hidden');
+        e.target.textContent = hidden ? 'show' : 'hide';
+    });
+}
 
 // Reinit
 async function init() {
