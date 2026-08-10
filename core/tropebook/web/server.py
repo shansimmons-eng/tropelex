@@ -945,6 +945,23 @@ async def list_untagged_decisions(project: str):
     return {"decisions": untagged, "count": len(untagged)}
 
 
+@app.get("/api/memory/{project}/decisions/flagged")
+async def list_flagged_decisions(project: str):
+    """List decisions with non-empty content_flags (#40) -- stored-prompt-
+    injection markers found in the decision/context text at write time.
+    Flag, don't block: these decisions were still stored normally, this is
+    just the triage queue for reviewing what tripped a marker.
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    flagged = [
+        d for d in memory.get("decisions", [])
+        if isinstance(d, dict) and isinstance(d.get("content_flags"), list) and d.get("content_flags")
+    ]
+    return {"decisions": flagged, "count": len(flagged)}
+
+
 class TagDecisionRequest(BaseModel):
     safety_category: str = Field(..., max_length=32)
 
@@ -1034,6 +1051,15 @@ async def add_decision(project: str, data: DecisionCreate):
         "safety_metadata": safety_metadata,
         "goal_id": data.goal_id,
     }
+
+    # #40: flag, don't block -- screens for stored-prompt-injection markers
+    # in agent/user-supplied text, same patterns Agent Surface Audit uses
+    # for config scanning (core/injection_sentinel.py). Never rejects the
+    # write; content_flags is only attached when something actually matched.
+    from core.injection_sentinel import scan_content
+    flags = scan_content(data.decision) + scan_content(data.context)
+    if flags:
+        decision_entry["content_flags"] = flags
 
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
@@ -2430,6 +2456,24 @@ async def get_pending_reviews(project: str):
         raise HTTPException(500, f"Failed to get pending reviews: {e}")
 
 
+def _content_flagged_detail(d: dict[str, Any]) -> str:
+    """Build the Needs Attention detail string for a content_flagged item.
+    Defensive against malformed persisted content_flags -- this reads
+    memory written by list_flagged_decisions' own already-validated
+    filter, but treats it as agent-supplied/persisted data anyway rather
+    than assuming its own upstream shape held (#58's scheduler work hit
+    this exact class of gap)."""
+    flags = d.get("content_flags")
+    if not isinstance(flags, list) or not flags:
+        return "possible injected instruction"
+    first = flags[0]
+    pattern = first.get("pattern", "unknown") if isinstance(first, dict) else "unknown"
+    detail = f"possible injected instruction ({pattern})"
+    if len(flags) > 1:
+        detail += f" +{len(flags) - 1} more"
+    return detail
+
+
 @app.get("/api/memory/{project}/needs-attention")
 async def get_needs_attention(project: str) -> dict[str, Any]:
     """Aggregate everything in this project currently waiting on a human —
@@ -2445,6 +2489,7 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     pending = await get_pending_reviews(project)
     untagged = await list_untagged_decisions(project)
     decayed = await list_decay_reviews(project, status="pending")
+    flagged = await list_flagged_decisions(project)
 
     items = [
         {
@@ -2484,6 +2529,16 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             ),
         }
         for r in decayed["decay_reviews"]
+    ] + [
+        {
+            "kind": "content_flagged",
+            "id": d.get("id"),
+            "label": d.get("decision"),
+            # Informational only here too -- review the flagged text
+            # directly (GET /decisions/flagged), no inline action.
+            "detail": _content_flagged_detail(d),
+        }
+        for d in flagged["decisions"]
     ]
 
     return {"items": items, "count": len(items)}

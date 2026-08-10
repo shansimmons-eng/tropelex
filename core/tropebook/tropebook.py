@@ -35,6 +35,10 @@ class Citation:
     access_count: int = 0
     source_type: str = SourceType.MANUAL.value
     metadata: dict = field(default_factory=dict)
+    # #40: stored-prompt-injection markers found in `summary` at write time
+    # -- flag, don't block. Own field rather than folded into `metadata`,
+    # matching this codebase's preference for explicit typed fields.
+    content_flags: list[dict] = field(default_factory=list)
 
     def to_dict(self, id: str = None) -> dict:
         d = asdict(self)
@@ -143,6 +147,10 @@ class Tropebook:
             self.update(cid, summary=summary, tags=tags, entities=entities)
             return cid
         cid = str(uuid.uuid4())[:8]
+        # #40: screen the raw scraped/researched text before storage --
+        # covers auto_research, the deep-research importer, and manual add,
+        # since all three funnel through this one function.
+        from core.injection_sentinel import scan_content
         citation = Citation(
             title=title,
             url=url,
@@ -152,6 +160,7 @@ class Tropebook:
             entities=entities if entities is not None else [],
             source_type=source_type.value,
             metadata=metadata if metadata is not None else {},
+            content_flags=scan_content(summary),
         )
         self.citations[cid] = citation
         self.graph.add_node(cid, "citation", {"title": title, "url": url})
@@ -162,6 +171,18 @@ class Tropebook:
     def update(self, cid: str, **kwargs):
         if cid in self.citations:
             cite = self.citations[cid]
+            # "summary" in kwargs (not a truthiness check): clearing a
+            # summary to "" must still re-scan to clear stale content_flags
+            # left over from a previous, since-overwritten injected summary
+            # -- a falsy check here would silently leave the old flags in
+            # place after the offending text was already removed.
+            if "summary" in kwargs and kwargs["summary"] is not None:
+                # #40: re-scan on every summary rewrite, not just first
+                # write -- add()'s own dedup-by-url path routes here
+                # instead of constructing a fresh Citation, so this is the
+                # only place an updated summary's content gets screened.
+                from core.injection_sentinel import scan_content
+                kwargs["content_flags"] = scan_content(kwargs["summary"])
             for key, value in kwargs.items():
                 if hasattr(cite, key) and value is not None:
                     setattr(cite, key, value)

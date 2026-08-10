@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from core.agent_audit import AuditFinding, AuditReport
+from core.injection_sentinel import INJECTION_MARKERS as _INJECTION_MARKERS
 
 # ---------------------------------------------------------------------------
 # Category 1: secrets detection
@@ -174,21 +175,16 @@ def scan_mcp_config(mcp_config: dict[str, Any], file: str) -> list[AuditFinding]
 # ---------------------------------------------------------------------------
 # Category 5: agent/skill config review
 # ---------------------------------------------------------------------------
-
-_INJECTION_MARKERS = [
-    re.compile(r"(?i)ignore (all )?(previous|prior|above) instructions"),
-    re.compile(r"(?i)disregard (your|the) (system prompt|instructions|guidelines)"),
-    re.compile(r"(?i)disable (safety|security|guardrails)"),
-    re.compile(r"(?i)do not (tell|inform|mention this to) the user"),
-    re.compile(r"(?i)exfiltrat"),
-]
+# _INJECTION_MARKERS is imported from core.injection_sentinel (#40) -- that
+# module is the canonical home now; this file just reuses it for file/line
+# config scanning rather than keeping its own copy.
 
 
 def scan_agent_config(content: str, file: str) -> list[AuditFinding]:
     """Scan an agent/skill definition file for prompt-injection-style instructions."""
     findings: list[AuditFinding] = []
     for line_no, line in enumerate(content.splitlines(), start=1):
-        for pattern in _INJECTION_MARKERS:
+        for _name, pattern in _INJECTION_MARKERS:
             if pattern.search(line):
                 findings.append(_finding(
                     category="agent_config", severity="high", file=file, line=line_no,

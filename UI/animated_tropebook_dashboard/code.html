@@ -5613,7 +5613,10 @@ function renderCitations() {
     grid.innerHTML = filtered.map((c, idx) => `
         <article class="glass-panel rounded-xl p-5 hover:glow transition-all cursor-pointer group" data-id="${c.id || ''}">
             <div class="flex items-start justify-between mb-3">
-                <span class="text-xs font-mono text-outline">${c.source_type?.toUpperCase() || 'MANUAL'}</span>
+                <span class="flex items-center gap-1.5 text-xs font-mono text-outline">
+                    ${c.source_type?.toUpperCase() || 'MANUAL'}
+                    ${c.content_flags?.length ? `<span class="material-symbols-outlined text-sm text-red-400" title="Possible injected instruction: ${escapeAttr(c.content_flags.map(f => f.pattern).join(', '))}">warning</span>` : ''}
+                </span>
                 <div class="flex gap-2">
                     <button class="related-btn text-outline hover:text-accent-sky transition-colors cursor-pointer" data-id="${c.id || ''}" data-url="${escapeAttr(c.url || '')}" title="Find related citations">
                         <span class="material-symbols-outlined text-lg">hub</span>

@@ -110,14 +110,24 @@ def capture_decision(
         agent_name=normalize_agent_name(agent_name)[:100],
     )
 
-    # Add to memory
-    memory.setdefault("decisions", []).append({
+    decision_entry = {
         "id": decision.id,
         "timestamp": decision.timestamp,
         "decision": decision.decision_text,
         "context": decision.context or f"Captured from Slack ({decision.channel})",
         "source": "slack",
-    })
+    }
+
+    # #40: this path bypasses add_decision's safety gates entirely (no
+    # human present to pick a category), so it's the higher-risk of the
+    # two decision-write paths for stored-prompt-injection content -- flag,
+    # don't block, same as core.tropebook.web.server.add_decision.
+    from core.injection_sentinel import scan_content
+    flags = scan_content(decision_entry["decision"]) + scan_content(decision_entry["context"])
+    if flags:
+        decision_entry["content_flags"] = flags
+
+    memory.setdefault("decisions", []).append(decision_entry)
 
     return Ok(value=decision)
 
