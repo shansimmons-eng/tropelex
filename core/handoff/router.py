@@ -19,6 +19,8 @@ from core.handoff.packet_builder import (
     ROLE_PROFILES,
 )
 from core.memory.manager import MemoryManager
+from core.audit import append_audit_event, compute_hash
+from core.agent_identity import normalize_agent_name
 
 logger = logging.getLogger("tropelex.handoff")
 
@@ -37,11 +39,20 @@ def _load_memory(project: str) -> dict[str, Any]:
 class HandoffRequest(BaseModel):
     role: str
     token_budget: int = 4000
+    agent_name: str = "unspecified"
 
 
 @handoff_router.post("/{project}/handoff")
 async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
-    """Generate a role-aware context packet for agent handoff."""
+    """Generate a role-aware context packet for agent handoff.
+
+    #59: the packet is hashed and logged into the append-only audit trail
+    (core/audit.py, #52) at the moment it's generated -- tamper-evident,
+    and gives the receiving agent something real to reference in a later
+    POST /{project}/handoff/acknowledge call. Voluntary, not gating: no
+    subsequent write is blocked on acknowledgment (see wishlist.md #59's
+    deferred section for why a hard gate isn't built here).
+    """
     try:
         memory = _load_memory(project)
     except HTTPException:
@@ -58,7 +69,7 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
     )
 
     # Convert dataclasses to dicts for JSON serialization
-    return {
+    response = {
         "role": packet.role,
         "project": packet.project,
         "context_slices": [
@@ -77,6 +88,119 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
         "skills_summary": packet.skills_summary,
         "generated_at": packet.generated_at,
     }
+
+    agent_name = normalize_agent_name(req.agent_name)
+    packet_hash = compute_hash(response)
+    try:
+        append_audit_event(
+            memory, "handoff_created",
+            role=req.role, agent_name=agent_name, packet_hash=packet_hash,
+        )
+        _mm.save_project_memory(project, memory)
+    except Exception as exc:
+        # Audit logging must never break the actual handoff generation that
+        # already succeeded above -- same "instrumentation can't break the
+        # thing it's observing" stance as #45's session-shape capture.
+        logger.error("handoff audit logging failed for %s: %s", project, exc)
+
+    response["packet_hash"] = packet_hash
+    return response
+
+
+class HandoffAcknowledgeRequest(BaseModel):
+    packet_hash: str
+    agent_name: str = "unspecified"
+    acknowledged_constraints: list[str] = []
+
+
+@handoff_router.post("/{project}/handoff/acknowledge")
+async def acknowledge_handoff(project: str, req: HandoffAcknowledgeRequest) -> dict[str, Any]:
+    """Record that a receiving agent acknowledged a previously-generated
+    handoff packet. 404s if packet_hash doesn't match a real
+    handoff_created audit entry -- rejects acking a packet that was never
+    actually generated, same "validate the reference is real" discipline
+    as #53's override endpoint validating decision_id.
+    """
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("handoff-acknowledge load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    audit_log = memory.get("audit_log", [])
+    known = any(
+        isinstance(e, dict) and e.get("event_type") == "handoff_created"
+        and e.get("packet_hash") == req.packet_hash
+        for e in audit_log
+    )
+    if not known:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No handoff packet with hash '{req.packet_hash}' was generated for project '{project}'",
+        )
+
+    agent_name = normalize_agent_name(req.agent_name)
+    try:
+        append_audit_event(
+            memory, "handoff_acknowledged",
+            packet_hash=req.packet_hash, agent_name=agent_name,
+            acknowledged_constraints=req.acknowledged_constraints,
+        )
+        _mm.save_project_memory(project, memory)
+    except Exception as exc:
+        logger.error("handoff-acknowledge save failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"acknowledged": True, "packet_hash": req.packet_hash, "agent_name": agent_name}
+
+
+def _unacknowledged_handoffs(memory: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pure helper: handoff_created audit entries with no later matching
+    handoff_acknowledged entry (same packet_hash). Defensive against
+    malformed audit_log entries -- persisted, agent-supplied-adjacent
+    data, same posture as #58's scheduler work."""
+    audit_log = memory.get("audit_log", [])
+    if not isinstance(audit_log, list):
+        return []
+
+    acknowledged_hashes = {
+        e.get("packet_hash") for e in audit_log
+        if isinstance(e, dict) and e.get("event_type") == "handoff_acknowledged"
+    }
+    return [
+        {
+            "packet_hash": e.get("packet_hash"),
+            "role": e.get("role"),
+            "agent_name": e.get("agent_name"),
+            "created_at": e.get("timestamp"),
+        }
+        for e in audit_log
+        if isinstance(e, dict)
+        and e.get("event_type") == "handoff_created"
+        and e.get("packet_hash") not in acknowledged_hashes
+    ]
+
+
+@handoff_router.get("/{project}/handoff/unacknowledged")
+async def list_unacknowledged_handoffs(project: str) -> dict[str, Any]:
+    """List handoff packets that were generated but never acknowledged --
+    the triage queue behind Needs Attention's unacknowledged_handoff
+    source (#59).
+
+    Deliberately uses get_project_memory directly rather than
+    _load_memory: get_needs_attention calls this unconditionally for
+    every project it aggregates, including ones that have never had
+    memory written to disk yet, the same way its other sources
+    (list_flagged_decisions, list_decay_reviews, etc.) already treat a
+    nonexistent project as an empty one rather than 404ing. _load_memory's
+    strict existence check stays on generate_handoff/acknowledge_handoff,
+    where it's the correct behavior for a direct call.
+    """
+    memory = _mm.get_project_memory(project)
+    handoffs = _unacknowledged_handoffs(memory)
+    return {"handoffs": handoffs, "count": len(handoffs)}
 
 
 @handoff_router.get("/{project}/handoff/roles")

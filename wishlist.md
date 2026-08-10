@@ -491,6 +491,20 @@ An external code review of Tropelex's safety/alignment infrastructure came back 
 
 ---
 
+### 64. Draft Policy Schema for Gates
+**Purpose:** Formalize `memory["gate_policy"]`'s shape — right now it's an unvalidated freeform dict (`_policy_for`'s module default is `{"high": "block", "medium": "warn", "low": "log_only"}`, #53), so a project can write anything under that key with no schema check, no rejection of a nonsense severity key or an unrecognized action value.
+
+**Why:** Direct follow-on to #53 — the gate mechanism itself is real and tested, but the policy it reads is exactly the kind of "silently accept whatever's there" surface this project has repeatedly closed elsewhere (`safety_category`'s gate, #54's stricter metadata requirements). A malformed `gate_policy` today wouldn't error; it would just silently fail to gate anything, or gate the wrong tier. Tracked live as goal `195c358c1581` in the `tropelex` project.
+
+**Features (proposed):**
+- A `GatePolicy` schema (Pydantic model, matching this project's existing request-body validation pattern) with an explicit enum for actions (`block`/`warn`/`log_only`) and required severity keys.
+- Validation at the write boundary — wherever `memory["gate_policy"]` gets set — not inside `_policy_for` itself, matching this codebase's "validate at the router boundary, not inside pure logic" convention (#41's `Decision.goal_id` FK check is the precedent).
+- Honest default-vs-override distinction surfaced in the ghost-check response, so it's visible whether a project is running the module default or an explicit override.
+
+**Status:** Open. Proposed 2026-08-08. Small, contained — no new subsystem, just closing a validation gap #53 left open.
+
+---
+
 ### 54. Required Safety Metadata for High-Risk Decisions
 **Purpose:** Extend the existing `require_tag`/`TagRequiredError` gate (built for `safety_category`, #35) so decisions above a risk threshold, or touching listed critical systems, can't be saved without richer safety metadata — not just a category.
 
@@ -607,12 +621,21 @@ Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 
 
 **Why:** Reviewer's #4. Explicitly depends on #52 — "hash-chained into the Provenance Chain" only means something once that chain is a real append-only store rather than a recomputed view.
 
-**Features (proposed):**
-- Handoff packets hash-chained into `audit_log` (#52) at creation time; receiving agent must acknowledge critical safety constraints from the packet before writing, non-acknowledgment logged as a friction/ghost signal.
-- Systematically overconfident agents (per existing calibration/`overconfidence_index`) get lower default authority or stricter review requirements on high-risk categories — an incentive, not just a leaderboard entry.
-- Lightweight disagreement protocol: opposing confidence bets from two agents (or agent + human) force an explicit resolution decision rather than both staying active unresolved.
+**Correction found before building:** verifying the three proposed features against the actual code (same discipline as #40/#55/#57/#58) found the latter two genuinely blocked, not just harder than expected. Handoff packets had **zero persistence** — `core/handoff/packet_builder.py` is explicitly documented as pure, no I/O, and `generate_handoff` never called a save; every packet was generated fresh and forgotten, with no acknowledgment concept anywhere in the codebase. Buildable, and built (see below). But "overconfident agents get stricter review" turned out to have a real, unstated prerequisite: **decisions carry zero agent attribution at capture time** — neither `DecisionCreate` nor the MCP `capture_decision` tool has an `agent_name` field at all, unlike `friction_scan`/`end_session`/`record_skill_outcome`, which all do. Differential treatment per agent is impossible when the write path doesn't know which agent is writing — the same class of unstated prerequisite #53 found blocking on #52. Separately, a project-level (not agent-level) variant of "market calibration affects escalation" already exists (`_apply_persona_market_escalation`, `core/tropebook/web/server.py`), worth citing so the eventual agent-scoped version isn't built as if from zero. And "opposing confidence bets" isn't even a well-defined operation against the current schema — `ConfidenceBet.confidence` is a scalar 0.0–1.0 probability magnitude, not a directional stance, and bets on the same decision aren't linked to each other at all; this needs a design decision before it's implementation work.
 
-**Status:** Open. Proposed 2026-08-08.
+Scoped this pass to the one piece that was genuinely ready: signed/hash-chained handoffs with voluntary acknowledgment, surfaced rather than gated.
+
+**Features:**
+- `core/handoff/router.py`'s `generate_handoff`: the packet is hashed (`core/audit.py`'s `compute_hash`, reused as a generic dict hasher, not decision-specific) and logged as a `handoff_created` event into the real append-only audit trail (#52) at the moment it's generated, then persisted — this endpoint never wrote to memory before. `packet_hash` comes back in the response.
+- New `POST /{project}/handoff/acknowledge`: 404s if `packet_hash` doesn't match a real prior `handoff_created` event — rejects acking a packet that was never actually generated, same "validate the reference is real" discipline as #53's override endpoint. Writes `handoff_acknowledged` (agent name + optional list of specific constraints confirmed understood). Voluntary, not gating: no subsequent write is blocked on it, avoiding fragile cross-call "which packet is outstanding for which agent" session-state tracking that nothing else in this codebase does either.
+- New `GET /{project}/handoff/unacknowledged` triage endpoint; `get_needs_attention` gained a fifth source (`unacknowledged_handoff`, informational only) — this is the "non-acknowledgment logged as a signal" half of the original proposal, satisfied by the existing signal-aggregation surface rather than a new parallel friction/ghost detector built for one event pair.
+- MCP `get_handoff_packet` gained an `agent` param; new `acknowledge_handoff` MCP tool mirrors `override_ghost_warning`'s shape as the closest existing analog.
+- **Caught mid-build:** the new `list_unacknowledged_handoffs` endpoint initially reused `core/handoff/router.py`'s existing `_load_memory` helper (hard 404 for a project with no memory file on disk yet) — correct for `generate_handoff`/`acknowledge_handoff`'s own direct-call semantics, but wrong once `get_needs_attention` started calling it unconditionally for every project it aggregates, including brand-new ones. Its sibling sources (`list_flagged_decisions`, `list_decay_reviews`, etc.) all treat a nonexistent project as an empty one; this one didn't, and broke an existing `test_safety_features.py` test that assumed that leniency. Fixed by reading memory directly instead of through the strict helper, plus a regression test.
+- Also caught mid-build: the test file's `SAMPLE_MEMORY` fixture is a shared module-level dict, and `append_audit_event` mutates its target in place even with `save_project_memory` mocked out — without a deep-copy per test, `audit_log` entries would leak across every test sharing that fixture within one test run. Fixed before it could actually pollute anything, alongside a closer call: the very first version of these tests would have called the real `_mm.save_project_memory("tropelex", ...)` against the live project on disk, since only `_load_memory` was mocked — caught and fixed before running any test file, not after.
+
+**Deferred, not built this pass:** calibration-based agent authority (blocked on decisions having zero agent attribution today — needs `agent_name` added to `DecisionCreate`/`capture_decision` first, a real, separate change); the disagreement protocol (blocked on "opposing bets" being undefined against the current scalar-confidence schema).
+
+**Status:** ✅ Implemented (scoped). Tests: `tests/test_handoff_packets.py` (+16 tests — packet_hash/audit-event on generation, acknowledge success/404/defaults, `_unacknowledged_handoffs` pure-function coverage including malformed-data defensiveness, the lenient-vs-strict regression), `tests/test_handoff_needs_attention.py` (new, 7 tests, real end-to-end lifecycle against the real server), `mcp_server/test_server.py` (+4). Full suite: 1952 passing (was 1929) + 26 passing (mcp_server, was 22). Live-verified against the real `tropelex` project: generated a real handoff packet, confirmed `packet_hash` + a `handoff_created` audit entry, confirmed it surfaced in `GET /needs-attention`; acknowledging a bogus hash correctly 404'd; acknowledging the real hash succeeded, dropped it from Needs Attention, and landed a `handoff_acknowledged` entry. No cleanup needed beyond the audit trail (decisions count unaffected at 160, matching this session's established precedent of leaving audit_log entries in place).
 
 ---
 
@@ -674,6 +697,15 @@ Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 
 - Session-end auto-wiring (`add_session`/`record_session`) explicitly **not** built — two different, non-overlapping "session end" endpoints exist (dashboard-button-driven vs. the MCP `end_session` path an agent actually calls), and auto-wiring into the wrong one would silently reproduce `detect_decisions`' orphaned-feature problem. Deferred as a phase-2 decision pending real usage data on whether `end_session` calls carry substantive `summary` text.
 
 **Status:** ✅ Implemented (`core/goals/detector.py`). Tests: `tests/test_goals.py` (`TestDetectGoals`, `TestGoalDetectRouter`, 17 tests).
+
+---
+
+### 63. Session-End Auto-Wiring for Goal Detection
+**Purpose:** Revisit #48's explicitly-deferred phase-2 decision — auto-run `detect_goals` against a session's `summary` text at the MCP `end_session` path, instead of requiring an agent to paste text into the dashboard's "Scan for goal candidates" panel by hand.
+
+**Why:** #48's own writeup named the two candidate "session end" endpoints and picked neither, deliberately: `record_session` (dashboard-button-driven) and the MCP `end_session` tool (what a real agent session actually calls) don't overlap, and wiring into the wrong one would silently reproduce `PatternLearner.detect_decisions()`'s orphaned-feature problem — a fully-built, tested method with zero UI consumer. The blocker isn't which endpoint (it's `end_session`, the higher-value integration point) — it's not yet knowing whether real agent-supplied `summary` text is substantive enough for goal-shaped-language scanning to have real yield, versus mostly one-line summaries too short to match. Tracked live as goal `7910c0002ebf` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-08. Blocked on usage data, not a technical unknown — revisit once enough real `end_session` calls exist to check `summary` length/substance distribution.
 
 ---
 
@@ -754,6 +786,15 @@ Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 
 - Compaction history with rollback
 
 **Status:** ✅ Implemented (core/compaction/)
+
+---
+
+### 65. Dictionary Coverage Audit
+**Purpose:** Review every dictionary file this project uses (Compression's dictionary-based rules chief among them, `core/compression`) for sufficient coverage, and document each one's purpose and what it's connected to in a single `.gitignored` reference file.
+
+**Why:** Multiple features now depend on hand-maintained dictionary files (Compression's dictionary-vs-LLM split, referenced in #57's writeup as the precedent for tiered-fallback design) with no central inventory of what exists, what each one covers, or whether coverage is actually adequate for the text it's applied to. `.gitignored` specifically — this is a working reference for whoever's auditing, not a tracked artifact that needs to stay in sync with the dictionaries themselves. Tracked live as goal `b91dce7bdfa9` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-08.
 
 ---
 
@@ -985,6 +1026,17 @@ Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 
 
 **Status:** ✅ Implemented (core/cost/)
 
+---
+
+### 66. Context Injection Middleware / Gateway Router
+**Purpose:** A proxy layer between any MCP-enabled IDE and the Tropelex MCP server — `[IDE] ↔ [Tropelex MCP Server] → [Context Rewriter] → [Gateway Router]` — that rewrites/routes context in transit rather than only serving it directly.
+
+**Why:** Captured as a rough architecture sketch, not yet elaborated into concrete features — genuinely thin on detail at proposal time, disclosed honestly rather than inflated into scope that isn't there yet. The shape (context rewriter + gateway router sitting between the IDE's stdio JSON-RPC and the MCP server) suggests a use case like per-IDE context adaptation or multi-backend routing, but which problem it's actually solving hasn't been pinned down. Tracked live as goal `9a4fbbbcfaba` in the `tropelex` project.
+
+**Status:** Open. Proposed 2026-08-10. Needs scoping before it's buildable — revisit once there's a concrete driving use case, not just the architecture diagram.
+
+---
+
 ## UI & Presentation
 
 ### 38. Global Horizontal Sub-Navigation Migration
@@ -1215,5 +1267,5 @@ Re-verified against `tropelex` after both fixes: 87 → 34 total unresolved, 13 
 ---
 
 **Last Updated:** 2026-08-08
-**Status:** All features implemented except #19 (Session Replay with AI Analysis), #40 (Injection Sentinel), #42–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Session-Shape Baselining, Tagline Reconsideration, General Branding Alignment Pass — all proposed 2026-08-07 off the agent-drift research pass following #41, and mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`), and #58–#60 (the remaining external-review safety-hardening set: Knowledge Decay Loop Closure, Signed/Hash-Chained Handoffs, Drift-Bench Harness — proposed 2026-08-08, prioritized in the "Safety Infrastructure Hardening" section above) + Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), Goal-Shaped Language Detection (#48), Attention Pulse Animation (#49), the Error Handling Audit / Result-type consolidation (#50), the `nonsafety:bug` convention (#51), Real Append-Only Provenance Chain & Security Audit Log (#52), Enforceable Preventive Gates + Override-as-Decision (#53), Required Safety Metadata for High-Risk Decisions (#54), Doc Mining + Ghost Combined-Severity Alert (#55), Friction → Decision Promotion (#56), and Semantic Detection Upgrade for Contradictions (#57, Ghost Decisions deferred). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
+**Status:** All features implemented except #19 (Session Replay with AI Analysis), #42–#44/#46–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Tagline Reconsideration, General Branding Alignment Pass — proposed 2026-08-07 off the agent-drift research pass following #41, mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`), #59–#60 (Signed/Hash-Chained Handoffs, Drift-Bench Harness — proposed 2026-08-08, the remaining unbuilt items from the "Safety Infrastructure Hardening" section above), and #63–#66 (Session-End Auto-Wiring for Goal Detection, Draft Policy Schema for Gates, Dictionary Coverage Audit, Context Injection Middleware — reconciled 2026-08-10 from live Goal records that had never been written up as numbered wishlist items). #45 (Session-Shape Baselining), #58 (Knowledge Decay Loop Closure), and #40 (Injection Sentinel) — all also off that same agent-drift/external-review pass — shipped 2026-08-09/10. Also implemented: Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), Goal-Shaped Language Detection (#48), Attention Pulse Animation (#49), the Error Handling Audit / Result-type consolidation (#50), the `nonsafety:bug` convention (#51), Real Append-Only Provenance Chain & Security Audit Log (#52), Enforceable Preventive Gates + Override-as-Decision (#53), Required Safety Metadata for High-Risk Decisions (#54), Doc Mining + Ghost Combined-Severity Alert (#55), Friction → Decision Promotion (#56), Semantic Detection Upgrade for Contradictions (#57, Ghost Decisions deferred), Prevention Report (#61), and Friction Persistence + Generic Review Queue (#62). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
 **Next Review:** 2026-08-15

@@ -423,17 +423,53 @@ async def record_skill_outcome(
 
 
 @mcp.tool()
-async def get_handoff_packet(project: str, role: str, token_budget: int = 4000) -> dict[str, Any]:
+async def get_handoff_packet(
+    project: str, role: str, token_budget: int = 4000, agent: str = "unspecified"
+) -> dict[str, Any]:
     """Generate a role-aware context bundle for handing work off to another agent.
+
+    The response includes packet_hash (#59) -- pass it to acknowledge_handoff
+    once you've read the packet and understood its constraints, so it's not
+    left showing as an unacknowledged handoff in Needs Attention.
 
     Args:
         project: Project name.
         role: The receiving agent's role (e.g. "reviewer", "implementer", "tester").
         token_budget: Maximum token budget for the packet.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini").
     """
     return await _request(
         "get_handoff_packet", "POST", f"/api/memory/{quote(project, safe='')}/handoff",
-        json={"role": role, "token_budget": token_budget},
+        json={"role": role, "token_budget": token_budget, "agent_name": agent},
+    )
+
+
+@mcp.tool()
+async def acknowledge_handoff(
+    project: str, packet_hash: str, agent: str = "unspecified",
+    acknowledged_constraints: list[str] | None = None,
+) -> dict[str, Any]:
+    """Acknowledge a handoff packet you received via get_handoff_packet.
+
+    Records the acknowledgment in the project's audit trail (#52) and
+    clears the packet from Needs Attention's unacknowledged-handoffs list.
+    Voluntary, not required to proceed with normal writes -- but skipping
+    it leaves the handoff visibly outstanding for a human to notice.
+
+    Args:
+        project: Project name.
+        packet_hash: The packet_hash returned by get_handoff_packet.
+        agent: Your own name (e.g. "Claude", "Cursor", "Gemini").
+        acknowledged_constraints: Optional list of specific constraints from
+            the packet you're confirming you understood.
+    """
+    return await _request(
+        "acknowledge_handoff", "POST",
+        f"/api/memory/{quote(project, safe='')}/handoff/acknowledge",
+        json={
+            "packet_hash": packet_hash, "agent_name": agent,
+            "acknowledged_constraints": acknowledged_constraints or [],
+        },
     )
 
 

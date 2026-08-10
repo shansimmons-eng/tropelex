@@ -186,7 +186,7 @@ from core.analytics_router import analytics_router        # noqa: E402
 from core.tropebook.alert_router import alert_router      # noqa: E402
 from core.ghost.router import ghost_router                  # noqa: E402
 from core.explain.router import explain_router              # noqa: E402
-from core.handoff.router import handoff_router              # noqa: E402
+from core.handoff.router import handoff_router, list_unacknowledged_handoffs  # noqa: E402
 from core.ghost.preventive_router import preventive_router  # noqa: E402
 from core.compaction.router import compaction_router        # noqa: E402
 from core.cost.router import cost_router                    # noqa: E402
@@ -2490,6 +2490,7 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     untagged = await list_untagged_decisions(project)
     decayed = await list_decay_reviews(project, status="pending")
     flagged = await list_flagged_decisions(project)
+    unacked_handoffs = await list_unacknowledged_handoffs(project)
 
     items = [
         {
@@ -2539,6 +2540,16 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             "detail": _content_flagged_detail(d),
         }
         for d in flagged["decisions"]
+    ] + [
+        {
+            "kind": "unacknowledged_handoff",
+            "id": h.get("packet_hash"),
+            "label": f"Handoff to '{h.get('role')}' role",
+            # Informational only -- acknowledge via
+            # POST /handoff/acknowledge, no inline action here.
+            "detail": f"generated for {h.get('agent_name', 'unspecified')}, not yet acknowledged",
+        }
+        for h in unacked_handoffs["handoffs"]
     ]
 
     return {"items": items, "count": len(items)}

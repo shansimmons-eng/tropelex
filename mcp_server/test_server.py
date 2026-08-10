@@ -115,6 +115,51 @@ class TestRecordSkillOutcome:
         assert body["agent_name"] == "unspecified"
 
 
+class TestGetHandoffPacketAgentAttribution:
+    @pytest.mark.asyncio
+    async def test_passes_agent_name_through_to_request_body(self, recorder):
+        await server.get_handoff_packet("proj", "reviewer", agent="Gemini")
+
+        tool_name, method, path, body = recorder.calls[0]
+        assert method == "POST"
+        assert path == "/api/memory/proj/handoff"
+        assert body["role"] == "reviewer"
+        assert body["agent_name"] == "Gemini"
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_unspecified_when_agent_omitted(self, recorder):
+        await server.get_handoff_packet("proj", "reviewer")
+
+        _, _, _, body = recorder.calls[0]
+        assert body["agent_name"] == "unspecified"
+
+
+class TestAcknowledgeHandoff:
+    @pytest.mark.asyncio
+    async def test_hits_acknowledge_endpoint_with_full_payload(self, recorder):
+        await server.acknowledge_handoff(
+            "proj", "abc123", agent="Claude",
+            acknowledged_constraints=["do not touch prod"],
+        )
+
+        tool_name, method, path, body = recorder.calls[0]
+        assert method == "POST"
+        assert path == "/api/memory/proj/handoff/acknowledge"
+        assert body == {
+            "packet_hash": "abc123",
+            "agent_name": "Claude",
+            "acknowledged_constraints": ["do not touch prod"],
+        }
+
+    @pytest.mark.asyncio
+    async def test_defaults_agent_and_constraints(self, recorder):
+        await server.acknowledge_handoff("proj", "abc123")
+
+        _, _, _, body = recorder.calls[0]
+        assert body["agent_name"] == "unspecified"
+        assert body["acknowledged_constraints"] == []
+
+
 class TestProjectNameUrlEscaping:
     @pytest.mark.asyncio
     async def test_end_session_quotes_project_with_special_characters(self, recorder):

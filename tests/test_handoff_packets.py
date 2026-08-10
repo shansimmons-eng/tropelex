@@ -5,7 +5,9 @@ Covers packet_builder (pure functions) and router (FastAPI endpoints).
 Uses httpx AsyncClient for endpoint tests; all external I/O is mocked.
 """
 
+import copy
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -514,9 +516,26 @@ SAMPLE_MEMORY = {
 class TestHandoffEndpoint:
     """Integration tests for POST /api/memory/{project}/handoff."""
 
+    @contextmanager
     def _mock_load(self, memory):
-        """Return a patched _load_memory that yields our test memory."""
-        return patch("core.handoff.router._load_memory", return_value=memory)
+        """Patch _load_memory AND save_project_memory. generate_handoff
+        now persists a handoff_created audit event (#59) via the module-
+        level `_mm` (a real MemoryManager() instance, not itself mocked) --
+        without also patching save, this would write `memory` over the
+        real on-disk project file for whatever project name a test uses
+        (several tests here use "tropelex", the actual live project).
+
+        Also deep-copies `memory` before handing it to the mock: SAMPLE_MEMORY
+        is a shared module-level dict, and append_audit_event mutates its
+        target in place (adds to memory["audit_log"]) even with save mocked
+        out -- without the copy, every test sharing SAMPLE_MEMORY would leak
+        audit_log entries into every other test that runs after it in the
+        same session.
+        """
+        memory_copy = copy.deepcopy(memory)
+        with patch("core.handoff.router._load_memory", return_value=memory_copy), \
+             patch("core.handoff.router._mm.save_project_memory") as mock_save:
+            yield mock_save, memory_copy
 
     async def test_handoff_endpoint_returns_200(self):
         """Valid request with known project → 200 with full packet."""
@@ -541,6 +560,49 @@ class TestHandoffEndpoint:
         assert isinstance(body["token_count"], int)
         assert isinstance(body["token_budget"], int)
         assert "generated_at" in body
+        assert "packet_hash" in body
+
+    async def test_handoff_endpoint_writes_handoff_created_audit_event(self):
+        """#59: generation is logged into the append-only audit trail,
+        hash-chained via core.audit.append_audit_event."""
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(SAMPLE_MEMORY) as (mock_save, memory_copy):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff",
+                    json={"role": "CoderAgent", "agent_name": "Claude"},
+                )
+
+        assert resp.status_code == 200
+        events = [e for e in memory_copy.get("audit_log", []) if e["event_type"] == "handoff_created"]
+        assert len(events) == 1
+        assert events[0]["role"] == "CoderAgent"
+        assert events[0]["agent_name"] == "Claude"
+        assert events[0]["packet_hash"] == resp.json()["packet_hash"]
+        assert "hash" in events[0] and "previous_hash" in events[0]
+        mock_save.assert_called_once()
+
+    async def test_handoff_endpoint_persist_failure_does_not_break_generation(self):
+        """Audit logging must never break the handoff generation that
+        already succeeded -- same 'instrumentation can't break the thing
+        it's observing' stance as #45's session-shape capture."""
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(SAMPLE_MEMORY) as (mock_save, _memory_copy):
+            mock_save.side_effect = RuntimeError("disk full")
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff",
+                    json={"role": "CoderAgent"},
+                )
+
+        assert resp.status_code == 200
+        assert "packet_hash" in resp.json()
 
     async def test_handoff_endpoint_returns_404_for_unknown_project(self):
         """Unknown project → 404."""
@@ -578,3 +640,214 @@ class TestHandoffEndpoint:
         assert "TestEngineer" in body["roles"]
         assert "Architect" in body["roles"]
         assert isinstance(body["roles"]["CoderAgent"], str)
+
+
+class TestHandoffAcknowledge:
+    """Tests for POST /{project}/handoff/acknowledge (#59)."""
+
+    @contextmanager
+    def _mock_load(self, memory):
+        """See TestHandoffEndpoint._mock_load's docstring -- same double
+        risk (real disk write via unmocked _mm, shared-dict mutation
+        pollution) applies here."""
+        memory_copy = copy.deepcopy(memory)
+        with patch("core.handoff.router._load_memory", return_value=memory_copy), \
+             patch("core.handoff.router._mm.save_project_memory") as mock_save:
+            yield mock_save, memory_copy
+
+    def _memory_with_handoff(self, packet_hash="abc123"):
+        memory = copy.deepcopy(SAMPLE_MEMORY)
+        memory["audit_log"] = [{
+            "event_type": "handoff_created",
+            "timestamp": "2026-08-10T00:00:00+00:00",
+            "previous_hash": "genesis",
+            "role": "CoderAgent",
+            "agent_name": "Claude",
+            "packet_hash": packet_hash,
+            "hash": "deadbeef",
+        }]
+        return memory
+
+    async def test_acknowledge_known_packet_succeeds(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(self._memory_with_handoff("abc123")) as (mock_save, memory_copy):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff/acknowledge",
+                    json={"packet_hash": "abc123", "agent_name": "Claude"},
+                )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["acknowledged"] is True
+        assert body["packet_hash"] == "abc123"
+        events = [e for e in memory_copy["audit_log"] if e["event_type"] == "handoff_acknowledged"]
+        assert len(events) == 1
+        assert events[0]["agent_name"] == "Claude"
+        assert events[0]["packet_hash"] == "abc123"
+        mock_save.assert_called_once()
+
+    async def test_acknowledge_unknown_packet_hash_404s(self):
+        """Rejects acking a packet that was never actually generated --
+        same 'validate the reference is real' discipline as #53's
+        override endpoint validating decision_id."""
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(self._memory_with_handoff("abc123")):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff/acknowledge",
+                    json={"packet_hash": "does-not-exist"},
+                )
+
+        assert resp.status_code == 404
+
+    async def test_acknowledge_records_acknowledged_constraints(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(self._memory_with_handoff("abc123")) as (mock_save, memory_copy):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                await client.post(
+                    "/api/memory/tropelex/handoff/acknowledge",
+                    json={"packet_hash": "abc123", "acknowledged_constraints": ["do not touch prod"]},
+                )
+
+        events = [e for e in memory_copy["audit_log"] if e["event_type"] == "handoff_acknowledged"]
+        assert events[0]["acknowledged_constraints"] == ["do not touch prod"]
+
+    async def test_acknowledge_defaults_agent_name(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(self._memory_with_handoff("abc123")):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff/acknowledge",
+                    json={"packet_hash": "abc123"},
+                )
+
+        assert resp.json()["agent_name"] == "unspecified"
+
+    async def test_acknowledge_empty_audit_log_404s(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with self._mock_load(copy.deepcopy(SAMPLE_MEMORY)):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/memory/tropelex/handoff/acknowledge",
+                    json={"packet_hash": "anything"},
+                )
+
+        assert resp.status_code == 404
+
+
+class TestUnacknowledgedHandoffs:
+    """Pure-function tests for core.handoff.router._unacknowledged_handoffs."""
+
+    def test_no_audit_log_returns_empty(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        assert _unacknowledged_handoffs({}) == []
+
+    def test_created_without_ack_is_returned(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        memory = {"audit_log": [
+            {"event_type": "handoff_created", "packet_hash": "h1", "role": "CoderAgent",
+             "agent_name": "Claude", "timestamp": "t1"},
+        ]}
+        result = _unacknowledged_handoffs(memory)
+        assert len(result) == 1
+        assert result[0]["packet_hash"] == "h1"
+        assert result[0]["role"] == "CoderAgent"
+
+    def test_acknowledged_handoff_is_excluded(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        memory = {"audit_log": [
+            {"event_type": "handoff_created", "packet_hash": "h1"},
+            {"event_type": "handoff_acknowledged", "packet_hash": "h1"},
+        ]}
+        assert _unacknowledged_handoffs(memory) == []
+
+    def test_multiple_handoffs_only_unacked_returned(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        memory = {"audit_log": [
+            {"event_type": "handoff_created", "packet_hash": "h1"},
+            {"event_type": "handoff_created", "packet_hash": "h2"},
+            {"event_type": "handoff_acknowledged", "packet_hash": "h1"},
+        ]}
+        result = _unacknowledged_handoffs(memory)
+        assert len(result) == 1
+        assert result[0]["packet_hash"] == "h2"
+
+    def test_non_list_audit_log_does_not_raise(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        assert _unacknowledged_handoffs({"audit_log": "corrupted"}) == []
+
+    def test_non_dict_entries_are_skipped(self):
+        from core.handoff.router import _unacknowledged_handoffs
+        memory = {"audit_log": [
+            "not a dict", None, 42,
+            {"event_type": "handoff_created", "packet_hash": "h1"},
+        ]}
+        result = _unacknowledged_handoffs(memory)
+        assert len(result) == 1
+
+
+class TestListUnacknowledgedHandoffsEndpoint:
+    """Tests for GET /{project}/handoff/unacknowledged."""
+
+    async def test_returns_unacked_handoffs(self):
+        from httpx import ASGITransport, AsyncClient
+
+        memory = {"audit_log": [
+            {"event_type": "handoff_created", "packet_hash": "h1", "role": "CoderAgent",
+             "agent_name": "Claude", "timestamp": "t1"},
+        ]}
+        with patch("core.handoff.router._mm.get_project_memory", return_value=memory):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/memory/tropelex/handoff/unacknowledged")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["count"] == 1
+        assert body["handoffs"][0]["packet_hash"] == "h1"
+
+    async def test_empty_when_none_outstanding(self):
+        from httpx import ASGITransport, AsyncClient
+
+        with patch("core.handoff.router._mm.get_project_memory", return_value={"audit_log": []}):
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/memory/tropelex/handoff/unacknowledged")
+
+        assert resp.json() == {"handoffs": [], "count": 0}
+
+    async def test_nonexistent_project_returns_empty_not_404(self):
+        """Regression: get_needs_attention calls this for every project it
+        aggregates, including ones with no memory file on disk yet --
+        must stay lenient like its sibling sources (list_flagged_decisions,
+        list_decay_reviews), not 404 the way generate_handoff/
+        acknowledge_handoff correctly do for a direct call."""
+        from httpx import ASGITransport, AsyncClient
+
+        async with AsyncClient(
+            transport=ASGITransport(app=_app()), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/api/memory/definitely-nonexistent-project-xyz/handoff/unacknowledged"
+            )
+
+        assert resp.status_code == 200
+        assert resp.json() == {"handoffs": [], "count": 0}
