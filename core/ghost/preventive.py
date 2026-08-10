@@ -36,6 +36,10 @@ class GhostWarning:
     recommendation: str
     diff_file: str = ""
     diff_line: int = 0
+    # #58: severity_score already folds knowledge_decay's confidence in
+    # multiplicatively -- this surfaces *why* a warning scored lower,
+    # instead of only a silently-reduced number with no explanation.
+    decision_confidence_tier: str = "medium"
 
 
 def _classify_severity(score: float) -> str:
@@ -104,6 +108,7 @@ def _warn_single_decision(
     text = decision.get("decision", "")
     score_record = scored_map.get(did, {})
     confidence: float = score_record.get("score", 0.5)
+    confidence_tier: str = score_record.get("tier", "medium")
 
     matches = match_decision_to_diff(text, diff_hunks)
     if not matches:
@@ -123,6 +128,7 @@ def _warn_single_decision(
             severity_score=round(raw_severity, 4),
             matched_keywords=m.matched_keywords,
             recommendation=_recommendation_for(tier, text, m.diff_file, m.matched_keywords),
+            decision_confidence_tier=confidence_tier,
             diff_file=m.diff_file,
             diff_line=m.diff_line,
         ))
@@ -140,6 +146,7 @@ def _warning_to_dict(w: GhostWarning) -> dict[str, Any]:
         "recommendation": w.recommendation,
         "diff_file": w.diff_file,
         "diff_line": w.diff_line,
+        "decision_confidence_tier": w.decision_confidence_tier,
     }
 
 

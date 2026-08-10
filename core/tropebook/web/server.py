@@ -2444,6 +2444,7 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     """
     pending = await get_pending_reviews(project)
     untagged = await list_untagged_decisions(project)
+    decayed = await list_decay_reviews(project, status="pending")
 
     items = [
         {
@@ -2470,6 +2471,19 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             ),
         }
         for d in untagged["decisions"]
+    ] + [
+        {
+            "kind": "decayed_decision",
+            "id": r.get("id"),
+            "label": r.get("decision"),
+            # Informational only here, same as pending_review -- act on it
+            # from the Confidence tab (pin/attest/dismiss), not inline.
+            "detail": (
+                f"confidence decayed to '{r.get('tier')}' "
+                f"but still referenced by {r.get('reference_count', 0)} other decision(s)"
+            ),
+        }
+        for r in decayed["decay_reviews"]
     ]
 
     return {"items": items, "count": len(items)}
@@ -5142,14 +5156,21 @@ async def get_stale_decisions(
 
 @app.get("/api/memory/{project}/decisions/scored")
 async def get_scored_decisions(project: str):
-    """Get all decisions with confidence scores."""
+    """Get all decisions with confidence scores.
+
+    Uses score_decisions_with_inheritance (#58) rather than score_decisions
+    directly: each result carries the existing `score` (own decay only,
+    unchanged meaning) plus `inherited_discount`/`effective_score` --
+    additive fields, so this stays backward compatible with the existing
+    dashboard consumer.
+    """
     project = _sanitise_project(project)
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
 
-    from core.knowledge_decay import score_decisions
+    from core.knowledge_decay import score_decisions_with_inheritance
 
-    scored = score_decisions(memory.get("decisions", []))
+    scored = score_decisions_with_inheritance(memory.get("decisions", []))
     return {"decisions": scored, "count": len(scored)}
 
 
@@ -5169,6 +5190,177 @@ async def apply_decay(project: str):
     _emit_telemetry("DECAY", f"Confidence scores re-evaluated for {project}")
 
     return {"applied": True, "summary": memory.get("confidence_summary", {})}
+
+
+class DecayAgentActionRequest(BaseModel):
+    """Body for pin/attest/unpin -- low-ceremony on purpose, matching the
+    friction-dismiss pattern (core/friction/router.py) for non-blocking
+    metadata changes: agent_name is attributable but optional."""
+    agent_name: str = Field("", max_length=100)
+
+
+def _find_decision(memory: dict[str, Any], decision_id: str) -> dict[str, Any] | None:
+    """Look up one decision by id, same linear-scan pattern already used
+    throughout this file (e.g. submit_safety_review)."""
+    for d in memory.get("decisions", []):
+        if isinstance(d, dict) and d.get("id") == decision_id:
+            return d
+    return None
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/pin")
+async def pin_decision(project: str, decision_id: str, body: DecayAgentActionRequest = DecayAgentActionRequest()):
+    """Mark a decision "constitutional" (#58): exempt from decay while
+    re-attested within REATTESTATION_PERIOD_DAYS. Not a permanent
+    exemption -- see core/knowledge_decay.py's decay_score docstring.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        decision = _find_decision(memory, decision_id)
+        if decision is None:
+            raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found in project '{project}'")
+
+        now = datetime.now(timezone.utc).isoformat()
+        decision["pinned"] = True
+        decision["last_attested"] = now
+        _append_audit_event(
+            memory, "decision_pinned",
+            decision_id=decision_id, agent_name=body.agent_name,
+        )
+        mm.save_project_memory(project, memory)
+
+        from core.knowledge_decay import score_decision
+        return {"decision_id": decision_id, "pinned": True, "confidence": score_decision(decision)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("pin_decision failed: %s", exc)
+        raise HTTPException(500, f"Failed to pin decision: {exc}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/attest")
+async def attest_decision(project: str, decision_id: str, body: DecayAgentActionRequest = DecayAgentActionRequest()):
+    """Refresh a pinned decision's re-attestation clock. 409s if the
+    decision isn't currently pinned -- attesting something unpinned has
+    no meaning."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        decision = _find_decision(memory, decision_id)
+        if decision is None:
+            raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found in project '{project}'")
+        if not decision.get("pinned"):
+            raise HTTPException(status_code=409, detail="Decision is not pinned -- pin it first")
+
+        now = datetime.now(timezone.utc).isoformat()
+        decision["last_attested"] = now
+        _append_audit_event(
+            memory, "decision_attested",
+            decision_id=decision_id, agent_name=body.agent_name,
+        )
+        mm.save_project_memory(project, memory)
+
+        from core.knowledge_decay import score_decision
+        return {"decision_id": decision_id, "last_attested": now, "confidence": score_decision(decision)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("attest_decision failed: %s", exc)
+        raise HTTPException(500, f"Failed to attest decision: {exc}")
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/unpin")
+async def unpin_decision(project: str, decision_id: str, body: DecayAgentActionRequest = DecayAgentActionRequest()):
+    """Remove a decision's pinned/constitutional status. `last_attested`
+    is left as history rather than cleared -- harmless once `pinned` is
+    False, and preserves when it was last affirmed if re-pinned later."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        decision = _find_decision(memory, decision_id)
+        if decision is None:
+            raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found in project '{project}'")
+
+        decision["pinned"] = False
+        _append_audit_event(
+            memory, "decision_unpinned",
+            decision_id=decision_id, agent_name=body.agent_name,
+        )
+        mm.save_project_memory(project, memory)
+
+        from core.knowledge_decay import score_decision
+        return {"decision_id": decision_id, "pinned": False, "confidence": score_decision(decision)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("unpin_decision failed: %s", exc)
+        raise HTTPException(500, f"Failed to unpin decision: {exc}")
+
+
+class DecayReviewDismissRequest(BaseModel):
+    """Body for dismissing a decay review (#58). Observational, not
+    high-severity gated like #62's friction dismissal -- both fields stay
+    optional."""
+    agent_name: str = Field("", max_length=100)
+    reason: str = Field("", max_length=500)
+
+
+@app.get("/api/memory/{project}/decay-reviews")
+async def list_decay_reviews(project: str, status: str | None = Query(None, pattern="^(pending|dismissed)$")):
+    """List decisions flagged by the background scheduler as stale-but-
+    still-referenced (#58). Mirrors #62's review_status pending/dismissed
+    query-param filter shape."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    reviews = memory.get("decay_reviews", [])
+    if not isinstance(reviews, list):
+        reviews = []
+    if status is not None:
+        reviews = [r for r in reviews if isinstance(r, dict) and r.get("review_status") == status]
+    return {"decay_reviews": reviews, "count": len(reviews)}
+
+
+@app.post("/api/memory/{project}/decay-reviews/{review_id}/dismiss")
+async def dismiss_decay_review(project: str, review_id: str, body: DecayReviewDismissRequest = DecayReviewDismissRequest()):
+    """Dismiss a pending decay review -- removes it from Needs Attention
+    without touching the underlying decision."""
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+
+        reviews = memory.get("decay_reviews", [])
+        if not isinstance(reviews, list):
+            reviews = []
+        review = next((r for r in reviews if isinstance(r, dict) and r.get("id") == review_id), None)
+        if review is None:
+            raise HTTPException(status_code=404, detail=f"Decay review '{review_id}' not found in project '{project}'")
+
+        review["review_status"] = "dismissed"
+        review["dismissed_by"] = body.agent_name
+        review["dismissed_reason"] = body.reason
+        memory["decay_reviews"] = reviews
+        _append_audit_event(
+            memory, "decay_review_dismissed",
+            review_id=review_id, decision_id=review.get("decision_id"), agent_name=body.agent_name,
+        )
+        mm.save_project_memory(project, memory)
+
+        return {"review_id": review_id, "review_status": "dismissed"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("dismiss_decay_review failed: %s", exc)
+        raise HTTPException(500, f"Failed to dismiss decay review: {exc}")
 
 
 # ============================

@@ -98,6 +98,10 @@ class MemoryManager:
         """
         changed = False
         for d in memory.get("decisions", []):
+            if not isinstance(d, dict):
+                # Defensive against corrupted storage -- a non-dict entry
+                # has no .get() to backfill onto.
+                continue
             if not d.get("id"):
                 d["id"] = uuid.uuid4().hex[:12]
                 changed = True

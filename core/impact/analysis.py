@@ -8,7 +8,7 @@ reversal detection, and impact scoring.
 from typing import Any
 
 from core.decision_tree import DecisionTree
-from core.knowledge_decay import score_decisions
+from core.knowledge_decay import compute_inherited_discount, score_decisions
 
 
 def compute_impact_analysis(memory: dict) -> dict[str, Any]:
@@ -81,6 +81,12 @@ def _compute_impact_scores(
 ) -> list[dict[str, Any]]:
     """Score each decision by its downstream impact."""
     score_map = {s.get("decision", ""): s for s in scored}
+    # id-keyed (not text-keyed like score_map) so compute_inherited_discount
+    # can look up an ancestor's own score by its node id (#58).
+    score_by_id = {
+        (d.get("id") or d.get("timestamp", "")): score_map.get(d.get("decision", ""), {}).get("score", 0.5)
+        for d in decisions
+    }
     impacts: list[dict[str, Any]] = []
 
     for d in decisions:
@@ -98,12 +104,19 @@ def _compute_impact_scores(
         conf = score_map.get(d.get("decision", ""), {})
         base_score = conf.get("score", 0.5)
 
+        # #58: a decision's foundation decaying discounts its own effective
+        # confidence -- "downstream decisions lose authority when their
+        # foundation does". base_score keeps its existing meaning (own
+        # decay only); effective_confidence is what actually feeds impact.
+        inherited_discount = compute_inherited_discount(did, tree, score_by_id)
+        effective_confidence = base_score * inherited_discount
+
         # Impact = confidence * (1 + downstream) * (penalty if reversed)
         downstream_bonus = min(len(descendants) * 0.1, 0.5)
         reversal_penalty = 0.5 if is_reversed else 1.0
         upstream_bonus = min(len(ancestors) * 0.05, 0.3)
 
-        impact = (base_score + downstream_bonus + upstream_bonus) * reversal_penalty
+        impact = (effective_confidence + downstream_bonus + upstream_bonus) * reversal_penalty
         impact = min(impact, 1.0)
 
         impacts.append({
@@ -112,6 +125,7 @@ def _compute_impact_scores(
             "impact_score": round(impact, 3),
             "factors": {
                 "confidence": round(base_score, 3),
+                "inherited_discount": round(inherited_discount, 3),
                 "downstream_count": len(descendants),
                 "upstream_count": len(ancestors),
                 "is_reversed": is_reversed,

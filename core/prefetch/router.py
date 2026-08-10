@@ -28,6 +28,7 @@ from core.prefetch.genealogy import (
     record_bundle_outcome,
 )
 from core.prefetch.relevance import DEFAULT_WEIGHTS, compute_relevance_score
+from core.knowledge_decay import score_decision
 from core.prefetch.tuner import Ok as TunerOk, tune_for_task
 from core.memory.manager import MemoryManager
 
@@ -118,6 +119,10 @@ def _score_decisions(
             metadata={
                 "decision_id": d.get("id", ""),
                 "categories": d.get("categories", []),
+                # #58: same info already folded into `score` via
+                # compute_confidence_component -- surfaced explicitly so
+                # ranking isn't a number with no explanation.
+                "confidence_tier": score_decision(d, decisions).get("tier"),
             },
         ))
     return scored

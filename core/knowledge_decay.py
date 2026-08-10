@@ -13,6 +13,12 @@ from typing import Any
 
 logger = logging.getLogger("tropelex.knowledge_decay")
 
+# Pinned decisions stay exempt from decay only while re-attested within this
+# window (wishlist #58) -- exemption is not permanent, it requires periodic
+# deliberate re-affirmation. Matches get_stale_decisions' existing
+# max_age_days=180 as the project's established "long staleness window".
+REATTESTATION_PERIOD_DAYS = 180
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -43,6 +49,8 @@ def decay_score(
     half_life_days: float = 90,
     reference_count: int = 0,
     contradiction_count: int = 0,
+    pinned: bool = False,
+    last_attested: str | None = None,
 ) -> dict[str, Any]:
     """
     Calculate a decayed confidence score for a decision/citation.
@@ -52,12 +60,35 @@ def decay_score(
         half_life_days: Days until confidence drops to 50% (default: 90)
         reference_count: How many times this has been referenced/used
         contradiction_count: How many times this has been contradicted
+        pinned: "Constitutional" decision (#58) -- exempt from decay while
+            its re-attestation hasn't lapsed. Not a permanent exemption: if
+            `last_attested` is missing or older than
+            REATTESTATION_PERIOD_DAYS, this falls through to normal decay
+            instead of staying silently pinned.
+        last_attested: ISO timestamp of the most recent re-attestation.
 
     Returns:
         {score, tier, days_old, factors}
     """
     dt = _parse_timestamp(timestamp)
     days = _days_since(dt)
+
+    if pinned:
+        attested_days = _days_since(_parse_timestamp(last_attested) if last_attested else None)
+        if attested_days <= REATTESTATION_PERIOD_DAYS:
+            return {
+                "score": 1.0,
+                "tier": "high",
+                "days_old": round(days, 1),
+                "factors": {
+                    "pinned": True,
+                    "days_since_attestation": round(attested_days, 1),
+                    "days_old": round(days, 1),
+                    "half_life_days": half_life_days,
+                },
+            }
+        # Pinned but never attested, or attestation lapsed -- fail open
+        # toward real decay rather than staying exempt indefinitely.
 
     # Base exponential decay
     decay_rate = math.log(2) / half_life_days
@@ -91,6 +122,12 @@ def decay_score(
         "days_old": round(days, 1),
         "half_life_days": half_life_days,
     }
+    if pinned:
+        # Reached only when the pin exists but attestation lapsed (the
+        # early-return above handles the still-valid case) -- surface the
+        # lapse instead of silently reverting to unpinned behavior.
+        factors["pinned"] = True
+        factors["pin_expired"] = True
 
     return {
         "score": round(score, 3),
@@ -119,6 +156,10 @@ def score_decision(decision: dict, all_decisions: list[dict] | None = None) -> d
         my_id = decision.get("id")
         my_words = set(text.split()) - {"the", "a", "to", "and", "of", "in", "for", "is"}
         for other in all_decisions:
+            if not isinstance(other, dict):
+                # Defensive against corrupted storage in the caller's
+                # decisions list -- a non-dict entry has no .get().
+                continue
             if other is decision or (my_id is not None and other.get("id") == my_id):
                 continue
             other_text = other.get("decision", "").lower()
@@ -135,6 +176,8 @@ def score_decision(decision: dict, all_decisions: list[dict] | None = None) -> d
         timestamp,
         reference_count=ref_count,
         contradiction_count=contra_count,
+        pinned=decision.get("pinned", False),
+        last_attested=decision.get("last_attested"),
     )
 
     result["reference_count"] = ref_count
@@ -151,6 +194,67 @@ def score_decisions(decisions: list[dict]) -> list[dict[str, Any]]:
     return scored
 
 
+def compute_inherited_discount(
+    decision_id: str, tree: Any, score_by_id: dict[str, float], max_depth: int = 5
+) -> float:
+    """How much a decision's confidence should be discounted by its own
+    decayed foundations (wishlist #58 -- "downstream decisions lose
+    authority when their foundation does").
+
+    `tree` is a core.decision_tree.DecisionTree; `get_ancestors` already
+    walks caused_by/supersedes/reverts edges backward to find what a
+    decision depends on. Floors at 0.5x, not 0.0x -- one badly-decayed
+    ancestor should reduce authority, not erase it outright.
+    """
+    try:
+        ancestors = tree.get_ancestors(decision_id, max_depth=max_depth)
+    except Exception as exc:
+        logger.warning("compute_inherited_discount: get_ancestors failed for %r: %s", decision_id, exc)
+        return 1.0
+    if not ancestors:
+        return 1.0
+
+    scores = []
+    for a in ancestors:
+        anc_decision = a.get("decision") if isinstance(a, dict) else None
+        anc_id = anc_decision.get("id", "") if isinstance(anc_decision, dict) else ""
+        scores.append(score_by_id.get(anc_id, 1.0))
+    if not scores:
+        return 1.0
+    return 0.5 + 0.5 * min(scores)
+
+
+def score_decisions_with_inheritance(decisions: list[dict]) -> list[dict[str, Any]]:
+    """Like score_decisions, but each result also carries
+    `inherited_discount` and `effective_score` -- the decision's own score
+    discounted by however decayed its ancestors are. `score` keeps its
+    existing meaning unchanged (own decay only); this is additive.
+    """
+    from core.decision_tree import DecisionTree
+
+    if not decisions:
+        return []
+
+    tree = DecisionTree.from_decisions(decisions)
+    own_scores = [score_decision(d, decisions) for d in decisions]
+    score_by_id = {
+        (d.get("id") or d.get("timestamp", "")): s["score"]
+        for d, s in zip(decisions, own_scores)
+    }
+
+    results = []
+    for d, s in zip(decisions, own_scores):
+        did = d.get("id") or d.get("timestamp", "")
+        discount = compute_inherited_discount(did, tree, score_by_id)
+        result = dict(s)
+        result["inherited_discount"] = round(discount, 3)
+        result["effective_score"] = round(s["score"] * discount, 3)
+        results.append(result)
+
+    results.sort(key=lambda x: x["effective_score"], reverse=True)
+    return results
+
+
 def get_stale_decisions(
     decisions: list[dict],
     threshold: float = 0.3,
@@ -162,6 +266,10 @@ def get_stale_decisions(
     """
     stale = []
     for d in decisions:
+        if not isinstance(d, dict):
+            # Defensive against corrupted storage -- a non-dict entry has
+            # no .get() for score_decision to call.
+            continue
         s = score_decision(d, decisions)
         if s["score"] < threshold or s["days_old"] > max_age_days:
             stale.append({**d, "confidence": s})

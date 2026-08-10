@@ -129,6 +129,9 @@ class TestCheckDiffForWarnings:
         assert any(w["decision_id"] == "naming-1" for w in result.value)
         # All warnings have positive severity
         assert all(w["severity_score"] > 0 for w in result.value)
+        # #58: NAMING_DECISION has a fresh timestamp -- tier should be "high",
+        # surfaced explicitly rather than only folded into severity_score.
+        assert all(w["decision_confidence_tier"] == "high" for w in result.value)
 
     def test_check_diff_malformed_diff(self):
         """Garbage text returns Ok([]) gracefully — no crash."""
@@ -390,6 +393,7 @@ class TestWarningToDict:
             recommendation="review this",
             diff_file="test.py",
             diff_line=10,
+            decision_confidence_tier="low",
         )
 
         # Act
@@ -404,6 +408,19 @@ class TestWarningToDict:
         assert d["recommendation"] == "review this"
         assert d["diff_file"] == "test.py"
         assert d["diff_line"] == 10
+        assert d["decision_confidence_tier"] == "low"
+
+    def test_warning_to_dict_confidence_tier_defaults_to_medium(self):
+        """GhostWarning constructed without decision_confidence_tier still
+        round-trips through _warning_to_dict (backward compatible)."""
+        w = GhostWarning(
+            decision_id="x", decision_text="", severity="low",
+            severity_score=0.1, matched_keywords=[], recommendation="",
+        )
+
+        d = _warning_to_dict(w)
+
+        assert d["decision_confidence_tier"] == "medium"
 
     def test_warning_to_dict_returns_plain_dict(self):
         """Result is a plain dict, not a dataclass."""

@@ -67,7 +67,7 @@ def compute_relevance_score(
     w = weights or DEFAULT_WEIGHTS
     impact = compute_impact_component(decision, all_decisions)
     category = match_categories(decision, task_text)
-    confidence = compute_confidence_component(decision)
+    confidence = compute_confidence_component(decision, all_decisions)
     semantic = compute_semantic_component(decision, task_text)
 
     score = (
@@ -136,13 +136,19 @@ def match_categories(decision: dict, task_text: str) -> float:
     return max(0.0, min(1.0, 0.5 * jaccard + 0.5 * cat_bonus))
 
 
-def compute_confidence_component(decision: dict) -> float:
+def compute_confidence_component(decision: dict, all_decisions: list[dict] | None = None) -> float:
     """Confidence from knowledge decay (0.0-1.0).
 
     Delegates to knowledge_decay.score_decision for time-based
     confidence with reference and contradiction adjustments.
+
+    `all_decisions` (#58): without it, score_decision's reference/
+    contradiction counting always sees an empty corpus and silently scores
+    as 0 -- previously always the case here, since this was called with no
+    second argument. Passing it through is a real bug fix, not just an
+    added parameter.
     """
-    result = score_decision(decision)
+    result = score_decision(decision, all_decisions)
     return max(0.0, min(1.0, result.get("score", 0.0)))
 
 

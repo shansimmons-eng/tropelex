@@ -155,10 +155,26 @@ class BackgroundScheduler:
             logger.error("Ghost scan failed: %s", exc, exc_info=True)
 
     async def _check_stale_decisions(self):
-        """Check for stale decisions and log warnings."""
+        """Check for stale decisions and, when one is still referenced by
+        other decisions, flag it for review (wishlist #58 -- closing the
+        loop from "descriptive" decay to an actual signal).
+
+        Deliberately stricter than get_stale_decisions' own default
+        threshold (score<0.3 or age>180d, already shown in the dashboard's
+        maintenance queue): only the worst tier ("stale", score<0.2) *and*
+        reference_count > 0 (the only "still referenced" signal that
+        exists in this codebase -- keyword-overlap against other
+        decisions) creates a review entry, to keep this new actionable
+        signal from being noisy. Idempotent: a decision already present in
+        memory["decay_reviews"] is never re-flagged, so this can run every
+        12h without piling up duplicates.
+        """
         try:
             from core.memory.manager import MemoryManager
             from core.knowledge_decay import get_stale_decisions
+            from core.audit import append_audit_event
+            import uuid
+            from datetime import datetime, timezone
 
             mm = MemoryManager(str(self.base_dir))
             for project in mm.list_projects():
@@ -168,10 +184,61 @@ class BackgroundScheduler:
                     if len(decisions) < 3:
                         continue
                     stale = get_stale_decisions(decisions)
-                    if stale:
+                    if not stale:
+                        continue
+                    logger.info(
+                        "Stale check %s: %d stale decision(s)",
+                        project, len(stale),
+                    )
+
+                    existing = memory.get("decay_reviews", [])
+                    if not isinstance(existing, list):
+                        existing = []
+                    already_flagged = {
+                        r.get("decision_id") for r in existing if isinstance(r, dict)
+                    }
+
+                    newly_flagged = []
+                    for d in stale:
+                        if not isinstance(d, dict):
+                            continue
+                        conf = d.get("confidence", {})
+                        if not isinstance(conf, dict):
+                            continue
+                        if conf.get("tier") != "stale":
+                            continue
+                        if conf.get("reference_count", 0) <= 0:
+                            continue
+                        if d.get("pinned"):
+                            continue
+                        did = d.get("id") or d.get("timestamp", "")
+                        if not did or did in already_flagged:
+                            continue
+                        newly_flagged.append({
+                            "id": uuid.uuid4().hex[:12],
+                            "decision_id": did,
+                            "decision": d.get("decision", "")[:200],
+                            "tier": conf.get("tier"),
+                            "score": conf.get("score"),
+                            "reference_count": conf.get("reference_count", 0),
+                            "flagged_at": datetime.now(timezone.utc).isoformat(),
+                            "review_status": "pending",
+                        })
+                        already_flagged.add(did)
+
+                    if newly_flagged:
+                        memory["decay_reviews"] = existing + newly_flagged
+                        try:
+                            append_audit_event(
+                                memory, "decay_review_flagged",
+                                project=project, count=len(newly_flagged),
+                            )
+                        except Exception as exc:
+                            logger.warning("decay_review_flagged audit event failed for %s: %s", project, exc)
+                        mm.save_project_memory(project, memory)
                         logger.info(
-                            "Stale check %s: %d stale decision(s)",
-                            project, len(stale),
+                            "Decay review: %d decision(s) newly flagged in %s",
+                            len(newly_flagged), project,
                         )
                 except Exception as exc:
                     logger.warning("Stale check failed for %s: %s", project, exc)

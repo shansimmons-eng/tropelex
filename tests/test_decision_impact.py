@@ -90,6 +90,64 @@ class TestComputeImpactScores:
         assert d2_impact["impact_score"] <= d1_impact["impact_score"]
 
 
+class TestComputeImpactScoresInheritedDiscount:
+    """#58 -- a decayed foundation should discount the impact of decisions
+    built on it, via compute_inherited_discount."""
+
+    def test_factors_include_inherited_discount(self):
+        decisions = [_decision("a", did="d1")]
+        tree = DecisionTree.from_decisions(decisions)
+        scored = [{"decision": "a", "score": 0.9}]
+        impacts = _compute_impact_scores(decisions, tree, scored)
+        assert "inherited_discount" in impacts[0]["factors"]
+
+    def test_no_ancestors_means_no_discount(self):
+        decisions = [_decision("a", did="d1")]
+        tree = DecisionTree.from_decisions(decisions)
+        scored = [{"decision": "a", "score": 0.9}]
+        impacts = _compute_impact_scores(decisions, tree, scored)
+        assert impacts[0]["factors"]["inherited_discount"] == 1.0
+
+    def test_decayed_foundation_lowers_descendants_impact(self):
+        # Setting "edges" directly on a decision dict (as other tests in
+        # this file do) only feeds _extract_reversals'/is_reversed's own
+        # direct read of d.get("edges") -- it does NOT populate the actual
+        # DecisionTree, which get_ancestors walks. A real ancestor edge
+        # needs DecisionTree.from_decisions' own auto-detection, so this
+        # uses the deterministic is_revert/reverts mechanism (matches
+        # tests/test_knowledge_decay.py's TestScoreDecisionsWithInheritance).
+        d1 = _decision("Use MongoDB for storage", did="d1")
+        d2 = _decision("Use MongoDB for caching", did="d2")
+        d2["is_revert"] = True
+        d2["reverts"] = "d1"
+        tree = DecisionTree.from_decisions([d1, d2])
+
+        # Same tree (same ancestor count/edges) both times -- only d1's own
+        # score changes, isolating the inherited-discount effect from the
+        # downstream/upstream bonuses, which stay identical either way.
+        decayed = [{"decision": "Use MongoDB for storage", "score": 0.05}, {"decision": "Use MongoDB for caching", "score": 0.95}]
+        healthy = [{"decision": "Use MongoDB for storage", "score": 0.95}, {"decision": "Use MongoDB for caching", "score": 0.95}]
+
+        with_discount = _compute_impact_scores([d1, d2], tree, decayed)
+        without_discount = _compute_impact_scores([d1, d2], tree, healthy)
+
+        d2_discounted = next(i for i in with_discount if i["decision_id"] == "d2")
+        d2_baseline = next(i for i in without_discount if i["decision_id"] == "d2")
+        assert d2_discounted["factors"]["inherited_discount"] < 1.0
+        assert d2_discounted["impact_score"] < d2_baseline["impact_score"]
+
+    def test_unrelated_decision_unaffected_by_others_decay(self):
+        d1 = _decision("unrelated foundation", did="d1")
+        d2 = _decision("unrelated other", did="d2")
+        tree = DecisionTree.from_decisions([d1, d2])
+        scored = [{"decision": "unrelated foundation", "score": 0.05}, {"decision": "unrelated other", "score": 0.9}]
+
+        impacts = _compute_impact_scores([d1, d2], tree, scored)
+
+        d2_impact = next(i for i in impacts if i["decision_id"] == "d2")
+        assert d2_impact["factors"]["inherited_discount"] == 1.0
+
+
 class TestLinkDecisionMetadata:
     def test_basic_link(self):
         d = _decision("test", did="d1")

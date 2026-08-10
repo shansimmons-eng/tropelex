@@ -1633,6 +1633,16 @@ void main() {
                         <p class="text-sm text-outline">Select a project to view stale decisions.</p>
                     </div>
                 </div>
+                <div class="mt-4">
+                    <h4 class="text-xs font-mono uppercase text-outline mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">flag</span>
+                        Decay Reviews
+                        <span class="normal-case font-sans text-[10px] text-outline" title="Auto-flagged by the background scheduler: stale but still referenced by other decisions">(auto-flagged, still referenced)</span>
+                    </h4>
+                    <div id="decay-reviews-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-sm text-outline">Select a project to view decay reviews.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Agent Skills -->
@@ -7969,11 +7979,13 @@ const DECAY_TIER_BG = { high: 'bg-accent-lime/10', medium: 'bg-accent-sky/10', l
 
 async function loadConfidence(project) {
     if (!project) return;
-    const [data, scoredData, staleData] = await Promise.all([
+    const [data, scoredData, staleData, reviewsData] = await Promise.all([
         api(`/memory/${project}/confidence`),
         api(`/memory/${project}/decisions/scored`),
         api(`/memory/${project}/stale`),
+        api(`/memory/${project}/decay-reviews?status=pending`),
     ]);
+    renderDecayReviews(project, reviewsData?.decay_reviews || []);
     const el = document.getElementById('confidence-overview');
     if (!data || data.total === 0) {
         el.innerHTML = '<p class="text-sm text-outline">No decisions recorded yet.</p>';
@@ -8037,6 +8049,7 @@ function renderDecayQueue(stale) {
     el.innerHTML = stale.slice(0, 20).map((d, i) => {
         const c = d.confidence || {};
         const tier = c.tier || 'medium';
+        const pinned = !!d.pinned;
         return `
         <div class="p-3 rounded-lg ${DECAY_TIER_BG[tier]} border border-glass-border">
             <div class="flex items-center justify-between gap-2">
@@ -8044,13 +8057,72 @@ function renderDecayQueue(stale) {
                     <span class="font-mono text-sm font-bold shrink-0" style="color: ${DECAY_TIER_COLORS[tier]}">${Math.round((c.score || 0) * 100)}%</span>
                     <span class="text-xs text-outline shrink-0 uppercase">${tier}</span>
                     <span class="text-xs text-outline shrink-0">${Math.round(c.days_old || 0)}d old</span>
+                    ${pinned ? '<span class="text-xs text-accent-lavender shrink-0" title="Constitutional -- exempt from decay while re-attested">📌 pinned</span>' : ''}
                 </div>
                 <button class="decay-queue-toggle text-xs text-accent-sky hover:underline shrink-0 cursor-pointer" data-idx="${i}">expand</button>
             </div>
             <p class="decay-queue-text text-sm text-on-surface mt-1 truncate" data-idx="${i}">${escapeHtml(d.decision || '')}</p>
+            <div class="flex items-center gap-2 mt-2">
+                ${pinned
+                    ? `<button class="decay-attest-btn px-2 py-1 rounded border border-accent-lavender/30 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(d.id || '')}" title="Refresh re-attestation clock">Attest</button>
+                       <button class="decay-unpin-btn px-2 py-1 rounded border border-glass-border text-outline font-mono text-[10px] hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" data-id="${escapeAttr(d.id || '')}">Unpin</button>`
+                    : `<button class="decay-pin-btn px-2 py-1 rounded border border-accent-lavender/30 text-accent-lavender font-mono text-[10px] hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(d.id || '')}" title="Mark constitutional -- exempt from decay while re-attested">Pin</button>`
+                }
+            </div>
         </div>`;
     }).join('');
 }
+
+document.getElementById('decay-queue').addEventListener('click', async (e) => {
+    const project = getInsightsProject();
+    if (!project) return;
+    const pinBtn = e.target.closest('.decay-pin-btn');
+    const attestBtn = e.target.closest('.decay-attest-btn');
+    const unpinBtn = e.target.closest('.decay-unpin-btn');
+    const btn = pinBtn || attestBtn || unpinBtn;
+    if (!btn) return;
+    const action = pinBtn ? 'pin' : attestBtn ? 'attest' : 'unpin';
+    const toastText = { pin: 'Decision pinned', attest: 'Attestation refreshed', unpin: 'Decision unpinned' }[action];
+    const result = await api(`/memory/${project}/decisions/${encodeURIComponent(btn.dataset.id)}/${action}`, 'POST', {});
+    if (result) {
+        showToast(toastText);
+        loadConfidence(project);
+    }
+});
+
+// Decay Reviews — scheduler-flagged stale-but-referenced decisions (#58)
+function renderDecayReviews(project, reviews) {
+    const el = document.getElementById('decay-reviews-list');
+    if (!el) return;
+    if (!reviews.length) {
+        el.innerHTML = '<p class="text-sm text-accent-lime">No pending decay reviews.</p>';
+        return;
+    }
+    el.innerHTML = reviews.map(r => `
+        <div class="p-3 rounded-lg bg-surface-raised border border-glass-border">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-xs text-outline shrink-0 uppercase">${escapeHtml(r.tier || '')}</span>
+                    <span class="text-xs text-outline shrink-0">referenced by ${r.reference_count || 0}</span>
+                </div>
+                <button class="decay-review-dismiss-btn px-2 py-1 rounded border border-glass-border text-outline font-mono text-[10px] hover:border-red-400/40 hover:text-red-400 transition-all cursor-pointer" data-id="${escapeAttr(r.id || '')}">Dismiss</button>
+            </div>
+            <p class="text-sm text-on-surface mt-1 truncate">${escapeHtml(r.decision || '')}</p>
+        </div>
+    `).join('');
+}
+
+document.getElementById('decay-reviews-list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.decay-review-dismiss-btn');
+    if (!btn) return;
+    const project = getInsightsProject();
+    if (!project) return;
+    const result = await api(`/memory/${project}/decay-reviews/${encodeURIComponent(btn.dataset.id)}/dismiss`, 'POST', {});
+    if (result) {
+        showToast('Decay review dismissed');
+        loadConfidence(project);
+    }
+});
 
 document.getElementById('decay-queue').addEventListener('click', (e) => {
     const btn = e.target.closest('.decay-queue-toggle');

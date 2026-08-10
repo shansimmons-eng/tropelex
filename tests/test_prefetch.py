@@ -263,6 +263,36 @@ class TestComputeConfidence:
         # Assert
         assert 0.0 <= score <= 1.0
 
+    def test_compute_confidence_passes_all_decisions_through(self):
+        """#58 regression: compute_confidence_component previously called
+        score_decision(decision) with no second argument, so reference/
+        contradiction adjustments were silently always 0. A decision
+        referenced by others in the corpus must now score higher than the
+        same decision scored alone."""
+        # Arrange -- 60d old so the score isn't already pinned at ~1.0
+        # ceiling with no room for a reference boost to show up.
+        decision = _decision("Use FastAPI for backend routing", ts="2026-05-20T00:00:00Z")
+        corpus = [
+            decision,
+            _decision("Use FastAPI for authentication", did="dec-2", ts="2026-05-20T00:00:00Z"),
+            _decision("Use FastAPI for middleware", did="dec-3", ts="2026-05-20T00:00:00Z"),
+        ]
+
+        # Act
+        alone = compute_confidence_component(decision)
+        referenced = compute_confidence_component(decision, corpus)
+
+        # Assert
+        assert referenced > alone
+
+    def test_compute_confidence_all_decisions_defaults_to_none(self):
+        """No all_decisions passed still works (backward compatible)."""
+        decision = _decision("Standalone decision")
+
+        score = compute_confidence_component(decision)
+
+        assert 0.0 <= score <= 1.0
+
 
 class TestComputeSemantic:
     """Tests for compute_semantic_component."""
@@ -1330,6 +1360,31 @@ class TestImprovementTrend:
         bundles = [{"precision": 1.0 - p / 20} for p in range(20)]
         trend = _improvement_trend(bundles)
         assert trend < 0
+
+
+class TestScoreDecisionsMetadata:
+    """Tests for router._score_decisions -- specifically the #58
+    confidence_tier addition to ScoredItem.metadata."""
+
+    def test_scored_item_metadata_includes_confidence_tier(self):
+        from core.prefetch.router import _score_decisions
+
+        decisions = [_decision("Recent decision about caching", ts="2026-07-18T00:00:00Z")]
+
+        scored = _score_decisions(decisions, "caching task", DEFAULT_WEIGHTS)
+
+        assert scored[0].metadata["confidence_tier"] == "high"
+
+    def test_scored_item_metadata_preserves_existing_keys(self):
+        from core.prefetch.router import _score_decisions
+
+        decisions = [_decision("A decision", did="dec-7", categories=["testing"])]
+
+        scored = _score_decisions(decisions, "task", DEFAULT_WEIGHTS)
+
+        assert scored[0].metadata["decision_id"] == "dec-7"
+        assert scored[0].metadata["categories"] == ["testing"]
+        assert "confidence_tier" in scored[0].metadata
 
 
 # ===========================================================================
