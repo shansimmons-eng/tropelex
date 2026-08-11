@@ -2936,6 +2936,24 @@ async def get_governance_compliance(project: str):
                 policy_name = violation["policy"]
                 policy_violations[policy_name] = policy_violations.get(policy_name, 0) + 1
 
+        # The "decisions" list is the actual triage queue -- must surface
+        # violations, not just the first 20 decisions in project order
+        # (compliant or not). Previously sliced compliance_results[:20]
+        # unfiltered, so a real violation only ever showed up here if it
+        # happened to be among the first 20 decisions ever captured --
+        # found while walking through a real 26-violation queue where none
+        # of them were visible through this endpoint at all.
+        _severity_rank = {"high": 0, "medium": 1, "low": 2}
+
+        def _worst_severity(result: dict) -> int:
+            ranks = [_severity_rank.get(v["severity"], 3) for v in result["violations"]]
+            return min(ranks) if ranks else 3
+
+        flagged = sorted(
+            (r for r in compliance_results if not r["compliant"]),
+            key=lambda r: (_worst_severity(r), -r["violation_count"]),
+        )
+
         return {
             "project": project,
             "summary": {
@@ -2945,7 +2963,7 @@ async def get_governance_compliance(project: str):
                 "compliance_rate": round(compliant / total, 3) if total > 1.0 else 1.0,
             },
             "policy_violations": policy_violations,
-            "decisions": compliance_results[:20],  # Top 20
+            "decisions": flagged[:20],  # Top 20 non-compliant, worst severity first
         }
     except Exception as e:
         logger.error("governance/compliance failed: %s", e)
@@ -3066,6 +3084,22 @@ def _score_criterion(criterion_name: str, decision: dict, safety: dict) -> float
     return 0.7  # Default moderate score
 
 
+# Auto-logged session-completion summaries -- "Added feature: X", "Fixed:
+# Y", "Changed: Z", "docs: ..." -- aren't deliberate architectural/policy
+# choices a stakeholder-documentation policy is meant to catch. Same
+# failure mode core/contradictions/detector.py's _STRUCTURAL_NOISE_WORDS
+# already had to fix once (boilerplate change-log phrasing creating false
+# signal); verified against the real tropelex project before adding this:
+# 21 of 25 real stakeholder_documentation violations matched one of these
+# four prefixes exactly.
+_AUTO_LOGGED_SUMMARY_PREFIXES = ("added feature:", "fixed:", "changed:", "docs:")
+
+
+def _is_auto_logged_summary(decision_text: str) -> bool:
+    text = (decision_text or "").strip().lower()
+    return text.startswith(_AUTO_LOGGED_SUMMARY_PREFIXES)
+
+
 def _check_governance_compliance(decision: dict) -> dict:
     """Check a decision against governance policies."""
     safety = decision.get("safety_metadata", {})
@@ -3087,8 +3121,22 @@ def _check_governance_compliance(decision: dict) -> dict:
             "message": "Irreversible decision lacks justification",
         })
 
-    # Policy: Affected systems should be documented
-    if not safety.get("affected_systems"):
+    # Policy: Affected systems should be documented -- gated to medium+ risk,
+    # and exempt for auto-logged session-completion summaries. Ungated on
+    # risk, this fired on every low-risk decision regardless of stakes (99
+    # of 124 real violations in the live tropelex project were on low-risk
+    # decisions -- routine choices like "modular core with adapters"
+    # flagged "non-compliant" for not filling in a field nobody expects on
+    # low-stakes decisions), matching the same risk-tiering convention
+    # #54's safety gate already applies to affected_systems. Ungated on
+    # auto-logged text, it also caught "Added feature: X"/"Fixed: Y"
+    # change-log-style entries that were never deliberate architectural
+    # choices in the first place.
+    if (
+        safety.get("risk_level") in ("medium", "high", "critical")
+        and not safety.get("affected_systems")
+        and not _is_auto_logged_summary(decision.get("decision"))
+    ):
         violations.append({
             "policy": "stakeholder_documentation",
             "severity": "low",

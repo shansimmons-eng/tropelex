@@ -176,6 +176,146 @@ class TestGovernanceComplianceEndpoint:
         # High-risk decision without review should have violations
         assert data["summary"]["non_compliant_count"] >= 1
 
+    def test_low_risk_decision_without_affected_systems_is_not_flagged(self, client, project):
+        """stakeholder_documentation must not fire on routine low-risk
+        decisions -- verified against the real live tropelex project: 99 of
+        124 real violations were exactly this false-positive pattern
+        (routine choices flagged 'non-compliant' for not filling in a field
+        nobody expects on low-stakes decisions)."""
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Architecture: modular core with adapters",
+            "context": "",
+            "safety_metadata": {"risk_level": "low", "safety_category": "general"},
+        })
+
+        response = client.get(f"/api/memory/{project}/governance/compliance")
+        data = response.json()
+        assert data["summary"]["non_compliant_count"] == 0
+        assert data["policy_violations"] == {}
+
+    def test_medium_risk_decision_without_affected_systems_is_still_flagged(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Change default logging verbosity",
+            "context": "",
+            "safety_metadata": {"risk_level": "medium", "safety_category": "general"},
+        })
+
+        response = client.get(f"/api/memory/{project}/governance/compliance")
+        data = response.json()
+        assert data["summary"]["non_compliant_count"] == 1
+        assert data["policy_violations"].get("stakeholder_documentation") == 1
+
+    @pytest.mark.parametrize("text", [
+        "Added feature: Ghost Decisions, Explainable Memory, Agent Handoff Packets",
+        "Fixed: remove HTML5 required from form to unblock feed creation",
+        "Changed: add .tmp/ to gitignore, remove from tracking",
+        "docs: add technical summaries for CAIS, FAR AI, and SFF grant applications",
+    ])
+    def test_auto_logged_summary_exempt_from_stakeholder_documentation(self, text):
+        """21 of 25 real stakeholder_documentation violations in the live
+        tropelex project were auto-logged session-completion summaries, not
+        deliberate architectural choices -- same failure mode
+        core/contradictions/detector.py's _STRUCTURAL_NOISE_WORDS already
+        had to fix once for change-log-style boilerplate.
+
+        Calls _check_governance_compliance directly rather than through
+        POST /decisions -- the capture endpoint's auto-classifier fills in
+        its own affected_systems/reversibility guesses for any field not
+        explicitly provided, which would make an end-to-end test depend on
+        that unrelated heuristic instead of the exemption logic itself.
+        """
+        from core.tropebook.web.server import _check_governance_compliance
+
+        decision = {
+            "id": "x", "decision": text,
+            "safety_metadata": {"risk_level": "medium", "safety_category": "general"},
+        }
+        result = _check_governance_compliance(decision)
+        assert result["compliant"] is True
+        assert result["violations"] == []
+
+    def test_deliberate_decision_that_happens_to_start_similarly_is_not_exempted(self):
+        """The exemption is prefix-anchored, not a loose substring match --
+        a real decision that merely mentions 'added' mid-sentence must
+        still be flagged."""
+        from core.tropebook.web.server import _check_governance_compliance
+
+        decision = {
+            "id": "x",
+            "decision": "Use Postgres for the primary database, added after evaluating MySQL",
+            "safety_metadata": {"risk_level": "medium", "safety_category": "general"},
+        }
+        result = _check_governance_compliance(decision)
+        assert result["compliant"] is False
+        assert result["violations"][0]["policy"] == "stakeholder_documentation"
+
+    def test_auto_logged_summary_exempt_end_to_end(self, client, project):
+        """One end-to-end proof the exemption reaches the real endpoint,
+        with safety_metadata fully explicit so the auto-classifier's own
+        guesses can't introduce an unrelated violation into the count."""
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Fixed: remove HTML5 required from form to unblock feed creation",
+            "context": "",
+            "safety_metadata": {
+                "risk_level": "medium", "safety_category": "general",
+                "affected_systems": [], "reversibility": True,
+            },
+        })
+
+        response = client.get(f"/api/memory/{project}/governance/compliance")
+        data = response.json()
+        assert data["summary"]["non_compliant_count"] == 0
+        assert "stakeholder_documentation" not in data["policy_violations"]
+
+    def test_decisions_list_surfaces_violations_regardless_of_position(self, client, project):
+        """The 'decisions' field is the actual triage queue -- a violation
+        buried behind 20+ compliant decisions must still show up, not get
+        silently dropped by a blind [:20] slice of project order."""
+        for i in range(20):
+            client.post(f"/api/memory/{project}/decisions", json={
+                "decision": f"Compliant filler decision {i}",
+                "context": "",
+                "safety_metadata": {
+                    "risk_level": "medium", "safety_category": "general",
+                    "affected_systems": ["docs"],
+                },
+            })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Change default logging verbosity",
+            "context": "",
+            "safety_metadata": {"risk_level": "medium", "safety_category": "general"},
+        })
+
+        response = client.get(f"/api/memory/{project}/governance/compliance")
+        data = response.json()
+        assert data["summary"]["non_compliant_count"] == 1
+        listed = data["decisions"]
+        assert len(listed) == 1
+        assert listed[0]["decision"] == "Change default logging verbosity"
+        assert all(not d["compliant"] for d in listed)
+
+    def test_decisions_list_sorted_worst_severity_first(self, client, project):
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Change default logging verbosity",
+            "context": "",
+            "safety_metadata": {"risk_level": "medium", "safety_category": "general"},
+        })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Deploy critical security patch to production",
+            "context": "",
+            "safety_metadata": {
+                "risk_level": "high", "reversibility": False,
+                "affected_systems": ["auth"], "safety_category": "robustness",
+                "requires_review": True,
+            },
+        })
+
+        response = client.get(f"/api/memory/{project}/governance/compliance")
+        listed = response.json()["decisions"]
+        assert len(listed) == 2
+        # risk_review_required (high) must sort ahead of stakeholder_documentation (low)
+        assert listed[0]["decision"] == "Deploy critical security patch to production"
+
 
 class TestInterpretabilityEndpoint:
     """Tests for GET /api/memory/{project}/interpretability/{decision_id}."""
