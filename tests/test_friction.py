@@ -181,6 +181,65 @@ class TestDetectRephrasing:
         assert len(rephrase) >= 1
 
 
+class TestDetectRephrasingExpandedVocabulary:
+    """Correction/verification phrasing added after reviewing the live
+    tropelex friction data -- each phrase embedded in a padded transcript,
+    proving it lands as a 'rephrase' signal."""
+
+    @pytest.mark.parametrize("phrase", [
+        "not quite what I had in mind",
+        "that's off from what I expected",
+        "that is off from what I expected",
+        "a little off from the target",
+        "wrong answer for this case",
+        "that's incorrect for this case",
+        "not correct for this case",
+        "not accurate for this case",
+        "not true in this context",
+        "numbers look off to me",
+        "please recheck the totals",
+        "double-check the totals please",
+        "double check the totals please",
+        "recalculate the totals please",
+        "check your work on this one",
+        "check your answer on this one",
+        "I don't think you're right about this",
+        "I do not think you are right about this",
+        "I don't believe that's correct",
+        "I don't think that's accurate at all",
+        "I do not believe that is the right call",
+        "I don't believe so honestly",
+        "I do not think so honestly",
+        "that doesn't add up at all",
+        "that does not add up at all",
+        "that don't add up at all",
+        "that doesn't look right at all",
+        "that does not look right at all",
+    ])
+    def test_phrase_detected_as_rephrase(self, phrase):
+        transcript = _long_transcript(
+            "Please review the calculation carefully",
+            phrase,
+            "One more line to pad the word count",
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        assert len([s for s in result.value if s.type == "rephrase"]) >= 1
+
+    def test_already_covered_by_existing_not_what_i_pattern(self):
+        """'that's not what I meant/wanted/etc' needs no new pattern --
+        the existing \\bnot what i\\b has no suffix constraint and already
+        matches any continuation."""
+        transcript = _long_transcript(
+            "Please generate the summary report",
+            "that's not what I had hoped for at all",
+            "One more line to pad the word count",
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        assert len([s for s in result.value if s.type == "rephrase"]) >= 1
+
+
 # ===========================================================================
 #  2. detect_friction_signals — retry loops
 # ===========================================================================
@@ -278,6 +337,97 @@ class TestDetectRapidEdits:
         assert isinstance(result, Ok)
         rapid = [s for s in result.value if s.type == "rapid_edit"]
         assert len(rapid) == 0
+
+
+class TestCodeContentResilience:
+    """Found live: scanning a real coding-agent session (code/diffs/tool
+    output mixed into the transcript, not just user prose) produced a flood
+    of rapid_edit/retry signals that were actually just code -- most source
+    lines are short, and test suites/diffs are full of near-duplicate
+    lines. These prove the fix without weakening real detection."""
+
+    def test_python_function_body_does_not_trigger_rapid_edit(self):
+        code = (
+            "def check_access(user):\n"
+            "    if user.email == \"debug@internal.test\":\n"
+            "        return True\n"
+            "    return normal_permission_check(user)\n"
+        )
+        result = detect_friction_signals(code)
+        assert isinstance(result, Ok)
+        assert [s for s in result.value if s.type == "rapid_edit"] == []
+
+    def test_diff_hunk_does_not_trigger_rapid_edit(self):
+        diff = (
+            "--- a/src/access.py\n"
+            "+++ b/src/access.py\n"
+            "@@ -1,2 +1,4 @@\n"
+            " def check_access(user):\n"
+            "+    if user.email == \"debug@internal.test\":\n"
+            "+        return True\n"
+        )
+        result = detect_friction_signals(diff)
+        assert isinstance(result, Ok)
+        assert [s for s in result.value if s.type == "rapid_edit"] == []
+
+    def test_repeated_test_assertions_do_not_trigger_retry(self):
+        """Near-identical assert lines across a test file are normal test
+        scaffolding, not a user repeating an instruction."""
+        code = (
+            "def test_a():\n"
+            "    assert result is None\n"
+            "def test_b():\n"
+            "    assert result is None\n"
+            "def test_c():\n"
+            "    assert result is None\n"
+        )
+        result = detect_friction_signals(code)
+        assert isinstance(result, Ok)
+        assert [s for s in result.value if s.type == "retry"] == []
+
+    def test_short_code_lines_do_not_extend_a_real_rapid_edit_run(self):
+        """A code block sitting between real short user messages must not
+        let its short lines count toward -- or falsely reset detection of
+        -- an actual rapid_edit cluster elsewhere in the same transcript."""
+        transcript = (
+            "Fix it\n"
+            "No wait\n"
+            "Try again\n"
+            "def foo():\n"
+            "    return 1\n"
+            "One more thing\n"
+            "And this\n"
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        rapid = [s for s in result.value if s.type == "rapid_edit"]
+        assert len(rapid) >= 1
+
+    def test_real_short_user_messages_still_trigger_rapid_edit(self):
+        """Regression: the code filter must not blind the detector to
+        genuine short-message frustration bursts."""
+        transcript = (
+            "no that's not right\n"
+            "not what i wanted\n"
+            "still wrong somehow\n"
+            "try again please\n"
+            "closer but no\n"
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        assert len([s for s in result.value if s.type == "rapid_edit"]) >= 1
+
+    def test_real_repeated_user_instruction_still_triggers_retry(self):
+        """Regression: the code filter must not blind the detector to a
+        genuinely repeated user instruction."""
+        transcript = (
+            "Please generate the API documentation now\n"
+            "Generate the API documentation now please\n"
+            "Generate the API documentation now thanks\n"
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        assert len([s for s in result.value if s.type == "retry"]) >= 1
 
 
 # ===========================================================================
@@ -381,6 +531,40 @@ class TestDetectEscalation:
         assert isinstance(result, Ok)
         escalation = [s for s in result.value if s.type == "escalation"]
         assert len(escalation) == 0
+
+
+class TestDetectEscalationExpandedVocabulary:
+    """Repetition and disbelief/shock phrasing added after reviewing the
+    live tropelex friction data."""
+
+    @pytest.mark.parametrize("phrase", [
+        "wrong still after that change",
+        "wrong again after that change",
+        "you missed again on this one",
+        "nice try but that's not it",
+        "absolutely not what I asked for",
+        "absolutely wrong on every count",
+        "that can't be right, check again",
+        "that cannot be right, check again",
+        "that can not be right, check again",
+        "hold up, that doesn't sound right",
+        "you mean to tell me it's broken again",
+        "wait a minute, that can't be right",
+        "wait a sec, that can't be right",
+        "whoa, that is not what I expected",
+        "that result is insane, check it",
+        "no way that number is correct",
+        "that is preposterous, check again",
+    ])
+    def test_phrase_detected_as_escalation(self, phrase):
+        transcript = _long_transcript(
+            "Please review the calculation carefully",
+            phrase,
+            "One more line to pad the word count",
+        )
+        result = detect_friction_signals(transcript)
+        assert isinstance(result, Ok)
+        assert len([s for s in result.value if s.type == "escalation"]) >= 1
 
 
 # ===========================================================================

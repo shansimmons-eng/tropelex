@@ -49,6 +49,33 @@ _REPHRASE_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bi meant\b", re.IGNORECASE),
     re.compile(r"\bthat'?s wrong\b", re.IGNORECASE),
     re.compile(r"\bnot what i\b", re.IGNORECASE),
+
+    # ── Correction / verification requests ──
+    re.compile(
+        r"\b(?:"
+        r"not quite|that(?:'s| is) off|a little off|"
+        r"wrong answer|incorrect|not correct|not accurate|not true|"
+        r"numbers look off"
+        r")\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:"
+        r"recheck|double[- ]check|recalculate|"
+        r"check your (?:work|answer)"
+        r")\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bi (?:don'?t|do not) (?:think|believe) "
+        r"(?:you'?re|you are|your|that'?s|that is) (?:right|correct|accurate|the right)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bi (?:don'?t|do not) (?:believe|think) so\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:does not|doesn'?t|don'?t|do not) (?:add up|look right)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 _ESCALATION_PATTERNS: list[re.Pattern] = [
@@ -59,6 +86,20 @@ _ESCALATION_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bhow many times\b", re.IGNORECASE),
     re.compile(r"\byou(?:'re| are)? not listening\b", re.IGNORECASE),
     re.compile(r"\bread what i (?:wrote|said|typed|asked)\b", re.IGNORECASE),
+    re.compile(r"\bwrong (?:still|again)\b", re.IGNORECASE),
+    re.compile(r"\bmissed again\b", re.IGNORECASE),
+    re.compile(r"\bnice try\b", re.IGNORECASE),
+
+    # ── Disbelief / shock ──
+    re.compile(
+        r"\b(?:"
+        r"hold up|you mean to tell me|wait a (?:minute|sec)|whoa|"
+        r"insane|no way|preposterous|"
+        r"that (?:can'?t|cannot|can not) be|"
+        r"absolutely (?:not|wrong)"
+        r")\b",
+        re.IGNORECASE,
+    ),
 
     # ── Polite → frustrated escalation ──
     re.compile(r"\bplease\b.{0,20}\b(?:just|stop|already|fix)\b", re.IGNORECASE),
@@ -185,6 +226,48 @@ _SHORT_LINE_MAX_CHARS = 60
 _RETRY_MIN_LINES = 2
 _ZONE_PROXIMITY = 5  # lines within which signals are grouped
 
+# _detect_retries/_detect_rapid_edits are purely line-shape heuristics (line
+# length, literal duplication) with no concept of who wrote a line or
+# whether it's prose at all -- found live: scanning a real coding-agent
+# transcript (code, diffs, tool output mixed into the same text) produced a
+# flood of "friction" that was actually just code (most source lines are
+# short; test suites and diffs are full of near-duplicate lines). Both
+# _REPHRASE_PATTERNS/_ESCALATION_PATTERNS are phrase-anchored and don't
+# need this -- code essentially never contains "as i said" or "that's
+# wrong" by coincidence, but it trivially satisfies "3 short lines in a
+# row" or "the same line twice."
+_CODE_LINE_RE = re.compile(
+    r"^\s*("
+    r"[+\-]|@@|```|>>>|"                                    # diff markers, code fences, REPL prompt
+    r"(async\s+)?(def|class)\s|"
+    r"(import|from)\s|"
+    r"(return|yield|raise|assert|await|pass|break|continue)\b|"
+    r"(if|elif|else|for|while|try|except|finally|with)\b.*:|"
+    r"@\w|"                                                  # decorators
+    r"#|"                                                    # comments
+    r"\}|\]|\)"                                              # closing brackets alone on a line
+    r")"
+)
+
+
+def _looks_like_code(line: str) -> bool:
+    """Heuristic: does this line look like source code / diff / tool
+    output rather than conversational text? Deliberately conservative --
+    false negatives (code that slips through) just mean the old, noisier
+    behavior for that one line; false positives (real user text wrongly
+    skipped) would silently blind the detector, which is the worse failure
+    mode for a friction signal."""
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if _CODE_LINE_RE.match(stripped):
+        return True
+    # High symbol density (parens/braces/brackets/operators) relative to
+    # length -- catches code that doesn't start with a recognizable
+    # keyword (e.g. a bare expression, an assignment, a dict literal).
+    symbols = sum(stripped.count(c) for c in "(){}[]=:;")
+    return len(stripped) >= 8 and symbols / len(stripped) > 0.15
+
 
 # ---------------------------------------------------------------------------
 # Detectors (pure functions)
@@ -227,7 +310,7 @@ def _detect_retries(lines: list[str]) -> list[FrictionSignal]:
     seen: dict[str, list[int]] = {}
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if not stripped or len(stripped.split()) < 3:
+        if not stripped or len(stripped.split()) < 3 or _looks_like_code(stripped):
             continue
         fingerprint = _fingerprint(stripped)
         if fingerprint not in seen:
@@ -252,7 +335,7 @@ def _detect_rapid_edits(lines: list[str]) -> list[FrictionSignal]:
     short_run = 0
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if stripped and len(stripped) <= _SHORT_LINE_MAX_CHARS:
+        if stripped and len(stripped) <= _SHORT_LINE_MAX_CHARS and not _looks_like_code(stripped):
             short_run += 1
         else:
             short_run = 0

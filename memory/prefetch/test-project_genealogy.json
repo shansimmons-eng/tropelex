@@ -2507,6 +2507,42 @@
       "precision": 0.0,
       "recall_proxy": 0.0,
       "timestamp": "2026-08-11T03:08:08.736866+00:00"
+    },
+    {
+      "bundle_id": "36cdd1196866432b",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-11T03:26:32.748622+00:00"
+    },
+    {
+      "bundle_id": "66f95b4891cc40c5",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-11T03:27:46.968818+00:00"
+    },
+    {
+      "bundle_id": "026f61d710ef496c",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-11T03:52:24.551759+00:00"
     }
   ],
   "stats": {},
