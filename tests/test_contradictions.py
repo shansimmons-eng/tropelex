@@ -563,7 +563,7 @@ def _no_real_embedding_calls():
     free. return_value=None exercises the exact fallback path these tests
     already expect: pure keyword-based contradiction detection.
     """
-    with patch("core.contradictions.router.embed", return_value=None):
+    with patch("core.embeddings.embed", return_value=None):
         yield
 
 
@@ -654,7 +654,7 @@ class TestGetDecisionEmbeddings:
 
     def test_embed_unavailable_with_empty_cache_returns_none(self, tmp_path):
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=None) as mock_embed:
+             patch("core.embeddings.embed", return_value=None) as mock_embed:
             result = asyncio.run(_get_decision_embeddings("proj", self._decisions()))
         assert result is None
         mock_embed.assert_called_once()
@@ -662,14 +662,14 @@ class TestGetDecisionEmbeddings:
     def test_embed_success_caches_and_returns_all_vectors(self, tmp_path):
         vectors = [[1.0, 0.0], [0.9, 0.1]]
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=vectors):
+             patch("core.embeddings.embed", return_value=vectors):
             result = asyncio.run(_get_decision_embeddings("proj", self._decisions()))
         assert result == {"a": [1.0, 0.0], "b": [0.9, 0.1]}
 
     def test_second_call_uses_cache_not_a_second_embed_call(self, tmp_path):
         vectors = [[1.0, 0.0], [0.9, 0.1]]
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=vectors) as mock_embed:
+             patch("core.embeddings.embed", return_value=vectors) as mock_embed:
             asyncio.run(_get_decision_embeddings("proj", self._decisions()))
             mock_embed.assert_called_once()
 
@@ -683,12 +683,12 @@ class TestGetDecisionEmbeddings:
 
     def test_only_uncached_decisions_are_sent_to_embed(self, tmp_path):
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=[[1.0, 0.0]]):
+             patch("core.embeddings.embed", return_value=[[1.0, 0.0]]):
             asyncio.run(_get_decision_embeddings("proj", [self._decisions()[0]]))
 
         new_decision = {"id": "c", "decision": "Use React for frontend"}
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=[[0.5, 0.5]]) as mock_embed:
+             patch("core.embeddings.embed", return_value=[[0.5, 0.5]]) as mock_embed:
             result = asyncio.run(
                 _get_decision_embeddings("proj", [self._decisions()[0], new_decision])
             )
@@ -700,7 +700,7 @@ class TestGetDecisionEmbeddings:
     def test_decisions_without_ids_are_skipped(self, tmp_path):
         decisions = [{"decision": "no id here"}]
         with patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=None) as mock_embed:
+             patch("core.embeddings.embed", return_value=None) as mock_embed:
             result = asyncio.run(_get_decision_embeddings("proj", decisions))
         assert result is None
         mock_embed.assert_not_called()

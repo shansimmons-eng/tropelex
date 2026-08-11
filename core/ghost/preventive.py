@@ -40,6 +40,10 @@ class GhostWarning:
     # multiplicatively -- this surfaces *why* a warning scored lower,
     # instead of only a silently-reduced number with no explanation.
     decision_confidence_tier: str = "medium"
+    # "keyword" (default) or "semantic" (#67's rescue). Threaded through
+    # from the originating MatchResult so a human/dashboard/Drift-Bench can
+    # tell a semantic-only warning apart from a keyword-matched one.
+    match_type: str = "keyword"
 
 
 def _classify_severity(score: float) -> str:
@@ -102,6 +106,8 @@ def _warn_single_decision(
     decision: dict[str, Any],
     scored_map: dict[str, dict[str, Any]],
     diff_hunks: list[dict[str, Any]],
+    decision_embedding: list[float] | None = None,
+    diff_embedding: list[float] | None = None,
 ) -> list[GhostWarning]:
     """Match one decision against all hunks, returning warnings above threshold."""
     did = decision.get("id", "")
@@ -110,7 +116,7 @@ def _warn_single_decision(
     confidence: float = score_record.get("score", 0.5)
     confidence_tier: str = score_record.get("tier", "medium")
 
-    matches = match_decision_to_diff(text, diff_hunks)
+    matches = match_decision_to_diff(text, diff_hunks, decision_embedding, diff_embedding)
     if not matches:
         return []
 
@@ -121,6 +127,13 @@ def _warn_single_decision(
             continue
 
         tier = _classify_severity(raw_severity)
+        # #67: a semantic-only rescue can never resolve to "high" -- Ghost's
+        # enforcement gate (#53) blocks real writes on "high" severity, and
+        # an untuned semantic signal has already caused a real incident
+        # elsewhere in this codebase (#57's 8->61 pending-review jump).
+        # Hard cap, not a config knob, until real usage data justifies more.
+        if m.match_type == "semantic" and tier == "high":
+            tier = "medium"
         warnings.append(GhostWarning(
             decision_id=did,
             decision_text=text,
@@ -131,6 +144,7 @@ def _warn_single_decision(
             decision_confidence_tier=confidence_tier,
             diff_file=m.diff_file,
             diff_line=m.diff_line,
+            match_type=m.match_type,
         ))
     return warnings
 
@@ -147,12 +161,15 @@ def _warning_to_dict(w: GhostWarning) -> dict[str, Any]:
         "diff_file": w.diff_file,
         "diff_line": w.diff_line,
         "decision_confidence_tier": w.decision_confidence_tier,
+        "match_type": w.match_type,
     }
 
 
 def check_diff_for_warnings(
     memory: dict[str, Any],
     diff_text: str,
+    embeddings: dict[str, list[float]] | None = None,
+    diff_embedding: list[float] | None = None,
 ) -> Result[list[dict[str, Any]]]:
     """Check a proposed diff against all active decisions for ghost warnings.
 
@@ -162,12 +179,20 @@ def check_diff_for_warnings(
     Args:
         memory: Project memory dict containing a 'decisions' list.
         diff_text: Unified diff string to check.
+        embeddings: optional {decision_id: vector} lookup (#67) -- the
+            caller (core/ghost/preventive_router.py) owns the actual
+            embedding I/O and hands the results in as plain data, same
+            pattern as #57's detect_contradictions(embeddings=...).
+        diff_embedding: optional vector for the diff itself (#67), paired
+            per-decision with `embeddings` to drive the semantic rescue in
+            match_decision_to_diff. Both default to None, so every existing
+            caller gets byte-for-byte the same output as before #67.
 
     Returns:
         Ok(list[dict]) where each dict has: decision_id, decision_text,
         severity, severity_score, matched_keywords, recommendation,
-        diff_file, diff_line.  List is empty when nothing matches.
-        Err on unexpected internal failure.
+        diff_file, diff_line, match_type.  List is empty when nothing
+        matches. Err on unexpected internal failure.
     """
     if not diff_text:
         return Ok(value=[])
@@ -182,7 +207,11 @@ def check_diff_for_warnings(
 
         all_warnings: list[GhostWarning] = []
         for decision in decisions:
-            warnings = _warn_single_decision(decision, scored_map, hunks)
+            did = decision.get("id", "")
+            decision_embedding = embeddings.get(did) if embeddings else None
+            warnings = _warn_single_decision(
+                decision, scored_map, hunks, decision_embedding, diff_embedding
+            )
             all_warnings.extend(warnings)
 
         all_warnings.sort(key=lambda w: w.severity_score, reverse=True)

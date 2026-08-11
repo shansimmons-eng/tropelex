@@ -97,7 +97,7 @@ class TestContradictionsRouter:
         """
         with patch("core.contradictions.router._mm", project_memory), \
              patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=None):
+             patch("core.embeddings.embed", return_value=None):
             from core.contradictions.router import contradiction_router
             client = _make_client(contradiction_router)
             resp = client.get("/api/memory/test-proj/contradictions")
@@ -107,7 +107,7 @@ class TestContradictionsRouter:
     def test_404_for_missing_project(self, project_memory, tmp_path):
         with patch("core.contradictions.router._mm", project_memory), \
              patch("core.contradictions.router._EMBED_STORE_DIR", tmp_path), \
-             patch("core.contradictions.router.embed", return_value=None):
+             patch("core.embeddings.embed", return_value=None):
             from core.contradictions.router import contradiction_router
             client = _make_client(contradiction_router)
             resp = client.get("/api/memory/nonexistent/contradictions")

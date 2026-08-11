@@ -4569,3 +4569,69 @@ b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-10 18:55 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+6ad0fe2 feat: Handoff Completeness as a First-Class Policy (wishlist #69)
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 18:56 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+6ad0fe2 feat: Handoff Completeness as a First-Class Policy (wishlist #69)
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-10 21:38 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  16 files changed, 464 insertions(+), 62 deletions(-)
+
+**Recent commits:**
+```
+6ad0fe2 feat: Handoff Completeness as a First-Class Policy (wishlist #69)
+a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
+e23a294 fix: dashboard hardcoded widgets + weak Time Travel detail view
+b627e15 feat: Signed Handoffs (wishlist #59, scoped) + wishlist reconciliation
+4f62219 feat: Injection Sentinel — ingested-content screening (wishlist #40)
+```
+
+**Files in play:** `SESSION_LOG.md core/contradictions/router.py core/driftbench/scenarios.py core/embeddings.py core/ghost/pattern_matcher.py core/ghost/preventive.py core/ghost/preventive_router.py core/research_pipeline.py memory/prefetch/test-project_genealogy.json tests/test_contradictions.py tests/test_driftbench.py tests/test_ghost_decisions.py tests/test_ghost_preventive.py tests/test_router_fixes.py tests/test_safety_features.py wishlist.md tests/test_embeddings.py `
+
+**Open questions / next steps:** <!-- fill in -->
+

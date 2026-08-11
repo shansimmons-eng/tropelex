@@ -396,7 +396,7 @@ class TestContradictionSafetyCrossConnect:
         """#57 made GET /contradictions call core.llm.embed — must be
         mocked here, or these tests silently make a real OpenAI network
         call (this file uses the real app, no isolated router fixture)."""
-        with patch("core.contradictions.router.embed", return_value=None):
+        with patch("core.embeddings.embed", return_value=None):
             yield
 
     def test_direct_contradiction_escalates_both_decisions(self, client, project):

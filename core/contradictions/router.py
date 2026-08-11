@@ -15,8 +15,7 @@ from fastapi import APIRouter, HTTPException
 from core.audit import append_audit_event
 from core.contradictions import ContradictionError
 from core.contradictions.detector import detect_contradictions
-from core.embeddings import EmbeddingStore
-from core.llm import embed
+from core.embeddings import get_decision_embeddings
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.contradictions")
@@ -37,37 +36,13 @@ def _load_memory(project: str) -> dict[str, Any]:
 async def _get_decision_embeddings(
     project: str, decisions: list[dict[str, Any]]
 ) -> dict[str, list[float]] | None:
-    """Best-effort {decision_id: vector} lookup for #57's hybrid similarity.
-
-    Cached per-project via EmbeddingStore (core/embeddings.py) so a decision
-    is only ever sent to OpenAI once, not re-embedded on every /contradictions
-    call — same "embed only what's not already cached" pattern already used
-    for citations (core/tropebook/web/server.py's embed_all_citations).
-
-    Returns None (not a partial dict) whenever embeddings aren't usable at
-    all — no OPENAI_API_KEY configured, or the API call itself fails — so
-    the caller's fallback to pure keyword matching is a clean, explicit
-    branch rather than a dict that's silently missing some entries.
-    """
-    store = EmbeddingStore(str(_EMBED_STORE_DIR / f"contradictions_{project}.json"))
-    to_embed = [d for d in decisions if d.get("id") and not store.has(d["id"])]
-
-    if to_embed:
-        texts = [d.get("decision", "") for d in to_embed]
-        vectors = await embed(texts, project=project)
-        if vectors is None:
-            # No key configured, or the call failed — the existing cached
-            # entries (if any) are still real and safe to use; only the
-            # brand-new decisions are missing, which is exactly what a
-            # partial embeddings dict already handles via hybrid_similarity's
-            # per-pair None fallback.
-            logger.info("contradictions: embeddings unavailable, using keyword-only similarity")
-        else:
-            for d, vec in zip(to_embed, vectors):
-                store.put(d["id"], d.get("decision", ""), vec)
-
-    result = {d["id"]: store.get(d["id"]) for d in decisions if d.get("id") and store.has(d["id"])}
-    return result or None
+    """Thin delegation to the shared cache (core/embeddings.py, #67) --
+    kept as a module-level wrapper so existing callers/tests in this file
+    don't need to change their import. #57's original implementation now
+    lives in core.embeddings.get_decision_embeddings, shared with Ghost
+    Preventive Checks' semantic rescue (#67) since decision embeddings are
+    decision-text-derived, not detector-specific."""
+    return await get_decision_embeddings(project, decisions, store_dir=_EMBED_STORE_DIR)
 
 
 def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:

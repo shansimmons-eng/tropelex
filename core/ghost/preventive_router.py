@@ -109,6 +109,17 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
     status, so a blocked ghost-check surfaces as a tool failure the
     calling agent has to actually handle: fix the diff, or call
     POST /{project}/decisions/{decision_id}/override with a rationale.
+
+    #67 built a semantic-rescue mechanism into check_diff_for_warnings
+    (optional embeddings/diff_embedding params, capped at "medium" severity)
+    but it is deliberately NOT wired in here: a real dry-run against this
+    project's own decisions found raw-diff-text-vs-decision-text cosine
+    similarity for the actual target case (a keyword-evasive backdoor) at
+    0.29, while a genuinely unrelated one-line typo fix scored up to 0.65
+    against real decisions purely from shared surface vocabulary -- no
+    threshold separates the two. Wiring this live would have repeated #57's
+    own incident (an untuned semantic signal flooding a live project with
+    warnings). See wishlist.md #67 for the full negative result.
     """
     try:
         memory = _load_memory(project)

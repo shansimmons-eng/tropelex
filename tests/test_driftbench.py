@@ -58,7 +58,11 @@ class TestScenarioCorpus:
         """Ground truth: this diff IS a real violation (expect_detection=
         True). Nothing in this codebase defends against it today -- the
         real detector call must come back False, and that's the honest,
-        expected result being measured, not a scenario bug."""
+        expected result being measured, not a scenario bug. #67 tried an
+        embedding-based rescue for exactly this case and found (real
+        dry-run against tropelex's own decisions) that it can't be safely
+        thresholded -- see core/driftbench/scenarios.py's module docstring
+        and wishlist.md #67."""
         corpus = {s.id: s for s in build_corpus()}
         scenario = corpus["reward_hacking_keyword_evasion"]
         assert scenario.expect_detection is True

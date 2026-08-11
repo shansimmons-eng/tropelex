@@ -261,6 +261,82 @@ class TestCheckDiffForWarnings:
         assert result.value == []
 
 
+class TestCheckDiffForWarningsWithEmbeddings:
+    """#67: check_diff_for_warnings's optional embeddings/diff_embedding
+    params -- the semantic rescue threaded end-to-end through the public
+    pure-function entrypoint, not just pattern_matcher's internals."""
+
+    _EVASIVE_DIFF = (
+        "--- a/src/access.py\n+++ b/src/access.py\n@@ -1,2 +1,4 @@\n"
+        " def check_access(user):\n"
+        "+    if user.email == \"debug@internal.test\":\n"
+        "+        return True\n"
+    )
+    _AUTH_DECISION = _decision("Never bypass authentication for admin-level access", did="auth-1")
+
+    def test_no_embeddings_args_identical_to_before(self):
+        """Regression: default None/None behaves byte-for-byte as pre-#67."""
+        mem = _memory(decisions=[NAMING_DECISION])
+        with_none = check_diff_for_warnings(mem, CAMEL_CASE_DIFF, None, None)
+        without = check_diff_for_warnings(mem, CAMEL_CASE_DIFF)
+        assert with_none.value == without.value
+
+    def test_semantic_rescue_surfaces_a_warning_keyword_alone_would_miss(self):
+        mem = _memory(decisions=[self._AUTH_DECISION])
+
+        # Sanity: keyword-only finds nothing for this evasive diff.
+        baseline = check_diff_for_warnings(mem, self._EVASIVE_DIFF)
+        assert baseline.value == []
+
+        result = check_diff_for_warnings(
+            mem, self._EVASIVE_DIFF,
+            embeddings={"auth-1": [1.0, 0.0]}, diff_embedding=[1.0, 0.0],
+        )
+        assert len(result.value) == 1
+        assert result.value[0]["match_type"] == "semantic"
+        assert result.value[0]["decision_id"] == "auth-1"
+
+    def test_semantic_warning_never_reaches_high_severity(self):
+        """#67's hard cap: a semantic-only match that would otherwise score
+        'high' surfaces as 'medium' -- confirmed with a near-identical
+        vector pair (cosine ~1.0) against a fresh, high-confidence decision,
+        the exact combination that would produce 'high' via the keyword
+        path's own math."""
+        mem = _memory(decisions=[self._AUTH_DECISION])
+        result = check_diff_for_warnings(
+            mem, self._EVASIVE_DIFF,
+            embeddings={"auth-1": [1.0, 0.0]}, diff_embedding=[1.0, 0.0001],
+        )
+        assert len(result.value) == 1
+        # The raw score alone would classify "high" (>0.6) -- proves the cap
+        # actually intervened, not that it happened to land at medium anyway.
+        assert result.value[0]["severity_score"] > 0.6
+        assert result.value[0]["severity"] == "medium"
+
+    def test_embeddings_only_apply_to_matching_decision_id(self):
+        """A vector present for a *different* decision id must not leak
+        into this decision's rescue check."""
+        mem = _memory(decisions=[self._AUTH_DECISION])
+        result = check_diff_for_warnings(
+            mem, self._EVASIVE_DIFF,
+            embeddings={"some-other-id": [1.0, 0.0]}, diff_embedding=[1.0, 0.0],
+        )
+        assert result.value == []
+
+    def test_semantic_warning_includes_match_type_in_dict(self):
+        mem = _memory(decisions=[self._AUTH_DECISION])
+        result = check_diff_for_warnings(
+            mem, self._EVASIVE_DIFF,
+            embeddings={"auth-1": [1.0, 0.0]}, diff_embedding=[1.0, 0.0],
+        )
+        assert "match_type" in result.value[0]
+
+    def test_existing_keyword_warning_reports_match_type_keyword(self):
+        mem = _memory(decisions=[NAMING_DECISION])
+        result = check_diff_for_warnings(mem, CAMEL_CASE_DIFF)
+        assert all(w["match_type"] == "keyword" for w in result.value)
+
+
 # ===========================================================================
 #  2. Helper function tests
 # ===========================================================================

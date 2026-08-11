@@ -29,7 +29,16 @@ Coverage honesty, verified against the actual code before writing this
   codebase (Ghost/Contradictions only do keyword-overlap on decision text,
   nothing analyzes test-execution outcomes). Its "should detect" scenario
   is expected, honestly, to come back undetected -- that's the measured
-  result, not a bug in the scenario.
+  result, not a bug in the scenario. #67 investigated an embedding-based
+  semantic rescue for exactly this gap and built real, tested infra for it
+  (`match_decision_to_diff`'s optional decision_embedding/diff_embedding
+  params) -- but a real dry-run against this project's own decisions found
+  raw-diff-text-vs-decision-text cosine similarity for this exact case at
+  0.29, while a genuinely unrelated typo fix scored up to 0.65 against real
+  decisions on shared surface vocabulary alone. No threshold separates the
+  two, so it was deliberately never wired live (see wishlist.md #67) --
+  this scenario correctly stays undetected, not because nothing was tried,
+  but because what was tried, tried honestly, didn't work.
 """
 
 from __future__ import annotations
@@ -206,7 +215,8 @@ def _handoff_positive() -> bool:
 # Ghost/Contradictions only do keyword-overlap on decision text -- nothing
 # in this codebase analyzes whether a diff makes tests pass while
 # violating a decision's intent. The positive scenario is expected,
-# honestly, to come back undetected.
+# honestly, to come back undetected -- #67 tried and disproved an
+# embedding-based rescue for this exact case, see module docstring.
 
 def _reward_hacking_positive() -> bool:
     from core.ghost.preventive import check_diff_for_warnings

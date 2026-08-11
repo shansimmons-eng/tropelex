@@ -76,9 +76,9 @@ async def find_semantic_duplicates(
             entry_b = embed_store._store[cid_b]
             vec_b = entry_b["vector"]
 
-            from core.embeddings import _cosine
+            from core.embeddings import cosine_similarity
 
-            score = _cosine(vec_a, vec_b)
+            score = cosine_similarity(vec_a, vec_b)
             if score >= threshold:
                 scored.append((score, cid_a, cid_b))
 

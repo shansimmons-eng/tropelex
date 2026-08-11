@@ -11,12 +11,19 @@ import math
 from pathlib import Path
 from typing import Any
 
+from core.llm import embed
+
 logger = logging.getLogger("tropelex.embeddings")
 
 EMBED_DIM = 1536  # text-embedding-3-small
 
+_DEFAULT_STORE_DIR = Path(__file__).resolve().parent.parent / "memory" / "embeddings"
 
-def _cosine(a: list[float], b: list[float]) -> float:
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Cosine similarity between two embedding vectors. Public so other
+    detectors (Ghost's semantic rescue, #67) can share this instead of each
+    keeping its own private copy."""
     dot = sum(x * y for x, y in zip(a, b))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(x * x for x in b))
@@ -82,7 +89,7 @@ class EmbeddingStore:
         """Return top_k most similar items above min_score."""
         scored = []
         for key, entry in self._store.items():
-            score = _cosine(query_vector, entry["vector"])
+            score = cosine_similarity(query_vector, entry["vector"])
             if score >= min_score:
                 scored.append(
                     {
@@ -101,3 +108,49 @@ class EmbeddingStore:
     def clear(self):
         self._store = {}
         self._save()
+
+
+async def get_decision_embeddings(
+    project: str,
+    decisions: list[dict[str, Any]],
+    store_dir: Path | None = None,
+) -> dict[str, list[float]] | None:
+    """Best-effort {decision_id: vector} lookup, shared by every detector
+    that wants #57's hybrid keyword/semantic similarity (Contradiction
+    Detection, and #67's Ghost Preventive semantic rescue). Decision
+    embeddings are derived purely from decision text, not detector-specific
+    — one cache correctly serves all callers, so this was extracted out of
+    core/contradictions/router.py's original private copy rather than
+    duplicated a second time for Ghost.
+
+    Cached per-project via EmbeddingStore, keyed by decision id, so a
+    decision is only ever sent to OpenAI once. Defaults to the exact store
+    path #57 already established (memory/embeddings/contradictions_{project}.json)
+    so existing caches are reused as-is, zero migration.
+
+    Returns None (not a partial dict) whenever embeddings aren't usable at
+    all — no OPENAI_API_KEY configured, the API call itself fails, or the
+    on-disk cache is unreadable/unwritable (permissions, disk full,
+    corrupted state) — so callers' fallback to pure keyword matching is a
+    clean, explicit branch rather than a dict silently missing some entries
+    or an unhandled exception reaching an HTTP endpoint as a 500.
+    """
+    base_dir = store_dir if store_dir is not None else _DEFAULT_STORE_DIR
+    try:
+        store = EmbeddingStore(str(base_dir / f"contradictions_{project}.json"))
+        to_embed = [d for d in decisions if d.get("id") and not store.has(d["id"])]
+
+        if to_embed:
+            texts = [d.get("decision", "") for d in to_embed]
+            vectors = await embed(texts, project=project)
+            if vectors is None:
+                logger.info("decision embeddings unavailable for %s, falling back to keyword-only", project)
+            else:
+                for d, vec in zip(to_embed, vectors):
+                    store.put(d["id"], d.get("decision", ""), vec)
+
+        result = {d["id"]: store.get(d["id"]) for d in decisions if d.get("id") and store.has(d["id"])}
+        return result or None
+    except Exception as exc:
+        logger.warning("decision embeddings cache failed for %s (%s), falling back to keyword-only", project, exc)
+        return None

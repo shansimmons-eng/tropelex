@@ -325,6 +325,95 @@ class TestMatchDecisionToDiff:
         assert m.overlap_score > 0
         assert m.is_addition is True
 
+    def test_keyword_match_has_match_type_keyword(self):
+        """#67: existing keyword matches are unambiguously tagged, so
+        downstream severity capping only ever touches semantic-origin ones."""
+        decision = "Use snake_case naming convention for Python modules"
+        hunks = [{
+            "file": "src/api.py", "line_number": 3,
+            "content": "# naming convention: apply to Python modules",
+            "is_addition": True, "is_deletion": False,
+        }]
+        matches = match_decision_to_diff(decision, hunks)
+        assert matches[0].match_type == "keyword"
+
+    def test_no_embeddings_args_is_byte_for_byte_identical(self):
+        """Regression: not passing decision_embedding/diff_embedding must
+        behave exactly as before #67 -- the whole point of the default
+        None/None being backward compatible."""
+        decision = "Use snake_case naming convention for all Python module functions"
+        hunks = [{
+            "file": "src/utils.py", "line_number": 12,
+            "content": "# Apply naming convention to module functions",
+            "is_addition": True, "is_deletion": False,
+        }]
+        assert match_decision_to_diff(decision, hunks) == match_decision_to_diff(decision, hunks, None, None)
+
+
+class TestSemanticRescue:
+    """#67: match_decision_to_diff's embedding-aware rescue path."""
+
+    _UNRELATED_HUNKS = [{
+        "file": "src/access.py", "line_number": 1,
+        "content": 'if user.email == "debug@internal.test": return True',
+        "is_addition": True, "is_deletion": False,
+    }]
+
+    def test_rescue_fires_above_threshold_with_no_keyword_overlap(self):
+        decision = "Never bypass authentication for admin-level access"
+        matches = match_decision_to_diff(
+            decision, self._UNRELATED_HUNKS,
+            decision_embedding=[1.0, 0.0], diff_embedding=[1.0, 0.0],
+        )
+        assert len(matches) == 1
+        m = matches[0]
+        assert m.match_type == "semantic"
+        assert m.matched_keywords == []
+        assert m.overlap_score == pytest.approx(1.0)
+        assert m.is_addition is True
+
+    def test_rescue_does_not_fire_below_threshold(self):
+        decision = "Never bypass authentication for admin-level access"
+        matches = match_decision_to_diff(
+            decision, self._UNRELATED_HUNKS,
+            decision_embedding=[1.0, 0.0], diff_embedding=[0.0, 1.0],  # orthogonal -> 0.0 similarity
+        )
+        assert matches == []
+
+    def test_rescue_never_fires_when_a_keyword_match_already_exists(self):
+        """Dual-gate discipline (#57's precedent): semantic never boosts or
+        duplicates an existing keyword match, only rescues decisions the
+        keyword loop found nothing for."""
+        decision = "Use snake_case naming convention for all Python module functions"
+        hunks = [{
+            "file": "src/utils.py", "line_number": 12,
+            "content": "# Apply naming convention to module functions",
+            "is_addition": True, "is_deletion": False,
+        }]
+        matches = match_decision_to_diff(
+            decision, hunks, decision_embedding=[1.0, 0.0], diff_embedding=[1.0, 0.0],
+        )
+        assert len(matches) == 1
+        assert matches[0].match_type == "keyword"
+
+    def test_rescue_needs_both_embeddings_present(self):
+        decision = "Never bypass authentication for admin-level access"
+        assert match_decision_to_diff(
+            decision, self._UNRELATED_HUNKS, decision_embedding=[1.0, 0.0], diff_embedding=None,
+        ) == []
+        assert match_decision_to_diff(
+            decision, self._UNRELATED_HUNKS, decision_embedding=None, diff_embedding=[1.0, 0.0],
+        ) == []
+
+    def test_rescue_diff_file_from_first_changed_hunk(self):
+        decision = "Never bypass authentication for admin-level access"
+        matches = match_decision_to_diff(
+            decision, self._UNRELATED_HUNKS,
+            decision_embedding=[1.0, 0.0], diff_embedding=[1.0, 0.0],
+        )
+        assert matches[0].diff_file == "src/access.py"
+        assert matches[0].diff_line == 0
+
 
 class TestScoreGhostSeverity:
     def test_score_ghost_severity_high_for_additions(self):

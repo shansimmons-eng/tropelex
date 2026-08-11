@@ -10,6 +10,16 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from core.embeddings import cosine_similarity
+
+# Minimum semantic similarity for the #67 rescue path to fire -- deliberately
+# conservative starting point, tuned empirically against the real tropelex
+# project's decision set (wishlist #67) before this ever reaches production
+# thresholds. A rescue match is capped to "medium" severity regardless
+# (core/ghost/preventive.py), so this threshold only controls whether a
+# semantic-only warning surfaces at all, not whether it can block a write.
+_SEMANTIC_RESCUE_THRESHOLD = 0.5
+
 # Stopwords — identical set to core/decision_tree.py _extract_keywords
 _STOPWORDS: set[str] = {
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
@@ -69,6 +79,11 @@ class MatchResult:
     overlap_score: float
     hunk_snippet: str
     is_addition: bool = True
+    # "keyword" (default, unchanged behavior) or "semantic" (#67's rescue --
+    # a decision/diff pair with zero keyword overlap but real embedding
+    # similarity). Defaulted so every pre-#67 construction of this
+    # dataclass (core/ghost/detector.py, existing tests) is unaffected.
+    match_type: str = "keyword"
 
 
 def extract_keywords(text: str) -> set[str]:
@@ -147,12 +162,23 @@ def parse_diff_hunks(diff_text: str) -> list[dict[str, Any]]:
 
 
 def match_decision_to_diff(
-    decision_text: str, diff_hunks: list[dict[str, Any]]
+    decision_text: str,
+    diff_hunks: list[dict[str, Any]],
+    decision_embedding: list[float] | None = None,
+    diff_embedding: list[float] | None = None,
 ) -> list[MatchResult]:
     """Compare a decision's keywords against diff hunks.
 
     For each hunk, compute keyword overlap. Return matches where overlap > 0.2.
     Each MatchResult includes the hunk snippet and overlap score.
+
+    decision_embedding/diff_embedding (#67): optional. Only consulted when
+    the keyword loop above finds *nothing* for this decision -- a rescue
+    for real violations that share no vocabulary with the decision text
+    (e.g. a backdoor diff against a decision about "bypassing auth"), not a
+    replacement for or boost to keyword matching. Both default to None, so
+    every existing caller that doesn't pass them gets byte-for-byte the
+    same output as before this parameter existed.
     """
     decision_kw = extract_keywords(decision_text)
     if not decision_kw:
@@ -180,7 +206,32 @@ def match_decision_to_diff(
                 is_addition=hunk.get("is_addition", True),
             ))
 
+    if not matches and decision_embedding is not None and diff_embedding is not None:
+        similarity = cosine_similarity(decision_embedding, diff_embedding)
+        if similarity >= _SEMANTIC_RESCUE_THRESHOLD:
+            first_file = next((h.get("file", "") for h in diff_hunks if h.get("file")), "")
+            added_snippet = " ".join(
+                h.get("content", "").strip() for h in diff_hunks if h.get("is_addition")
+            ).strip()
+            matches.append(MatchResult(
+                decision_text=decision_text,
+                diff_file=first_file,
+                diff_line=0,
+                matched_keywords=[],
+                overlap_score=round(similarity, 4),
+                hunk_snippet=_truncate_snippet(added_snippet),
+                is_addition=True,
+                match_type="semantic",
+            ))
+
     return matches
+
+
+def _truncate_snippet(text: str, limit: int = 200) -> str:
+    """Shorten a synthesized semantic-match snippet for display."""
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "…"
 
 
 def score_ghost_severity(
