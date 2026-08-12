@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from core.friction.miner import compute_friction_penalty
 from core.goals import Err, Ok
 from core.goals.detector import detect_goals
-from core.goals.drift import score_goal_drift, score_trend_drift
+from core.goals.drift import score_goal_drift, score_trend_drift, suggest_drift_review
 from core.goals.logic import create_goal, list_goals, transition_status, update_goal
 from core.market.calibration import compute_calibration
 from core.memory.manager import MemoryManager
@@ -256,4 +256,7 @@ async def get_goal_alignment(
         "trend_drift": trend_drift,
         "market_calibration": market_calibration,
         "friction_penalty_project_wide": compute_friction_penalty(memory.get("friction_history", [])),
+        # #44: suggest, don't save -- a real proposal on high semantic
+        # drift, not another number to read past.
+        "suggested_action": suggest_drift_review(goal, semantic_drift),
     }

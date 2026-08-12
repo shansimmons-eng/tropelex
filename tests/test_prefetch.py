@@ -52,7 +52,7 @@ from core.prefetch.genealogy import (
     load_genealogy,
     record_bundle_outcome,
 )
-from core.prefetch.router import prefetch_router
+from core.prefetch.router import prefetch_router, _select_active_goals
 
 
 # ---------------------------------------------------------------------------
@@ -1400,7 +1400,12 @@ def _app():
     return app
 
 
-def _mock_memory(decisions=None, agent_skills=None):
+def _goal(text, status="active", priority="medium", **extra):
+    """Factory: build a goal dict with realistic fields."""
+    return {"id": extra.pop("id", text[:12]), "text": text, "status": status, "priority": priority, **extra}
+
+
+def _mock_memory(decisions=None, agent_skills=None, goals=None):
     """Create a mock memory dict."""
     return {
         "decisions": decisions or [
@@ -1413,7 +1418,32 @@ def _mock_memory(decisions=None, agent_skills=None):
             },
         ],
         "agent_skills": agent_skills or {},
+        "goals": goals or [],
     }
+
+
+class TestSelectActiveGoalsPrefetch:
+    """#44: goal re-anchoring selection used by the prefetch/context-bundle
+    endpoint -- same rules as core.handoff.packet_builder's version
+    (active-only, priority-sorted, capped), but returned as its own field
+    rather than folded into the relevance-scored bundle."""
+
+    def test_filters_to_active_and_sorts_by_priority(self):
+        goals = [
+            _goal("Low prio", priority="low"),
+            _goal("Critical prio", priority="critical"),
+            _goal("Not active", status="proposed", priority="critical"),
+        ]
+        selected = _select_active_goals(goals)
+        assert [g["text"] for g in selected] == ["Critical prio", "Low prio"]
+
+    def test_capped_at_five(self):
+        goals = [_goal(f"Goal {i}", id=f"g{i}") for i in range(9)]
+        assert len(_select_active_goals(goals)) == 5
+
+    def test_returns_id_text_priority_shape(self):
+        selected = _select_active_goals([_goal("Ship v2", priority="high", id="g1")])
+        assert selected == [{"id": "g1", "text": "Ship v2", "priority": "high"}]
 
 
 class TestRouterPrefetch:
@@ -1425,7 +1455,7 @@ class TestRouterPrefetch:
         from httpx import ASGITransport, AsyncClient
 
         # Arrange
-        mock_mem = _mock_memory()
+        mock_mem = _mock_memory(goals=[_goal("Ship the v2 API", priority="high", id="goal-1")])
 
         async def _call():
             async with AsyncClient(
@@ -1447,6 +1477,8 @@ class TestRouterPrefetch:
         assert "near_misses" in body
         assert "token_count" in body
         assert "item_count" in body
+        # #44
+        assert body["active_goals"] == [{"id": "goal-1", "text": "Ship the v2 API", "priority": "high"}]
 
     def test_router_prefetch_empty_task(self):
         """Empty task returns 422 validation error."""
@@ -1494,12 +1526,14 @@ class TestRouterPrefetch:
         assert resp.status_code == 404
 
     def test_router_prefetch_no_decisions(self):
-        """Project with no decisions returns empty bundle."""
+        """Project with no decisions returns empty bundle, but active goals
+        still surface (#44) -- a project can have zero decisions and still
+        have something worth re-anchoring on."""
         import asyncio
         from httpx import ASGITransport, AsyncClient
 
         # Arrange
-        mock_mem = {"decisions": []}
+        mock_mem = {"decisions": [], "goals": [_goal("Get off the ground", id="g1")]}
 
         async def _call():
             async with AsyncClient(
@@ -1518,6 +1552,7 @@ class TestRouterPrefetch:
         body = resp.json()
         assert body["bundle"] == []
         assert body["item_count"] == 0
+        assert body["active_goals"] == [{"id": "g1", "text": "Get off the ground", "priority": "medium"}]
 
     def test_router_prefetch_low_budget(self):
         """Budget too low returns 422."""

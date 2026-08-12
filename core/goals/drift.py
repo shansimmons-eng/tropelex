@@ -104,6 +104,31 @@ def score_goal_drift(goal_text: str, linked_decisions: list[dict]) -> dict:
     }
 
 
+def suggest_drift_review(goal: dict, semantic_drift: dict) -> dict[str, str] | None:
+    """Suggest a review/supersede action for a goal whose linked decisions
+    have drifted badly from its stated text (#44's auto-propose follow-on).
+
+    Same "suggest, don't save" shape as suggest_decision_from_zone (#56)
+    and detect_goals -- proposes text a caller can review and act on,
+    never persists anything itself. Only "high" severity is action-worthy;
+    "medium" is already surfaced via drift_detected as a watch signal, not
+    something worth proposing a concrete action on yet.
+    """
+    if semantic_drift.get("severity") != "high":
+        return None
+    return {
+        "type": "goal_drift_review",
+        "content": (
+            f"Goal '{goal.get('text', '')}' has drifted from its linked decisions "
+            f"(worst overlap={semantic_drift.get('overlap_score')}) — review whether "
+            "the goal is still the right target, or whether the drifted decisions "
+            "should be superseded to actually serve it."
+        ),
+        "confidence": "medium",
+        "goal_id": goal.get("id", ""),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Trend drift — baseline-vs-recent risk/review-rate comparison
 # ---------------------------------------------------------------------------

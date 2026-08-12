@@ -186,6 +186,43 @@ def _select_decisions(
     return [_enrich(d) for d in selected]
 
 
+_GOAL_PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+# Small and bounded on purpose -- goals are meant to be few, big-picture
+# targets, not a growing list; capping keeps re-anchoring cheap even as a
+# project accumulates many completed/abandoned goals over time (only
+# "active" ones are ever considered here in the first place).
+_MAX_ACTIVE_GOALS = 5
+
+
+def _select_active_goals(goals: list[dict]) -> list[dict]:
+    """Active goals, highest priority first, capped at _MAX_ACTIVE_GOALS."""
+    active = [g for g in goals if isinstance(g, dict) and g.get("status") == "active"]
+    active.sort(key=lambda g: (_GOAL_PRIORITY_ORDER.get(g.get("priority"), 4), g.get("created_at", "")))
+    return active[:_MAX_ACTIVE_GOALS]
+
+
+def _build_goal_slices(goals: list[dict]) -> list[ContextSlice]:
+    """Re-anchor the receiving agent on what the project is currently aiming
+    at (#44) -- the agent-drift literature's top mitigation is repeated goal
+    reminders, and Goals (#41) previously only got read when something
+    explicitly queried /goals. Priority 0 (must-survive, same tier #69 built
+    for critical decisions): a goal reminder that budget pressure can quietly
+    trim away defeats the entire point of re-anchoring. Kept safe by
+    _MAX_ACTIVE_GOALS staying small -- this tier is meant for a handful of
+    genuinely critical items, not a place to dump unbounded content.
+    """
+    slices: list[ContextSlice] = []
+    for g in _select_active_goals(goals):
+        content = f"[GOAL, {g.get('priority', 'medium')}] {g.get('text', '')}"
+        slices.append(ContextSlice(
+            category="goal",
+            content=content,
+            priority=0,
+            token_estimate=_estimate_tokens(content),
+        ))
+    return slices
+
+
 def _select_sessions(
     sessions: list[dict],
     profile: dict[str, Any],
@@ -417,8 +454,9 @@ def build_handoff_packet(
     sessions = memory.get("session_history", [])
     selected_sessions = _select_sessions(sessions, profile)
 
-    # 5. Build context slices
+    # 5. Build context slices (+ #44: active-goal re-anchoring slices)
     slices = _build_context_slices(selected_decisions, selected_sessions, profile)
+    slices += _build_goal_slices(memory.get("goals", []))
 
     # 6. Trim to token budget
     effective_budget = min(profile.get("max_tokens", token_budget), token_budget)

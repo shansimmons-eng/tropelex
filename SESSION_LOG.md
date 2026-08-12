@@ -5005,3 +5005,91 @@ a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-11 22:00 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+6e61ea0 feat: Semantic Intent Layer for Ghost Preventive Checks (wishlist #67, infra only)
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-11 22:01 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+6e61ea0 feat: Semantic Intent Layer for Ghost Preventive Checks (wishlist #67, infra only)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-11 22:03 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 56 insertions(+)
+
+**Recent commits:**
+```
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+6e61ea0 feat: Semantic Intent Layer for Ghost Preventive Checks (wishlist #67, infra only)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-12 15:24 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  11 files changed, 514 insertions(+), 13 deletions(-)
+
+**Recent commits:**
+```
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+6e61ea0 feat: Semantic Intent Layer for Ghost Preventive Checks (wishlist #67, infra only)
+```
+
+**Files in play:** `SESSION_LOG.md core/goals/drift.py core/goals/router.py core/handoff/packet_builder.py core/market/router.py core/prefetch/router.py memory/prefetch/test-project_genealogy.json tests/test_goals.py tests/test_handoff_packets.py tests/test_prefetch.py wishlist.md .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+

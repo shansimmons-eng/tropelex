@@ -19,8 +19,10 @@ from core.handoff.packet_builder import (
     HandoffPacket,
     ROLE_PROFILES,
     _build_context_slices,
+    _build_goal_slices,
     _estimate_tokens,
     _format_skills_summary,
+    _select_active_goals,
     _select_decisions,
     _select_sessions,
     _trim_to_budget,
@@ -54,13 +56,19 @@ def _session(summary, ts=None, insights=None):
     }
 
 
-def _memory(decisions=None, sessions=None, patterns=None):
+def _memory(decisions=None, sessions=None, patterns=None, goals=None):
     """Factory: build a full memory dict."""
     return {
         "decisions": decisions or [],
         "session_history": sessions or [],
         "patterns": patterns or [],
+        "goals": goals or [],
     }
+
+
+def _goal(text, status="active", priority="medium", **extra):
+    """Factory: build a goal dict with realistic fields."""
+    return {"id": extra.pop("id", text[:12]), "text": text, "status": status, "priority": priority, **extra}
 
 
 def _scored(decision_text, score=0.9, tier="high"):
@@ -623,6 +631,105 @@ class TestBuildHandoffPacket:
             for s in packet.context_slices
         )
         assert packet.completeness_findings == []
+
+
+class TestSelectActiveGoals:
+    """#44: active-goal re-anchoring selection, highest priority first,
+    capped, and excluding non-active statuses."""
+
+    def test_filters_to_active_only(self):
+        goals = [
+            _goal("Ship v2 API", status="active"),
+            _goal("Old proposal", status="proposed"),
+            _goal("Done thing", status="achieved"),
+            _goal("Dropped thing", status="abandoned"),
+        ]
+        selected = _select_active_goals(goals)
+        assert len(selected) == 1
+        assert selected[0]["text"] == "Ship v2 API"
+
+    def test_sorted_by_priority_critical_first(self):
+        goals = [
+            _goal("Low prio", priority="low"),
+            _goal("Critical prio", priority="critical"),
+            _goal("Medium prio", priority="medium"),
+            _goal("High prio", priority="high"),
+        ]
+        selected = _select_active_goals(goals)
+        assert [g["text"] for g in selected] == [
+            "Critical prio", "High prio", "Medium prio", "Low prio",
+        ]
+
+    def test_capped_at_max_active_goals(self):
+        goals = [_goal(f"Goal {i}", priority="critical", id=f"g{i}") for i in range(10)]
+        selected = _select_active_goals(goals)
+        assert len(selected) == 5
+
+    def test_malformed_entries_skipped_not_crashed(self):
+        goals = [None, "not a dict", 42, _goal("Real goal")]
+        selected = _select_active_goals(goals)
+        assert len(selected) == 1
+        assert selected[0]["text"] == "Real goal"
+
+    def test_empty_goals_returns_empty(self):
+        assert _select_active_goals([]) == []
+
+
+class TestBuildGoalSlices:
+    """#44: goal slices are priority 0 (must-survive tier) so budget
+    trimming can never quietly drop a re-anchoring reminder."""
+
+    def test_active_goal_becomes_priority_zero_slice(self):
+        slices = _build_goal_slices([_goal("Ship v2 API", priority="high")])
+        assert len(slices) == 1
+        assert slices[0].category == "goal"
+        assert slices[0].priority == 0
+        assert "Ship v2 API" in slices[0].content
+        assert "high" in slices[0].content
+
+    def test_no_active_goals_produces_no_slices(self):
+        assert _build_goal_slices([_goal("Idea", status="proposed")]) == []
+
+
+class TestGoalReAnchoringEndToEnd:
+    """#44 end-to-end through build_handoff_packet: an active goal reaches
+    context_slices and survives even under a token budget too tight to
+    hold it plus filler -- the same must-survive protection #69 built for
+    critical decisions, now covering goals too."""
+
+    def test_active_goal_surfaces_in_context_slices(self):
+        memory = _memory(
+            decisions=[BACKEND_DECISION],
+            goals=[_goal("Ship the v2 public API by Q3", priority="high")],
+        )
+        packet = build_handoff_packet(project="tropelex", role="CoderAgent", memory=memory)
+        goal_slices = [s for s in packet.context_slices if s.category == "goal"]
+        assert len(goal_slices) == 1
+        assert "Ship the v2 public API by Q3" in goal_slices[0].content
+
+    def test_goal_survives_tight_budget(self):
+        fillers = [
+            _decision(f"Adopt a design token system for component {i}" * 3, categories=["ui"])
+            for i in range(5)
+        ]
+        memory = _memory(
+            decisions=fillers,
+            goals=[_goal("Ship the v2 public API by Q3", priority="critical")],
+        )
+        packet = build_handoff_packet(
+            project="tropelex", role="FrontendSpecialist", memory=memory, token_budget=1,
+        )
+        assert any(
+            "Ship the v2 public API by Q3" in s.content
+            for s in packet.context_slices
+        )
+
+    def test_no_goals_no_regression(self):
+        """Empty-goals path (the common case for existing projects/tests)
+        must behave exactly as before #44 existed."""
+        memory = _memory(decisions=[BACKEND_DECISION])
+        packet = build_handoff_packet(project="tropelex", role="CoderAgent", memory=memory)
+        assert not any(s.category == "goal" for s in packet.context_slices)
 
 
 class TestCheckCompleteness:

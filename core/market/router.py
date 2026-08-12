@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.agent_identity import normalize_agent_name
@@ -246,8 +246,20 @@ async def clear_market(project: str) -> dict[str, Any]:
 
 
 @market_router.get("/{project}/market/leaderboard")
-async def get_leaderboard(project: str) -> dict[str, Any]:
-    """Get the calibration leaderboard ranked by accuracy."""
+async def get_leaderboard(
+    project: str, goal_id: str | None = Query(None, max_length=64),
+) -> dict[str, Any]:
+    """Get the calibration leaderboard ranked by accuracy.
+
+    goal_id (#44) slices the leaderboard to only bets on decisions linked
+    to that goal -- compute_calibration/compute_leaderboard were always
+    generic pure functions over whatever bets they're handed (get_goal_
+    alignment's own market_calibration already filters this way inline);
+    this exposes the same slice as a real, directly-queryable market
+    endpoint rather than something only reachable via the goals router's
+    own aggregator. Validated at the router boundary (goal must exist),
+    matching #41's Decision.goal_id FK check precedent.
+    """
     try:
         memory = _load_memory(project)
     except HTTPException:
@@ -257,6 +269,16 @@ async def get_leaderboard(project: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(exc))
 
     bets = _get_bets(memory)
+    if goal_id is not None:
+        goal_exists = any(g.get("id") == goal_id for g in memory.get("goals", []))
+        if not goal_exists:
+            raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
+        linked_ids = {
+            d["id"] for d in memory.get("decisions", [])
+            if d.get("goal_id") == goal_id and d.get("id")
+        }
+        bets = [b for b in bets if b.get("decision_id") in linked_ids]
+
     result = compute_leaderboard(bets)
     if isinstance(result, Err):
         raise HTTPException(status_code=500, detail=result.error)
@@ -273,4 +295,5 @@ async def get_leaderboard(project: str) -> dict[str, Any]:
             for e in entries
         ],
         "count": len(entries),
+        "goal_id": goal_id,
     }

@@ -98,6 +98,31 @@ def _genealogy_path(project: str) -> Path:
     return _GENEALOGY_DIR / f"{project}_genealogy.json"
 
 
+_GOAL_PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+# Same cap/rationale as core/handoff/packet_builder.py's _MAX_ACTIVE_GOALS --
+# goals are meant to be few; this stays outside the token-budget knapsack
+# (see _select_active_goals docstring) so it isn't worth threading a second
+# copy of the constant across modules for.
+_MAX_ACTIVE_GOALS = 5
+
+
+def _select_active_goals(goals: list[dict]) -> list[dict[str, Any]]:
+    """Active goals for context-bundle re-anchoring (#44), highest priority
+    first. Deliberately NOT scored/assembled through assemble_budget_bundle
+    like decisions are -- goals aren't competing for relevance to this
+    specific task the way decisions are, they're meant to always re-anchor
+    intent regardless of task, so folding them into the knapsack would risk
+    a goal quietly losing out to a more "relevant" decision on some calls,
+    defeating the point. Returned as their own field, separate from `bundle`.
+    """
+    active = [g for g in goals if isinstance(g, dict) and g.get("status") == "active"]
+    active.sort(key=lambda g: (_GOAL_PRIORITY_ORDER.get(g.get("priority"), 4), g.get("created_at", "")))
+    return [
+        {"id": g.get("id"), "text": g.get("text", ""), "priority": g.get("priority", "medium")}
+        for g in active[:_MAX_ACTIVE_GOALS]
+    ]
+
+
 def _score_decisions(
     decisions: list[dict],
     task: str,
@@ -160,6 +185,7 @@ async def prefetch_bundle(
             "item_count": 0,
             "near_miss_count": 0,
             "tuning_info": {"reasoning": "No decisions in memory"},
+            "active_goals": _select_active_goals(memory.get("goals", [])),
         }
 
     # Tune weights/budget based on agent skills
@@ -242,6 +268,7 @@ async def prefetch_bundle(
             ),
             "reasoning": tuning_reasoning,
         },
+        "active_goals": _select_active_goals(memory.get("goals", [])),
     }
 
 

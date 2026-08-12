@@ -15,7 +15,12 @@ import core.goals.router as goals_router_mod
 import core.market.router as market_router_mod
 from core.goals import Err, Ok
 from core.goals.detector import detect_goals
-from core.goals.drift import score_goal_decision_overlap, score_goal_drift, score_trend_drift
+from core.goals.drift import (
+    score_goal_decision_overlap,
+    score_goal_drift,
+    score_trend_drift,
+    suggest_drift_review,
+)
 from core.goals.logic import create_goal, list_goals, transition_status, update_goal
 from core.goals.router import goals_router
 from core.market.router import market_router
@@ -193,6 +198,33 @@ class TestGoalDrift:
         }
         assert result["drift_detected"] is True
         assert result["metrics"]["risk_drift"] > 0.5
+
+
+class TestSuggestDriftReview:
+    """#44's auto-propose follow-on: suggest, don't save -- only "high"
+    severity drift is action-worthy."""
+
+    def test_high_severity_produces_suggestion(self):
+        goal = {"id": "g1", "text": "reduce login brute force risk"}
+        drift = {"severity": "high", "overlap_score": 0.0}
+        suggestion = suggest_drift_review(goal, drift)
+        assert suggestion is not None
+        assert suggestion["type"] == "goal_drift_review"
+        assert suggestion["goal_id"] == "g1"
+        assert "reduce login brute force risk" in suggestion["content"]
+
+    def test_medium_severity_no_suggestion(self):
+        goal = {"id": "g1", "text": "x"}
+        assert suggest_drift_review(goal, {"severity": "medium", "overlap_score": 0.2}) is None
+
+    def test_low_severity_no_suggestion(self):
+        goal = {"id": "g1", "text": "x"}
+        assert suggest_drift_review(goal, {"severity": "low", "overlap_score": 0.5}) is None
+
+    def test_no_severity_no_suggestion(self):
+        """Goal with no linked decisions -- score_goal_drift's severity is None."""
+        goal = {"id": "g1", "text": "x"}
+        assert suggest_drift_review(goal, {"severity": None, "overlap_score": None}) is None
 
 
 class TestDetectGoals:
@@ -470,3 +502,93 @@ class TestGoalAlignment:
         resp = client.get(f"/api/memory/demo/goals/{goal_id}/alignment")
         data = resp.json()
         assert data["friction_penalty_project_wide"] > 0.0
+
+    def test_alignment_high_drift_surfaces_suggested_action(self, client: TestClient) -> None:
+        """#44: a goal whose linked decision has drifted badly gets a real
+        proposed action, not just a severity number to read past."""
+        goal_id = self._seed_goal_and_decisions(
+            goals_router_mod._mm, "reduce login brute force risk",
+            [{"id": "d1", "decision": "paint the button blue"}],
+        )
+        resp = client.get(f"/api/memory/demo/goals/{goal_id}/alignment")
+        data = resp.json()
+        assert data["semantic_drift"]["severity"] == "high"
+        assert data["suggested_action"] is not None
+        assert data["suggested_action"]["type"] == "goal_drift_review"
+        assert data["suggested_action"]["goal_id"] == goal_id
+
+    def test_alignment_low_drift_no_suggested_action(self, client: TestClient) -> None:
+        goal_id = self._seed_goal_and_decisions(
+            goals_router_mod._mm, "reduce login brute force risk with rate limiting",
+            [{"id": "d1", "decision": "reduce login brute force risk with rate limiting"}],
+        )
+        resp = client.get(f"/api/memory/demo/goals/{goal_id}/alignment")
+        data = resp.json()
+        assert data["semantic_drift"]["severity"] == "low"
+        assert data["suggested_action"] is None
+
+    def test_alignment_no_linked_decisions_no_suggested_action(self, client: TestClient) -> None:
+        goal_id = self._seed_goal_and_decisions(goals_router_mod._mm, "reduce risk", [])
+        resp = client.get(f"/api/memory/demo/goals/{goal_id}/alignment")
+        assert resp.json()["suggested_action"] is None
+
+
+class TestMarketLeaderboardGoalFilter:
+    """#44's Market slicing follow-on: GET /market/leaderboard?goal_id=X
+    exposes the same goal-scoped bet slice get_goal_alignment already
+    computes inline, as a real, directly-queryable market endpoint."""
+
+    def _seed_goal_with_linked_and_unlinked_decisions(self, mm: MemoryManager) -> tuple[str, str, str]:
+        memory = mm.get_project_memory("demo")
+        goals = create_goal(memory.get("goals", []), {"text": "reduce login risk"})
+        assert isinstance(goals, Ok)
+        goal_id = goals.value[-1]["id"]
+        memory["goals"] = goals.value
+        memory["decisions"] = [
+            {"id": "linked-1", "decision": "rate limit logins", "goal_id": goal_id},
+            {"id": "unlinked-1", "decision": "paint the button blue"},
+        ]
+        mm.save_project_memory("demo", memory)
+        return goal_id, "linked-1", "unlinked-1"
+
+    def test_goal_filter_includes_only_linked_decision_bets(self, client: TestClient) -> None:
+        goal_id, linked_id, unlinked_id = self._seed_goal_with_linked_and_unlinked_decisions(
+            goals_router_mod._mm,
+        )
+        for decision_id, agent in [(linked_id, "claude"), (unlinked_id, "gemini")]:
+            bet = client.post("/api/memory/demo/market/bet", json={
+                "decision_id": decision_id, "agent_name": agent, "confidence": 0.9, "category": "backend",
+            })
+            assert bet.status_code == 200
+            client.post("/api/memory/demo/market/resolve", json={
+                "bet_id": bet.json()["bet"]["id"], "outcome": "correct",
+            })
+
+        resp = client.get(f"/api/memory/demo/market/leaderboard?goal_id={goal_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["goal_id"] == goal_id
+        agents = {row["agent_name"] for row in data["leaderboard"]}
+        assert agents == {"Claude"}
+
+    def test_no_goal_id_returns_full_project_wide_leaderboard(self, client: TestClient) -> None:
+        goal_id, linked_id, unlinked_id = self._seed_goal_with_linked_and_unlinked_decisions(
+            goals_router_mod._mm,
+        )
+        for decision_id, agent in [(linked_id, "claude"), (unlinked_id, "gemini")]:
+            bet = client.post("/api/memory/demo/market/bet", json={
+                "decision_id": decision_id, "agent_name": agent, "confidence": 0.9, "category": "backend",
+            })
+            client.post("/api/memory/demo/market/resolve", json={
+                "bet_id": bet.json()["bet"]["id"], "outcome": "correct",
+            })
+
+        resp = client.get("/api/memory/demo/market/leaderboard")
+        data = resp.json()
+        assert data["goal_id"] is None
+        agents = {row["agent_name"] for row in data["leaderboard"]}
+        assert agents == {"Claude", "Gemini"}
+
+    def test_unknown_goal_id_404s(self, client: TestClient) -> None:
+        resp = client.get("/api/memory/demo/market/leaderboard?goal_id=does-not-exist")
+        assert resp.status_code == 404
