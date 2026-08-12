@@ -10620,6 +10620,15 @@ async function loadNeedsAttention() {
     badge.textContent = `${data.count} OPEN`;
     badge.className = 'px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 font-mono text-xs font-semibold attn-chase';
 
+    // Needs Attention grew to 6 sources server-side (#40/#58/#59/#69) but
+    // this renderer only ever handled 'pending_review' explicitly and
+    // treated every other kind as 'untagged_decision' -- so decayed/
+    // flagged/unacknowledged-handoff/completeness-violation items all
+    // rendered as a safety-category picker, which makes no sense for them
+    // (there's nothing to "categorize" about an unacknowledged handoff).
+    // Found live: a user staring at two unacknowledged_handoff items with
+    // a category dropdown, unable to categorize them -- because they
+    // shouldn't have one at all.
     list.innerHTML = data.items.map(item => {
         const label = escapeHtml((item.label || '').length > 90 ? item.label.slice(0, 90) + '…' : (item.label || ''));
         const detail = escapeHtml(item.detail || '');
@@ -10632,22 +10641,42 @@ async function loadNeedsAttention() {
                 <button class="attn-review-btn shrink-0 px-3 py-1.5 rounded-lg border border-yellow-400/30 text-yellow-400 font-mono text-xs hover:bg-yellow-400/10 transition-all cursor-pointer">Review →</button>
             </div>`;
         }
-        // untagged_decision — the fix is one field, so it happens right here.
-        return `<div class="flex items-center justify-between gap-2 p-3 rounded-lg bg-surface-raised border border-glass-border" id="attn-untagged-${escapeAttr(item.id)}">
-            <div class="min-w-0 flex-1">
+        if (item.kind === 'untagged_decision') {
+            return `<div class="flex items-center justify-between gap-2 p-3 rounded-lg bg-surface-raised border border-glass-border" id="attn-untagged-${escapeAttr(item.id)}">
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium truncate">${label}</p>
+                    <p class="text-xs text-outline truncate">${detail}</p>
+                </div>
+                <select class="attn-category-select bg-surface border border-glass-border rounded px-2 py-1 font-mono text-xs text-outline cursor-pointer shrink-0">
+                    <option value="">category…</option>
+                    <option value="general" title="Doesn't fit a more specific category">general</option>
+                    <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
+                    <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
+                    <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
+                    <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
+                    <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
+                </select>
+                <button class="attn-tag-save-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(item.id)}">Save</button>
+            </div>`;
+        }
+        if (item.kind === 'unacknowledged_handoff') {
+            return `<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium truncate">${label}</p>
+                    <p class="text-xs text-outline truncate">${detail}</p>
+                </div>
+                <button class="attn-ack-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-sky/30 text-accent-sky font-mono text-xs hover:bg-accent-sky/10 transition-all cursor-pointer" data-packet-hash="${escapeAttr(item.id)}">Acknowledge</button>
+            </div>`;
+        }
+        // decayed_decision / content_flagged / handoff_completeness_violation
+        // -- explicitly informational by design (see get_needs_attention's
+        // own comments): act on these from the Confidence tab, the flagged
+        // decisions list, or the audit trail, not inline here.
+        return `<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
+            <div class="min-w-0">
                 <p class="text-sm font-medium truncate">${label}</p>
                 <p class="text-xs text-outline truncate">${detail}</p>
             </div>
-            <select class="attn-category-select bg-surface border border-glass-border rounded px-2 py-1 font-mono text-xs text-outline cursor-pointer shrink-0">
-                <option value="">category…</option>
-                <option value="general" title="Doesn't fit a more specific category">general</option>
-                <option value="adversarial" title="Attacks, exploits, vulnerabilities, penetration testing">adversarial</option>
-                <option value="robustness" title="Reliability, fault tolerance, error handling, resilience">robustness</option>
-                <option value="monitoring" title="Observability, logging, alerting, anomaly detection">monitoring</option>
-                <option value="governance" title="Compliance, audits, policy, regulation">governance</option>
-                <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
-            </select>
-            <button class="attn-tag-save-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${escapeAttr(item.id)}">Save</button>
         </div>`;
     }).join('');
 }
@@ -10655,6 +10684,22 @@ async function loadNeedsAttention() {
 document.getElementById('needs-attention-list').addEventListener('click', async (e) => {
     if (e.target.closest('.attn-review-btn')) {
         switchSectionWithGraph('safety');
+        return;
+    }
+    const ackBtn = e.target.closest('.attn-ack-btn');
+    if (ackBtn) {
+        ackBtn.disabled = true;
+        const resp = await api(
+            `/memory/${encodeURIComponent(state.currentProject)}/handoff/acknowledge`,
+            'POST',
+            { packet_hash: ackBtn.dataset.packetHash, agent_name: state.currentAgent || 'unspecified' }
+        );
+        if (resp) {
+            showToast('Acknowledged');
+            loadNeedsAttention();
+        } else {
+            ackBtn.disabled = false;
+        }
         return;
     }
     const saveBtn = e.target.closest('.attn-tag-save-btn');

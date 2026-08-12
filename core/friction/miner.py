@@ -226,16 +226,20 @@ _SHORT_LINE_MAX_CHARS = 60
 _RETRY_MIN_LINES = 2
 _ZONE_PROXIMITY = 5  # lines within which signals are grouped
 
-# _detect_retries/_detect_rapid_edits are purely line-shape heuristics (line
-# length, literal duplication) with no concept of who wrote a line or
-# whether it's prose at all -- found live: scanning a real coding-agent
-# transcript (code, diffs, tool output mixed into the same text) produced a
-# flood of "friction" that was actually just code (most source lines are
-# short; test suites and diffs are full of near-duplicate lines). Both
-# _REPHRASE_PATTERNS/_ESCALATION_PATTERNS are phrase-anchored and don't
-# need this -- code essentially never contains "as i said" or "that's
-# wrong" by coincidence, but it trivially satisfies "3 short lines in a
-# row" or "the same line twice."
+# All four detectors apply this filter. It was originally added only for
+# _detect_retries/_detect_rapid_edits (line-shape heuristics with no concept
+# of whether a line is prose at all) on the theory that _REPHRASE_PATTERNS/
+# _ESCALATION_PATTERNS were phrase-anchored enough to not need it -- code
+# essentially never contains "as i said" or "that's wrong" by coincidence.
+# That held for the original, narrower vocabulary, but broke the moment the
+# escalation list grew generic error-description phrases ("returning
+# error", "keeps failing", "won't start/work/load", "isn't working"): those
+# are completely ordinary in exception messages, docstrings, and comments
+# (e.g. `raise RuntimeError("won't start")`, `# keeps failing on edge
+# cases`), so scanning real code produced a flood of "high severity
+# escalation" signals. Found live: a project's friction queue kept filling
+# with entries after the code-content fix landed, because that fix only
+# ever touched the two line-shape detectors.
 _CODE_LINE_RE = re.compile(
     r"^\s*("
     r"[+\-]|@@|```|>>>|"                                    # diff markers, code fences, REPL prompt
@@ -277,6 +281,8 @@ def _detect_rephrasing(lines: list[str]) -> list[FrictionSignal]:
     """Find rephrasing markers in transcript lines."""
     signals: list[FrictionSignal] = []
     for i, line in enumerate(lines):
+        if _looks_like_code(line):
+            continue
         for pat in _REPHRASE_PATTERNS:
             m = pat.search(line)
             if m:
@@ -355,6 +361,8 @@ def _detect_escalation(lines: list[str]) -> list[FrictionSignal]:
     """Find escalation markers indicating growing frustration."""
     signals: list[FrictionSignal] = []
     for i, line in enumerate(lines):
+        if _looks_like_code(line):
+            continue
         for pat in _ESCALATION_PATTERNS:
             m = pat.search(line)
             if m:
