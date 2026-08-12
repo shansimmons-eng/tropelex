@@ -19,6 +19,12 @@ logger = logging.getLogger("tropelex.last30days")
 
 # The last30days Python engine lives adjacent to this file
 SCRIPT_DIR = Path(__file__).parent.resolve()
+# Repo root -- needed on the subprocess's PYTHONPATH so its provider clients
+# can `import core.cost.tracker` to record real LLM spend (see
+# lib/providers.py's _record_usage). The subprocess's own sys.path only ever
+# gets SCRIPT_DIR inserted (see last30days.py/synthesize_run.py), never the
+# repo root, so without this the import would silently fail every time.
+REPO_ROOT = SCRIPT_DIR.parent.parent
 ENGINE = SCRIPT_DIR / "last30days.py"
 # Driver that adds the LLM synthesis step (rich HTML like the WP portal shows)
 SYNTH_ENGINE = SCRIPT_DIR / "synthesize_run.py"
@@ -32,6 +38,7 @@ def run_query(
     timeout: int | None = None,
     emit: str = "html",
     env: dict[str, str] | None = None,
+    project: str | None = None,
 ) -> str:
     """Run a last30days research query and return the rendered output.
 
@@ -40,6 +47,11 @@ def run_query(
         timeout: Seconds to wait before raising TimeoutError (default 180).
         emit: Output format — 'html' (default), 'md', or 'compact'.
         env: Extra environment variables (merged over os.environ).
+        project: Tropelex project to attribute real LLM spend to. Read by
+            lib/providers.py inside the subprocess via TROPELEX_PROJECT; if
+            omitted, LLM calls made during this run aren't cost-tracked at
+            all (same as before this existed), consistent with core.llm's
+            own "no project, no persisted event" rule.
 
     Returns:
         Rendered output string (HTML unless emit differs).
@@ -80,6 +92,18 @@ def run_query(
     # BRAVE_API_KEY. Bridge it so Brave grounding works without double config.
     if not run_env.get("BRAVE_API_KEY") and run_env.get("BRAVE_SEARCH_API_KEY"):
         run_env["BRAVE_API_KEY"] = run_env["BRAVE_SEARCH_API_KEY"]
+
+    if project:
+        run_env["TROPELEX_PROJECT"] = project
+    # Guarantee `import core...` works inside the subprocess regardless of
+    # how this server process itself was launched -- see REPO_ROOT comment.
+    existing_pythonpath = run_env.get("PYTHONPATH", "")
+    repo_root_str = str(REPO_ROOT)
+    if repo_root_str not in existing_pythonpath.split(os.pathsep):
+        run_env["PYTHONPATH"] = (
+            f"{repo_root_str}{os.pathsep}{existing_pythonpath}"
+            if existing_pythonpath else repo_root_str
+        )
 
     timeout_s = timeout if timeout is not None else ENGINE_TIMEOUT
 

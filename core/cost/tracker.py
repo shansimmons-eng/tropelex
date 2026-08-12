@@ -371,16 +371,19 @@ def record_llm_cost(
     callers can no-op rather than letting cost tracking break a real LLM
     call.
     """
-    pricing = _MODEL_PRICING.get(model)
-    if pricing is None:
-        return Err(
-            error=f"No pricing known for model {model!r}",
-            code="UNKNOWN_MODEL",
-            details={"known_models": list(_MODEL_PRICING)},
-        )
     total_tokens = prompt_tokens + completion_tokens
+    pricing = _MODEL_PRICING.get(model)
+    # Unknown model: still record the event with real token counts rather
+    # than dropping it -- an amount_usd of exactly 0.0 with pricing_known
+    # False means "this call happened but we don't know its price," not
+    # "this call was free." Otherwise every real call through a model this
+    # ledger has no pricing for (e.g. anything outside core/llm.py's own
+    # OPENAI_CHAT_MODEL/OPENAI_EMBED_MODEL constants) vanished entirely,
+    # with no record it ever happened -- the exact "not capturing all the
+    # cost" gap this exists to close.
     amount_usd = (
         prompt_tokens * pricing["input"] + completion_tokens * pricing["output"]
+        if pricing is not None else 0.0
     )
     event = CostEvent(
         id="",
@@ -395,6 +398,7 @@ def record_llm_cost(
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
+            "pricing_known": pricing is not None,
         },
     )
     tracker = CostTracker(DecisionTree())

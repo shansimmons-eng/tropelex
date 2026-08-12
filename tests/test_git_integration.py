@@ -19,6 +19,7 @@ from core.git_integration import (
     _summarize_commit_decision,
     extract_deep_decisions,
     extract_decisions_from_commits,
+    get_project_repo_path,
     get_repo_fingerprint,
     get_repo_summary,
     detect_tech_stack,
@@ -282,3 +283,46 @@ class TestSyncRepoFingerprintGuard:
         result = await sync_repo_to_memory(str(repo_b), "proj", mm, force=True)
 
         assert result["synced"] is True
+
+
+class TestGetProjectRepoPath:
+    """Doc Mining / pytest count / git summary use this to find a
+    project's own repo instead of silently falling back to whichever repo
+    Tropelex itself is installed in."""
+
+    def test_no_repo_path_returns_none(self):
+        assert get_project_repo_path({}) is None
+
+    def test_repo_path_missing_from_disk_returns_none(self):
+        assert get_project_repo_path({"repo_path": "/nonexistent/path/xyz"}) is None
+
+    def test_valid_repo_path_returned(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        assert get_project_repo_path({"repo_path": str(repo)}) == str(repo)
+
+    @pytest.mark.asyncio
+    async def test_sync_persists_repo_path(self, tmp_path):
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        mm = _FakeMemoryManager()
+
+        await sync_repo_to_memory(str(repo), "proj", mm)
+
+        assert mm.store["proj"]["repo_path"] == str(repo)
+        assert get_project_repo_path(mm.store["proj"]) == str(repo)
+
+    @pytest.mark.asyncio
+    async def test_resync_updates_repo_path_to_new_location(self, tmp_path):
+        """Unlike the fingerprint identity check, repo_path itself should
+        track wherever the checkout currently lives."""
+        repo = tmp_path / "repo"
+        _make_repo(repo, "init")
+        mm = _FakeMemoryManager()
+
+        await sync_repo_to_memory(str(repo), "proj", mm)
+        moved = tmp_path / "repo_moved"
+        repo.rename(moved)
+        await sync_repo_to_memory(str(moved), "proj", mm, force=True)
+
+        assert mm.store["proj"]["repo_path"] == str(moved)

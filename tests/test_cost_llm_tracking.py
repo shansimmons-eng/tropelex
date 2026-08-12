@@ -62,11 +62,19 @@ class TestRecordLlmCostPricing:
         # 500 * 0.02e-6
         assert result.value.amount == pytest.approx(0.00001, abs=1e-8)
 
-    def test_unknown_model_returns_err_not_raise(self):
+    def test_unknown_model_records_tokens_at_zero_usd_not_dropped(self):
+        """An unpriced model must still leave a ledger trace (real token
+        counts, amount 0.0, pricing_known False) rather than vanishing
+        entirely -- a $0 entry with pricing_known False is legible as
+        "priced unknown," not "this call was free."""
         project = _project()
         result = record_llm_cost(project, prompt_tokens=100, completion_tokens=10, model="not-a-real-model")
-        assert isinstance(result, Err)
-        assert result.code == "UNKNOWN_MODEL"
+        assert isinstance(result, Ok)
+        event = result.value
+        assert event.amount == 0.0
+        assert event.metadata["pricing_known"] is False
+        assert event.metadata["prompt_tokens"] == 100
+        assert event.metadata["completion_tokens"] == 10
 
     def test_invalid_project_name_returns_err_not_raise(self):
         """The docstring promises "Never raises." get_project_memory() (via
@@ -95,6 +103,7 @@ class TestRecordLlmCostPricing:
             "prompt_tokens": 300,
             "completion_tokens": 150,
             "total_tokens": 450,
+            "pricing_known": True,
         }
         assert event.description == "test call"
 

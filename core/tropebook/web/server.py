@@ -381,13 +381,36 @@ async def health():
 
 
 @app.get("/api/tests/count")
-async def get_test_suite_count():
+async def get_test_suite_count(project: str = Query("", max_length=100)):
     """Real pytest test count via `--collect-only` -- replaces the
     hardcoded "1455 Passed" the dashboard's Run Diagnostics panel and
     Getting Started card used to show regardless of the suite's actual
-    size. Collection-only: fast, no execution side effects."""
+    size. Collection-only: fast, no execution side effects.
+
+    Counts this Tropelex install's own suite unless `project` has a
+    synced repo_path on record -- otherwise every project showed the same
+    count sourced from Tropelex's own tests, with no indication that's
+    what happened (see get_project_repo_path)."""
+    from core.git_integration import get_project_repo_path
     from core.test_suite_status import get_test_count
-    return get_test_count(str(BASE_DIR))
+
+    scan_root = BASE_DIR
+    source = "tropelex_repo_fallback"
+    if project:
+        mm = get_memory_manager()
+        try:
+            memory = mm.get_project_memory(_sanitise_project(project))
+        except (OSError, ValueError):
+            memory = {}
+        project_repo = get_project_repo_path(memory)
+        if project_repo:
+            scan_root = Path(project_repo)
+            source = "project_repo"
+
+    result = get_test_count(str(scan_root))
+    result["scan_root"] = str(scan_root)
+    result["scan_root_source"] = source
+    return result
 
 
 @app.get("/api/debug/env")
@@ -1555,27 +1578,63 @@ async def git_sync(req: GitSyncRequest):
         raise HTTPException(500, f"Git sync failed: {e}")
 
 
+def _resolve_git_summary_root(repo_path: str, project: str) -> tuple[str, str]:
+    """Explicit repo_path wins; otherwise prefer the project's own synced
+    repo; otherwise fall back to this Tropelex install's own repo -- and
+    say which, so a project with no synced repo doesn't silently show
+    Tropelex's own git history with no indication that's what happened."""
+    repo_path = repo_path.strip()[:500]
+    if repo_path:
+        return repo_path, "explicit"
+    if project:
+        from core.git_integration import get_project_repo_path
+
+        mm = get_memory_manager()
+        try:
+            memory = mm.get_project_memory(_sanitise_project(project))
+        except (OSError, ValueError):
+            memory = {}
+        project_repo = get_project_repo_path(memory)
+        if project_repo:
+            return project_repo, "project_repo"
+    return str(BASE_DIR), "tropelex_repo_fallback"
+
+
 @app.get("/api/git/summary")
-async def git_summary(repo_path: str = Query("", max_length=500)):
-    """Get basic repo summary. Defaults to project root if no path given."""
+async def git_summary(
+    repo_path: str = Query("", max_length=500),
+    project: str = Query("", max_length=100),
+):
+    """Get basic repo summary. Defaults to the project's own synced repo,
+    then this install's own repo root, if no path given."""
     try:
         from core.git_integration import get_repo_summary
 
-        repo_path = repo_path.strip()[:500] or str(BASE_DIR)
-        return get_repo_summary(repo_path)
+        resolved_path, source = _resolve_git_summary_root(repo_path, project)
+        result = get_repo_summary(resolved_path)
+        result["repo_path"] = resolved_path
+        result["repo_path_source"] = source
+        return result
     except Exception as e:
         logger.error("git_summary failed: %s", e)
         raise HTTPException(500, f"Git summary failed: {e}")
 
 
 @app.get("/api/git/deep-summary")
-async def git_deep_summary(repo_path: str = Query(..., max_length=500)):
-    """Enhanced repo summary with deep commit analysis."""
+async def git_deep_summary(
+    repo_path: str = Query("", max_length=500),
+    project: str = Query("", max_length=100),
+):
+    """Enhanced repo summary with deep commit analysis. Same repo_path
+    resolution as /api/git/summary."""
     try:
         from core.git_integration import get_deep_repo_summary
 
-        repo_path = repo_path.strip()[:500]
-        return get_deep_repo_summary(repo_path)
+        resolved_path, source = _resolve_git_summary_root(repo_path, project)
+        result = get_deep_repo_summary(resolved_path)
+        result["repo_path"] = resolved_path
+        result["repo_path_source"] = source
+        return result
     except Exception as e:
         logger.error("git_deep_summary failed: %s", e)
         raise HTTPException(500, f"Git deep summary failed: {e}")
@@ -6103,6 +6162,7 @@ class Last30DaysRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     emit: str = Field("html", pattern=r"^(html|md|compact)$")
     timeout: int | None = Field(None, ge=30, le=600)
+    project: str = Field("", max_length=100)
 
 
 @app.post("/api/last30days/query")
@@ -6111,8 +6171,13 @@ async def last30days_query(req: Last30DaysRequest):
     try:
         from core.last30days.runner import run_query, run_query_and_extract_citations
 
+        # project is optional -- without it, real LLM spend inside the
+        # engine subprocess simply isn't attributed to any project's cost
+        # ledger (same "no project context, don't persist" rule core.llm
+        # already follows).
         html, citations = run_query_and_extract_citations(
             req.query, timeout=req.timeout, emit=req.emit,
+            project=_sanitise_project(req.project) if req.project else None,
         )
 
         # Persist the run

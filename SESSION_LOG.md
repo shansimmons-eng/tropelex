@@ -4983,3 +4983,25 @@ a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-11 19:59 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  13 files changed, 401 insertions(+), 45 deletions(-)
+
+**Recent commits:**
+```
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+6e61ea0 feat: Semantic Intent Layer for Ghost Preventive Checks (wishlist #67, infra only)
+6ad0fe2 feat: Handoff Completeness as a First-Class Policy (wishlist #69)
+```
+
+**Files in play:** `UI/animated_tropebook_dashboard/code.html core/cost/tracker.py core/docmine/router.py core/git_integration.py core/last30days/lib/providers.py core/last30days/runner.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_cost_llm_tracking.py tests/test_docmine.py tests/test_git_integration.py tests/test_last30days_runner.py tests/test_test_suite_status.py .claude/worktrees/ tests/test_last30days_providers_cost.py `
+
+**Open questions / next steps:** <!-- fill in -->
+

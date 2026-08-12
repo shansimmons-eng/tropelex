@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from typing import Any
@@ -24,6 +25,45 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # constant is suffix-free. If GEMINI_FLASH_LITE moves to a non-preview stable ID,
 # double-check that OpenRouter's slug still maps to the same upstream model.
 OPENROUTER_DEFAULT = "google/gemini-3.1-flash-lite-preview"
+
+
+def _record_usage(provider: str, model: str, usage: dict[str, Any] | None, description: str) -> None:
+    """Best-effort real-spend recording for a last30days LLM call.
+
+    This engine runs as a subprocess of the Tropelex server (see
+    runner.py), with no Tropelex project concept of its own -- previously
+    every real OpenAI/Gemini/xAI/OpenRouter call it made was completely
+    untracked, unlike core/llm.py's calls which have recorded real cost
+    since record_llm_cost existed. TROPELEX_PROJECT (set by runner.py only
+    when the caller supplied a project) is how a project gets attributed;
+    no-ops without it, same "no project, don't persist" rule core.llm
+    follows. Never raises -- a cost-tracking failure must never break the
+    actual research run.
+    """
+    project = os.environ.get("TROPELEX_PROJECT", "").strip()
+    if not project or not usage:
+        return
+    try:
+        from core.cost.tracker import record_llm_cost
+
+        prompt_tokens = int(
+            usage.get("prompt_tokens") or usage.get("input_tokens")
+            or usage.get("promptTokenCount") or 0
+        )
+        completion_tokens = int(
+            usage.get("completion_tokens") or usage.get("output_tokens")
+            or usage.get("candidatesTokenCount") or 0
+        )
+        if prompt_tokens or completion_tokens:
+            record_llm_cost(
+                project,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                model=model,
+                description=f"last30days: {description} ({provider})",
+            )
+    except Exception as exc:
+        print(f"[Providers] cost tracking failed (non-fatal): {exc}", file=sys.stderr)
 
 
 class ReasoningClient:
@@ -95,6 +135,7 @@ class GeminiClient(ReasoningClient):
             tools=tools,
             response_mime_type=response_mime_type,
         )
+        _record_usage("gemini", model, payload.get("usageMetadata"), "generate_text")
         return extract_gemini_text(payload)
 
 class OpenAIClient(ReasoningClient):
@@ -135,7 +176,9 @@ class OpenAIClient(ReasoningClient):
                 "Content-Type": "application/json",
             }
             raw = http.post_raw(CODEX_RESPONSES_URL, payload, headers=headers, timeout=90)
-            return extract_openai_text(_parse_codex_stream(raw))
+            parsed = _parse_codex_stream(raw)
+            _record_usage("openai", model, parsed.get("usage"), "generate_text (codex)")
+            return extract_openai_text(parsed)
 
         payload = {
             "model": model,
@@ -152,6 +195,7 @@ class OpenAIClient(ReasoningClient):
             },
             timeout=90,
         )
+        _record_usage("openai", model, response.get("usage"), "generate_text")
         return extract_openai_text(response)
 
 
@@ -183,6 +227,7 @@ class XAIClient(ReasoningClient):
             },
             timeout=90,
         )
+        _record_usage("xai", model, response.get("usage"), "generate_text")
         return extract_openai_text(response)
 
 
@@ -215,6 +260,7 @@ class OpenRouterClient(ReasoningClient):
             },
             timeout=90,
         )
+        _record_usage("openrouter", model, response.get("usage"), "generate_text")
         return extract_openai_text(response)
 
 

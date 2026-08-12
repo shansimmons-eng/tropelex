@@ -3980,12 +3980,13 @@ void main() {
         <div class="flex items-center gap-3 mb-6">
             <span class="material-symbols-outlined text-red-400 text-2xl">rule</span>
             <h2 class="font-mono text-xl text-red-400 uppercase tracking-wider">Drift-Bench</h2>
+            <span class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400 font-mono uppercase tracking-wider">Global Benchmark</span>
         </div>
         <p class="text-outline mb-6">A small, deterministic scenario suite measuring how well Ghost, Contradictions, Injection Sentinel, and a handoff-completeness check actually catch five drift/injection threat categories — run against real detectors, not simulated. Also runs on every local pre-push (warns, never blocks).</p>
 
         <div class="glass-panel rounded-xl p-6 mb-6">
             <div class="flex items-center justify-between">
-                <p class="text-xs text-outline">Runs a fixed, self-contained scenario corpus. No project selection needed.</p>
+                <p class="text-xs text-outline">Same fixed, synthetic scenario corpus for every project — this score isn't specific to whichever project is currently selected, so seeing an identical number across projects is expected, not a bug.</p>
                 <button id="btn-run-driftbench" onclick="runDriftBench()" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 font-mono text-sm hover:bg-red-500/30 transition-all cursor-pointer flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">radar</span> Run Now
                 </button>
@@ -4680,9 +4681,11 @@ async function syncGitProject() {
     const summaryEl = document.getElementById('git-summary-output');
     if (!pathField || pathField.value || !summaryEl || summaryEl.dataset.autoLoaded) return;
 
-    // No repo_path -- the backend defaults to this Tropelex instance's own
-    // repo root, same convention Agent Audit already uses.
-    const data = await api('/git/summary');
+    // No explicit repo_path -- the backend resolves the current project's
+    // own synced repo if it has one, else falls back to this Tropelex
+    // instance's own repo root (labeled either way in the response, see
+    // renderGitLightSummary).
+    const data = await api(`/git/summary?project=${encodeURIComponent(state.currentProject || '')}`);
     if (!data || data.error) return;
     // Only mark as loaded once we actually have something to show -- if
     // this were set before the fetch, a transient failure (backend hiccup,
@@ -4696,10 +4699,13 @@ async function syncGitProject() {
 
 function renderGitLightSummary(el, data) {
     const decisions = data.decisions || [];
+    const sourceNote = data.repo_path_source === 'project_repo'
+        ? `Auto-loaded from ${escapeHtml(state.currentProject)}'s own synced repo`
+        : `No repo synced for ${escapeHtml(state.currentProject)} -- showing this Tropelex install's own repo instead. Sync ${escapeHtml(state.currentProject)}'s repo path below to fix this.`;
     el.innerHTML = `
-        <div class="flex items-center gap-3 mb-3">
+        <div class="flex items-center gap-3 mb-3 flex-wrap">
             <span class="text-xs px-2 py-1 rounded bg-accent-lavender/20 text-accent-lavender">${escapeHtml(data.branch || 'unknown')}</span>
-            <span class="text-xs text-outline">Auto-loaded from this repo -- enter a different path and click Summary for another one</span>
+            <span class="text-xs text-outline">${sourceNote}</span>
         </div>
         <div class="mb-3">
             <h4 class="text-xs uppercase text-outline mb-1">Tech Stack</h4>
@@ -5104,7 +5110,7 @@ async function runDeepResearch() {
         const res = await fetch('/api/last30days/query', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({query, emit: 'html'})
+            body: JSON.stringify({query, emit: 'html', project: state.currentProject || ''})
         });
         const data = await res.json();
         if (!res.ok) {
@@ -6402,6 +6408,26 @@ async function selectProject(name) {
     // Pre-fill git project name
     const gitName = document.getElementById('git-project-name');
     if (gitName && !gitName.value) gitName.value = name;
+
+    // Clear results panels that only refresh on their own trigger button/tab
+    // open, not on a global project switch -- otherwise they keep showing
+    // whatever the previously selected project generated (found live: cup
+    // showing a Narrative/Why-Do-We answer left over from Tropelex).
+    const explainResults = document.getElementById('explain-results');
+    if (explainResults) explainResults.innerHTML = '<p class="text-sm text-outline">Your answer and provenance will appear here.</p>';
+    const narrativeResults = document.getElementById('narrative-results');
+    if (narrativeResults) { narrativeResults.innerHTML = ''; narrativeResults.classList.add('hidden'); }
+    document.getElementById('narrative-empty')?.classList.remove('hidden');
+    const docmineResults = document.getElementById('docmine-results');
+    if (docmineResults) { docmineResults.innerHTML = ''; docmineResults.classList.add('hidden'); }
+    document.getElementById('docmine-empty')?.classList.remove('hidden');
+    const docmineSummary = document.getElementById('docmine-summary');
+    if (docmineSummary) docmineSummary.textContent = 'Select a project, then scan — this reads every .md file in the repo (excluding node_modules, venvs, and scratch dirs).';
+    // Also drop the auto-load guard so the Git tab re-fetches for the new
+    // project instead of keeping the previous project's cached summary.
+    const gitSummaryOutput = document.getElementById('git-summary-output');
+    if (gitSummaryOutput) { gitSummaryOutput.innerHTML = ''; delete gitSummaryOutput.dataset.autoLoaded; }
+
     // Refresh dashboard status cards and onboarding checklist
     try { await loadDashboardStatusCards(); } catch(e) { console.error('Dashboard cards failed:', e); }
     try { await updateOnboarding(); } catch(e) { console.error('Onboarding failed:', e); }
@@ -10413,7 +10439,7 @@ async function loadDashboardStatusCards() {
     const gitEl = document.getElementById('dash-git');
     if (gitEl) {
         try {
-            const gitData = await api(`/git/summary`);
+            const gitData = await api(`/git/summary?project=${encodeURIComponent(project || '')}`);
             if (gitData) {
                 const commits = (gitData.commits || gitData.recent_commits || []).slice(0, 3);
                 const branch = gitData.branch || 'main';
@@ -11408,8 +11434,12 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
     btn.disabled = false; btn.textContent = 'Scan Markdown Files';
     if (data) {
         document.getElementById('docmine-empty')?.classList.add('hidden');
+        const scanRootNote = data.scan_root_source === 'project_repo'
+            ? `Scanned ${escapeHtml(state.currentProject)}'s own repo (${escapeHtml(data.scan_root || '')})`
+            : `No repo synced for ${escapeHtml(state.currentProject)} — scanned this Tropelex install's own repo instead. Sync a repo under Git Integration to scan ${escapeHtml(state.currentProject)}'s own docs.`;
         document.getElementById('docmine-summary').innerHTML =
-            `${data.file_count} file(s) scanned · ${data.claims_extracted} claim(s) extracted · ${data.finding_count} finding(s) · ${data.uncaptured_count} uncaptured decision(s)`;
+            `${data.file_count} file(s) scanned · ${data.claims_extracted} claim(s) extracted · ${data.finding_count} finding(s) · ${data.uncaptured_count} uncaptured decision(s)`
+            + `<div class="text-xs text-outline mt-1">${scanRootNote}</div>`;
 
         const results = document.getElementById('docmine-results');
         results.classList.remove('hidden');

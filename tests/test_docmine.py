@@ -358,3 +358,43 @@ class TestScanMarkdownEscalationRouter:
         assert memory["decisions"][0]["safety_metadata"]["requires_review"] is False
         # Nothing changed, so the router must not even write to disk.
         mock_save.assert_not_called()
+
+
+# ── scan root resolution (project's own repo vs. this Tropelex install) ────
+
+class TestScanRootFor:
+    """A project with no synced repo previously got Doc Mining findings
+    sourced from Tropelex's own markdown files with no indication that's
+    what happened -- _scan_root_for is the fix, and the source label lets
+    the frontend disclose it."""
+
+    def test_falls_back_to_base_dir_with_no_repo_path(self):
+        from core.docmine.router import _scan_root_for, BASE_DIR
+
+        scan_root, source = _scan_root_for({})
+        assert scan_root == BASE_DIR
+        assert source == "tropelex_repo_fallback"
+
+    def test_uses_project_repo_path_when_present(self, tmp_path):
+        from core.docmine.router import _scan_root_for
+
+        scan_root, source = _scan_root_for({"repo_path": str(tmp_path)})
+        assert scan_root == tmp_path
+        assert source == "project_repo"
+
+    def test_nonexistent_repo_path_falls_back(self):
+        from core.docmine.router import _scan_root_for, BASE_DIR
+
+        scan_root, source = _scan_root_for({"repo_path": "/nonexistent/xyz"})
+        assert scan_root == BASE_DIR
+        assert source == "tropelex_repo_fallback"
+
+    def test_scan_endpoint_surfaces_scan_root_source(self):
+        memory = {"decisions": []}
+        report = DocMineReport(files_scanned=[], claims_extracted=0, findings=[], uncaptured_claims=[])
+        with patch("core.docmine.router._load_memory", return_value=memory), \
+             patch("core.docmine.router._run_docmine", return_value=report):
+            resp = TestClient(_app()).post("/api/memory/demo/docmine/scan", json={})
+
+        assert resp.status_code == 200
+        assert resp.json()["scan_root_source"] == "tropelex_repo_fallback"

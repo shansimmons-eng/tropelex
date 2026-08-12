@@ -115,6 +115,23 @@ def is_git_repo(path: str) -> bool:
     return _run(["git", "rev-parse", "--git-dir"], path) is not None
 
 
+def get_project_repo_path(memory: dict[str, Any]) -> str | None:
+    """Local filesystem path to a project's own repo, if it's ever been
+    git-synced. Set by sync_repo_to_memory on every successful sync (unlike
+    git_repo_fingerprint, which is set once and left alone as an identity
+    check -- repo_path can legitimately move, e.g. a re-clone elsewhere).
+
+    Filesystem-scoped features (Doc Mining, pytest count, git summary
+    auto-load) use this to operate on THIS project's repo instead of
+    silently falling back to whichever repo Tropelex itself happens to be
+    installed in -- found live: a project ("cup") backed by a different
+    repo entirely got Doc Mining findings and a pytest count sourced from
+    Tropelex's own repo with no indication that's what happened.
+    """
+    path = memory.get("repo_path")
+    return path if path and Path(path).is_dir() else None
+
+
 def get_repo_fingerprint(repo_path: str) -> str | None:
     """Return a stable identifier for the repo at `repo_path`.
 
@@ -647,6 +664,9 @@ async def sync_repo_to_memory(
 
     if fingerprint and not existing_fingerprint:
         memory["git_repo_fingerprint"] = fingerprint
+    # Kept current on every sync (unlike the fingerprint identity check
+    # above) -- a legitimate re-clone to a new path should update this.
+    memory["repo_path"] = repo_path
 
     # Tech stack change detection
     existing_stack = memory.get("tech_stack", [])

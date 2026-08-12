@@ -94,17 +94,17 @@ class DocMineRequest(BaseModel):
     paths: list[str] = Field(default_factory=list, max_length=200)
 
 
-def _resolve_scan_targets(paths: list[str]) -> list[Path]:
-    """Resolve a docmine request's `paths` (or, if empty, every .md file in
-    the repo) into a concrete list of files to read. Shared by scan_markdown
-    and combined_drift_check so the "no scope-escape, no missing target"
-    validation only lives in one place.
+def _resolve_scan_targets(paths: list[str], scan_root: Path) -> list[Path]:
+    """Resolve a docmine request's `paths` (or, if empty, every .md file
+    under scan_root) into a concrete list of files to read. Shared by
+    scan_markdown and combined_drift_check so the "no scope-escape, no
+    missing target" validation only lives in one place.
     """
     if paths:
         targets: list[Path] = []
         for raw in paths:
-            candidate = (BASE_DIR / raw).resolve()
-            if BASE_DIR.resolve() not in candidate.parents and candidate != BASE_DIR.resolve():
+            candidate = (scan_root / raw).resolve()
+            if scan_root.resolve() not in candidate.parents and candidate != scan_root.resolve():
                 raise HTTPException(status_code=422, detail=f"Path escapes repo root: {raw}")
             if candidate.is_dir():
                 targets.extend(_discover_markdown_files(candidate))
@@ -113,18 +113,18 @@ def _resolve_scan_targets(paths: list[str]) -> list[Path]:
             else:
                 raise HTTPException(status_code=404, detail=f"Not a markdown file or directory: {raw}")
     else:
-        targets = _discover_markdown_files(BASE_DIR)
+        targets = _discover_markdown_files(scan_root)
 
     if not targets:
         raise HTTPException(status_code=404, detail="No markdown files found to scan")
     return targets
 
 
-def _run_docmine(paths: list[str], decisions: list[dict[str, Any]]):
+def _run_docmine(paths: list[str], decisions: list[dict[str, Any]], scan_root: Path):
     """Resolve targets, extract claims, and run the detector — the part of
     scan_markdown that combined_drift_check also needs. Returns a
     DocMineReport (core/docmine/__init__.py)."""
-    targets = _resolve_scan_targets(paths)
+    targets = _resolve_scan_targets(paths, scan_root)
 
     claims = []
     for path in targets:
@@ -133,10 +133,24 @@ def _run_docmine(paths: list[str], decisions: list[dict[str, Any]]):
         except (OSError, UnicodeDecodeError) as exc:
             logger.warning("docmine: skipping unreadable file %s: %s", path, exc)
             continue
-        rel_path = str(path.relative_to(BASE_DIR))
+        rel_path = str(path.relative_to(scan_root))
         claims.extend(extract_claims(text, rel_path))
 
     return mine_markdown_files(claims, decisions)
+
+
+def _scan_root_for(memory: dict[str, Any]) -> tuple[Path, str]:
+    """Pick the markdown scan root for a project: its own synced repo if
+    known, else this Tropelex install's own repo -- and say which one, so
+    callers can surface it rather than silently mixing the wrong repo's
+    docs into a project's findings (see get_project_repo_path).
+    """
+    from core.git_integration import get_project_repo_path
+
+    project_repo = get_project_repo_path(memory)
+    if project_repo:
+        return Path(project_repo), "project_repo"
+    return BASE_DIR, "tropelex_repo_fallback"
 
 
 @docmine_router.post("/{project}/docmine/scan")
@@ -152,8 +166,9 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
     """
     memory = _load_memory(project)
     decisions = memory.get("decisions", [])
+    scan_root, scan_root_source = _scan_root_for(memory)
 
-    report = _run_docmine(body.paths, decisions)
+    report = _run_docmine(body.paths, decisions, scan_root)
     severity_distribution = {"high": 0, "medium": 0, "low": 0}
     for f in report.findings:
         if f.severity in severity_distribution:
@@ -176,6 +191,8 @@ async def scan_markdown(project: str, body: DocMineRequest) -> dict[str, Any]:
 
     return {
         "project": project,
+        "scan_root": str(scan_root),
+        "scan_root_source": scan_root_source,
         "files_scanned": report.files_scanned,
         "file_count": len(report.files_scanned),
         "claims_extracted": report.claims_extracted,
@@ -231,8 +248,9 @@ async def combined_drift_check(project: str, body: CombinedDriftRequest) -> dict
     """
     memory = _load_memory(project)
     decisions = memory.get("decisions", [])
+    scan_root, scan_root_source = _scan_root_for(memory)
 
-    doc_report = _run_docmine(body.paths, decisions)
+    doc_report = _run_docmine(body.paths, decisions, scan_root)
 
     ghost_result = check_diff_for_warnings(memory, body.diff)
     if hasattr(ghost_result, "error"):
@@ -248,6 +266,8 @@ async def combined_drift_check(project: str, body: CombinedDriftRequest) -> dict
 
     return {
         "project": project,
+        "scan_root": str(scan_root),
+        "scan_root_source": scan_root_source,
         "combined_alerts": [asdict(c) for c in combined],
         "total_combined": len(combined),
         "doc_findings_total": len(doc_report.findings),

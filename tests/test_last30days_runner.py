@@ -35,6 +35,45 @@ class TestBRAVEKeyBridge:
             assert actual_env.get("BRAVE_API_KEY") == "existing-key"
 
 
+class TestProjectAndPythonPathBridge:
+    """Real LLM spend inside the engine subprocess only gets recorded if
+    (a) it knows which Tropelex project to attribute it to, and (b) it can
+    actually `import core.cost.tracker` -- the subprocess's own sys.path
+    setup never includes the repo root, only its own script dir."""
+
+    def test_project_sets_tropelex_project_env_var(self):
+        from core.last30days.runner import run_query
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="<html>test</html>", stderr="")
+            run_query("test", emit="html", timeout=10, project="cup")
+            actual_env = mock_run.call_args.kwargs.get("env")
+            assert actual_env.get("TROPELEX_PROJECT") == "cup"
+
+    def test_no_project_means_no_tropelex_project_env_var(self):
+        from core.last30days.runner import run_query
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="<html>test</html>", stderr="")
+            run_query("test", emit="html", timeout=10)
+            actual_env = mock_run.call_args.kwargs.get("env")
+            assert "TROPELEX_PROJECT" not in actual_env
+
+    def test_repo_root_added_to_pythonpath(self):
+        from core.last30days.runner import run_query, REPO_ROOT
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="<html>test</html>", stderr="")
+            run_query("test", emit="html", timeout=10)
+            actual_env = mock_run.call_args.kwargs.get("env")
+            assert str(REPO_ROOT) in actual_env.get("PYTHONPATH", "").split(os.pathsep)
+
+    def test_repo_root_not_duplicated_if_already_present(self):
+        from core.last30days.runner import run_query, REPO_ROOT
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="<html>test</html>", stderr="")
+            run_query("test", emit="html", timeout=10, env={"PYTHONPATH": str(REPO_ROOT)})
+            actual_env = mock_run.call_args.kwargs.get("env")
+            assert actual_env["PYTHONPATH"].split(os.pathsep).count(str(REPO_ROOT)) == 1
+
+
 class TestSynthEngineRouting:
     """Test that the synthesis driver is used for HTML emit."""
 

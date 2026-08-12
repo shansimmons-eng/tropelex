@@ -72,4 +72,7 @@ class TestTestCountEndpoint:
             resp = TestClient(app).get("/api/tests/count")
 
         assert resp.status_code == 200
-        assert resp.json() == {"ok": True, "count": 42}
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["count"] == 42
+        assert body["scan_root_source"] == "tropelex_repo_fallback"
