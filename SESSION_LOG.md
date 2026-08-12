@@ -5093,3 +5093,47 @@ a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-12 15:26 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-12 15:31 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 95 insertions(+), 8 deletions(-)
+
+**Recent commits:**
+```
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+222ba11 fix: friction miner code-content false positives + needs-attention kind mismatch
+59732b7 fix: friction miner false positives from code content + expand phrase vocabulary
+70054f1 fix: governance compliance noise reduction (risk-gating + auto-log exemption)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+

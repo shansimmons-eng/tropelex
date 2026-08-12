@@ -1191,9 +1191,15 @@ void main() {
                             <option value="alignment" title="Values, ethics, harm, bias, fairness">alignment</option>
                         </select>
                         <p id="decision-category-suggestion" class="text-[10px] font-mono text-outline mb-3"></p>
-                        <select id="decision-goal-link" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-3 cursor-pointer">
+                        <select id="decision-goal-link" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none mb-2 cursor-pointer">
                             <option value="">No linked goal (optional)</option>
                         </select>
+                        <div id="decision-goal-new-row" class="hidden flex gap-2 mb-3">
+                            <input type="text" id="decision-goal-new-text" maxlength="500" placeholder="New goal text..."
+                                class="flex-1 bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+                            <button id="btn-create-goal-inline" type="button" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Create</button>
+                            <button id="btn-cancel-goal-inline" type="button" class="px-3 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+                        </div>
                         <div class="flex gap-2">
                             <button id="btn-save-decision" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Save</button>
                             <button id="btn-cancel-decision" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
@@ -6541,16 +6547,60 @@ ${data.context}
 });
 
 // Memory: Add Decision
+// Lists every open goal (proposed or active), not just active -- a goal
+// often gets decisions attached while it's still proposed, before anyone's
+// formally promoted it. Previously status=active-only meant a project with
+// goals mostly still in "proposed" showed an almost-empty dropdown, with no
+// way to pick the goal actually being worked on. Plus a "+ Create new
+// goal..." escape hatch, since the goal frequently doesn't exist yet at all.
+async function populateDecisionGoalSelect(selectId = '') {
+    const goalSelect = document.getElementById('decision-goal-link');
+    if (!state.currentProject) return;
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals`);
+    const openGoals = ((data && data.goals) || []).filter(g => g.status === 'proposed' || g.status === 'active');
+    goalSelect.innerHTML = '<option value="">No linked goal (optional)</option>' +
+        openGoals.map(g => `<option value="${escapeAttr(g.id)}">[${escapeHtml(g.status)}] ${escapeHtml(g.text.length > 60 ? g.text.slice(0, 60) + '…' : g.text)}</option>`).join('') +
+        '<option value="__new__">+ Create new goal…</option>';
+    if (selectId) goalSelect.value = selectId;
+}
+
+function resetDecisionGoalInlineCreate() {
+    document.getElementById('decision-goal-new-row').classList.add('hidden');
+    document.getElementById('decision-goal-new-text').value = '';
+}
+
 document.getElementById('btn-add-decision').addEventListener('click', async () => {
     document.getElementById('decision-form').classList.remove('hidden');
     document.getElementById('decision-input').focus();
-    const goalSelect = document.getElementById('decision-goal-link');
-    if (state.currentProject) {
-        const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals?status=active`);
-        const goals = (data && data.goals) || [];
-        goalSelect.innerHTML = '<option value="">No linked goal (optional)</option>' +
-            goals.map(g => `<option value="${escapeAttr(g.id)}">${escapeHtml(g.text.length > 60 ? g.text.slice(0, 60) + '…' : g.text)}</option>`).join('');
+    await populateDecisionGoalSelect();
+});
+
+document.getElementById('decision-goal-link').addEventListener('change', (e) => {
+    if (e.target.value === '__new__') {
+        e.target.value = '';
+        document.getElementById('decision-goal-new-row').classList.remove('hidden');
+        document.getElementById('decision-goal-new-text').focus();
     }
+});
+
+document.getElementById('btn-create-goal-inline').addEventListener('click', async () => {
+    const text = document.getElementById('decision-goal-new-text').value.trim();
+    if (!text) { showToast('Enter goal text first'); return; }
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-create-goal-inline');
+    btn.disabled = true;
+    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/goals`, 'POST', { text });
+    btn.disabled = false;
+    if (res && res.goal) {
+        await populateDecisionGoalSelect(res.goal.id);
+        resetDecisionGoalInlineCreate();
+        showToast('Goal created and linked');
+    }
+});
+
+document.getElementById('btn-cancel-goal-inline').addEventListener('click', () => {
+    resetDecisionGoalInlineCreate();
+    document.getElementById('decision-goal-link').value = '';
 });
 
 document.getElementById('btn-cancel-decision').addEventListener('click', () => {
@@ -6560,6 +6610,7 @@ document.getElementById('btn-cancel-decision').addEventListener('click', () => {
     document.getElementById('decision-category').value = '';
     document.getElementById('decision-category-suggestion').textContent = '';
     document.getElementById('decision-goal-link').value = '';
+    resetDecisionGoalInlineCreate();
 });
 
 // Fetch a suggested category once the user's finished typing the decision.
@@ -6598,7 +6649,8 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
         return;
     }
 
-    const goal_id = document.getElementById('decision-goal-link').value || null;
+    const goalSelectValue = document.getElementById('decision-goal-link').value;
+    const goal_id = (goalSelectValue && goalSelectValue !== '__new__') ? goalSelectValue : null;
     const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
         decision,
         context,
@@ -6614,6 +6666,7 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
         document.getElementById('decision-category').value = '';
         document.getElementById('decision-category-suggestion').textContent = '';
         document.getElementById('decision-goal-link').value = '';
+        resetDecisionGoalInlineCreate();
         selectProject(state.currentProject); // Refresh
     }
 });

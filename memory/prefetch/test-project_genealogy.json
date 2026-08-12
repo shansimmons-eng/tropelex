@@ -2627,6 +2627,18 @@
       "precision": 0.0,
       "recall_proxy": 0.0,
       "timestamp": "2026-08-12T20:21:51.656700+00:00"
+    },
+    {
+      "bundle_id": "3983c76df3a2489c",
+      "task": "Write tests",
+      "included_ids": [
+        "d1"
+      ],
+      "referenced_ids": [],
+      "requested_but_missing": [],
+      "precision": 0.0,
+      "recall_proxy": 0.0,
+      "timestamp": "2026-08-12T20:25:51.506722+00:00"
     }
   ],
   "stats": {},
