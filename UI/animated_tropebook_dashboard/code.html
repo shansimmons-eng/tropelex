@@ -1200,6 +1200,19 @@ void main() {
                             <button id="btn-create-goal-inline" type="button" class="px-3 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Create</button>
                             <button id="btn-cancel-goal-inline" type="button" class="px-3 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
                         </div>
+                        <div id="decision-safety-required-row" class="hidden mb-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                            <p id="decision-safety-required-message" class="text-xs text-amber-300 mb-2"></p>
+                            <label class="flex items-center gap-2 text-xs mb-2 cursor-pointer">
+                                <input type="checkbox" id="decision-safety-reversible" class="cursor-pointer"/>
+                                Reversible
+                            </label>
+                            <input type="text" id="decision-safety-affected-systems" placeholder="Affected systems (comma-separated, e.g. api, database)"
+                                class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none mb-2"/>
+                            <label class="flex items-center gap-2 text-xs cursor-pointer">
+                                <input type="checkbox" id="decision-safety-requires-review" class="cursor-pointer"/>
+                                Requires review
+                            </label>
+                        </div>
                         <div class="flex gap-2">
                             <button id="btn-save-decision" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Save</button>
                             <button id="btn-cancel-decision" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
@@ -5567,6 +5580,25 @@ document.addEventListener('keydown', e => {
     }
 });
 
+// FastAPI/Pydantic validation errors return `detail` as an array of
+// {loc, msg, ...} objects; some endpoints (e.g. the safety-metadata and
+// tag-required gates) raise a single structured dict instead (their own
+// `.message`/`.error` fields) -- render both readably instead of dumping
+// "[object Object]" into the toast, which is what a plain dict used to
+// produce when interpolated straight into a template string.
+function describeApiError(detail) {
+    if (Array.isArray(detail)) {
+        return detail.map(d => {
+            const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : '';
+            return field ? `${field}: ${d.msg}` : d.msg;
+        }).join('; ');
+    }
+    if (detail && typeof detail === 'object') {
+        return detail.message || JSON.stringify(detail);
+    }
+    return detail || 'Unknown';
+}
+
 // API calls
 async function api(endpoint, method = 'GET', body = null) {
     const opts = { method, headers: {} };
@@ -5579,17 +5611,7 @@ async function api(endpoint, method = 'GET', body = null) {
         const data = await res.json();
         if (!res.ok) {
             console.error('API error:', res.status, data);
-            // FastAPI/Pydantic validation errors return `detail` as an array of
-            // {loc, msg, ...} objects rather than a string — render those readably
-            // instead of dumping "[object Object]" into the toast.
-            let detailText = data.detail;
-            if (Array.isArray(detailText)) {
-                detailText = detailText.map(d => {
-                    const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : '';
-                    return field ? `${field}: ${d.msg}` : d.msg;
-                }).join('; ');
-            }
-            showToast(`API Error ${res.status}: ${detailText || 'Unknown'}`);
+            showToast(`API Error ${res.status}: ${describeApiError(data.detail)}`);
             return null;
         }
         return data;
@@ -6569,9 +6591,36 @@ function resetDecisionGoalInlineCreate() {
     document.getElementById('decision-goal-new-text').value = '';
 }
 
+// A decision whose auto-classified risk_level resolves to high/critical
+// requires explicit reversibility/affected_systems/requires_review
+// (core/safety/gate.py) -- fields this form never collected, so saving
+// one always 422'd with no way forward. Reveals the missing fields
+// pre-filled with the backend's own suggestion (same "suggest, don't
+// auto-apply" shape as the safety-category hint above) so Save can
+// actually be retried instead of being a dead end.
+function showDecisionSafetyRequired(detail) {
+    const row = document.getElementById('decision-safety-required-row');
+    row.classList.remove('hidden');
+    const missing = (detail.missing_fields || []).join(', ');
+    document.getElementById('decision-safety-required-message').textContent =
+        `This decision auto-classified as ${detail.risk_level} risk — ${missing} must be set explicitly. Suggested values are pre-filled below; edit and save again.`;
+    const s = detail.suggested || {};
+    document.getElementById('decision-safety-reversible').checked = !!s.reversibility;
+    document.getElementById('decision-safety-affected-systems').value = (s.affected_systems || []).join(', ');
+    document.getElementById('decision-safety-requires-review').checked = !!s.requires_review;
+}
+
+function resetDecisionSafetyRequired() {
+    document.getElementById('decision-safety-required-row').classList.add('hidden');
+    document.getElementById('decision-safety-reversible').checked = false;
+    document.getElementById('decision-safety-affected-systems').value = '';
+    document.getElementById('decision-safety-requires-review').checked = false;
+}
+
 document.getElementById('btn-add-decision').addEventListener('click', async () => {
     document.getElementById('decision-form').classList.remove('hidden');
     document.getElementById('decision-input').focus();
+    resetDecisionSafetyRequired();
     await populateDecisionGoalSelect();
 });
 
@@ -6611,6 +6660,7 @@ document.getElementById('btn-cancel-decision').addEventListener('click', () => {
     document.getElementById('decision-category-suggestion').textContent = '';
     document.getElementById('decision-goal-link').value = '';
     resetDecisionGoalInlineCreate();
+    resetDecisionSafetyRequired();
 });
 
 // Fetch a suggested category once the user's finished typing the decision.
@@ -6651,14 +6701,42 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
 
     const goalSelectValue = document.getElementById('decision-goal-link').value;
     const goal_id = (goalSelectValue && goalSelectValue !== '__new__') ? goalSelectValue : null;
-    const res = await api(`/memory/${encodeURIComponent(state.currentProject)}/decisions`, 'POST', {
-        decision,
-        context,
-        safety_metadata: { safety_category },
-        goal_id,
-    });
 
-    if (res) {
+    const safety_metadata = { safety_category };
+    // Only included once the high/critical-risk gate has actually asked
+    // for them (see showDecisionSafetyRequired) -- sending these on every
+    // save would silently override the auto-classifier for low/medium-risk
+    // decisions too, where the gate is a no-op and the guess is fine as-is.
+    const safetyRequiredRow = document.getElementById('decision-safety-required-row');
+    if (!safetyRequiredRow.classList.contains('hidden')) {
+        safety_metadata.reversibility = document.getElementById('decision-safety-reversible').checked;
+        safety_metadata.affected_systems = document.getElementById('decision-safety-affected-systems').value
+            .split(',').map(s => s.trim()).filter(Boolean);
+        safety_metadata.requires_review = document.getElementById('decision-safety-requires-review').checked;
+    }
+
+    // Raw fetch, not api() -- api() swallows the response body on error, and
+    // the safety_metadata_required 422 (core/safety/gate.py) needs its
+    // structured detail (risk_level/missing_fields/suggested) to drive
+    // showDecisionSafetyRequired, not just a toast.
+    const btn = document.getElementById('btn-save-decision');
+    btn.disabled = true;
+    let resp, data;
+    try {
+        resp = await fetch(`/api/memory/${encodeURIComponent(state.currentProject)}/decisions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision, context, safety_metadata, goal_id }),
+        });
+        data = await resp.json();
+    } catch (e) {
+        btn.disabled = false;
+        showToast(`Error: ${e.message}`);
+        return;
+    }
+    btn.disabled = false;
+
+    if (resp.ok) {
         showToast('Decision recorded');
         document.getElementById('decision-form').classList.add('hidden');
         document.getElementById('decision-input').value = '';
@@ -6667,8 +6745,18 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
         document.getElementById('decision-category-suggestion').textContent = '';
         document.getElementById('decision-goal-link').value = '';
         resetDecisionGoalInlineCreate();
+        resetDecisionSafetyRequired();
         selectProject(state.currentProject); // Refresh
+        return;
     }
+
+    if (resp.status === 422 && data.detail && data.detail.error === 'safety_metadata_required') {
+        showDecisionSafetyRequired(data.detail);
+        return;
+    }
+
+    console.error('API error:', resp.status, data);
+    showToast(`API Error ${resp.status}: ${describeApiError(data.detail)}`);
 });
 
 // Memory: Add Session
