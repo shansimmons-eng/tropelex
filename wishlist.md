@@ -512,7 +512,16 @@ An external code review of Tropelex's safety/alignment infrastructure came back 
 - Validation at the write boundary — wherever `memory["gate_policy"]` gets set — not inside `_policy_for` itself, matching this codebase's "validate at the router boundary, not inside pure logic" convention (#41's `Decision.goal_id` FK check is the precedent).
 - Honest default-vs-override distinction surfaced in the ghost-check response, so it's visible whether a project is running the module default or an explicit override.
 
-**Status:** Open. Proposed 2026-08-08. Small, contained — no new subsystem, just closing a validation gap #53 left open.
+**Status:** ✅ Implemented (`core/ghost/preventive_router.py`).
+
+Turned out the "gate" `memory["gate_policy"]` gets set through today had a gap one step earlier than the schema itself: there was no write endpoint at all — the only way to set it was hand-editing the memory JSON file directly, with zero validation on the way in.
+
+- `GatePolicyRequest` (Pydantic, `extra="forbid"`): `high`/`medium`/`low` each optional (unset tiers keep whatever they were — same partial-override behavior `_policy_for` already had, so this doesn't force every write to restate all three) but constrained to `block`/`warn`/`log_only` via pattern; any other key in the request body 422s instead of being silently accepted and ignored.
+- `PUT /{project}/gate-policy`: validates via the schema, merges into the existing override dict (doesn't replace it), persists. 422 if the body sets nothing at all.
+- `GET /{project}/gate-policy`: honest default-vs-override breakdown — `effective_policy` (what `_policy_for` actually resolves per tier), `defaults` (the module constant), `overrides` (only the real, project-set tiers).
+- `_policy_for` itself gained a second, independent defensive layer: `gate_policy` not being a dict, or a tier's value not being a recognized action, both fall back to the module default instead of propagating garbage into a safety-relevant block/warn/log_only decision. This matters specifically because pre-existing projects could already have malformed `gate_policy` data from before this endpoint existed (hand-edited JSON, no schema) — the new endpoint validates future writes, but doesn't retroactively fix what's already on disk.
+
+Tests: 12 new (`tests/test_ghost_preventive.py` — `TestPolicyForDefensiveRead`, `TestGatePolicyEndpoint`, including an end-to-end test proving a PUT-set override actually changes real `ghost-check` enforcement, not just what the policy endpoints themselves report). Full suite: 2167 passing (was 2155). Live-verified against the real `tropelex` project: `GET` correctly showed pure defaults (never overridden), and all three validation-rejection paths (invalid action, unrecognized key, empty body) correctly 422'd. Didn't live-write a real override into `tropelex`'s actual gate policy — that changes real enforcement behavior for a live safety gate, and the write path is already proven end-to-end against mocked memory.
 
 ---
 

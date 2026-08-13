@@ -860,6 +860,167 @@ class TestGhostCheckGatePolicy:
 
 
 # ===========================================================================
+#  4b. Gate Policy Schema (#64) — GET/PUT /{project}/gate-policy
+# ===========================================================================
+
+
+class TestPolicyForDefensiveRead:
+    """_policy_for's second layer of defense (#64) -- gate_policy could
+    only ever be set by hand-editing the memory JSON before a real write
+    endpoint existed, so pre-existing malformed data is a real case, not
+    a hypothetical."""
+
+    def test_missing_gate_policy_uses_defaults(self):
+        from core.ghost.preventive_router import _policy_for
+        assert _policy_for({}, "high") == "block"
+        assert _policy_for({}, "medium") == "warn"
+        assert _policy_for({}, "low") == "log_only"
+
+    def test_gate_policy_not_a_dict_falls_back_to_defaults(self):
+        from core.ghost.preventive_router import _policy_for
+        for malformed in (["high", "block"], "block", 42, None):
+            assert _policy_for({"gate_policy": malformed}, "high") == "block"
+
+    def test_unrecognized_action_value_falls_back_to_default(self):
+        """Garbage that predates validation (e.g. a typo'd action, or a
+        value from before this endpoint existed) must not flow straight
+        into a safety-relevant block/warn/log_only decision."""
+        from core.ghost.preventive_router import _policy_for
+        memory = {"gate_policy": {"high": "block_everything_always"}}
+        assert _policy_for(memory, "high") == "block"
+
+    def test_valid_override_is_honored(self):
+        from core.ghost.preventive_router import _policy_for
+        memory = {"gate_policy": {"high": "log_only"}}
+        assert _policy_for(memory, "high") == "log_only"
+        assert _policy_for(memory, "medium") == "warn"  # unset tier keeps default
+
+
+@pytest.mark.skipif(not _HAS_ROUTER, reason="preventive_router.py not yet created (subtask 02 pending)")
+class TestGatePolicyEndpoint:
+    """GET/PUT /{project}/gate-policy (#64) -- a real, schema-validated way
+    to set gate_policy where previously the only option was hand-editing
+    the memory JSON file directly with zero validation."""
+
+    def _get(self, path):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.get(path)
+
+        return asyncio.run(_call())
+
+    def _put(self, path, json_body):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.put(path, json=json_body)
+
+        return asyncio.run(_call())
+
+    def test_get_with_no_override_shows_pure_defaults(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/demo/gate-policy")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["effective_policy"] == {"high": "block", "medium": "warn", "low": "log_only"}
+        assert body["overrides"] == {}
+
+    def test_put_valid_partial_override_persists(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._put("/api/memory/demo/gate-policy", {"high": "warn"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["effective_policy"] == {"high": "warn", "medium": "warn", "low": "log_only"}
+        assert body["overrides"] == {"high": "warn"}
+        assert memory["gate_policy"] == {"high": "warn"}
+
+    def test_put_merges_with_existing_override_not_replaces(self):
+        memory = {"decisions": [], "gate_policy": {"low": "warn"}}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._put("/api/memory/demo/gate-policy", {"high": "log_only"})
+
+        assert resp.status_code == 200
+        assert memory["gate_policy"] == {"low": "warn", "high": "log_only"}
+
+    def test_put_invalid_action_value_422s(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-policy", {"high": "block_everything_always"})
+        assert resp.status_code == 422
+
+    def test_put_unrecognized_severity_key_422s(self):
+        """extra="forbid" rejects a key that isn't high/medium/low, instead
+        of silently accepting and ignoring it the way a plain dict write
+        into memory JSON always could before this endpoint existed."""
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-policy", {"hihg": "block"})
+        assert resp.status_code == 422
+
+    def test_put_empty_body_422s(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-policy", {})
+        assert resp.status_code == 422
+
+    def test_put_then_get_round_trips(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            self._put("/api/memory/demo/gate-policy", {"high": "warn", "low": "block"})
+            get_resp = self._get("/api/memory/demo/gate-policy")
+
+        body = get_resp.json()
+        assert body["overrides"] == {"high": "warn", "low": "block"}
+        assert body["effective_policy"]["medium"] == "warn"  # untouched tier, still default
+
+    def test_put_actually_changes_ghost_check_enforcement(self):
+        """End-to-end: a PUT-set override changes real ghost-check behavior,
+        not just what the policy endpoints themselves report."""
+        from core.result import Ok
+
+        memory = TestGhostCheckGatePolicy._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            put_resp = self._put("/api/memory/demo/gate-policy", {"high": "warn"})
+            assert put_resp.status_code == 200
+
+            with patch("core.ghost.preventive_router.check_diff_for_warnings",
+                       return_value=Ok(value=[TestGhostCheckGatePolicy._high_severity_warning()])):
+                check_resp = self._post_ghost_check(memory)
+
+        assert check_resp.status_code == 200
+        assert check_resp.json()["warnings"][0]["policy"] == "warn"
+
+    def _post_ghost_check(self, memory):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post("/api/memory/demo/ghost-check", json={"diff": CAMEL_CASE_DIFF})
+
+        return asyncio.run(_call())
+
+
+# ===========================================================================
 #  5. Prevention Report (#61) — GET /{project}/prevention-report
 # ===========================================================================
 

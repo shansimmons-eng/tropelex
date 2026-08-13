@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.audit import append_audit_event
 from core.ghost.preventive import check_diff_for_warnings
@@ -37,6 +37,8 @@ _mm = MemoryManager()
 # can loosen/tighten this via memory["gate_policy"]; unset tiers fall back
 # to this default.
 _DEFAULT_GATE_POLICY: dict[str, str] = {"high": "block", "medium": "warn", "low": "log_only"}
+_GATE_ACTIONS = {"block", "warn", "log_only"}
+_GATE_SEVERITIES = ("high", "medium", "low")
 
 
 def _load_memory(project: str) -> dict[str, Any]:
@@ -56,9 +58,24 @@ def _save_memory(project: str, memory: dict[str, Any]) -> None:
 
 def _policy_for(memory: dict[str, Any], severity: str) -> str:
     """Resolve the enforcement action for a severity tier: project override
-    (memory["gate_policy"]) if set, else the module default."""
-    overrides = memory.get("gate_policy") or {}
-    return overrides.get(severity, _DEFAULT_GATE_POLICY.get(severity, "log_only"))
+    (memory["gate_policy"]) if set and recognized, else the module default.
+
+    Defensive against malformed stored data (#64) -- gate_policy could
+    previously only ever be set by hand-editing the memory JSON directly
+    (no write endpoint existed), with zero schema. A garbage value here
+    silently produced whatever str.get() returned, which then flowed
+    straight into a safety-relevant block/warn/log_only decision -- not a
+    hypothetical, the exact failure mode #64 exists to close. Now that a
+    real write endpoint validates on the way in, this is a second layer
+    covering data that predates validation, not the primary defense.
+    """
+    overrides = memory.get("gate_policy")
+    if not isinstance(overrides, dict):
+        overrides = {}
+    value = overrides.get(severity)
+    if value not in _GATE_ACTIONS:
+        return _DEFAULT_GATE_POLICY.get(severity, "log_only")
+    return value
 
 
 def _severity_counts(warnings: list[dict[str, Any]]) -> dict[str, int]:
@@ -92,6 +109,73 @@ class OverrideRequest(BaseModel):
     rationale: str = Field(..., min_length=1, max_length=1000,
                            description="Why this warning is being overridden")
     agent_name: str = Field(..., min_length=1, max_length=100)
+
+
+class GatePolicyRequest(BaseModel):
+    """Explicit, validated override for gate_policy (#64).
+
+    Each severity tier is optional -- an unset tier keeps whatever it was
+    (module default if never overridden at all), same partial-override
+    behavior _policy_for already had; this doesn't force every PUT to
+    restate all three. But any tier that IS given must be a recognized
+    action, and extra="forbid" rejects a key that isn't a real severity
+    tier (e.g. a typo'd "hihg") with a 422 instead of the old behavior --
+    silently writable, silently never read by _policy_for.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    high: str | None = Field(None, pattern="^(block|warn|log_only)$")
+    medium: str | None = Field(None, pattern="^(block|warn|log_only)$")
+    low: str | None = Field(None, pattern="^(block|warn|log_only)$")
+
+
+@preventive_router.get("/{project}/gate-policy")
+async def get_gate_policy(project: str) -> dict[str, Any]:
+    """Read a project's gate policy (#64) -- effective per-tier action plus
+    an honest default-vs-override breakdown, so it's visible from the
+    response whether a project is running the module default or an
+    explicit override, rather than the caller having to guess.
+    """
+    memory = _load_memory(project)
+    overrides = memory.get("gate_policy")
+    if not isinstance(overrides, dict):
+        overrides = {}
+    return {
+        "project": project,
+        "effective_policy": {sev: _policy_for(memory, sev) for sev in _GATE_SEVERITIES},
+        "defaults": dict(_DEFAULT_GATE_POLICY),
+        "overrides": {sev: overrides[sev] for sev in _GATE_SEVERITIES if overrides.get(sev) in _GATE_ACTIONS},
+    }
+
+
+@preventive_router.put("/{project}/gate-policy")
+async def set_gate_policy(project: str, body: GatePolicyRequest) -> dict[str, Any]:
+    """Set a project's gate policy override (#64) -- the only way to change
+    enforcement per severity tier used to be hand-editing the memory JSON
+    file directly, with no validation at all. Validated at the router
+    boundary (GatePolicyRequest), matching this codebase's "validate at
+    the boundary, not inside pure logic" convention (#41's Decision.goal_id
+    FK check is the precedent) -- _policy_for's own defensive read stays as
+    a second layer for data that predates this endpoint, not the primary
+    defense.
+    """
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="At least one of high/medium/low must be set")
+
+    memory = _load_memory(project)
+    existing = memory.get("gate_policy")
+    if not isinstance(existing, dict):
+        existing = {}
+    memory["gate_policy"] = {**existing, **updates}
+    _save_memory(project, memory)
+
+    return {
+        "project": project,
+        "updated": True,
+        "effective_policy": {sev: _policy_for(memory, sev) for sev in _GATE_SEVERITIES},
+        "overrides": {sev: memory["gate_policy"][sev] for sev in _GATE_SEVERITIES if memory["gate_policy"].get(sev) in _GATE_ACTIONS},
+    }
 
 
 @preventive_router.post("/{project}/ghost-check")
