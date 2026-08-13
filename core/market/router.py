@@ -270,14 +270,17 @@ async def get_leaderboard(
 
     bets = _get_bets(memory)
     if goal_id is not None:
-        goal_exists = any(g.get("id") == goal_id for g in memory.get("goals", []))
+        goal_exists = any(
+            isinstance(g, dict) and g.get("id") == goal_id
+            for g in memory.get("goals", [])
+        )
         if not goal_exists:
             raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
         linked_ids = {
             d["id"] for d in memory.get("decisions", [])
-            if d.get("goal_id") == goal_id and d.get("id")
+            if isinstance(d, dict) and d.get("goal_id") == goal_id and d.get("id")
         }
-        bets = [b for b in bets if b.get("decision_id") in linked_ids]
+        bets = [b for b in bets if isinstance(b, dict) and b.get("decision_id") in linked_ids]
 
     result = compute_leaderboard(bets)
     if isinstance(result, Err):

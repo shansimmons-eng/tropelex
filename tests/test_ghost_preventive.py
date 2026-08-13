@@ -871,13 +871,13 @@ class TestPolicyForDefensiveRead:
     a hypothetical."""
 
     def test_missing_gate_policy_uses_defaults(self):
-        from core.ghost.preventive_router import _policy_for
+        from core.gate import policy_for as _policy_for
         assert _policy_for({}, "high") == "block"
         assert _policy_for({}, "medium") == "warn"
         assert _policy_for({}, "low") == "log_only"
 
     def test_gate_policy_not_a_dict_falls_back_to_defaults(self):
-        from core.ghost.preventive_router import _policy_for
+        from core.gate import policy_for as _policy_for
         for malformed in (["high", "block"], "block", 42, None):
             assert _policy_for({"gate_policy": malformed}, "high") == "block"
 
@@ -885,12 +885,12 @@ class TestPolicyForDefensiveRead:
         """Garbage that predates validation (e.g. a typo'd action, or a
         value from before this endpoint existed) must not flow straight
         into a safety-relevant block/warn/log_only decision."""
-        from core.ghost.preventive_router import _policy_for
+        from core.gate import policy_for as _policy_for
         memory = {"gate_policy": {"high": "block_everything_always"}}
         assert _policy_for(memory, "high") == "block"
 
     def test_valid_override_is_honored(self):
-        from core.ghost.preventive_router import _policy_for
+        from core.gate import policy_for as _policy_for
         memory = {"gate_policy": {"high": "log_only"}}
         assert _policy_for(memory, "high") == "log_only"
         assert _policy_for(memory, "medium") == "warn"  # unset tier keeps default

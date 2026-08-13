@@ -592,3 +592,26 @@ class TestMarketLeaderboardGoalFilter:
     def test_unknown_goal_id_404s(self, client: TestClient) -> None:
         resp = client.get("/api/memory/demo/market/leaderboard?goal_id=does-not-exist")
         assert resp.status_code == 404
+
+    def test_malformed_goals_or_decisions_entries_dont_500(self, client: TestClient) -> None:
+        """goals/decisions/bets are read straight from persisted JSON --
+        a malformed non-dict entry (corrupted file, partial write) must be
+        skipped, not crash the request with an unhandled 500."""
+        memory = market_router_mod._mm.get_project_memory("demo")
+        goals = create_goal(memory.get("goals", []), {"text": "reduce login risk"})
+        assert isinstance(goals, Ok)
+        goal_id = goals.value[-1]["id"]
+        memory["goals"] = goals.value + [None, "not a dict", 42]
+        memory["decisions"] = [
+            {"id": "linked-1", "decision": "rate limit logins", "goal_id": goal_id},
+            None, "not a dict", 42,
+        ]
+        memory.setdefault("market", {})["bets"] = [
+            {"decision_id": "linked-1", "agent_name": "claude", "resolved": True, "outcome": "correct", "confidence": 0.9, "category": "backend"},
+            None, "not a dict",
+        ]
+        market_router_mod._mm.save_project_memory("demo", memory)
+
+        resp = client.get(f"/api/memory/demo/market/leaderboard?goal_id={goal_id}")
+        assert resp.status_code == 200
+        assert resp.json()["goal_id"] == goal_id

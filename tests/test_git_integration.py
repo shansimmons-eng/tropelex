@@ -296,6 +296,14 @@ class TestGetProjectRepoPath:
     def test_repo_path_missing_from_disk_returns_none(self):
         assert get_project_repo_path({"repo_path": "/nonexistent/path/xyz"}) is None
 
+    def test_repo_path_wrong_type_returns_none_not_raise(self):
+        """repo_path only ever gets written as a str by sync_repo_to_memory,
+        but this reads persisted JSON -- a corrupted/hand-edited file could
+        put anything under that key. Path(path) on a non-str/PathLike value
+        raises TypeError; must fail clean instead."""
+        for malformed in ([], {}, 42, True, ["/some/path"]):
+            assert get_project_repo_path({"repo_path": malformed}) is None
+
     def test_valid_repo_path_returned(self, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()

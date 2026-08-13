@@ -400,9 +400,16 @@ class TestContradictionSafetyCrossConnect:
             yield
 
     def test_direct_contradiction_escalates_both_decisions(self, client, project):
+        # Tests GET /contradictions' scan/escalation given two already-
+        # contradicting decisions -- not add_decision's own gate (#72),
+        # which would otherwise 409 the second post as a real high-severity
+        # direct contradiction. The first post creates the project's memory
+        # file (gate-policy's _load_memory 404s before that); loosen the
+        # gate before the second, real-contradiction post.
         client.post(f"/api/memory/{project}/decisions",
                     json={"decision": "Use REST for the public API", "context": "",
                           "safety_metadata": {"safety_category": "general"}})
+        client.put(f"/api/memory/{project}/gate-policy?detector=contradictions", json={"high": "warn"})
         client.post(f"/api/memory/{project}/decisions",
                     json={"decision": "Use GraphQL for the public API", "context": "",
                           "safety_metadata": {"safety_category": "general"}})
@@ -421,6 +428,7 @@ class TestContradictionSafetyCrossConnect:
             "decision": "Use REST for the public API", "context": "",
             "safety_metadata": {"requires_review": True, "safety_category": "general"},
         })
+        client.put(f"/api/memory/{project}/gate-policy?detector=contradictions", json={"high": "warn"})
         client.post(f"/api/memory/{project}/decisions",
                     json={"decision": "Use GraphQL for the public API", "context": "",
                           "safety_metadata": {"safety_category": "general"}})

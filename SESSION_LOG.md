@@ -5203,3 +5203,47 @@ a0f7b9b feat: Drift-Bench Evaluation Harness (wishlist #60)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-12 21:24 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-12 21:26 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+963850d fix: cross-project data bleed (Doc Mining, pytest count, Git Integration, stale UI) + last30days cost tracking
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+

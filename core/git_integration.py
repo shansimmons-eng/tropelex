@@ -129,7 +129,9 @@ def get_project_repo_path(memory: dict[str, Any]) -> str | None:
     Tropelex's own repo with no indication that's what happened.
     """
     path = memory.get("repo_path")
-    return path if path and Path(path).is_dir() else None
+    if not isinstance(path, str) or not path:
+        return None
+    return path if Path(path).is_dir() else None
 
 
 def get_repo_fingerprint(repo_path: str) -> str | None:

@@ -14,10 +14,11 @@ import uuid as _uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.audit import append_audit_event
+from core.gate import DEFAULT_GATE_POLICY, GATE_ACTIONS, GATE_SEVERITIES, overridden_ids, policy_for
 from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
 from core.prevention_report import build_prevention_report
@@ -29,16 +30,25 @@ preventive_router = APIRouter(prefix="/api/memory", tags=["ghost-preventive"])
 
 _mm = MemoryManager()
 
-# Default enforcement policy per ghost-warning severity tier. "block" means
-# ghost_check raises instead of returning 200 — see #53 (wishlist.md): the
-# point is that a non-2xx response is what actually stops an MCP tool call
-# (mcp_server/server.py's _request raises on any status >= 400), where a
-# warning buried in a 200 body is easy for an agent to skip past. A project
-# can loosen/tighten this via memory["gate_policy"]; unset tiers fall back
-# to this default.
-_DEFAULT_GATE_POLICY: dict[str, str] = {"high": "block", "medium": "warn", "low": "log_only"}
-_GATE_ACTIONS = {"block", "warn", "log_only"}
-_GATE_SEVERITIES = ("high", "medium", "low")
+# "block" means ghost_check raises instead of returning 200 — see #53
+# (wishlist.md): the point is that a non-2xx response is what actually
+# stops an MCP tool call (mcp_server/server.py's _request raises on any
+# status >= 400), where a warning buried in a 200 body is easy for an
+# agent to skip past. A project can loosen/tighten this via
+# memory["gate_policy"]; unset tiers fall back to core.gate's default.
+# The severity→action resolution and override lookup themselves live in
+# core/gate.py (#72), generalized out of this router so Contradiction
+# Detection (core/tropebook/web/server.py's add_decision) can reuse the
+# exact same mechanism instead of inventing its own copy.
+
+# #72: Contradiction Detection gates on its own "contradiction_gate_policy"
+# key, not Ghost's "gate_policy" -- two different risk surfaces a project
+# should be able to tune independently. GET/PUT /gate-policy (#64) now
+# takes a `detector` selector so both are real, validated, discoverable
+# endpoints instead of Contradictions' policy only being settable by
+# hand-editing the memory JSON directly -- the exact gap #64 closed for
+# Ghost, left open here otherwise.
+_DETECTOR_POLICY_KEYS = {"ghost": "gate_policy", "contradictions": "contradiction_gate_policy"}
 
 
 def _load_memory(project: str) -> dict[str, Any]:
@@ -56,28 +66,6 @@ def _save_memory(project: str, memory: dict[str, Any]) -> None:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-def _policy_for(memory: dict[str, Any], severity: str) -> str:
-    """Resolve the enforcement action for a severity tier: project override
-    (memory["gate_policy"]) if set and recognized, else the module default.
-
-    Defensive against malformed stored data (#64) -- gate_policy could
-    previously only ever be set by hand-editing the memory JSON directly
-    (no write endpoint existed), with zero schema. A garbage value here
-    silently produced whatever str.get() returned, which then flowed
-    straight into a safety-relevant block/warn/log_only decision -- not a
-    hypothetical, the exact failure mode #64 exists to close. Now that a
-    real write endpoint validates on the way in, this is a second layer
-    covering data that predates validation, not the primary defense.
-    """
-    overrides = memory.get("gate_policy")
-    if not isinstance(overrides, dict):
-        overrides = {}
-    value = overrides.get(severity)
-    if value not in _GATE_ACTIONS:
-        return _DEFAULT_GATE_POLICY.get(severity, "log_only")
-    return value
-
-
 def _severity_counts(warnings: list[dict[str, Any]]) -> dict[str, int]:
     """Tally warnings by severity tier, for a single gate_blocked/gate_warned
     audit event covering a whole ghost-check call (not one event per
@@ -88,14 +76,6 @@ def _severity_counts(warnings: list[dict[str, Any]]) -> dict[str, int]:
         if sev in counts:
             counts[sev] += 1
     return counts
-
-
-def _overridden_decision_ids(memory: dict[str, Any]) -> set[str]:
-    """Decision IDs with at least one recorded override — suppresses
-    blocking for that decision going forward. The override stays visible
-    in the response (severity/warning untouched); it just stops forcing a
-    non-2xx result once a human/agent has explicitly accepted the risk."""
-    return {o["decision_id"] for o in memory.get("overrides", []) if o.get("decision_id")}
 
 
 class GhostCheckRequest(BaseModel):
@@ -116,11 +96,11 @@ class GatePolicyRequest(BaseModel):
 
     Each severity tier is optional -- an unset tier keeps whatever it was
     (module default if never overridden at all), same partial-override
-    behavior _policy_for already had; this doesn't force every PUT to
-    restate all three. But any tier that IS given must be a recognized
-    action, and extra="forbid" rejects a key that isn't a real severity
-    tier (e.g. a typo'd "hihg") with a 422 instead of the old behavior --
-    silently writable, silently never read by _policy_for.
+    behavior core.gate.policy_for already had; this doesn't force every
+    PUT to restate all three. But any tier that IS given must be a
+    recognized action, and extra="forbid" rejects a key that isn't a real
+    severity tier (e.g. a typo'd "hihg") with a 422 instead of the old
+    behavior -- silently writable, silently never read.
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -130,51 +110,67 @@ class GatePolicyRequest(BaseModel):
 
 
 @preventive_router.get("/{project}/gate-policy")
-async def get_gate_policy(project: str) -> dict[str, Any]:
+async def get_gate_policy(
+    project: str, detector: str = Query("ghost", pattern="^(ghost|contradictions)$"),
+) -> dict[str, Any]:
     """Read a project's gate policy (#64) -- effective per-tier action plus
     an honest default-vs-override breakdown, so it's visible from the
     response whether a project is running the module default or an
     explicit override, rather than the caller having to guess.
+
+    `detector` (#72) selects which detector's policy: "ghost" (default,
+    memory["gate_policy"]) or "contradictions"
+    (memory["contradiction_gate_policy"]) -- separate keys, separate tuning,
+    same validated read/write mechanism.
     """
+    key = _DETECTOR_POLICY_KEYS[detector]
     memory = _load_memory(project)
-    overrides = memory.get("gate_policy")
+    overrides = memory.get(key)
     if not isinstance(overrides, dict):
         overrides = {}
     return {
         "project": project,
-        "effective_policy": {sev: _policy_for(memory, sev) for sev in _GATE_SEVERITIES},
-        "defaults": dict(_DEFAULT_GATE_POLICY),
-        "overrides": {sev: overrides[sev] for sev in _GATE_SEVERITIES if overrides.get(sev) in _GATE_ACTIONS},
+        "detector": detector,
+        "effective_policy": {sev: policy_for(memory, sev, key=key) for sev in GATE_SEVERITIES},
+        "defaults": dict(DEFAULT_GATE_POLICY),
+        "overrides": {sev: overrides[sev] for sev in GATE_SEVERITIES if overrides.get(sev) in GATE_ACTIONS},
     }
 
 
 @preventive_router.put("/{project}/gate-policy")
-async def set_gate_policy(project: str, body: GatePolicyRequest) -> dict[str, Any]:
+async def set_gate_policy(
+    project: str, body: GatePolicyRequest,
+    detector: str = Query("ghost", pattern="^(ghost|contradictions)$"),
+) -> dict[str, Any]:
     """Set a project's gate policy override (#64) -- the only way to change
     enforcement per severity tier used to be hand-editing the memory JSON
     file directly, with no validation at all. Validated at the router
     boundary (GatePolicyRequest), matching this codebase's "validate at
     the boundary, not inside pure logic" convention (#41's Decision.goal_id
-    FK check is the precedent) -- _policy_for's own defensive read stays as
-    a second layer for data that predates this endpoint, not the primary
-    defense.
+    FK check is the precedent) -- core.gate.policy_for's own defensive read
+    stays as a second layer for data that predates this endpoint, not the
+    primary defense.
+
+    `detector` (#72): see get_gate_policy.
     """
+    key = _DETECTOR_POLICY_KEYS[detector]
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=422, detail="At least one of high/medium/low must be set")
 
     memory = _load_memory(project)
-    existing = memory.get("gate_policy")
+    existing = memory.get(key)
     if not isinstance(existing, dict):
         existing = {}
-    memory["gate_policy"] = {**existing, **updates}
+    memory[key] = {**existing, **updates}
     _save_memory(project, memory)
 
     return {
         "project": project,
+        "detector": detector,
         "updated": True,
-        "effective_policy": {sev: _policy_for(memory, sev) for sev in _GATE_SEVERITIES},
-        "overrides": {sev: memory["gate_policy"][sev] for sev in _GATE_SEVERITIES if memory["gate_policy"].get(sev) in _GATE_ACTIONS},
+        "effective_policy": {sev: policy_for(memory, sev, key=key) for sev in GATE_SEVERITIES},
+        "overrides": {sev: memory[key][sev] for sev in GATE_SEVERITIES if memory[key].get(sev) in GATE_ACTIONS},
     }
 
 
@@ -186,7 +182,7 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
     This is a pre-write hook — call before finalizing a diff.
 
     Enforcement (#53): each warning's severity maps to a policy action
-    (block/warn/log_only — see _policy_for). If any warning resolves to
+    (block/warn/log_only — see core.gate.policy_for). If any warning resolves to
     "block" and its decision has no recorded override, this raises 409
     instead of returning 200 — a real gate, not just data an agent can
     skip past. mcp_server/server.py's MCP wrapper raises on any non-2xx
@@ -232,11 +228,11 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
 
     recommendations = list({w["recommendation"] for w in warnings if w.get("recommendation")})
 
-    overridden = _overridden_decision_ids(memory)
+    overridden = overridden_ids(memory)
     blocking: list[dict[str, Any]] = []
     warn_tier: list[dict[str, Any]] = []
     for w in warnings:
-        policy = _policy_for(memory, w.get("severity", "low"))
+        policy = policy_for(memory, w.get("severity", "low"))
         w["policy"] = policy
         w["overridden"] = w.get("decision_id") in overridden
         if w["overridden"]:

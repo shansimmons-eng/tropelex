@@ -352,6 +352,36 @@ def detect_contradictions(
     )
 
 
+def detect_contradictions_for_candidate(
+    candidate: dict,
+    existing: list[dict],
+    embeddings: dict[str, list[float]] | None = None,
+) -> list[Contradiction]:
+    """Check one candidate decision against every existing decision — O(n),
+    not detect_contradictions' O(n^2) full pairwise scan (#72).
+
+    Built for a real-time write-path gate (add_decision): checking a new
+    decision against a growing project's full decision history can't
+    afford the periodic-scan-shaped cost of re-checking every existing
+    pair too. `candidate` need not have an "id" yet — classify_contradiction
+    defaults to "unknown" for a missing one; callers that need a stable id
+    on the result should supply one explicitly.
+    """
+    text_candidate = candidate.get("decision", "")
+    found: list[Contradiction] = []
+    for other in existing:
+        text_other = other.get("decision", "")
+        emb_a = embeddings.get(candidate.get("id", "")) if embeddings else None
+        emb_b = embeddings.get(other.get("id", "")) if embeddings else None
+        keyword_similarity = compute_similarity(text_candidate, text_other)
+        similarity = hybrid_similarity(text_candidate, text_other, emb_a, emb_b)
+        result = classify_contradiction(candidate, other, similarity, keyword_similarity=keyword_similarity)
+        if result is not None:
+            found.append(result)
+    found.sort(key=lambda c: _severity_rank(c.severity))
+    return found
+
+
 # --- Private helpers ---
 
 

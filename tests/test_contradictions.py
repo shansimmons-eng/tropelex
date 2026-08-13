@@ -10,6 +10,7 @@ from core.contradictions.detector import (
     classify_contradiction,
     compute_similarity,
     detect_contradictions,
+    detect_contradictions_for_candidate,
     detect_direct_contradiction,
     hybrid_similarity,
     suggest_resolution,
@@ -540,6 +541,77 @@ class TestDetectContradictions:
             assert severities == sorted(severities, key=lambda s: rank.get(s, 3))
 
 
+# ── detect_contradictions_for_candidate (#72) ───────────────────────────────
+
+class TestDetectContradictionsForCandidate:
+    """One-vs-many check for the add_decision gate -- O(n), not
+    detect_contradictions' O(n^2) full pairwise scan. Must find the exact
+    same contradictions detect_contradictions would find for that one
+    decision's pairs, just without checking every OTHER pair too."""
+
+    def test_empty_existing_returns_empty(self):
+        candidate = {"decision": "Use React for frontend"}
+        assert detect_contradictions_for_candidate(candidate, []) == []
+
+    def test_no_contradiction_returns_empty(self):
+        candidate = {"decision": "Buy office supplies"}
+        existing = [{"id": "d1", "decision": "Use Python"}]
+        assert detect_contradictions_for_candidate(candidate, existing) == []
+
+    def test_finds_direct_contradiction_against_existing(self):
+        candidate = {"decision": "Use Vue for frontend"}
+        existing = [{"id": "d1", "decision": "Use React for frontend"}]
+        found = detect_contradictions_for_candidate(candidate, existing)
+        assert len(found) == 1
+        assert found[0].severity == "high"
+        assert found[0].contradiction_type == "direct"
+        assert found[0].decision_b_id == "d1"
+
+    def test_checks_against_every_existing_decision_not_just_first(self):
+        candidate = {"decision": "Use Vue for frontend"}
+        existing = [
+            {"id": "d1", "decision": "Buy office supplies"},
+            {"id": "d2", "decision": "Use React for frontend"},
+        ]
+        found = detect_contradictions_for_candidate(candidate, existing)
+        assert len(found) == 1
+        assert found[0].decision_b_id == "d2"
+
+    def test_sorted_by_severity(self):
+        candidate = {"decision": "Adopt JavaScript for new projects"}
+        existing = [
+            {"id": "d1", "decision": "Prefer TypeScript for new projects"},
+            {"id": "d2", "decision": "Use React for frontend"},
+        ]
+        found = detect_contradictions_for_candidate(candidate, existing)
+        if len(found) > 1:
+            rank = {"high": 0, "medium": 1, "low": 2}
+            severities = [c.severity for c in found]
+            assert severities == sorted(severities, key=lambda s: rank.get(s, 3))
+
+    def test_candidate_without_id_still_works(self):
+        """A candidate being checked before creation has no id yet."""
+        candidate = {"decision": "Use Vue for frontend"}
+        existing = [{"id": "d1", "decision": "Use React for frontend"}]
+        found = detect_contradictions_for_candidate(candidate, existing)
+        assert len(found) == 1
+        assert found[0].decision_a_id == "unknown"
+
+    def test_matches_full_scan_for_the_same_pair(self):
+        """Regression guard: candidate-vs-one-existing must classify
+        identically to what the full O(n^2) scan would produce for that
+        exact pair -- same underlying classify_contradiction call."""
+        decisions = [
+            {"id": "d1", "decision": "Use React for frontend"},
+            {"id": "d2", "decision": "Use Vue for frontend"},
+        ]
+        full = detect_contradictions(decisions)
+        candidate_result = detect_contradictions_for_candidate(decisions[1], [decisions[0]])
+        assert len(full.contradictions) == len(candidate_result) == 1
+        assert full.contradictions[0].severity == candidate_result[0].severity
+        assert full.contradictions[0].contradiction_type == candidate_result[0].contradiction_type
+
+
 # ── /contradictions endpoint: escalation to Safety Review queue ────────────
 
 import uuid
@@ -574,10 +646,18 @@ def project():
 
 class TestContradictionEscalation:
     def _create_conflicting_pair(self, client, project):
+        # This class tests GET /contradictions' scan/escalation behavior
+        # given two already-contradicting decisions -- not add_decision's
+        # own gate (#72), which would otherwise 409 the second post since
+        # these two are a real high-severity direct contradiction. The
+        # first post has nothing to contradict yet (creates the project's
+        # memory file too -- gate-policy's _load_memory 404s on a project
+        # that doesn't exist on disk); loosen the gate before the second.
         a = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Use React for frontend", "context": "",
             "safety_metadata": {"safety_category": "general"},
         }).json()["decision"]
+        client.put(f"/api/memory/{project}/gate-policy?detector=contradictions", json={"high": "warn"})
         b = client.post(f"/api/memory/{project}/decisions", json={
             "decision": "Use Vue for frontend", "context": "",
             "safety_metadata": {"safety_category": "general"},

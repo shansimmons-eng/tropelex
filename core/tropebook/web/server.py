@@ -1067,6 +1067,82 @@ async def add_decision(project: str, data: DecisionCreate):
         if data.goal_id not in known_goal_ids:
             raise HTTPException(status_code=404, detail=f"Goal '{data.goal_id}' not found in project '{project}'")
 
+    # #72: gate on high-severity contradictions with existing decisions --
+    # closes #53's own disclosed deferral ("Contradiction Detection isn't
+    # gated yet, Ghost Preventive Check only"). Uses the shared severity
+    # gate (core/gate.py) under its own "contradiction_gate_policy" key,
+    # not Ghost's "gate_policy" -- these are different risk surfaces a
+    # project should be able to tune independently. Keyword-only, no
+    # embeddings: add_decision is a synchronous write path called on every
+    # single decision (MCP tool, dashboard form, git auto-decisions), and a
+    # real-time gate can't afford an external API round trip on every call
+    # the way the read-only GET /contradictions scan optionally can.
+    # Overrides are shared with Ghost's mechanism (memory["overrides"], the
+    # same POST /decisions/{decision_id}/override endpoint) -- an accepted
+    # risk against an existing decision applies regardless of which
+    # detector raised it.
+    from core.contradictions.detector import detect_contradictions_for_candidate
+    from core.gate import overridden_ids as _gate_overridden_ids
+    from core.gate import policy_for as _gate_policy_for
+
+    candidate = {"decision": data.decision, "context": data.context}
+    try:
+        high_severity_contradictions = [
+            c for c in detect_contradictions_for_candidate(candidate, memory.get("decisions", []))
+            if c.severity == "high"
+        ]
+    except Exception as exc:
+        # Fail open, not closed: a bug in detection logic must not brick
+        # the single most central write path in the system (every
+        # decision creation -- MCP tool, dashboard form, git auto-decisions,
+        # Slack capture -- goes through add_decision). Skipping the gate
+        # for this one request is a far smaller blast radius than an
+        # unhandled 500 or an accidental block on every future decision.
+        logger.error("contradiction gate check failed for %s (failing open): %s", project, exc)
+        high_severity_contradictions = []
+
+    if high_severity_contradictions:
+        already_overridden = _gate_overridden_ids(memory)
+        blocking = [
+            c for c in high_severity_contradictions
+            if c.decision_b_id not in already_overridden
+        ]
+        contradiction_policy = _gate_policy_for(memory, "high", key="contradiction_gate_policy")
+        if blocking and contradiction_policy == "block":
+            _append_audit_event(
+                memory, "gate_blocked",
+                decision_ids=[c.decision_b_id for c in blocking],
+                severity_counts={"high": len(blocking), "medium": 0, "low": 0},
+            )
+            try:
+                mm.save_project_memory(project, memory)
+            except Exception as exc:
+                logger.error("contradiction gate_blocked audit save failed for %s: %s", project, exc)
+                raise HTTPException(status_code=500, detail=str(exc))
+            raise HTTPException(status_code=409, detail={
+                "message": (
+                    f"{len(blocking)} high-severity contradiction(s) with existing decisions -- "
+                    f"revise this decision, or call POST /api/memory/{project}/decisions/"
+                    "{decision_id}/override with a rationale (using the conflicting decision's id) to proceed."
+                ),
+                "project": project,
+                "blocking_contradictions": [
+                    {
+                        "conflicting_decision_id": c.decision_b_id,
+                        "conflicting_decision_text": c.decision_b_text,
+                        "contradiction_type": c.contradiction_type,
+                        "resolution_suggestion": c.resolution_suggestion,
+                    }
+                    for c in blocking
+                ],
+            })
+        if blocking and contradiction_policy == "warn":
+            _append_audit_event(
+                memory, "gate_warned",
+                decision_ids=[c.decision_b_id for c in blocking],
+                severity_counts={"high": len(blocking), "medium": 0, "low": 0},
+            )
+
     import uuid as _uuid
     decision_entry = {
         "id": _uuid.uuid4().hex[:12],
