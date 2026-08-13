@@ -13,11 +13,12 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.memory.manager import MemoryManager
 from core.session_replay import SessionReplay
+from core.session_insights import generate_retrospective, summarize_session
 from core.timetravel import (
     Err,
     MemoryError,
@@ -69,6 +70,15 @@ class DiffResponse(BaseModel):
     decisions_removed: list[str]
     sessions_added: int
     changes_summary: str
+
+
+class RetrospectiveResponse(BaseModel):
+    """Response for GET /{project}/timetravel/retrospective."""
+
+    project: str
+    period_days: int
+    session_count: int
+    retrospective: str | None
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -123,6 +133,46 @@ def _snapshot_to_response(snapshot: MemorySnapshot) -> TimeTravelResponse:
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
+# Literal sub-paths (retrospective) must be declared before /{date} below --
+# FastAPI matches routes in registration order, so /{date} would otherwise
+# greedily swallow "retrospective" as a literal date string (same gotcha
+# core/goals/router.py's own routes are ordered to avoid).
+
+
+@timetravel_router.get("/{project}/timetravel/retrospective")
+async def retrospective_endpoint(
+    project: str, days: int = Query(7, ge=1, le=90),
+) -> RetrospectiveResponse:
+    """Generate a narrative retrospective across recent sessions (#19).
+
+    Descriptive only -- what the data shows, not process-improvement
+    advice (see core/session_insights.py's module docstring for why that
+    bullet was deliberately cut). Returns retrospective: null (not an
+    error) when there's no session history yet or no LLM backend
+    available.
+    """
+    _validate_project(project)
+    base_dir = Path(MemoryManager().base_path)
+    replay = SessionReplay(str(base_dir))
+
+    from datetime import datetime, timedelta, timezone
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    all_sessions = replay.get_sessions(project, limit=100)
+    recent = [s for s in all_sessions if s.get("timestamp", "") >= since]
+
+    try:
+        retrospective = await generate_retrospective(recent, f"last {days} day(s)", project=project)
+    except Exception as exc:
+        logger.error("retrospective generation failed for %s: %s", project, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return RetrospectiveResponse(
+        project=project,
+        period_days=days,
+        session_count=len(recent),
+        retrospective=retrospective,
+    )
 
 
 @timetravel_router.get("/{project}/timetravel/{date}")
@@ -212,3 +262,34 @@ async def diff_memory_dates(project: str, body: DiffRequest) -> DiffResponse:
         sessions_added=snapshot_diff.sessions_added,
         changes_summary=snapshot_diff.changes_summary,
     )
+
+
+@timetravel_router.post("/{project}/timetravel/sessions/{session_id}/summarize")
+async def summarize_session_endpoint(project: str, session_id: str) -> dict[str, Any]:
+    """Generate and persist an AI summary of one session's changes (#19).
+
+    Separate from the human-editable `summary` field set at record time --
+    this never overwrites it, and generating a new one just replaces the
+    previous ai_summary, not the human one. Returns ai_summary: null (not
+    an error) when no LLM backend is configured -- matches core.llm's own
+    "no backend, no result" convention rather than treating unavailability
+    as a failure.
+    """
+    _validate_project(project)
+    base_dir = Path(MemoryManager().base_path)
+    replay = SessionReplay(str(base_dir))
+
+    session = replay.get_session(project, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found for project '{project}'")
+
+    try:
+        ai_summary = await summarize_session(session, project=project)
+    except Exception as exc:
+        logger.error("session summarize failed for %s/%s: %s", project, session_id, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if ai_summary:
+        replay.set_ai_summary(project, session_id, ai_summary)
+
+    return {"project": project, "session_id": session_id, "ai_summary": ai_summary}

@@ -338,6 +338,52 @@ class SessionReplay:
             "restored_to": session["snapshot_id_before"],
         }
 
+    def set_ai_summary(self, project_name: str, session_id: str, ai_summary: str) -> bool:
+        """Persist an AI-generated summary (#19) onto an existing session
+        record and its index entry. Distinct field from `summary`
+        (human-provided, set at record_session time) -- generating one
+        never overwrites the other, so a human-authored note is never
+        silently replaced by a model's guess. Returns False if the
+        session doesn't exist or couldn't be read/written.
+        """
+        session_file = self._project_dir(project_name) / f"{session_id}.json"
+        if not session_file.exists():
+            return False
+        try:
+            with open(session_file) as f:
+                record = json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read session %s for ai_summary update: %s", session_file, exc)
+            return False
+
+        record["ai_summary"] = ai_summary
+        try:
+            with open(session_file, "w") as f:
+                json.dump(record, f, indent=2, default=str)
+        except (OSError, TypeError) as exc:
+            logger.error("Failed to save ai_summary for session %s: %s", session_file, exc)
+            return False
+
+        # Best-effort: also update the lightweight index so listings can
+        # show it without loading the full record. A failure here doesn't
+        # undo the real save above -- the index is a derived convenience,
+        # not the source of truth.
+        index_file = self._project_dir(project_name) / "index.json"
+        if index_file.exists():
+            try:
+                with open(index_file) as f:
+                    index = json.load(f)
+                for entry in index:
+                    if isinstance(entry, dict) and entry.get("session_id") == session_id:
+                        entry["ai_summary"] = ai_summary
+                        break
+                with open(index_file, "w") as f:
+                    json.dump(index, f, indent=2)
+            except (json.JSONDecodeError, OSError, TypeError) as exc:
+                logger.warning("Failed to update index ai_summary for %s: %s", session_id, exc)
+
+        return True
+
     def get_weekly_summary(self, project_name: str) -> dict[str, Any]:
         """Summarize what changed in the past week."""
         from datetime import timedelta

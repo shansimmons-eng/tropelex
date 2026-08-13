@@ -149,6 +149,53 @@ class TestSessionReplay:
         assert replay.get_weekly_summary("empty-project")["sessions"] == 0
 
 
+class TestSetAiSummary:
+    """#19: ai_summary is a separate field from the human-provided
+    `summary` -- generating one must never overwrite the other."""
+
+    @pytest.fixture
+    def replay(self, tmp_path):
+        return SessionReplay(str(tmp_path))
+
+    def test_sets_ai_summary_on_full_record(self, replay):
+        result = replay.record_session(
+            "proj", {"decisions": []}, {"decisions": [{"decision": "x"}]}, summary="human note",
+        )
+        session_id = result["session_id"]
+
+        ok = replay.set_ai_summary("proj", session_id, "AI-generated summary")
+        assert ok is True
+
+        session = replay.get_session("proj", session_id)
+        assert session["ai_summary"] == "AI-generated summary"
+        assert session["summary"] == "human note"  # untouched
+
+    def test_updates_index_entry_too(self, replay):
+        result = replay.record_session("proj", {}, {"decisions": []}, summary="x")
+        session_id = result["session_id"]
+        replay.set_ai_summary("proj", session_id, "AI summary")
+
+        sessions = replay.get_sessions("proj")
+        assert sessions[0]["ai_summary"] == "AI summary"
+
+    def test_unknown_session_returns_false(self, replay):
+        assert replay.set_ai_summary("proj", "does-not-exist", "x") is False
+
+    def test_corrupt_index_does_not_break_the_real_save(self, replay, tmp_path):
+        """The session file itself is the source of truth; a corrupt index
+        is a best-effort convenience update, not a reason to fail the
+        whole operation."""
+        result = replay.record_session("proj", {}, {"decisions": []}, summary="x")
+        session_id = result["session_id"]
+
+        index_file = tmp_path / "memory" / "replays" / "proj" / "index.json"
+        index_file.write_text("{not valid json")
+
+        ok = replay.set_ai_summary("proj", session_id, "AI summary")
+        assert ok is True
+        assert replay.get_session("proj", session_id)["ai_summary"] == "AI summary"
+
+
 class TestSessionReplayAgent:
     """agent field on record_session — added when session tracking became
     multi-agent aware, mirroring the same convention in agent_skills/friction."""
