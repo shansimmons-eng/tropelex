@@ -5247,3 +5247,135 @@ bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-12 21:55 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-12 23:50 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-13 00:15 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  7 files changed, 326 insertions(+), 4 deletions(-)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/session_replay.py core/timetravel/router.py memory/prefetch/test-project_genealogy.json tests/test_session_replay.py wishlist.md .claude/worktrees/ core/session_insights.py tests/test_session_insights.py tests/test_timetravel_router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-13 00:19 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  7 files changed, 348 insertions(+), 4 deletions(-)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/session_replay.py core/timetravel/router.py memory/prefetch/test-project_genealogy.json tests/test_session_replay.py wishlist.md .claude/worktrees/ core/session_insights.py tests/test_session_insights.py tests/test_timetravel_router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-13 13:37 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  7 files changed, 370 insertions(+), 4 deletions(-)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/session_replay.py core/timetravel/router.py memory/prefetch/test-project_genealogy.json tests/test_session_replay.py wishlist.md .claude/worktrees/ core/session_insights.py tests/test_session_insights.py tests/test_timetravel_router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-13 16:19 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  9 files changed, 532 insertions(+), 5 deletions(-)
+
+**Recent commits:**
+```
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+55c1ed0 fix: Add Decision goal-link dropdown only showed active goals
+81a54eb feat: Goal Re-Anchoring in Context Bundles (wishlist #44)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/market/router.py core/session_replay.py core/timetravel/router.py memory/prefetch/test-project_genealogy.json tests/test_market_router.py tests/test_session_replay.py wishlist.md .claude/worktrees/ core/market/coordination.py core/session_insights.py tests/test_market_coordination.py tests/test_session_insights.py tests/test_timetravel_router.py `
+
+**Open questions / next steps:** <!-- fill in -->
+

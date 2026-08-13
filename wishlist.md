@@ -405,7 +405,16 @@ Separately, auditing the *other* half of error handling (business-logic `Result`
 
 **Why:** Decision Market (#14) already tracks each agent's calibration independently (accuracy, overconfidence_index), and the dashboard already shows multiple agents active on the same project (Claude, Gemini, gemini-3.6-flash in Agent Activity Split). Nothing currently asks whether those agents are *converging or diverging from each other* — a distinct signal from individual calibration, and one the agent-drift literature treats as its own category ("Coordination Drift," tracked via cumulative agreement rates). Tracked live as goal `a8c978b3ae25` in the `tropelex` project.
 
-**Status:** Open. Proposed 2026-08-07. Not urgent — no current pain point, but a real gap in what's measured.
+**Status:** ✅ Implemented (`core/market/coordination.py`, `core/market/router.py`).
+
+Agreement is defined over calibration *profiles* (accuracy, `overconfidence_index`), not shared bets on the same decision — checked against the real `tropelex` project first: 0 of 6 real bets share a `decision_id` across agents, so a same-decision-only definition would almost never have signal to work with. Comparing two agents' resolved-bet calibration whenever they each have enough history works regardless of decision overlap, the same reasoning the existing leaderboard already relies on.
+
+- `compute_agreement(score_a, score_b)`: pairwise agreement in [0, 1] over both accuracy and overconfidence — symmetric in both, since matching accuracy while being wildly more overconfident isn't real agreement.
+- `score_coordination_drift(bets, window)`: same baseline-vs-recent trend shape as `core/goals/drift.py`'s `score_trend_drift`, for consistency with this project's other drift signals. Every eligible agent pair gets scored (not just the worst case) since, unlike Goal Drift, there's no single "the" signal to surface — an unbounded number of pairs stay legible at small-team scale. Honestly reports `insufficient_data`-shaped output (empty `pairs`, no fabricated score) when fewer than two agents have enough resolved bet history, same convention as Session-Shape Baselining.
+- `GET /{project}/market/coordination-drift?window=N`.
+- Dashboard: new "Coordination Drift" panel in the Decision Market tab (Team & Collaboration), next to the leaderboard.
+
+Tests: 17 new (`test_market_coordination.py`, 3 router tests in `test_market_router.py`). Full suite: 2244 passing (was 2227). Live-verified against the real `tropelex` project end-to-end (API + dashboard button): correctly reports `insufficient_data` — real bet history there is 6 unresolved bets from a single agent, nowhere near the threshold. Honest non-result, not a gap in the check.
 
 ---
 
@@ -896,7 +905,17 @@ Tests: 12 new in `tests/test_contradiction_gate.py` (blocking, override-then-ret
 - Detect regressions or repeated work
 - Generate retrospective reports
 
-**Status:** Open. This is the one feature on this list not yet implemented.
+**Status:** ✅ Implemented (`core/session_insights.py`, `core/session_replay.py`, `core/timetravel/router.py`), scoped to 2 of the original 5 bullets.
+
+Deliberately cut 3 of the 5: "identify decision patterns across sessions" is what `PatternLearner` (`core/learner.py`) already does; "detect regressions or repeated work" is exactly what Session-Shape Baselining (#45) and Friction Mining (#28) already do, statistically, without an LLM's false-positive risk layered on top of working detectors; "suggest process improvements" was cut outright — a generative "here's what to improve" feature with nothing grounding its claims risks producing exactly the plausible-sounding-but-unfalsifiable output this project has avoided elsewhere (#67's own negative result: an untuned signal is worse than no signal).
+
+- `summarize_session`/`generate_retrospective` (`core/session_insights.py`) call `core.llm.chat()` (Ollama-first, OpenAI fallback, cost-tracked when a project is passed — same infra every other LLM-touching feature in this project uses) over `SessionReplay`'s existing structured diffs. Both explicitly instruct the model to treat session data as content, not commands, and stay descriptive — no invented specifics, no recommendations.
+- `POST /{project}/timetravel/sessions/{session_id}/summarize` generates and persists an `ai_summary` — a field kept separate from the human-editable `summary` set at record time, so a generated summary can never silently overwrite human-authored context (new `SessionReplay.set_ai_summary`).
+- `GET /{project}/timetravel/retrospective?days=N` generates a narrative retrospective across recent sessions. Returns `retrospective: null` (not an error) when there's no session history or no LLM backend configured — matches `core.llm`'s own graceful-degradation convention.
+- Found and fixed mid-build: registering `/{project}/timetravel/retrospective` after the pre-existing `/{project}/timetravel/{date}` meant the parameterized route greedily matched "retrospective" as a literal date string first — the same route-ordering gotcha `core/goals/router.py`'s own routes are already ordered to avoid. Fixed by moving the literal route earlier; the two pre-existing timetravel endpoints had no test coverage at all before this, so the bug shipped invisibly until these new endpoints' own tests caught it.
+- Dashboard: new "AI Retrospective" panel in the Time Travel tab (period selector + Generate button). Per-session summarize is API-only this pass — not wired to a button in the existing session-list view, which needed more audit time than this pass had; a real, tested, working endpoint either way, not orphaned in the sense of unreachable.
+
+Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_replay.py`, `test_timetravel_router.py`). Full suite: 2227 passing (was 2205). Live-verified against the real `tropelex` project: generated a real 7-day retrospective ("...focused heavily on addressing various bugs...") from 12 real sessions, and a real per-session summary, both via direct API calls and the dashboard UI end-to-end.
 
 ---
 

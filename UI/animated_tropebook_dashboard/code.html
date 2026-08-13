@@ -2180,6 +2180,23 @@ void main() {
             </div>
         </div>
         <div id="timetravel-results" class="mt-4 hidden"></div>
+
+        <div class="glass-panel rounded-xl p-6 mt-6">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="material-symbols-outlined text-accent-sky text-xl">auto_awesome</span>
+                <h3 class="font-mono text-sm text-accent-sky uppercase tracking-wider">AI Retrospective</h3>
+            </div>
+            <p class="text-outline text-xs mb-4">A short narrative of what happened over a period, generated from recorded session diffs — descriptive only, not process advice.</p>
+            <div class="flex gap-3">
+                <select id="retrospective-days" class="bg-surface border border-glass-border rounded-lg px-4 py-2 font-mono text-sm text-on-surface focus:border-accent-sky focus:outline-none cursor-pointer">
+                    <option value="7">Last 7 days</option>
+                    <option value="14">Last 14 days</option>
+                    <option value="30">Last 30 days</option>
+                </select>
+                <button id="btn-retrospective" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-sm hover:bg-accent-sky/30 transition-all cursor-pointer">Generate Retrospective</button>
+            </div>
+            <div id="retrospective-result" class="mt-4 hidden"></div>
+        </div>
         <div class="mt-6 glass-panel rounded-xl p-8 text-center" id="timetravel-empty">
             <span class="material-symbols-outlined text-4xl text-outline mb-3">history</span>
             <p class="text-outline text-sm">No time travel data yet. Time Travel replays recorded sessions — click "+ End Session" in the Memory tab at least once, then pick a date after that.</p>
@@ -2708,6 +2725,17 @@ void main() {
                 </div>
             </div>
             <div id="market-leaderboard" class="text-sm text-outline">No bets placed yet.</div>
+        </div>
+        <div class="mt-6 glass-panel rounded-xl p-6">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-lavender text-lg">groups</span>
+                    <h3 class="font-mono text-sm text-accent-lavender uppercase tracking-wider">Coordination Drift</h3>
+                </div>
+                <button id="btn-coordination-drift" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Check Agreement</button>
+            </div>
+            <p class="text-outline text-xs mb-3">Whether agents' calibration is converging or diverging from each other over time — distinct from each agent's own accuracy trend.</p>
+            <div id="coordination-drift-result" class="text-sm text-outline">Not checked yet.</div>
         </div>
         <div class="mt-6 glass-panel rounded-xl p-6">
             <h3 class="font-mono text-sm text-outline uppercase tracking-wider mb-4">Place a Bet</h3>
@@ -11370,6 +11398,31 @@ document.getElementById('btn-market-leaderboard')?.addEventListener('click', asy
     }
 });
 
+// ── Coordination Drift (#43) ──
+document.getElementById('btn-coordination-drift')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const btn = document.getElementById('btn-coordination-drift');
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Checking...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/market/coordination-drift`);
+    btn.disabled = false; btn.textContent = original;
+    if (!data) return;
+
+    const el = document.getElementById('coordination-drift-result');
+    if (!data.pairs || data.pairs.length === 0) {
+        el.innerHTML = `<p class="text-sm text-outline">${escapeHtml(data.message || 'Not enough resolved-bet history yet to compare agents.')}</p>`;
+        return;
+    }
+    el.innerHTML = data.pairs.map(p => {
+        const color = p.drift_detected ? 'text-red-400' : 'text-accent-lime';
+        const arrow = p.drift < 0 ? '↓' : (p.drift > 0 ? '↑' : '→');
+        return `<div class="flex items-center justify-between p-2 rounded bg-surface-raised mb-1">
+            <span class="font-mono text-xs">${escapeHtml(p.agent_a)} ↔ ${escapeHtml(p.agent_b)}</span>
+            <span class="font-mono text-xs ${color}">${p.baseline_agreement} ${arrow} ${p.recent_agreement}${p.drift_detected ? ' (drift)' : ''}</span>
+        </div>`;
+    }).join('');
+});
+
 // ── Clear Market Data ──
 document.getElementById('btn-market-clear')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
@@ -11897,6 +11950,35 @@ document.getElementById('btn-timetravel')?.addEventListener('click', async () =>
     }
 });
 
+// #19: AI Retrospective -- narrative summary of recent sessions, generated
+// from SessionReplay's structured diffs via core/session_insights.py.
+document.getElementById('btn-retrospective')?.addEventListener('click', async () => {
+    if (!state.currentProject) { showToast('Select a project first'); return; }
+    const days = document.getElementById('retrospective-days').value;
+    const btn = document.getElementById('btn-retrospective');
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Generating...';
+    const data = await api(`/memory/${encodeURIComponent(state.currentProject)}/timetravel/retrospective?days=${days}`);
+    btn.disabled = false; btn.textContent = original;
+    if (!data) return;
+
+    const resultEl = document.getElementById('retrospective-result');
+    resultEl.classList.remove('hidden');
+    if (!data.retrospective) {
+        const reason = data.session_count === 0
+            ? 'no sessions recorded in this period'
+            : 'no LLM backend configured (set OPENAI_API_KEY or run Ollama locally)';
+        resultEl.innerHTML = `<p class="text-sm text-outline">No retrospective available — ${reason}.</p>`;
+        return;
+    }
+    resultEl.innerHTML = `
+        <div class="p-4 rounded-lg bg-surface-raised border-l-2 border-accent-sky">
+            <p class="text-sm">${escapeHtml(data.retrospective)}</p>
+            <span class="text-xs text-outline font-mono mt-2 block">${data.session_count} session(s) over the last ${data.period_days} day(s)</span>
+        </div>
+    `;
+});
+
 // The backend (core/timetravel/router.py) already reconstructs and returns
 // the FULL memory state as of the target date (data.memory -- real
 // decisions, session_history, everything), not just counts. The dashboard
@@ -11920,7 +12002,7 @@ function renderTimeTravelResults(data, date) {
                 <span class="text-outline">Decisions</span>
                 <span class="flex items-center gap-2">
                     <span class="font-mono">${data.decision_count ?? decisions.length ?? 0}</span>
-                    ${decisions.length ? `<button id="btn-timetravel-toggle-decisions" class="text-xs text-accent-sky hover:underline cursor-pointer">show</button>` : ''}
+                    ${decisions.length ? `<button id="btn-timetravel-toggle-decisions" class="text-xs px-3 py-1 rounded-full bg-accent-sky/20 text-accent-sky font-mono uppercase tracking-wider hover:bg-accent-sky/30 transition-all cursor-pointer">show</button>` : ''}
                 </span>
             </div>
             <div id="timetravel-decisions-list" class="hidden pt-2 space-y-2 max-h-96 overflow-y-auto"></div>
@@ -11928,7 +12010,7 @@ function renderTimeTravelResults(data, date) {
                 <span class="text-outline">Sessions</span>
                 <span class="flex items-center gap-2">
                     <span class="font-mono">${data.session_count ?? sessions.length ?? 0}</span>
-                    ${sessions.length ? `<button id="btn-timetravel-toggle-sessions" class="text-xs text-accent-sky hover:underline cursor-pointer">show</button>` : ''}
+                    ${sessions.length ? `<button id="btn-timetravel-toggle-sessions" class="text-xs px-3 py-1 rounded-full bg-accent-sky/20 text-accent-sky font-mono uppercase tracking-wider hover:bg-accent-sky/30 transition-all cursor-pointer">show</button>` : ''}
                 </span>
             </div>
             <div id="timetravel-sessions-list" class="hidden pt-2 space-y-2 max-h-96 overflow-y-auto"></div>

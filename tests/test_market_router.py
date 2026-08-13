@@ -43,6 +43,47 @@ class TestClearMarket:
         assert resp.status_code == 200
         assert resp.json() == {"cleared": True, "bets_removed": 0}
 
+
+class TestCoordinationDriftEndpoint:
+    """GET /{project}/market/coordination-drift (#43)."""
+
+    def _place_and_resolve(self, client: TestClient, decision_id: str, agent: str, outcome: str) -> None:
+        bet = client.post("/api/memory/demo/market/bet", json={
+            "decision_id": decision_id, "agent_name": agent, "confidence": 0.9, "category": "backend",
+        })
+        assert bet.status_code == 200
+        client.post("/api/memory/demo/market/resolve", json={
+            "bet_id": bet.json()["bet"]["id"], "outcome": outcome,
+        })
+
+    def test_no_bets_returns_insufficient_data_shape(self, client: TestClient) -> None:
+        resp = client.get("/api/memory/demo/market/coordination-drift")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["drift_detected"] is False
+        assert body["eligible_agents"] == []
+        assert body["pairs"] == []
+        assert body["window"] == 5
+
+    def test_two_agents_with_enough_history_produce_a_pair(self, client: TestClient) -> None:
+        window = 3  # matches MIN_BETS_PER_WINDOW so both windows are eligible
+        for agent in ("claude", "gemini"):
+            for i in range(window * 2):
+                self._place_and_resolve(client, f"d{i % 5}", agent, "correct")
+
+        resp = client.get(f"/api/memory/demo/market/coordination-drift?window={window}")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["eligible_agents"] == ["Claude", "Gemini"]  # agent_name normalized
+        assert len(body["pairs"]) == 1
+        assert body["pairs"][0]["baseline_agreement"] == 1.0
+
+    def test_invalid_window_422s(self, client: TestClient) -> None:
+        resp = client.get("/api/memory/demo/market/coordination-drift?window=1")
+        assert resp.status_code == 422
+        resp = client.get("/api/memory/demo/market/coordination-drift?window=100")
+        assert resp.status_code == 422
+
     def test_clear_removes_all_bets(self, client: TestClient) -> None:
         for i in range(3):
             r = client.post("/api/memory/demo/market/bet", json={

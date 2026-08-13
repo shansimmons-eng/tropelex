@@ -28,6 +28,7 @@ from core.market.calibration import (
     record_bet,
     resolve_bet,
 )
+from core.market.coordination import score_coordination_drift
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.market")
@@ -300,3 +301,31 @@ async def get_leaderboard(
         "count": len(entries),
         "goal_id": goal_id,
     }
+
+
+@market_router.get("/{project}/market/coordination-drift")
+async def get_coordination_drift(
+    project: str, window: int = Query(5, ge=2, le=25),
+) -> dict[str, Any]:
+    """Detect declining agreement between agents' calibration profiles
+    over time (#43) -- distinct from each agent's own accuracy trend,
+    this asks whether multiple agents working the same project are
+    converging or diverging *from each other*.
+
+    Returns insufficient_data-shaped output (drift_detected: False,
+    empty pairs) when fewer than two agents have enough resolved bet
+    history yet, rather than a degenerate score from too little data --
+    same honesty convention as Session-Shape Baselining and Goal
+    Adherence's own trend_drift.
+    """
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("coordination drift load failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    bets = _get_bets(memory)
+    result = score_coordination_drift(bets, window=window)
+    return {"project": project, "window": window, **result}
