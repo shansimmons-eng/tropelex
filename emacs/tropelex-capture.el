@@ -53,6 +53,15 @@
   :type 'string
   :group 'tropelex-capture)
 
+(defcustom tropelex-instance-secret nil
+  "TROPEL_EX_SECRET value from the Tropelex server's .env file.
+Required for capture/scan requests once the server enforces instance
+auth (P1). Unlike the MCP server and OpenCode plugin, Emacs doesn't
+share a process tree with the Tropelex install, so this can't be read
+automatically -- copy the value from .env or the server's startup log."
+  :type '(choice (const :tag "Not set" nil) string)
+  :group 'tropelex-capture)
+
 (defcustom tropelex-default-project nil
   "Default project name for capture.
 When nil, auto-detects from projectile, vc-root-dir, or the
@@ -117,8 +126,11 @@ ENDPOINT is the path after /api (e.g. \"/health\").
 BODY is a JSON-encodable alist, or nil.
 Returns the parsed JSON response, or signals an error."
   (let* ((url-request-method method)
-         (url-request-extra-headers '(("Content-Type" . "application/json")
-                                       ("X-Tropelex-Client" . "emacs")))
+         (url-request-extra-headers
+          (append '(("Content-Type" . "application/json")
+                     ("X-Tropelex-Client" . "emacs"))
+                  (when tropelex-instance-secret
+                    `(("Authorization" . ,(concat "Bearer " tropelex-instance-secret))))))
          (url-request-data (when body (tropelex--json-encode body)))
          (url (concat tropelex-server-url "/api" endpoint))
          (buffer (condition-case err

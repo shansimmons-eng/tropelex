@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from core.audit import append_audit_event
+from core.audit import append_audit_event, resync_decision_hash
 from core.contradictions import ContradictionError
 from core.contradictions.detector import detect_contradictions
 from core.embeddings import get_decision_embeddings
@@ -75,6 +75,7 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
         safety["requires_review"] = True
         if safety.get("risk_level", "low") == "low":
             safety["risk_level"] = "medium"
+        resync_decision_hash(memory, d, changed_fields=["safety_metadata.requires_review"])
         # #61 (wishlist.md): this mutation previously had no audit trace at
         # all — only a live requires_review flip, gone the moment a review
         # resolved it. severity is always "high" here: only high_severity_ids

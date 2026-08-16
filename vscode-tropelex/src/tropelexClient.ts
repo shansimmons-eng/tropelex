@@ -37,6 +37,15 @@ function getServerUrl(): string {
 }
 
 /**
+ * P1 (instance auth): unlike the MCP server and OpenCode plugin, this
+ * extension doesn't share a process tree with the Tropelex install and
+ * can't read its .env, so the secret is a plain settings value instead.
+ */
+function getInstanceSecret(): string {
+  return vscode.workspace.getConfiguration('tropelex').get<string>('instanceSecret', '');
+}
+
+/**
  * Resolves the Tropelex project name for the current workspace.
  *
  * Uses the `tropelex.project` setting if set, otherwise falls back to the
@@ -69,11 +78,17 @@ export async function scanFileForDecisions(
 ): Promise<LensAnnotation[]> {
   const url = `${getServerUrl()}/api/memory/${encodeURIComponent(project)}/lens/scan`;
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const secret = getInstanceSecret();
+  if (secret) {
+    headers['Authorization'] = `Bearer ${secret}`;
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ file_path: filePath, code_content: codeContent }),
     });
   } catch (err) {

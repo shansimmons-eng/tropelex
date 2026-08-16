@@ -57,9 +57,11 @@ _scheduler = None
 async def lifespan(app_instance):
     """Start background scheduler on startup, stop on shutdown."""
     global _scheduler
+    from core.auth.shared_secret import get_or_create_secret
     from core.scheduler import BackgroundScheduler
     # Compute BASE_DIR at call time (module-level BASE_DIR is set later)
     _base = Path(__file__).parent.parent.parent.parent
+    get_or_create_secret(_base)
     _scheduler = BackgroundScheduler(base_dir=_base)
     await _scheduler.start()
     logger.info("Tropelex started with background scheduler")
@@ -124,6 +126,57 @@ async def interface_heartbeat_middleware(request: Request, call_next):
     client = request.headers.get("x-tropelex-client")
     if client in KNOWN_INTERFACES:
         _interface_last_seen[client] = time.time()
+    return await call_next(request)
+
+
+# --- Instance auth (P1, gap A: no local process could previously be
+# stopped from mutating state) ---
+MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+@app.middleware("http")
+async def instance_auth_middleware(request: Request, call_next):
+    """Require the instance shared secret on every mutating /api/ call —
+    unless the request is a genuine same-origin browser request (the
+    dashboard), which the browser itself marks via the Sec-Fetch-Site
+    header. That header is set by the browser's fetch algorithm and is on
+    the forbidden-header list, so page JavaScript cannot read or spoof it;
+    a malicious page (XSS, DNS rebinding, or a page on another origin)
+    gets "cross-site"/no header at all and still needs the token. This
+    lets the dashboard keep working with zero client-side changes while
+    closing the actual gap: any local process (curl, a script, another
+    agent) that isn't a browser making a same-origin request.
+    """
+    if request.method in MUTATING_METHODS and request.url.path.startswith("/api/"):
+        if request.headers.get("sec-fetch-site") not in ("same-origin", "none"):
+            from core.auth.shared_secret import token_is_valid
+            if not token_is_valid(request):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Missing or invalid instance secret"},
+                )
+    return await call_next(request)
+
+
+# --- Host validation (defends against DNS rebinding) ---
+ALLOWED_HOSTS = {"localhost:8766", "127.0.0.1:8766", "[::1]:8766"}
+
+
+@app.middleware("http")
+async def host_validation_middleware(request: Request, call_next):
+    """Reject any request whose Host header isn't this instance's own
+    address. Registered last so it runs outermost, ahead of every other
+    middleware — a spoofed Host is rejected before rate limiting or
+    anything else does any work. CORS remains defense-in-depth for
+    browser-originated requests; this closes the gap CORS doesn't cover
+    (non-browser clients, and browsers tricked via DNS rebinding).
+    """
+    host = request.headers.get("host", "")
+    if host not in ALLOWED_HOSTS:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"Invalid Host header: {host!r}"},
+        )
     return await call_next(request)
 
 
@@ -1012,6 +1065,7 @@ async def tag_decision(project: str, decision_id: str, data: TagDecisionRequest)
             safety = d.setdefault("safety_metadata", {})
             safety["safety_category"] = category
             memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+            _resync_decision_hash(memory, d, changed_fields=["safety_metadata.safety_category"])
             mm.save_project_memory(project, memory)
             return {"tagged": True, "decision": d}
     raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
@@ -1162,6 +1216,11 @@ async def add_decision(project: str, data: DecisionCreate):
     if flags:
         decision_entry["content_flags"] = flags
 
+    # P2 (gap B): computed after every content-bearing field above is set,
+    # so it covers exactly what verify_integrity later recomputes and
+    # compares against.
+    decision_entry["decision_hash"] = _decision_content_hash(decision_entry)
+
     memory.setdefault("decisions", []).append(decision_entry)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
     _append_audit_event(
@@ -1170,6 +1229,7 @@ async def add_decision(project: str, data: DecisionCreate):
         decision_id=decision_entry["id"],
         decision=decision_entry["decision"],
         risk_level=safety_metadata.get("risk_level", "low"),
+        decision_hash=decision_entry["decision_hash"],
     )
     mm.save_project_memory(project, memory)
     _emit_telemetry("OK", f"Decision captured in {project}")
@@ -2424,6 +2484,7 @@ async def submit_safety_review(
                     if "safety_metadata" not in d:
                         d["safety_metadata"] = {}
                     d["safety_metadata"]["requires_review"] = False
+                    _resync_decision_hash(memory, d, changed_fields=["safety_metadata.requires_review"])
 
                 _append_audit_event(
                     memory,
@@ -2508,12 +2569,15 @@ def _apply_persona_market_escalation(project: str, memory: dict, mm) -> int:
     """Auto-flag decisions touching a persona+market compounding-risk
     category for review, if not already flagged. Mutates memory in place,
     saves if anything changed, returns count newly escalated.
+
+    Side-effecting; callers must not invoke this from a GET path. Use
+    POST /reviews/escalate-persona-market or the scheduler task instead.
     """
     risk_categories = _persona_market_risk_categories(project, memory)
     if not risk_categories:
         return 0
 
-    escalated = 0
+    escalated_ids: list[str] = []
     for d in memory.get("decisions", []):
         safety = d.setdefault("safety_metadata", {})
         if safety.get("requires_review"):
@@ -2534,11 +2598,19 @@ def _apply_persona_market_escalation(project: str, memory: dict, mm) -> int:
         safety["escalation_reason"] = risk_categories[next(iter(matched))]
         if safety.get("risk_level", "low") == "low":
             safety["risk_level"] = "medium"
-        escalated += 1
+        _resync_decision_hash(
+            memory, d,
+            changed_fields=["safety_metadata.requires_review", "safety_metadata.escalation_reason"],
+        )
+        escalated_ids.append(d.get("id", ""))
 
-    if escalated:
+    if escalated_ids:
+        _append_audit_event(
+            memory, "persona_market_escalated",
+            decision_ids=escalated_ids, count=len(escalated_ids),
+        )
         mm.save_project_memory(project, memory)
-    return escalated
+    return len(escalated_ids)
 
 
 @app.get("/api/memory/{project}/reviews/pending")
@@ -2546,15 +2618,13 @@ async def get_pending_reviews(project: str):
     """Get all decisions requiring safety review.
 
     Returns decisions marked for review, sorted by risk level and timestamp.
-    Decisions touching a category where this project's own persona has a
-    known weakness *and* Decision Market calibration is poor are
-    auto-escalated here too, not just ones explicitly flagged at capture time.
+    Read-only: persona/market auto-escalation runs separately via
+    POST /reviews/escalate-persona-market or the scheduler, not on every GET.
     """
     try:
         project = _sanitise_project(project)
         mm = get_memory_manager()
         memory = mm.get_project_memory(project)
-        _apply_persona_market_escalation(project, memory, mm)
         decisions = memory.get("decisions", [])
 
         pending_reviews = []
@@ -2591,6 +2661,24 @@ async def get_pending_reviews(project: str):
     except Exception as e:
         logger.error("get_pending_reviews failed: %s", e)
         raise HTTPException(500, f"Failed to get pending reviews: {e}")
+
+
+@app.post("/api/memory/{project}/reviews/escalate-persona-market")
+async def escalate_persona_market_reviews(project: str):
+    """Run persona/market compounding-risk escalation for this project now.
+
+    Explicit, audited mutation -- the endpoint get_pending_reviews used to
+    call implicitly on every GET. Also run periodically by the scheduler.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        escalated = _apply_persona_market_escalation(project, memory, mm)
+        return {"project": project, "escalated": escalated}
+    except Exception as e:
+        logger.error("escalate_persona_market_reviews failed: %s", e)
+        raise HTTPException(500, f"Failed to escalate persona/market reviews: {e}")
 
 
 def _content_flagged_detail(d: dict[str, Any]) -> str:
@@ -3554,6 +3642,10 @@ async def rollback_decision(project: str, decision_id: str, version: int):
         target_decision["decision"] = target_version["decision"]
         target_decision["context"] = target_version["context"]
         target_decision["safety_metadata"] = target_version.get("safety_metadata", {})
+        _resync_decision_hash(
+            memory, target_decision,
+            changed_fields=["decision", "context", "safety_metadata"],
+        )
 
         # Save
         mm.save_project_memory(project, memory)
@@ -4463,6 +4555,74 @@ async def get_corrigibility_tracker(project: str):
 from core.audit import append_audit_event as _append_audit_event
 from core.audit import compute_hash as _compute_decision_hash
 from core.audit import verify_audit_log_chain as _verify_audit_log_chain
+from core.audit import decision_content_hash as _decision_content_hash
+from core.audit import resync_decision_hash as _resync_decision_hash
+
+
+def _latest_audit_hash_by_decision(audit_log: list[dict]) -> dict[str, str]:
+    """Map decision_id -> the content hash recorded at its last legitimate
+    write, per the audit trail. Used both to detect divergence
+    (verify_integrity) and to backfill missing hashes from a trusted
+    source rather than from a decision's own (possibly tampered) state.
+    """
+    latest: dict[str, str] = {}
+    for e in audit_log:
+        did = e.get("decision_id")
+        if not did:
+            continue
+        if e.get("event_type") == "decision_created" and "decision_hash" in e:
+            latest[did] = e["decision_hash"]
+        elif e.get("event_type") == "decision_updated" and "new_hash" in e:
+            latest[did] = e["new_hash"]
+    return latest
+
+
+@app.post("/api/memory/{project}/security/backfill-hashes")
+async def backfill_decision_hashes(project: str):
+    """Reconstruct decision_hash for decisions that don't have one, using
+    ONLY the audit trail's own record of their last legitimate write --
+    never from a decision's current, possibly-tampered content, since
+    that's exactly what's in question (P2, gap B).
+
+    Decisions whose relevant audit event predates this hash field (or have
+    no matching audit event at all) can't be reconstructed and stay
+    unverified -- reported honestly rather than guessed from current state.
+    """
+    try:
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        memory = mm.get_project_memory(project)
+        latest_audit_hash = _latest_audit_hash_by_decision(memory.get("audit_log", []))
+
+        backfilled = []
+        still_unverified = []
+        for d in memory.get("decisions", []):
+            if d.get("decision_hash"):
+                continue
+            audit_hash = latest_audit_hash.get(d.get("id"))
+            if audit_hash:
+                d["decision_hash"] = audit_hash
+                backfilled.append(d.get("id"))
+            else:
+                still_unverified.append(d.get("id"))
+
+        if backfilled:
+            _append_audit_event(
+                memory, "decision_hashes_backfilled",
+                decision_ids=backfilled, count=len(backfilled),
+            )
+            mm.save_project_memory(project, memory)
+
+        return {
+            "project": project,
+            "backfilled": backfilled,
+            "backfilled_count": len(backfilled),
+            "still_unverified": still_unverified,
+            "still_unverified_count": len(still_unverified),
+        }
+    except Exception as e:
+        logger.error("hash backfill failed: %s", e)
+        raise HTTPException(500, f"Hash backfill failed: {e}")
 
 
 @app.get("/api/memory/{project}/provenance/chain")
@@ -4524,6 +4684,10 @@ async def verify_integrity(project: str):
       not a computed-but-unused hash like the old implementation had)
     - Decision structure validity
     - Timestamp ordering
+    - Decision content hash (P2, gap B): recomputed content vs the hash
+      stored at write time, and that stored hash vs the audit trail's
+      record of the last legitimate write -- see decision_content_edited
+      and decisions_vs_audit_divergence below.
     """
     try:
         project = _sanitise_project(project)
@@ -4534,6 +4698,12 @@ async def verify_integrity(project: str):
 
         issues = _verify_audit_log_chain(audit_log)
         previous_timestamp = None
+
+        # Latest known-good content hash per decision, from the audit trail
+        # itself -- independent of whatever's currently stored on the
+        # decision, so an attacker who edits both the content *and* the
+        # decision_hash field to match still diverges from this.
+        latest_audit_hash = _latest_audit_hash_by_decision(audit_log)
 
         for i, d in enumerate(decisions):
             # Verify structure
@@ -4555,6 +4725,36 @@ async def verify_integrity(project: str):
                         "message": f"Timestamp {current_ts} is before {previous_timestamp}",
                     })
             previous_timestamp = current_ts
+
+            # Verify content hash
+            did = d.get("id")
+            stored_hash = d.get("decision_hash")
+            if not stored_hash:
+                issues.append({
+                    "type": "unverified_hash",
+                    "index": i,
+                    "decision_id": did,
+                    "severity": "medium",
+                    "message": "No decision_hash stored -- created before tamper-evidence shipped, or written outside the normal API path. Run the hash-backfill utility to reconstruct from audit history where possible.",
+                })
+            else:
+                if _decision_content_hash(d) != stored_hash:
+                    issues.append({
+                        "type": "decision_content_edited",
+                        "index": i,
+                        "decision_id": did,
+                        "severity": "high",
+                        "message": "This decision's content doesn't match its stored hash -- edited directly, bypassing the API.",
+                    })
+                audit_hash = latest_audit_hash.get(did)
+                if audit_hash is not None and audit_hash != stored_hash:
+                    issues.append({
+                        "type": "decisions_vs_audit_divergence",
+                        "index": i,
+                        "decision_id": did,
+                        "severity": "high",
+                        "message": "This decision's stored hash doesn't match the audit trail's record of its last legitimate write.",
+                    })
 
         integrity_score = 1.0 - (len(issues) / max(len(decisions), 1))
 
@@ -4622,6 +4822,37 @@ async def detect_tampering(project: str):
                 "severity": "high",
                 "count": empty_count,
                 "message": f"{empty_count} decision(s) have empty decision text, which the API's validation would normally reject.",
+            })
+
+        # Check for content-hash mismatches (P2, gap B) — the strongest
+        # signal here: unlike ID format or empty-text checks, this catches
+        # a decision whose *content* was silently edited directly in the
+        # memory JSON while everything else about it stays well-formed.
+        edited = [
+            d.get("id") for d in decisions
+            if d.get("decision_hash") and _decision_content_hash(d) != d["decision_hash"]
+        ]
+        if edited:
+            tamper_flags.append({
+                "type": "content_edited",
+                "severity": "high",
+                "count": len(edited),
+                "decision_ids": edited,
+                "message": f"{len(edited)} decision(s) have content that doesn't match their stored hash — edited directly, bypassing the API.",
+            })
+
+        # Decisions with no stored hash can't be checked at all — not
+        # itself evidence of tampering (most likely just predates P2, or
+        # was written by a path that hasn't been backfilled yet), so this
+        # stays low severity and never alone pushes status to "compromised".
+        unverified = [d.get("id") for d in decisions if not d.get("decision_hash")]
+        if unverified:
+            tamper_flags.append({
+                "type": "unverified_hash",
+                "severity": "low",
+                "count": len(unverified),
+                "decision_ids": unverified,
+                "message": f"{len(unverified)} decision(s) have no stored content hash and can't be verified. Run the hash-backfill utility to reconstruct from audit history where possible.",
             })
 
         # Check for timestamp anomalies — lower confidence than the checks

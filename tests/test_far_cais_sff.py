@@ -233,12 +233,18 @@ class TestTamperDetection:
         assert data["status"] == "clean"
         assert data["flags"] == []
 
-    def test_timestamp_only_anomaly_is_alert_not_compromised(self, client, project):
-        """A single ordering irregularity (the only kind of flag a normal
-        multi-agent/backdated-import workflow can trigger) must read as a
-        low-confidence alert, not an assertion that the project was
-        compromised — that word is reserved for structural violations the
-        API's own validation would never allow through."""
+    def test_timestamp_swap_on_hashed_decisions_is_compromised(self, client, project):
+        """P2 (gap B): timestamp is one of the fields covered by
+        decision_hash, so directly rewriting it in the memory JSON after
+        creation -- exactly what this test does -- now also trips
+        content_edited (high), not just the old low-confidence
+        timestamp_anomaly heuristic. That's the point of P2: a signal that
+        used to be ambiguous (could be clock skew, backdated import, or
+        real tampering) is now conclusive once a hash is involved, because
+        a legitimate backdated-import workflow sets its timestamp *through
+        the API* at creation time -- the hash would cover that -- rather
+        than rewriting an already-hashed decision's timestamp after the
+        fact the way this test does."""
         client.post(f"/api/memory/{project}/decisions", json={
             "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
         })
@@ -254,10 +260,40 @@ class TestTamperDetection:
         response = client.get(f"/api/memory/{project}/tamper-detection")
         assert response.status_code == 200
         data = response.json()
+        assert data["status"] == "compromised"
+        flag_types = {f["type"] for f in data["flags"]}
+        assert "timestamp_anomaly" in flag_types
+        assert "content_edited" in flag_types
+
+    def test_timestamp_anomaly_alone_stays_low_confidence(self, client, project):
+        """Same ordering irregularity as above, but on decisions with no
+        stored hash (e.g. legacy data predating P2) -- content_edited can't
+        fire without a hash to compare against, so this stays exactly the
+        low-confidence signal it always was."""
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "First", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Second", "context": "", "safety_metadata": {"safety_category": "general"},
+        })
+
+        memory = _load_memory(project)
+        decisions = memory["decisions"]
+        for d in decisions:
+            d.pop("decision_hash", None)
+        decisions[0]["timestamp"], decisions[1]["timestamp"] = decisions[1]["timestamp"], decisions[0]["timestamp"]
+        _save_memory(project, memory)
+
+        response = client.get(f"/api/memory/{project}/tamper-detection")
+        assert response.status_code == 200
+        data = response.json()
         assert data["status"] == "alert"
-        assert data["flags"][0]["type"] == "timestamp_anomaly"
-        assert data["flags"][0]["severity"] == "low"
-        assert "not conclusive" in data["flags"][0]["message"].lower()
+        flag_types = {f["type"] for f in data["flags"]}
+        assert "timestamp_anomaly" in flag_types
+        assert "content_edited" not in flag_types
+        anomaly = next(f for f in data["flags"] if f["type"] == "timestamp_anomaly")
+        assert anomaly["severity"] == "low"
+        assert "not conclusive" in anomaly["message"].lower()
 
     def test_duplicate_ids_is_compromised_with_high_severity(self, client, project):
         client.post(f"/api/memory/{project}/decisions", json={
@@ -382,12 +418,16 @@ class TestAuditLogTamperEvidence:
 
         memory = _load_memory(project)
         audit_log = memory["audit_log"]
+        # An approval flips safety_metadata.requires_review, which is a
+        # hash-covered field (P2) -- resync_decision_hash records its own
+        # decision_updated event ahead of review_submitted.
         assert [e["event_type"] for e in audit_log] == [
-            "decision_created", "review_submitted", "version_created",
+            "decision_created", "decision_updated", "review_submitted", "version_created",
         ]
         # Each entry's previous_hash must chain to the prior entry's actual hash.
         assert audit_log[1]["previous_hash"] == audit_log[0]["hash"]
         assert audit_log[2]["previous_hash"] == audit_log[1]["hash"]
+        assert audit_log[3]["previous_hash"] == audit_log[2]["hash"]
 
         integrity = client.get(f"/api/memory/{project}/integrity/verify").json()
         assert integrity["valid"] is True

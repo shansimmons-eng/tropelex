@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from core.agent_identity import normalize_agent_name
+from core.audit import append_audit_event, decision_content_hash
 from core.slack import (
     CapturedDecision,
     ExtractionResult,
@@ -127,7 +128,19 @@ def capture_decision(
     if flags:
         decision_entry["content_flags"] = flags
 
+    # P2 (gap B): this path bypasses add_decision entirely, so without its
+    # own hash + audit event, every decision captured here (Emacs, Slack)
+    # would be permanently unverifiable -- excluded from tamper-evidence
+    # rather than just untagged.
+    decision_entry["decision_hash"] = decision_content_hash(decision_entry)
     memory.setdefault("decisions", []).append(decision_entry)
+    append_audit_event(
+        memory, "decision_created",
+        decision_id=decision_entry["id"],
+        decision=decision_entry["decision"],
+        risk_level="low",
+        decision_hash=decision_entry["decision_hash"],
+    )
 
     return Ok(value=decision)
 

@@ -20,6 +20,7 @@ logger = logging.getLogger("tropelex.scheduler")
 FEED_TICK_INTERVAL = 3600        # 1 hour
 GHOST_SCAN_INTERVAL = 21600      # 6 hours
 STALE_CHECK_INTERVAL = 43200     # 12 hours
+PERSONA_MARKET_ESCALATION_INTERVAL = 21600  # 6 hours
 
 
 class BackgroundScheduler:
@@ -54,6 +55,7 @@ class BackgroundScheduler:
         feed_tick = 0
         ghost_scan = 0
         stale_check = 0
+        persona_market_escalation = 0
 
         while self._running:
             try:
@@ -62,6 +64,7 @@ class BackgroundScheduler:
                 feed_tick += 60
                 ghost_scan += 60
                 stale_check += 60
+                persona_market_escalation += 60
 
                 if feed_tick >= FEED_TICK_INTERVAL:
                     feed_tick = 0
@@ -74,6 +77,10 @@ class BackgroundScheduler:
                 if stale_check >= STALE_CHECK_INTERVAL:
                     stale_check = 0
                     await self._check_stale_decisions()
+
+                if persona_market_escalation >= PERSONA_MARKET_ESCALATION_INTERVAL:
+                    persona_market_escalation = 0
+                    await self._apply_persona_market_escalations()
 
             except asyncio.CancelledError:
                 break
@@ -244,3 +251,28 @@ class BackgroundScheduler:
                     logger.warning("Stale check failed for %s: %s", project, exc)
         except Exception as exc:
             logger.error("Stale check failed: %s", exc, exc_info=True)
+
+    async def _apply_persona_market_escalations(self):
+        """Run persona/market compounding-risk escalation for every project.
+
+        Moves the mutation that used to run implicitly on every
+        GET /reviews/pending onto this periodic task instead (gap D, P0).
+        """
+        try:
+            from core.memory.manager import MemoryManager
+            from core.tropebook.web.server import _apply_persona_market_escalation
+
+            mm = MemoryManager(str(self.base_dir))
+            for project in mm.list_projects():
+                try:
+                    memory = mm.get_project_memory(project)
+                    escalated = _apply_persona_market_escalation(project, memory, mm)
+                    if escalated:
+                        logger.info(
+                            "Persona/market escalation %s: %d decision(s) escalated",
+                            project, escalated,
+                        )
+                except Exception as exc:
+                    logger.warning("Persona/market escalation failed for %s: %s", project, exc)
+        except Exception as exc:
+            logger.error("Persona/market escalation failed: %s", exc, exc_info=True)

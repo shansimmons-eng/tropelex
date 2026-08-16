@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from dataclasses import asdict
 
+from core.audit import resync_decision_hash
 from core.docmine.combined import combine_doc_and_ghost_findings
 from core.docmine.detector import mine_markdown_files
 from core.docmine.extractor import extract_claims
@@ -71,6 +72,7 @@ def _escalate_to_review(memory: dict[str, Any], decision_ids: set[str]) -> int:
         safety["requires_review"] = True
         if safety.get("risk_level", "low") == "low":
             safety["risk_level"] = "medium"
+        resync_decision_hash(memory, d, changed_fields=["safety_metadata.requires_review"])
         escalated += 1
     return escalated
 

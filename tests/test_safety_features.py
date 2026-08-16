@@ -540,6 +540,10 @@ class TestPersonaMarketSafetyCrossConnect:
             })
             assert resolved.status_code == 200
 
+        escalate_resp = client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
+        assert escalate_resp.status_code == 200
+        assert escalate_resp.json()["escalated"] == 1
+
         resp = client.get(f"/api/memory/{project}/reviews/pending")
         assert resp.status_code == 200
         data = resp.json()
@@ -550,9 +554,11 @@ class TestPersonaMarketSafetyCrossConnect:
         """Regression test: approving an auto-escalated decision must make it
         leave the pending queue for good. Previously, since the persona/market
         risk signal that triggered escalation doesn't go away just because a
-        human approved the decision, the very next /reviews/pending call
-        re-flagged it (requires_review=False -> True again), so it never
-        actually left the queue no matter how many times it was approved."""
+        human approved the decision, the very next escalation pass re-flagged
+        it (requires_review=False -> True again), so it never actually left
+        the queue no matter how many times it was approved. Escalation now
+        runs via an explicit POST rather than implicitly on every GET (P0,
+        gap D), but the same regression applies to that endpoint."""
         monkeypatch.setattr("core.agent_skills.AgentSkillGraph", _FakeSkillGraph)
 
         created = client.post(f"/api/memory/{project}/decisions", json={
@@ -572,6 +578,7 @@ class TestPersonaMarketSafetyCrossConnect:
             })
 
         # Confirm it's actually in the queue before approving.
+        client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
         assert client.get(f"/api/memory/{project}/reviews/pending").json()["total_pending"] == 1
 
         approved = client.post(
@@ -580,9 +587,10 @@ class TestPersonaMarketSafetyCrossConnect:
         )
         assert approved.status_code == 200
 
-        # Call /reviews/pending twice — the bug only reproduced on the call
-        # *after* the approval, since that's what re-runs the escalation check.
+        # Re-run the escalation pass twice — the bug only reproduced on the
+        # pass *after* the approval, since that's what re-evaluates the signal.
         for _ in range(2):
+            client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
             resp = client.get(f"/api/memory/{project}/reviews/pending")
             assert resp.json()["total_pending"] == 0, "approved decision re-entered the pending queue"
 
@@ -597,6 +605,70 @@ class TestPersonaMarketSafetyCrossConnect:
         })
         resp = client.get(f"/api/memory/{project}/reviews/pending")
         assert resp.json()["total_pending"] == 0
+
+    def test_get_pending_reviews_does_not_mutate(self, client, project, monkeypatch):
+        """P0 (gap D): GET /reviews/pending must never trigger escalation as
+        a side effect. A qualifying decision stays un-escalated across
+        repeated GETs until the explicit POST endpoint is called."""
+        monkeypatch.setattr("core.agent_skills.AgentSkillGraph", _FakeSkillGraph)
+
+        created = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Ship the new login flow",
+            "context": "",
+            "safety_metadata": {"affected_systems": ["auth"], "safety_category": "general"},
+        }).json()
+        decision_id = created["decision"]["id"]
+
+        for outcome in ["incorrect", "incorrect", "incorrect", "correct"]:
+            placed = client.post(f"/api/memory/{project}/market/bet", json={
+                "decision_id": decision_id, "agent_name": project,
+                "confidence": 0.8, "category": "auth",
+            }).json()
+            client.post(f"/api/memory/{project}/market/resolve", json={
+                "bet_id": placed["bet"]["id"], "outcome": outcome,
+            })
+
+        for _ in range(3):
+            resp = client.get(f"/api/memory/{project}/reviews/pending")
+            assert resp.json()["total_pending"] == 0
+
+        escalate_resp = client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
+        assert escalate_resp.json()["escalated"] == 1
+        assert client.get(f"/api/memory/{project}/reviews/pending").json()["total_pending"] == 1
+
+    def test_escalation_writes_audit_event(self, client, project, monkeypatch):
+        """The escalation pass must leave an auditable trail listing exactly
+        which decisions it touched, not just mutate safety_metadata in place."""
+        monkeypatch.setattr("core.agent_skills.AgentSkillGraph", _FakeSkillGraph)
+
+        created = client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Ship the new login flow",
+            "context": "",
+            "safety_metadata": {"affected_systems": ["auth"], "safety_category": "general"},
+        }).json()
+        decision_id = created["decision"]["id"]
+
+        for outcome in ["incorrect", "incorrect", "incorrect", "correct"]:
+            placed = client.post(f"/api/memory/{project}/market/bet", json={
+                "decision_id": decision_id, "agent_name": project,
+                "confidence": 0.8, "category": "auth",
+            }).json()
+            client.post(f"/api/memory/{project}/market/resolve", json={
+                "bet_id": placed["bet"]["id"], "outcome": outcome,
+            })
+
+        client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
+
+        audit = client.get(f"/api/memory/{project}/security/audit-log").json()
+        events = [e for e in audit["events"] if e["event_type"] == "persona_market_escalated"]
+        assert len(events) == 1
+        assert events[0]["decision_ids"] == [decision_id]
+        assert events[0]["count"] == 1
+
+    def test_escalate_persona_market_no_op_when_nothing_qualifies(self, client, project):
+        resp = client.post(f"/api/memory/{project}/reviews/escalate-persona-market")
+        assert resp.status_code == 200
+        assert resp.json() == {"project": project, "escalated": 0}
 
 
 class TestSafetyTrendEndpoint:

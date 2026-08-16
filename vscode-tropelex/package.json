@@ -50,6 +50,11 @@
           "type": "string",
           "default": "",
           "description": "Tropelex project name to scan against. Defaults to the first workspace folder's name if left empty."
+        },
+        "tropelex.instanceSecret": {
+          "type": "string",
+          "default": "",
+          "description": "TROPEL_EX_SECRET value from the Tropelex server's .env file (or its startup log, on first run). Required for scan requests once the server enforces instance auth; unlike the MCP server and OpenCode plugin, this extension doesn't share a process tree with the Tropelex install, so it can't read the .env file directly."
         }
       }
     },

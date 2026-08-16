@@ -22,7 +22,21 @@ from urllib.parse import quote
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+# This process runs in its own venv/subprocess, separate from the Tropelex
+# server it talks to over HTTP -- it doesn't inherit the server's shell
+# environment, so the instance secret (P1) has to be read the same way
+# core/tropebook/web/server.py itself reads it: from the repo-root .env.
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and "=" in _line and not _line.startswith("#"):
+                _key, _val = _line.split("=", 1)
+                os.environ.setdefault(_key.strip(), _val.strip().strip('"').strip("'"))
+
 TROPELEX_URL = os.environ.get("TROPELEX_URL", "http://localhost:8766").rstrip("/")
+TROPEL_EX_SECRET = os.environ.get("TROPEL_EX_SECRET", "")
 
 mcp = FastMCP("tropelex")
 
@@ -108,11 +122,12 @@ async def _request(
     output_bytes = 0
     try:
         url = f"{TROPELEX_URL}{path}"
+        headers = {"X-Tropelex-Client": "mcp"}
+        if TROPEL_EX_SECRET:
+            headers["Authorization"] = f"Bearer {TROPEL_EX_SECRET}"
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.request(
-                    method, url, json=json, headers={"X-Tropelex-Client": "mcp"}
-                )
+                resp = await client.request(method, url, json=json, headers=headers)
         except httpx.ConnectError as exc:
             error = True
             raise RuntimeError(
