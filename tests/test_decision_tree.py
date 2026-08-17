@@ -90,6 +90,51 @@ class TestDecisionTree:
         rel_types = [e["relationship"] for e in node2["edges"]]
         assert any(r in rel_types for r in ["supersedes", "related_to"])
 
+    def test_real_id_wins_over_hash(self):
+        """Regression: a decision carrying both a real id (set by
+        MemoryManager's backfill) and a git hash (from import) must use
+        the id as its node key -- every other decision-lookup endpoint
+        (interpretability, versions, safety review) matches by the real
+        id, not the hash. Preferring hash here made /decision-tree/timeline
+        and /decision-tree/{id} return a value none of those other
+        endpoints recognized, 404ing "Inspect" for every git-imported
+        decision that had already been backfilled with a real id."""
+        tree = DecisionTree()
+        did = tree.add_decision({
+            "decision": "Fixed: normalize agent identity in Slack capture too",
+            "timestamp": "2026-08-04T00:00:00Z",
+            "hash": "d1c3d671",
+            "id": "8ac9ee9258c3",
+            "source": "git",
+        })
+        assert did == "8ac9ee9258c3"
+        assert tree.get_decision("8ac9ee9258c3") is not None
+        assert tree.get_decision("d1c3d671") is None
+
+    def test_revert_matching_still_uses_hash_when_id_differs(self):
+        """The revert-detection heuristic matches against the git hash
+        prefix specifically, not the node id -- must keep working once id
+        and hash diverge (real id present alongside hash)."""
+        tree = DecisionTree()
+        tree.add_decision({
+            "decision": "Added feature: dark mode",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "hash": "abc1234",
+            "id": "111111111111",
+        })
+        did2 = tree.add_decision({
+            "decision": "Revert abc1234",
+            "timestamp": "2026-01-02T00:00:00Z",
+            "hash": "def5678",
+            "id": "222222222222",
+            "is_revert": True,
+            "reverts": "abc1234",
+        })
+        node2 = tree.get_decision(did2)
+        reverts_edges = [e for e in node2["edges"] if e["relationship"] == "reverts"]
+        assert len(reverts_edges) == 1
+        assert reverts_edges[0]["target"] == "111111111111"
+
     def test_timeline_sorted(self):
         tree = DecisionTree()
         tree.add_decision({
@@ -140,3 +185,49 @@ class TestDecisionTree:
         d1 = {"decision": "test", "timestamp": "2026-01-01"}
         d2 = {"decision": "test", "timestamp": "2026-01-01"}
         assert _gen_id(d1) == _gen_id(d2)
+
+
+class TestGitImportedDecisionsAreInspectableEndToEnd:
+    """The dashboard's "Inspect" action on a timeline row hits three
+    endpoints with whatever id /decision-tree/timeline returned:
+    /decision-tree/{id}, /interpretability/{id}, /decisions/{id}/versions.
+    The latter two match by the decision's real, persisted id -- if the
+    timeline hands back the git hash instead (id != hash), those two 404
+    while the first one (self-consistently using the same key internally)
+    doesn't, which is exactly what was reported: a whole span of
+    git-imported decisions 404ing "Decision not found" under Inspect."""
+
+    def test_timeline_and_lookup_endpoints_agree_on_id(self):
+        import uuid
+        from fastapi.testclient import TestClient
+
+        from core.memory.manager import MemoryManager
+        from core.tropebook.web.server import app
+
+        client = TestClient(app)
+        project = f"test_decision_tree_{uuid.uuid4().hex[:8]}"
+        client.post("/api/memory", json={"project_name": project})
+
+        mm = MemoryManager()
+        memory = mm.get_project_memory(project)
+        memory.setdefault("decisions", []).append({
+            "timestamp": "2026-08-04T00:00:00+00:00",
+            "decision": "Fixed: normalize agent identity in Slack capture too",
+            "context": "From git commit d1c3d671 on 2026-08-04",
+            "hash": "d1c3d671",
+            "source": "git",
+            "id": "8ac9ee9258c3",  # already backfilled, like real data
+        })
+        mm.save_project_memory(project, memory)
+
+        timeline = client.get(f"/api/memory/{project}/decision-tree/timeline").json()
+        assert timeline["timeline"][0]["id"] == "8ac9ee9258c3"
+
+        returned_id = timeline["timeline"][0]["id"]
+        detail = client.get(f"/api/memory/{project}/decision-tree/{returned_id}")
+        interp = client.get(f"/api/memory/{project}/interpretability/{returned_id}")
+        versions = client.get(f"/api/memory/{project}/decisions/{returned_id}/versions")
+
+        assert detail.status_code == 200
+        assert interp.status_code == 200
+        assert versions.status_code == 200

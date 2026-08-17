@@ -128,7 +128,8 @@ class DecisionTree:
     Manages a graph of decisions with relationships.
 
     Each decision node has:
-    - id: unique identifier (hash or generated)
+    - id: the decision's real, persisted id (git hash or generated only as
+      a fallback when no id is present yet)
     - decision: the decision text
     - context: why it was made
     - rationale: explicit reasoning (optional)
@@ -154,7 +155,15 @@ class DecisionTree:
         Add a decision and auto-detect relationships.
         Returns the decision ID.
         """
-        did = decision.get("hash") or decision.get("id") or _gen_id(decision)
+        # id must win over hash: every other decision-lookup endpoint
+        # (interpretability, versions, safety review, tag, approve...)
+        # matches by the decision's real, persisted id. MemoryManager
+        # backfills that onto every decision on load, so it's always
+        # present by the time this runs -- preferring hash here made the
+        # timeline/detail views return a value none of those endpoints
+        # recognized for git-imported decisions (id != hash), 404ing on
+        # Inspect for every one of them.
+        did = decision.get("id") or decision.get("hash") or _gen_id(decision)
         decision["id"] = did
 
         # Auto-detect relationships before adding
@@ -164,6 +173,7 @@ class DecisionTree:
         # Store the node
         self.nodes[did] = {
             "id": did,
+            "hash": decision.get("hash", ""),
             "decision": decision.get("decision", ""),
             "context": decision.get("context", ""),
             "rationale": decision.get("rationale", ""),
@@ -214,9 +224,10 @@ class DecisionTree:
         if new_decision.get("is_revert"):
             reverts_target = new_decision.get("reverts")
             if reverts_target:
-                # Find by partial hash match
+                # Find by partial hash match -- explicitly against the git
+                # hash, not node id now that id no longer *is* the hash.
                 for d in existing:
-                    if d.get("id", "").startswith(reverts_target[:7]):
+                    if (d.get("hash") or d.get("id", "")).startswith(reverts_target[:7]):
                         rels.setdefault("reverts", []).append(d["id"])
                         break
 
