@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from core.ghost.detector import GhostReport, detect_ghost_decisions
+from core.ghost.diff_source import recent_diffs
 from core.decision_tree import DecisionTree
 from core.memory.manager import MemoryManager
 
@@ -48,9 +49,10 @@ async def project_ghost_decisions(project: str) -> dict[str, Any]:
     decisions = memory.get("decisions", [])
     tree = DecisionTree.from_decisions(decisions) if decisions else DecisionTree()
 
-    # For now, use an empty diff_data list — the endpoint is ready
-    # for when git diff integration is wired in
-    diff_data: list[dict[str, str]] = []
+    # P4: real diffs from the project's own repo (memory["repo_path"]).
+    # Empty when nothing's synced or it's not a git repo -- same graceful
+    # no-op as before, just for a real reason now instead of always.
+    diff_data = recent_diffs(memory)
 
     report: GhostReport = detect_ghost_decisions(memory, diff_data, tree)
 

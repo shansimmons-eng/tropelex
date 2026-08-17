@@ -10,11 +10,12 @@ All business logic is pure; I/O is isolated in load/save helpers.
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.injection_sentinel import scan_content
 from core.result import Err, Ok, Result  # noqa: F401 - re-exported for this module's consumers
 
 logger = logging.getLogger("tropelex.prefetch.genealogy")
@@ -49,6 +50,9 @@ class BundleRecord:
     precision: float
     recall_proxy: float
     timestamp: str
+    # P7 (gap E): task is agent-supplied free text, persisted verbatim
+    # into genealogy and never previously screened.
+    content_flags: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -174,6 +178,7 @@ def record_bundle_outcome(
         precision=round(precision, 4),
         recall_proxy=round(recall, 4),
         timestamp=_now_iso(),
+        content_flags=scan_content(task),
     )
 
     try:
@@ -190,7 +195,7 @@ def record_bundle_outcome(
 
 def _bundle_to_dict(record: BundleRecord) -> dict[str, Any]:
     """Convert a BundleRecord to a plain dict for JSON serialisation."""
-    return {
+    d = {
         "bundle_id": record.bundle_id,
         "task": record.task,
         "included_ids": record.included_ids,
@@ -200,6 +205,9 @@ def _bundle_to_dict(record: BundleRecord) -> dict[str, Any]:
         "recall_proxy": record.recall_proxy,
         "timestamp": record.timestamp,
     }
+    if record.content_flags:
+        d["content_flags"] = record.content_flags
+    return d
 
 
 def _improvement_trend(bundles: list[dict]) -> float:

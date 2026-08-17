@@ -27,6 +27,7 @@ from core.friction.miner import (
 )
 from core.agent_identity import normalize_agent_name
 from core.audit import append_audit_event
+from core.injection_sentinel import scan_content
 from core.memory.manager import MemoryManager
 
 logger = logging.getLogger("tropelex.friction")
@@ -99,7 +100,7 @@ def _zone_to_persisted_dict(
     _zone_to_dict (the scan response's lightweight summary), this keeps the
     actual signal text, which friction_history's numeric aggregates never
     stored at all."""
-    return {
+    record = {
         "id": zone_id,
         "start_line": zone.start_line,
         "end_line": zone.end_line,
@@ -111,6 +112,15 @@ def _zone_to_persisted_dict(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "review_status": "pending",
     }
+    # P7 (gap E): zone text comes straight from a submitted session
+    # transcript -- external, agent-supplied text, same category as the
+    # decision/context fields the sentinel already covers.
+    flags = scan_content(zone.description)
+    for sig in zone.signals:
+        flags += scan_content(sig.text_snippet)
+    if flags:
+        record["content_flags"] = flags
+    return record
 
 
 def _bound_friction_zones(zones: list[dict[str, Any]], max_reviewed: int = 200) -> list[dict[str, Any]]:

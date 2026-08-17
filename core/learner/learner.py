@@ -127,15 +127,21 @@ class PatternLearner:
         summary = session_data.get("summary", "")
         insights = session_data.get("key_insights", [])
         if summary:
-            project_memory.setdefault("session_history", []).append(
-                {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "type": "session_summary",
-                    "summary": summary,
-                    "insights": insights,
-                    "day": day,
-                }
-            )
+            entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "type": "session_summary",
+                "summary": summary,
+                "insights": insights,
+                "day": day,
+            }
+            # P7 (gap E): session summaries are agent-supplied free text
+            # that Search/RAG/Explainable Memory all read back as trusted
+            # context -- exactly the sentinel's target, previously unscreened.
+            from core.injection_sentinel import scan_content
+            flags = scan_content(summary)
+            if flags:
+                entry["content_flags"] = flags
+            project_memory.setdefault("session_history", []).append(entry)
 
         # Update tech stack from commits
         if "tech_stack" in session_data:

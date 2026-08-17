@@ -197,9 +197,16 @@ def get_commit_diffstat(repo_path: str, commit_hash: str) -> str:
 
 
 def get_commit_diff(repo_path: str, commit_hash: str, max_lines: int = 200) -> str:
-    """Get the actual diff for a commit, truncated to max_lines."""
+    """Get the actual diff for a commit, truncated to max_lines.
+
+    --root makes this work for a repo's very first commit too: without it,
+    `git diff-tree` has nothing to diff a parentless root commit against
+    and silently returns empty. Identical output for every other commit
+    (verified: --root only changes how a commit with zero parents is
+    treated).
+    """
     output = _run(
-        ["git", "diff-tree", "-p", "--no-commit-id", commit_hash],
+        ["git", "diff-tree", "-p", "--no-commit-id", "--root", commit_hash],
         repo_path,
         timeout=15,
     )

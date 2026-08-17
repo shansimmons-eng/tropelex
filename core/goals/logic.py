@@ -20,6 +20,7 @@ from core.goals import (
     Ok,
     Result,
 )
+from core.injection_sentinel import scan_content
 from core.triggers.tag_gate import SAFETY_CATEGORIES
 
 _NONSAFETY_PREFIX = "nonsafety:"
@@ -84,6 +85,13 @@ def create_goal(goals: list[dict], goal: dict) -> Result[list[dict]]:
         "created_at": now,
         "updated_at": now,
     }
+    # P7 (gap E): flag, don't block -- same pattern as add_decision. Goal
+    # text is agent-writable and later read back as trusted context
+    # (get_context_bundle), so it's exactly the kind of field the
+    # sentinel exists for but never covered.
+    flags = scan_content(enriched["text"])
+    if flags:
+        enriched["content_flags"] = flags
     return Ok(value=[*goals, enriched])
 
 
@@ -105,6 +113,13 @@ def update_goal(goal: dict, updates: dict) -> Result[dict]:
         if not isinstance(text, str) or not text.strip():
             return Err(error="Goal text must be a non-empty string", code="VALIDATION_ERROR")
         result["text"] = text.strip()
+        # Recompute rather than accumulate -- content_flags should reflect
+        # the *current* text, same reasoning as P2's hash resync.
+        flags = scan_content(result["text"])
+        if flags:
+            result["content_flags"] = flags
+        else:
+            result.pop("content_flags", None)
     if "priority" in updates:
         priority = updates["priority"]
         if priority not in GOAL_PRIORITIES:

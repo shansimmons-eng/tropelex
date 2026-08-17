@@ -190,6 +190,88 @@ class TestCheckStaleDecisionsMultiProject:
         assert {r["decision_id"] for r in m2.get("decay_reviews", [])} == {"p2_a", "p2_b"}
 
 
+class TestScanGhostDecisions:
+    """P4: _scan_ghost_decisions previously called
+    detect_ghost_decisions(decisions, []) -- the *list* where the function
+    expects the memory *dict*, and diff_data was always [] regardless.
+    Both together meant this scan has been silently AttributeError-ing
+    (caught by the outer try/except, logged as a warning) since it was
+    added; these tests exercise the corrected version end-to-end with a
+    mocked diff source standing in for real git subprocess calls."""
+
+    NAMING_DECISION = "Use snake_case naming convention for all Python module functions"
+    MATCHING_DIFF = (
+        "--- a/src/utils.py\n+++ b/src/utils.py\n"
+        "+# Apply naming convention to module functions\n"
+        "+def getUserSettings(self):\n"
+    )
+
+    def _mock_diffs(self, monkeypatch, entries):
+        monkeypatch.setattr("core.ghost.diff_source.recent_diffs", lambda memory, since_ts=None, max_diffs=50: entries)
+
+    async def test_no_repo_no_diffs_is_a_clean_skip(self, scheduler, mm, monkeypatch):
+        self._mock_diffs(monkeypatch, [])
+        _seed(mm, "proj1", [{"id": "a", "decision": self.NAMING_DECISION, "timestamp": _NOW}])
+
+        await scheduler._scan_ghost_decisions()
+
+        memory = mm.get_project_memory("proj1")
+        assert "ghost_scan" not in memory
+        assert memory.get("audit_log", []) == []
+
+    async def test_drift_detected_writes_audit_event_and_marker(self, scheduler, mm, monkeypatch):
+        self._mock_diffs(monkeypatch, [{"file": "abc1234", "diff_text": self.MATCHING_DIFF}])
+        _seed(mm, "proj1", [{"id": "a", "decision": self.NAMING_DECISION, "timestamp": _NOW}])
+
+        await scheduler._scan_ghost_decisions()
+
+        memory = mm.get_project_memory("proj1")
+        assert memory["ghost_scan"]["last_diff_count"] == 1
+        assert memory["ghost_scan"]["last_scan_ts"]
+        events = [e for e in memory.get("audit_log", []) if e.get("event_type") == "ghost_scan_detected"]
+        assert len(events) == 1
+        assert events[0]["count"] >= 1
+
+    async def test_clean_scan_with_diffs_updates_marker_without_audit_event(self, scheduler, mm, monkeypatch):
+        unrelated_diff = "--- a/src/styles.css\n+++ b/src/styles.css\n+button { color: red; }\n"
+        self._mock_diffs(monkeypatch, [{"file": "def5678", "diff_text": unrelated_diff}])
+        _seed(mm, "proj1", [{"id": "a", "decision": "Use PostgreSQL for the database", "timestamp": _NOW}])
+
+        await scheduler._scan_ghost_decisions()
+
+        memory = mm.get_project_memory("proj1")
+        assert memory["ghost_scan"]["last_diff_count"] == 1
+        assert memory.get("audit_log", []) == []
+
+    async def test_second_scan_passes_last_scan_ts_to_diff_source(self, scheduler, mm, monkeypatch):
+        seen_since_ts = []
+
+        def _fake_recent_diffs(memory, since_ts=None, max_diffs=50):
+            seen_since_ts.append(since_ts)
+            return [{"file": "abc1234", "diff_text": self.MATCHING_DIFF}]
+
+        monkeypatch.setattr("core.ghost.diff_source.recent_diffs", _fake_recent_diffs)
+        _seed(mm, "proj1", [{"id": "a", "decision": self.NAMING_DECISION, "timestamp": _NOW}])
+
+        await scheduler._scan_ghost_decisions()
+        await scheduler._scan_ghost_decisions()
+
+        assert seen_since_ts[0] is None  # no prior marker on the first run
+        assert seen_since_ts[1] is not None  # second run passes the first run's marker
+
+    async def test_empty_project_is_skipped(self, scheduler, mm, monkeypatch):
+        calls = []
+        monkeypatch.setattr(
+            "core.ghost.diff_source.recent_diffs",
+            lambda memory, since_ts=None, max_diffs=50: calls.append(1) or [],
+        )
+        _seed(mm, "proj1", [])
+
+        await scheduler._scan_ghost_decisions()
+
+        assert calls == []  # never even asked for diffs -- no decisions to check
+
+
 class TestCheckStaleDecisionsMalformedState:
     async def test_non_list_decay_reviews_does_not_raise(self, scheduler, mm):
         memory = mm.get_project_memory("proj1")
@@ -210,3 +292,119 @@ class TestCheckStaleDecisionsMalformedState:
 
         memory = mm.get_project_memory("proj1")
         assert len(memory.get("decay_reviews", [])) == 2
+
+
+class TestScanAgentSurfaces:
+    """P8: audit_agent_surface (core/agent_audit/scanner.py) existed but
+    was only reachable via a manual POST /api/agent-audit/scan -- config
+    drift between manual runs went undetected. Mocks the scanner itself
+    (already unit-tested on its own) to focus these on the scheduling/
+    persistence/audit-trail wiring."""
+
+    _REPO_PATH = str(Path(__file__).parent.parent)  # any real dir
+
+    def _mock_report(self, monkeypatch, report):
+        monkeypatch.setattr("core.agent_audit.scanner.audit_agent_surface", lambda repo_path: report)
+
+    def _fake_finding(self, severity="high"):
+        from core.agent_audit import AuditFinding
+        return AuditFinding(
+            id="f1", category="secrets", severity=severity, file=".mcp.json",
+            line=3, description="AWS Access Key detected", recommendation="Rotate the key",
+        )
+
+    def _fake_report(self, findings=None, grade="B"):
+        from core.agent_audit import AuditReport
+        findings = findings or []
+        return AuditReport(
+            findings=findings,
+            files_scanned=[".mcp.json"],
+            category_counts={},
+            severity_distribution={f.severity: 1 for f in findings},
+            grade=grade,
+        )
+
+    async def test_project_with_no_repo_path_is_skipped(self, scheduler, mm, monkeypatch):
+        called = []
+        monkeypatch.setattr(
+            "core.agent_audit.scanner.audit_agent_surface",
+            lambda repo_path: called.append(repo_path) or self._fake_report(),
+        )
+        _seed(mm, "proj1", [])
+
+        await scheduler._scan_agent_surfaces()
+
+        assert called == []
+        memory = mm.get_project_memory("proj1")
+        assert "agent_surface_audit" not in memory
+
+    async def test_findings_persisted_and_audit_event_written(self, scheduler, mm, monkeypatch):
+        self._mock_report(monkeypatch, self._fake_report(findings=[self._fake_finding()], grade="D"))
+        memory = mm.get_project_memory("proj1")
+        memory["repo_path"] = self._REPO_PATH
+        mm.save_project_memory("proj1", memory)
+
+        await scheduler._scan_agent_surfaces()
+
+        memory = mm.get_project_memory("proj1")
+        audit = memory["agent_surface_audit"]
+        assert audit["grade"] == "D"
+        assert len(audit["findings"]) == 1
+        assert audit["findings"][0]["severity"] == "high"
+
+        events = [e for e in memory.get("audit_log", []) if e.get("event_type") == "agent_surface_finding"]
+        assert len(events) == 1
+        assert events[0]["count"] == 1
+        assert events[0]["grade"] == "D"
+
+    async def test_clean_scan_updates_marker_without_audit_event(self, scheduler, mm, monkeypatch):
+        self._mock_report(monkeypatch, self._fake_report(findings=[], grade="A"))
+        memory = mm.get_project_memory("proj1")
+        memory["repo_path"] = self._REPO_PATH
+        mm.save_project_memory("proj1", memory)
+
+        await scheduler._scan_agent_surfaces()
+
+        memory = mm.get_project_memory("proj1")
+        assert memory["agent_surface_audit"]["grade"] == "A"
+        assert memory.get("audit_log", []) == []
+
+    async def test_rescan_overwrites_previous_snapshot(self, scheduler, mm, monkeypatch):
+        """Point-in-time, not accumulated -- a finding that's since been
+        fixed must not linger in the persisted snapshot."""
+        memory = mm.get_project_memory("proj1")
+        memory["repo_path"] = self._REPO_PATH
+        mm.save_project_memory("proj1", memory)
+
+        self._mock_report(monkeypatch, self._fake_report(findings=[self._fake_finding()], grade="D"))
+        await scheduler._scan_agent_surfaces()
+        assert len(mm.get_project_memory("proj1")["agent_surface_audit"]["findings"]) == 1
+
+        self._mock_report(monkeypatch, self._fake_report(findings=[], grade="A"))
+        await scheduler._scan_agent_surfaces()
+        final = mm.get_project_memory("proj1")["agent_surface_audit"]
+        assert final["findings"] == []
+        assert final["grade"] == "A"
+
+    async def test_one_projects_scan_failure_does_not_block_another(self, scheduler, mm, monkeypatch):
+        memory1 = mm.get_project_memory("proj1")
+        memory1["repo_path"] = self._REPO_PATH
+        mm.save_project_memory("proj1", memory1)
+        memory2 = mm.get_project_memory("proj2")
+        memory2["repo_path"] = self._REPO_PATH
+        mm.save_project_memory("proj2", memory2)
+
+        call_count = {"n": 0}
+
+        def _first_call_crashes(repo_path):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RuntimeError("simulated scan crash")
+            return self._fake_report(findings=[self._fake_finding()], grade="D")
+
+        monkeypatch.setattr("core.agent_audit.scanner.audit_agent_surface", _first_call_crashes)
+
+        await scheduler._scan_agent_surfaces()
+
+        results = [mm.get_project_memory(p).get("agent_surface_audit") for p in ("proj1", "proj2")]
+        assert any(r and r["grade"] == "D" for r in results)

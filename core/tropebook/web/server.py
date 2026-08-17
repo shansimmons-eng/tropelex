@@ -828,6 +828,18 @@ async def update_memory_project(project: str, data: MemoryUpdate):
         memory["tech_stack"] = payload["tech_stack"]
     if "preferences" in payload and isinstance(payload["preferences"], dict):
         memory.setdefault("preferences", {}).update(payload["preferences"])
+        # P7 (gap E): preferences are free text read back into future
+        # sessions the same way decisions/goals are, but were entirely
+        # unscreened. Flag, don't block -- keyed separately since
+        # preferences is a flat map, not a list of records to attach onto.
+        from core.injection_sentinel import scan_content
+        flagged = {
+            key: flags
+            for key, value in payload["preferences"].items()
+            if isinstance(value, str) and (flags := scan_content(value))
+        }
+        if flagged:
+            memory.setdefault("preferences_content_flags", {}).update(flagged)
     memory["last_updated"] = datetime.now(timezone.utc).isoformat()
     mm.save_project_memory(project, memory)
     return {"updated": True}
@@ -1212,7 +1224,13 @@ async def add_decision(project: str, data: DecisionCreate):
     # for config scanning (core/injection_sentinel.py). Never rejects the
     # write; content_flags is only attached when something actually matched.
     from core.injection_sentinel import scan_content
-    flags = scan_content(data.decision) + scan_content(data.context)
+    flags = (
+        scan_content(data.decision)
+        + scan_content(data.context)
+        # P7 (gap E): alignment_considerations is free text too, previously
+        # unscreened even though decision/context right next to it were.
+        + scan_content(safety_metadata.get("alignment_considerations", ""))
+    )
     if flags:
         decision_entry["content_flags"] = flags
 
@@ -2717,6 +2735,7 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     flagged = await list_flagged_decisions(project)
     unacked_handoffs = await list_unacknowledged_handoffs(project)
     completeness_violations = await list_completeness_violations(project)
+    agent_surface_findings = await list_high_severity_agent_surface_findings(project)
 
     items = [
         {
@@ -2787,6 +2806,16 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             "detail": v.get("description") or "a must-survive decision was dropped from a handoff packet",
         }
         for v in completeness_violations["violations"]
+    ] + [
+        {
+            "kind": "agent_surface_finding",
+            "id": f.get("id"),
+            "label": f.get("file"),
+            # Informational only -- review directly via
+            # GET /agent-surface-audit, no inline action here.
+            "detail": f.get("description") or f"{f.get('category')} risk in harness config",
+        }
+        for f in agent_surface_findings["findings"]
     ]
 
     return {"items": items, "count": len(items)}
@@ -5821,6 +5850,38 @@ async def list_decay_reviews(project: str, status: str | None = Query(None, patt
     if status is not None:
         reviews = [r for r in reviews if isinstance(r, dict) and r.get("review_status") == status]
     return {"decay_reviews": reviews, "count": len(reviews)}
+
+
+@app.get("/api/memory/{project}/agent-surface-audit")
+async def get_agent_surface_audit(project: str):
+    """Read the last scheduled Agent Surface Audit result for this
+    project's connected repo (P8, gap F). A point-in-time snapshot,
+    overwritten on every scan -- not accumulated history. Empty/absent
+    until the scheduler's first run, or if no repo is synced for this
+    project (memory["repo_path"] unset)."""
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    audit = memory.get("agent_surface_audit")
+    if not isinstance(audit, dict):
+        audit = {}
+    return {
+        "project": project,
+        "last_scan_ts": audit.get("last_scan_ts"),
+        "grade": audit.get("grade"),
+        "files_scanned": audit.get("files_scanned", []),
+        "severity_distribution": audit.get("severity_distribution", {}),
+        "findings": audit.get("findings", []),
+    }
+
+
+async def list_high_severity_agent_surface_findings(project: str) -> dict[str, Any]:
+    """High-severity findings from the last agent surface scan -- the
+    Needs Attention feed for P8, mirroring list_flagged_decisions'
+    already-narrowed-by-severity shape rather than surfacing every finding."""
+    audit = await get_agent_surface_audit(project)
+    findings = [f for f in audit["findings"] if f.get("severity") in ("high", "critical")]
+    return {"findings": findings, "count": len(findings)}
 
 
 @app.post("/api/memory/{project}/decay-reviews/{review_id}/dismiss")
