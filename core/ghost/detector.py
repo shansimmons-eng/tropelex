@@ -125,7 +125,13 @@ def _match_single_decision(
     scored_map: dict[str, dict[str, Any]],
     all_hunks: list[dict[str, Any]],
 ) -> list[GhostDecision]:
-    """Match one decision against all diff hunks, returning ghosts."""
+    """Match one decision against all diff hunks, returning at most ONE ghost per decision.
+
+    All matching hunks are collected as evidence on a single GhostDecision,
+    with severity equal to the worst (highest) individual match. Previously
+    this returned one ghost per hunk, causing the same decision to appear
+    dozens of times in the report.
+    """
     did = decision.get("id", "")
     decision_text = decision.get("decision", "")
     score_record = scored_map.get(did, {})
@@ -136,24 +142,24 @@ def _match_single_decision(
     if not matches:
         return []
 
-    ghosts: list[GhostDecision] = []
-    for match in matches:
-        severity = score_ghost_severity(match, confidence)
-        if severity < _MIN_SEVERITY:
-            continue
+    # Filter below-minimum matches, then aggregate into one ghost
+    valid = [(m, score_ghost_severity(m, confidence)) for m in matches]
+    valid = [(m, s) for m, s in valid if s >= _MIN_SEVERITY]
+    if not valid:
+        return []
 
-        ghost = GhostDecision(
-            decision_id=did,
-            decision_text=decision_text,
-            severity=severity,
-            evidence=[match],
-            confidence_score=confidence,
-            confidence_tier=tier,
-            recommendation=_generate_ghost_recommendation(severity),
-        )
-        ghosts.append(ghost)
+    worst_severity = max(s for _, s in valid)
+    evidence = [m for m, _ in valid]
 
-    return ghosts
+    return [GhostDecision(
+        decision_id=did,
+        decision_text=decision_text,
+        severity=worst_severity,
+        evidence=evidence,
+        confidence_score=confidence,
+        confidence_tier=tier,
+        recommendation=_generate_ghost_recommendation(worst_severity),
+    )]
 
 
 def detect_ghost_decisions(

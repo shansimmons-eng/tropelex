@@ -20,7 +20,13 @@ from core.embeddings import cosine_similarity
 # semantic-only warning surfaces at all, not whether it can block a write.
 _SEMANTIC_RESCUE_THRESHOLD = 0.5
 
-# Stopwords — identical set to core/decision_tree.py _extract_keywords
+# Stopwords — starts from the same base list as core/decision_tree.py
+# _extract_keywords, plus a ghost-matching-specific extension below. The
+# two have diverged on purpose: decision_tree's keyword overlap is used
+# for relationship detection between decisions (a smaller vocabulary is
+# fine there), while ghost matching compares decision text against raw
+# diff hunks, where common engineering vocabulary ("api", "function",
+# "config"...) was producing false-positive overlap on nearly every diff.
 _STOPWORDS: set[str] = {
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
     "have", "has", "had", "do", "does", "did", "will", "would", "could",
@@ -31,6 +37,24 @@ _STOPWORDS: set[str] = {
     "i", "my", "you", "your", "he", "she", "they", "them", "their",
     "added", "changed", "fixed", "refactored", "removed", "updated",
     "switched", "migrated", "replaced", "reverted", "optimised",
+    # Domain-generic words that appear in almost every codebase decision and diff
+    "memory", "test", "tests", "testing", "api", "endpoint", "route", "router",
+    "decision", "decisions", "project", "projects", "code", "file", "files",
+    "system", "function", "class", "module", "package", "import", "return",
+    "config", "configuration", "data", "server", "client", "request", "response",
+    "error", "errors", "check", "checks", "scan", "scanning", "detect",
+    "process", "processing", "handle", "handler", "render", "rendering",
+    "update", "create", "delete", "remove", "add", "set", "get", "list",
+    "index", "search", "filter", "sort", "parse", "load", "save", "read",
+    "write", "run", "execute", "build", "deploy", "start", "stop", "init",
+    "setup", "install", "configure", "enable", "disable",
+    "implement", "implementing", "implementation", "feature", "features",
+    "support", "supported", "supporting", "type", "types", "value", "values",
+    "key", "keys", "name", "names", "label", "labels", "id", "ids",
+    "version", "versions", "status", "state", "mode", "level",
+    "summary", "description", "text", "content", "body", "message",
+    "time", "date", "timestamp", "path", "directory", "folder",
+    "source", "target", "input", "output", "result", "results",
 }
 
 # Unified diff header patterns
@@ -169,7 +193,7 @@ def match_decision_to_diff(
 ) -> list[MatchResult]:
     """Compare a decision's keywords against diff hunks.
 
-    For each hunk, compute keyword overlap. Return matches where overlap > 0.2.
+    For each hunk, compute keyword overlap. Return matches where overlap > 0.35.
     Each MatchResult includes the hunk snippet and overlap score.
 
     decision_embedding/diff_embedding (#67): optional. Only consulted when
@@ -195,7 +219,7 @@ def match_decision_to_diff(
         union = decision_kw | hunk_kw
         overlap = len(intersection) / len(union) if union else 0.0
 
-        if overlap > 0.2:
+        if overlap > 0.35:
             matches.append(MatchResult(
                 decision_text=decision_text,
                 diff_file=hunk.get("file", ""),
