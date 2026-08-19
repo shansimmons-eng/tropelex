@@ -8628,13 +8628,18 @@ function renderDecisionLineage(panel, ancestors, descendants) {
 function renderInterpretability(panel, report) {
     if (!report) { panel.innerHTML = '<p class="text-xs text-outline">No interpretability report.</p>'; return; }
     const factors = report.factors || [];
+    const factorLabels = { rationale: 'Rationale', risk_level: 'Risk Level', context: 'Context', affected_systems: 'Systems', reversibility: 'Reversibility', safety_category: 'Safety' };
     panel.innerHTML = `
-        <p class="text-xs text-on-surface mb-2">${escapeHtml(report.explanation || '')}</p>
         <div class="flex items-center gap-2 mb-2">
             <span class="text-[10px] text-outline uppercase">Completeness</span>
             <div class="w-20 h-1.5 bg-surface-high rounded-full overflow-hidden"><div class="h-full bg-accent-sky rounded-full" style="width:${(report.completeness_score ?? 0) * 100}%"></div></div>
+            <span class="text-[10px] text-outline">${Math.round((report.completeness_score ?? 0) * 100)}%</span>
         </div>
-        ${factors.length ? `<div class="flex flex-wrap gap-1">${factors.map(f => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-high text-outline" title="${escapeAttr(String(f.value))}">${escapeHtml(f.factor)}</span>`).join('')}</div>` : ''}
+        ${factors.length ? `<div class="space-y-1">${factors.map(f => {
+            const label = factorLabels[f.factor] || f.factor.charAt(0).toUpperCase() + f.factor.slice(1);
+            const val = String(f.value || '').slice(0, 80);
+            return `<div class="flex items-start gap-2 text-xs"><span class="text-outline shrink-0">${escapeHtml(label)}:</span><span class="text-on-surface truncate" title="${escapeAttr(val)}">${escapeHtml(val || '(empty)')}</span></div>`;
+        }).join('')}</div>` : '<p class="text-xs text-outline">No factors recorded.</p>'}
     `;
 }
 

@@ -185,9 +185,13 @@ class DecisionTree:
             "edges": [],
         }
 
-        # Add edges
+        # Add edges (skip duplicates: same source→target+relationship)
+        existing_edges = {(e["source"], e["target"], e["relationship"]) for e in self.edges}
         for rel_type, targets in relationships.items():
             for target_id in targets:
+                key = (did, target_id, rel_type)
+                if key in existing_edges:
+                    continue
                 edge = {
                     "source": did,
                     "target": target_id,
@@ -196,6 +200,7 @@ class DecisionTree:
                 }
                 self.edges.append(edge)
                 self.nodes[did]["edges"].append(edge)
+                existing_edges.add(key)
 
         return did
 
@@ -240,7 +245,7 @@ class DecisionTree:
     def get_ancestors(self, decision_id: str, max_depth: int = 5) -> list[dict]:
         """Walk backwards through caused_by/supersedes edges to find decision chain."""
         visited = set()
-        result = []
+        result_added = set()  # track (target_id) to avoid duplicate entries
 
         def _walk(did: str, depth: int):
             if depth >= max_depth or did in visited:
@@ -251,22 +256,25 @@ class DecisionTree:
                 return
             for edge in self.edges:
                 if edge["source"] == did and edge["relationship"] in ("caused_by", "supersedes", "reverts"):
-                    target = self.nodes.get(edge["target"])
-                    if target:
+                    target_id = edge["target"]
+                    target = self.nodes.get(target_id)
+                    if target and target_id not in result_added:
+                        result_added.add(target_id)
                         result.append({
                             "decision": target,
                             "relationship": edge["relationship"],
                             "depth": depth + 1,
                         })
-                        _walk(edge["target"], depth + 1)
+                        _walk(target_id, depth + 1)
 
+        result = []
         _walk(decision_id, 0)
         return result
 
     def get_descendants(self, decision_id: str, max_depth: int = 5) -> list[dict]:
         """Walk forwards through edges to find what this decision led to."""
         visited = set()
-        result = []
+        result_added = set()  # track (source_id) to avoid duplicate entries
 
         def _walk(did: str, depth: int):
             if depth >= max_depth or did in visited:
@@ -274,15 +282,18 @@ class DecisionTree:
             visited.add(did)
             for edge in self.edges:
                 if edge["target"] == did:
-                    source = self.nodes.get(edge["source"])
-                    if source:
+                    source_id = edge["source"]
+                    source = self.nodes.get(source_id)
+                    if source and source_id not in result_added:
+                        result_added.add(source_id)
                         result.append({
                             "decision": source,
                             "relationship": edge["relationship"],
                             "depth": depth + 1,
                         })
-                        _walk(edge["source"], depth + 1)
+                        _walk(source_id, depth + 1)
 
+        result = []
         _walk(decision_id, 0)
         return result
 
