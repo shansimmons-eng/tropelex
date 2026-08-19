@@ -24,6 +24,7 @@ memory/feeds/
 memory/agent_skills/
 memory/replays/
 memory/driftbench/
+memory/prompt_genealogy/
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
 UI/UI2/
