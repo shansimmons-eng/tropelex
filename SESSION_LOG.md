@@ -5379,3 +5379,729 @@ bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-13 16:27 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-13 20:43 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .pyproject.toml.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-14 20:33 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 56 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-14 20:35 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 78 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-14 20:43 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 100 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-14 20:54 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 122 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-15 08:19 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 144 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 08:38 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 167 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 08:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 189 insertions(+)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:33 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  16 files changed, 887 insertions(+), 30 deletions(-)
+
+**Recent commits:**
+```
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+bab9236 feat: Draft Policy Schema for Gates (wishlist #64)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md core/audit.py core/contradictions/router.py core/docmine/router.py core/scheduler.py core/slack/capture.py core/tropebook/web/server.py emacs/tropelex-capture.el mcp_server/server.py memory/prefetch/test-project_genealogy.json tests/conftest.py tests/test_far_cais_sff.py tests/test_safety_features.py vscode-tropelex/package.json vscode-tropelex/src/tropelexClient.ts .claude/worktrees/ .plan.md.swp core/auth/shared_secret.py tests/test_decision_hash_integrity.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:36 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 365 insertions(+)
+
+**Recent commits:**
+```
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:38 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 387 insertions(+)
+
+**Recent commits:**
+```
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:40 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 409 insertions(+)
+
+**Recent commits:**
+```
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:41 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 431 insertions(+)
+
+**Recent commits:**
+```
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 09:59 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 583 insertions(+), 4 deletions(-)
+
+**Recent commits:**
+```
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+957ab0c fix: Add Decision form dead-ended on high/critical-risk safety gate
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md core/decision_tree.py memory/prefetch/test-project_genealogy.json tests/test_decision_tree.py .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 21:07 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 511 insertions(+)
+
+**Recent commits:**
+```
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .claude/worktrees/ .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 21:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  19 files changed, 1498 insertions(+), 33 deletions(-)
+
+**Recent commits:**
+```
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md core/friction/router.py core/ghost/router.py core/git_integration.py core/goals/logic.py core/injection_sentinel.py core/learner/learner.py core/prefetch/genealogy.py core/scheduler.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_friction.py tests/test_goals.py tests/test_injection_sentinel.py tests/test_learner.py tests/test_prefetch.py tests/test_safety_features.py tests/test_scheduler.py .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-16 21:50 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  19 files changed, 1520 insertions(+), 33 deletions(-)
+
+**Recent commits:**
+```
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+38674e4 feat: Generalized Soft-Enforcement + Override-as-Decision (wishlist #72)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md core/friction/router.py core/ghost/router.py core/git_integration.py core/goals/logic.py core/injection_sentinel.py core/learner/learner.py core/prefetch/genealogy.py core/scheduler.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_friction.py tests/test_goals.py tests/test_injection_sentinel.py tests/test_learner.py tests/test_prefetch.py tests/test_safety_features.py tests/test_scheduler.py .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 02:12 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 697 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 02:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 719 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 02:47 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 741 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:36 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 763 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:44 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 785 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:49 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 807 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:51 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 829 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:54 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 851 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 17:59 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 873 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 18:24 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 895 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 18:28 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 917 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp VISION.md `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 18:35 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 941 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 18:40 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 963 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-17 18:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  3 files changed, 985 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md memory/prefetch/test-project_genealogy.json .plan.md.swp `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-18 12:22 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 1082 insertions(+)
+
+**Recent commits:**
+```
+9c1d48e feat: Adversarial Hardening plan P4, P7, P8 (gaps C, E, F)
+daf4d26 fix: decision-tree timeline returns git hash instead of real id, 404ing Inspect
+058da38 feat: Adversarial Hardening plan P0-P2 (gaps D, A, B)
+4c5f01b feat: Coordination Drift Detection (wishlist #43)
+fab1acd feat: Session Replay with AI Analysis (wishlist #19)
+```
+
+**Files in play:** `.gitignore SESSION_LOG.md core/tropebook/web/server.py core/tropebook/web/templates/index.html memory/prefetch/test-project_genealogy.json .plan.md.swp core/reposeek/ core/tropebook/web/static/reposeek.js tests/test_reposeek.py `
+
+**Open questions / next steps:** <!-- fill in -->
+

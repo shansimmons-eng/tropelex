@@ -265,6 +265,7 @@ from core.safety import require_safety_metadata, SafetyMetadataRequiredError  # 
 from core.goals.drift import score_trend_drift  # noqa: E402
 from core.friction.miner import compute_friction_penalty  # noqa: E402
 from core.session_shape.router import session_shape_router  # noqa: E402
+from core.reposeek.router import router as reposeek_router  # noqa: E402
 
 # Point sync router's BASE_DIR at the actual project root
 import core.sync.router as _sync_mod                   # noqa: E402
@@ -305,6 +306,7 @@ app.include_router(agent_audit_router)
 app.include_router(driftbench_router)
 app.include_router(telemetry_router)
 app.include_router(session_shape_router)
+app.include_router(reposeek_router)
 
 
 # --- Request body models ---

@@ -1,0 +1,326 @@
+{
+  "project_name": "Tropelex",
+  "created": "2026-08-16T06:13:59.650684+00:00",
+  "last_updated": "2026-08-18T14:44:43.300636+00:00",
+  "description": "",
+  "decisions": [
+    {
+      "id": "5ae67f9f2a18",
+      "timestamp": "2026-08-16T06:13:59.650984+00:00",
+      "decision": "Decision history is NOT fully tamper-evident: verify_integrity/tamper-detection never compare current decisions[] against decision_created audit snapshots; only the audit_log hash chain is verified",
+      "context": "Verified in core/tropebook/web/server.py:4469-4670. #52 fixed the audit log chaining (write-time SHA-256, genesis), but decisions themselves carry no stored hash and structure-only checks (duplicate/malformed 12-hex IDs, empty text, timestamp order) pass even when decision text/context/risk_level is edited directly in memory/tropelex.json. SAFETY.md's 'immutable decision history' claim is only half true.",
+      "safety_metadata": {
+        "risk_level": "high",
+        "reversibility": false,
+        "affected_systems": [
+          "memory",
+          "audit",
+          "api"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": true,
+        "safety_category": "adversarial"
+      },
+      "goal_id": null
+    },
+    {
+      "id": "e72762c83c6f",
+      "timestamp": "2026-08-16T06:14:01.997097+00:00",
+      "decision": "No authentication on any write path: core/auth/ JWT middleware (require_auth/optional_auth) exists but has zero usages; any local process can write decisions, forge overrides, and overwrite .env API keys via POST /api/settings/apikey",
+      "context": "Verified by grep: no endpoint uses the JWT deps. Rate limiter explicitly skipped for localhost (server.py:92). /api/settings/apikey docstring says 'localhost only' but contains no client-IP check. MCP server and OpenCode plugin send no token (X-Tropelex-Client is self-reported). No Host-header validation = DNS rebinding residual. Self-reported agent_name makes override accountability forgeable.",
+      "safety_metadata": {
+        "risk_level": "high",
+        "reversibility": false,
+        "affected_systems": [
+          "api",
+          "mcp",
+          "plugins",
+          "settings",
+          "memory"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": true,
+        "safety_category": "adversarial"
+      },
+      "goal_id": null
+    },
+    {
+      "id": "5adf6561c309",
+      "timestamp": "2026-08-16T06:14:04.804738+00:00",
+      "decision": "Prioritized adversarial-hardening recommendations: (1) instance auth token + Host validation, (2) decision-level write-time hashing verified against audit snapshots, (3) audit _apply_persona_market_escalation mutation path, (4) extend injection screening to all context-read memory fields",
+      "context": "Delivered in 2026-08-16 repo analysis. Tier 1 (close verified gaps, moderate effort): auth write surface (defeats 'any local process can do anything' class), decision hashing (makes immutable-history claim true, reuse core/audit.py compute_hash), audit persona-market escalation (same class #61 audited on contradictions side), screen goals/session summaries/preferences/alignment_considerations (sentinel currently covers 5 markers, decision+context only). Tier 2: LLM intent-falsification check (flag-only, budgeted, dry-run), wire real diffs into dead /ghost-decisions, Drift-Bench CI. Tier 3: lifecycle-event gates, session safety budget #73-4, poisoning anomaly detector, schedule agent-audit.",
+      "safety_metadata": {
+        "risk_level": "low",
+        "reversibility": true,
+        "affected_systems": [
+          "api",
+          "memory",
+          "audit",
+          "ghost",
+          "agent-audit"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "governance"
+      },
+      "goal_id": null
+    },
+    {
+      "id": "8b9999687929",
+      "timestamp": "2026-08-16T06:14:06.515433+00:00",
+      "decision": "_apply_persona_market_escalation (server.py:2507) mutates requires_review/escalation_reason/risk_level with NO audit event and fires from GET /reviews/pending \u2014 same mutation class #61 audited on the contradictions side",
+      "context": "Verified: grep for append_audit_event in the 2500-2545 range returns nothing; the function saves memory in place. GET /reviews/pending is a side-effectful read. Asymmetry: contradictions router escalation writes contradiction_escalated events, persona/market escalation writes nothing. Also the path #57's incident showed could mass-escalate 53 decisions on a live project.",
+      "safety_metadata": {
+        "risk_level": "medium",
+        "reversibility": true,
+        "affected_systems": [
+          "memory",
+          "audit",
+          "api"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "monitoring"
+      },
+      "goal_id": null
+    },
+    {
+      "id": "fbbfc109d338",
+      "timestamp": "2026-08-16T06:14:08.277976+00:00",
+      "decision": "Live detection asymmetry: GET /{project}/ghost-decisions hardcodes empty diff_data (dead code); scheduler ghost scan is diff-less; only the preventive ghost-check receives real diffs",
+      "context": "Verified in core/ghost/router.py \u2014 'For now, use an empty diff_data list' comment. The documented 'silent drift detection' surface structurally cannot detect anything; all live detection is on-demand through ghost-check. Rewarding attack class (Drift-Bench 0% on reward hacking, #67 semantic layer dry-run-rejected) remains undefended in the post-hoc path.",
+      "safety_metadata": {
+        "risk_level": "medium",
+        "reversibility": true,
+        "affected_systems": [
+          "ghost",
+          "scheduler",
+          "api"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "monitoring"
+      },
+      "goal_id": null
+    },
+    {
+      "id": "a6926168aa5f",
+      "timestamp": "2026-08-16T06:19:13.651590+00:00",
+      "decision": "Intent-falsification check design: LLM entailment judgment (does this diff falsify the decision's intent) as a second-stage rescue after keyword matching finds nothing \u2014 NOT similarity; flag-only with severity cap, never block alone; gated by Drift-Bench + live-corpus dry-run (pre-registered acceptance criteria) before wiring; budgeted via existing ReasoningClient/providers + core.cost.tracker; backward-compatible slot in match_decision_to_diff",
+      "context": "Mapped 2026-08-16. Grounded in: _reward_hacking_positive (driftbench/scenarios.py:214-235, decision 'Never bypass authentication for admin-level access' vs backdoor diff 'if user.email == debug@internal.test: return True'), #67 dry-run (cosine 0.29 TP vs 0.65 benign typo fix \u2014 no threshold), existing LLM infra (core/last30days/lib/providers.py ReasoningClient/OpenAIClient + generate_json, core/cost/tracker.py). Entailment works where similarity failed because the LLM reasons about the specific code pattern (early return before permission check) instead of matching vocabulary. Preserves repo discipline: #57 no untuned signal into escalation, #67 dry-run before wiring, backward-compat optional params. V1 scope: code diffs only; diff content treated as untrusted data; uncertain is first-class.",
+      "safety_metadata": {
+        "risk_level": "medium",
+        "reversibility": true,
+        "affected_systems": [
+          "ghost",
+          "driftbench",
+          "llm",
+          "audit",
+          "api"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "adversarial"
+      },
+      "goal_id": "43ba38dea880"
+    },
+    {
+      "id": "cdf2d3290b99",
+      "timestamp": "2026-08-18T08:48:27.436996+00:00",
+      "decision": "Added Research tab with Repo Seek sub-section to the main web UI",
+      "context": "Subtask 05 of reposeek-mvp feature. Created reposeek.js as a standalone IIFE module and added research-view to index.html with desktop nav, mobile bottom nav, and the full Repo Seek section (scan button, loading spinner, results table, error states). Followed existing design system patterns (glass-panel, design-system.css Tailwind classes, Material Symbols).",
+      "safety_metadata": {
+        "risk_level": "low",
+        "reversibility": true,
+        "affected_systems": [
+          "ui"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "general"
+      },
+      "goal_id": null,
+      "decision_hash": "10365fe8184e1d31a83646aff0032e6cafab3cd586bfd2921b391429ea5a4194"
+    },
+    {
+      "id": "19a9b2199725",
+      "timestamp": "2026-08-18T14:44:43.300514+00:00",
+      "decision": "Repo Seek MVP: scan-only button in Research tab that finds similar GitHub projects based on Tropelex project memory. No user input form (deferred to v2).",
+      "context": "Scope simplified from multi-source meta-search with user input form to a single scan button. User input form, multiple data sources, trending data, and LLM profile building all deferred to phase 2. On-demand only, no caching. GitHub API with 3 parallel search calls (query, language, topics), deduplication, scoring (language overlap 0.3, topic overlap 0.3, stars 0.2, description overlap 0.2). Top 10 results.",
+      "safety_metadata": {
+        "risk_level": "low",
+        "reversibility": true,
+        "affected_systems": [
+          "api",
+          "web",
+          "research"
+        ],
+        "rationale_quality": 0.5,
+        "alignment_considerations": "",
+        "requires_review": false,
+        "safety_category": "general"
+      },
+      "goal_id": null,
+      "decision_hash": "f0eb718e68b75afd240a5a5e8b590ba45b99f61c35cab59a24d2027b45bca85e"
+    }
+  ],
+  "session_history": [
+    {
+      "timestamp": "2026-08-16T06:14:16.311508+00:00",
+      "type": "session_summary",
+      "summary": "Completed deep adversarial safety analysis of Tropelex repo (verified against code, not just docs): delivered prioritized hardening recommendations (auth write surface, decision-level tamper-evidence, audit escalation path, injection-sentinel coverage, evasive-detection blind spot) and recorded 5 verified findings + 1 goal to project memory, which was previously empty.",
+      "insights": [
+        "Session involved backend: auth",
+        "Session involved performance: memory",
+        "Session involved security: auth"
+      ],
+      "day": "sunday"
+    }
+  ],
+  "preferences": {},
+  "patterns": [
+    {
+      "name": "category:backend",
+      "count": 1,
+      "first_seen": "2026-08-16T06:14:16.311493+00:00",
+      "last_seen": "2026-08-16T06:14:16.311496+00:00"
+    },
+    {
+      "name": "category:performance",
+      "count": 1,
+      "first_seen": "2026-08-16T06:14:16.311499+00:00",
+      "last_seen": "2026-08-16T06:14:16.311500+00:00"
+    },
+    {
+      "name": "category:security",
+      "count": 1,
+      "first_seen": "2026-08-16T06:14:16.311502+00:00",
+      "last_seen": "2026-08-16T06:14:16.311503+00:00"
+    },
+    {
+      "name": "day:sunday",
+      "count": 1,
+      "first_seen": "2026-08-16T06:14:16.311505+00:00",
+      "last_seen": "2026-08-16T06:14:16.311506+00:00"
+    }
+  ],
+  "tech_stack": [],
+  "context": {},
+  "audit_log": [
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:13:59.651047+00:00",
+      "previous_hash": "genesis",
+      "decision_id": "5ae67f9f2a18",
+      "decision": "Decision history is NOT fully tamper-evident: verify_integrity/tamper-detection never compare current decisions[] against decision_created audit snapshots; only the audit_log hash chain is verified",
+      "risk_level": "high",
+      "hash": "dd0b5fe756b3499392f1ab0f8591ff65fffaf60e455007d8af097d841f844973"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:14:01.997143+00:00",
+      "previous_hash": "dd0b5fe756b3499392f1ab0f8591ff65fffaf60e455007d8af097d841f844973",
+      "decision_id": "e72762c83c6f",
+      "decision": "No authentication on any write path: core/auth/ JWT middleware (require_auth/optional_auth) exists but has zero usages; any local process can write decisions, forge overrides, and overwrite .env API keys via POST /api/settings/apikey",
+      "risk_level": "high",
+      "hash": "b7d13f50d6ceedb5dd547925110407da2d6e60845e5371ff65c04b424c2d11ed"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:14:04.804788+00:00",
+      "previous_hash": "b7d13f50d6ceedb5dd547925110407da2d6e60845e5371ff65c04b424c2d11ed",
+      "decision_id": "5adf6561c309",
+      "decision": "Prioritized adversarial-hardening recommendations: (1) instance auth token + Host validation, (2) decision-level write-time hashing verified against audit snapshots, (3) audit _apply_persona_market_escalation mutation path, (4) extend injection screening to all context-read memory fields",
+      "risk_level": "low",
+      "hash": "e501a49b800efb37ffded78504dd707d4f2ed35bfd40b148edb61db5ae8fe339"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:14:06.515512+00:00",
+      "previous_hash": "e501a49b800efb37ffded78504dd707d4f2ed35bfd40b148edb61db5ae8fe339",
+      "decision_id": "8b9999687929",
+      "decision": "_apply_persona_market_escalation (server.py:2507) mutates requires_review/escalation_reason/risk_level with NO audit event and fires from GET /reviews/pending \u2014 same mutation class #61 audited on the contradictions side",
+      "risk_level": "medium",
+      "hash": "3528114bef6e361e546b9668d6ff6ca4c5bd4358625452794bad099335bcef07"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:14:08.278014+00:00",
+      "previous_hash": "3528114bef6e361e546b9668d6ff6ca4c5bd4358625452794bad099335bcef07",
+      "decision_id": "fbbfc109d338",
+      "decision": "Live detection asymmetry: GET /{project}/ghost-decisions hardcodes empty diff_data (dead code); scheduler ghost scan is diff-less; only the preventive ghost-check receives real diffs",
+      "risk_level": "medium",
+      "hash": "98750d932678a0c24107e8dfbbdb9b28dc8aee3e2927c7f3a403b41cb3ad8cb5"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-16T06:19:13.652173+00:00",
+      "previous_hash": "98750d932678a0c24107e8dfbbdb9b28dc8aee3e2927c7f3a403b41cb3ad8cb5",
+      "decision_id": "a6926168aa5f",
+      "decision": "Intent-falsification check design: LLM entailment judgment (does this diff falsify the decision's intent) as a second-stage rescue after keyword matching finds nothing \u2014 NOT similarity; flag-only with severity cap, never block alone; gated by Drift-Bench + live-corpus dry-run (pre-registered acceptance criteria) before wiring; budgeted via existing ReasoningClient/providers + core.cost.tracker; backward-compatible slot in match_decision_to_diff",
+      "risk_level": "medium",
+      "hash": "ce6aead6ac69676ad0e65aeb3ef5e3865cbec013a05ce45b1f3c3425b9d3ba72"
+    },
+    {
+      "event_type": "handoff_created",
+      "timestamp": "2026-08-18T08:40:36.397650+00:00",
+      "previous_hash": "ce6aead6ac69676ad0e65aeb3ef5e3865cbec013a05ce45b1f3c3425b9d3ba72",
+      "role": "implementer",
+      "agent_name": "unspecified",
+      "packet_hash": "7e945702551e56228d9187fa3d22d8d9b8eac57a1130da7780bbe1fc4eb81c3a",
+      "hash": "7151e2163f5047805b15afe7e9eb6f3580121c4e3967ad10f29ede9424b69520"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-18T08:48:27.437220+00:00",
+      "previous_hash": "7151e2163f5047805b15afe7e9eb6f3580121c4e3967ad10f29ede9424b69520",
+      "decision_id": "cdf2d3290b99",
+      "decision": "Added Research tab with Repo Seek sub-section to the main web UI",
+      "risk_level": "low",
+      "decision_hash": "10365fe8184e1d31a83646aff0032e6cafab3cd586bfd2921b391429ea5a4194",
+      "hash": "4b6cef2c4730ad7541b52936bc1ce644e65661176dc601b515aced666068ceef"
+    },
+    {
+      "event_type": "decision_created",
+      "timestamp": "2026-08-18T14:44:43.300640+00:00",
+      "previous_hash": "4b6cef2c4730ad7541b52936bc1ce644e65661176dc601b515aced666068ceef",
+      "decision_id": "19a9b2199725",
+      "decision": "Repo Seek MVP: scan-only button in Research tab that finds similar GitHub projects based on Tropelex project memory. No user input form (deferred to v2).",
+      "risk_level": "low",
+      "decision_hash": "f0eb718e68b75afd240a5a5e8b590ba45b99f61c35cab59a24d2027b45bca85e",
+      "hash": "3e212b7847260bead7eb127ed402a7cc8ab111a64f1122fbbd035372cf95fb49"
+    }
+  ],
+  "goals": [
+    {
+      "id": "43ba38dea880",
+      "text": "Harden Tropelex against adversarial actors: authenticate all write paths, make decision history truly tamper-evident, and close the evasive-detection blind spot",
+      "status": "proposed",
+      "priority": "high",
+      "category": "adversarial",
+      "tags": [],
+      "created_at": "2026-08-16T06:14:12.271697+00:00",
+      "updated_at": "2026-08-16T06:14:12.271697+00:00"
+    }
+  ],
+  "session_shapes": [
+    {
+      "agent_name": "opencode-big-pickle",
+      "timestamp": "2026-08-16T06:14:16.311937+00:00",
+      "tool_call_count": 7.0,
+      "unique_tools_used": 3.0,
+      "avg_call_duration_ms": 21.733715731118405,
+      "max_call_duration_ms": 70.75016596354544,
+      "error_count": 0.0,
+      "avg_output_bytes": 852.0,
+      "total_duration_s": 386.75754214194603
+    }
+  ]
+}

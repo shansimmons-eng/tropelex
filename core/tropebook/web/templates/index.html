@@ -18,6 +18,7 @@
             <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="tropebook-view">Tropebook</a>
             <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="memory-view">Memory</a>
             <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="patterns-view">Patterns</a>
+            <a class="nav-link font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" data-view="research-view">Research</a>
             <a class="font-label-caps text-label-caps text-outline hover:text-accent-lavender transition-colors" href="#">Settings</a>
         </nav>
         <span class="material-symbols-outlined text-accent-lavender" style="font-variation-settings: 'FILL' 0;">sensors</span>
@@ -118,6 +119,60 @@
                 </section>
             </div>
         </div>
+
+        <div id="research-view" class="view-section hidden">
+            <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Research</h1>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Discover, scan, and analyze repositories and knowledge sources.</p>
+                </div>
+            </div>
+
+            <!-- Repo Seek — Scan for Similar -->
+            <section class="glass-panel rounded p-4 md:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="font-headline-md text-headline-md text-on-surface mb-1">Repo Seek</h2>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Scan GitHub for repositories similar to your current project.</p>
+                    </div>
+                    <button id="rs-scan-btn"
+                            class="flex items-center justify-center gap-2 bg-transparent border border-accent-lavender text-accent-lavender font-label-caps text-label-caps px-5 py-2.5 rounded hover:bg-accent-lavender hover:text-terminal-bg transition-all shrink-0 interactive-scale shimmer-btn">
+                        <span id="rs-spinner" class="hidden">
+                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </span>
+                        <span id="rs-btn-text">
+                            <span class="material-symbols-outlined text-[16px] align-middle mr-1">radar</span>
+                            Scan for Similar
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Error state -->
+                <div id="rs-error" class="hidden mb-4"></div>
+
+                <!-- Empty state -->
+                <div id="rs-empty" class="hidden mb-4"></div>
+
+                <!-- Results table (hidden until data arrives) -->
+                <div id="rs-results-wrapper" class="hidden overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-glass-border">
+                                <th class="py-2 px-3 md:px-4 font-label-caps text-label-caps text-accent-periwinkle">Title</th>
+                                <th class="py-2 px-3 md:px-4 font-label-caps text-label-caps text-accent-periwinkle">Language</th>
+                                <th class="py-2 px-3 md:px-4 font-label-caps text-label-caps text-accent-periwinkle text-right">Stars</th>
+                                <th class="py-2 px-3 md:px-4 font-label-caps text-label-caps text-accent-periwinkle text-right">Score</th>
+                                <th class="py-2 px-3 md:px-4 font-label-caps text-label-caps text-accent-periwinkle">Match Reasons</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rs-results-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
     </main>
 
     <nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-16 bg-surface-container-lowest/90 backdrop-blur-md border-t border-glass-border">
@@ -133,6 +188,10 @@
             <span class="material-symbols-outlined">hub</span>
             <span class="font-label-caps text-label-caps mt-1">Patterns</span>
         </a>
+        <a class="mobile-nav flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" data-view="research-view">
+            <span class="material-symbols-outlined">explore</span>
+            <span class="font-label-caps text-label-caps mt-1">Research</span>
+        </a>
         <a class="flex flex-col items-center justify-center text-outline pt-2 pb-1 w-full h-full" href="#">
             <span class="material-symbols-outlined">settings</span>
             <span class="font-label-caps text-label-caps mt-1">Settings</span>
@@ -140,6 +199,7 @@
     </nav>
 
     <script src="/static/app.js"></script>
+    <script src="/static/reposeek.js"></script>
     <script>
         const API = '';
         let currentView = 'tropebook-view';
@@ -167,6 +227,7 @@
             if (viewId === 'patterns-view') {
                 loadPatterns();
             }
+            // research-view: reposeek.js handles its own state via DOMContentLoaded
         }
 
         document.querySelectorAll('.nav-link, .mobile-nav').forEach(link => {

@@ -14,8 +14,8 @@ import httpx
 def get_project_name():
     """Extract project name from current working directory."""
     cwd = Path.cwd()
-    # Use directory name as project name
-    return cwd.name
+    # Use directory name as project name (lowercase to match memory file convention)
+    return cwd.name.lower()
 
 
 def get_tropelex_context(project_name: str) -> str:
