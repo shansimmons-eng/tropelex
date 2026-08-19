@@ -6465,52 +6465,33 @@ setCurrentAgent(state.currentAgent);
 
 
 async function selectProject(name) {
-
-    // Persist project selection globally across all tabs
+    // Persist project selection globally
     localStorage.setItem('tropelex-current-project', name);
-    state.currentProject = name;
-    
-    // Sync all dropdowns and project indicators
-    ['project-select', 'insights-project-select', 'health-project-select'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value !== name) el.value = name;
-    });
-    
-    ['tropebook-project-indicator', 'memory-project-indicator', 'graph-project-indicator', 'pipeline-project-indicator', 'footer-project'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = name || 'No project';
-    });
-
-    // Persist project selection globally across all tabs
-    localStorage.setItem('tropelex-current-project', name);
-    state.currentProject = name;
-    
-    // Sync all dropdowns and project indicators
-    ['project-select', 'insights-project-select', 'health-project-select'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value !== name) el.value = name;
-    });
-    
-    ['tropebook-project-indicator', 'memory-project-indicator', 'graph-project-indicator', 'pipeline-project-indicator', 'footer-project'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = name || 'No project';
-    });
-    state.currentProject = name;
     localStorage.setItem('tropelex-project', name || '');
-    updateGlobalProjectSelector();  // Sync global selector
-    updateFooterProject();
-    
-    // Update all section project indicators
+    state.currentProject = name;
+    state.cachedMemory = null; // clear stale cache for previous project
+
+    // Sync all dropdowns
+    ['project-select', 'insights-project-select', 'health-project-select'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== name) el.value = name;
+    });
+
+    // Sync all project indicators
     const indicator = name || 'No project';
-    document.getElementById('tropebook-project-indicator').textContent = indicator;
-    document.getElementById('memory-project-indicator').textContent = indicator;
-    document.getElementById('graph-project-indicator').textContent = name ? `Project: ${name}` : 'All citations';
-    if (document.getElementById('pipeline-project-indicator')) {
-        document.getElementById('pipeline-project-indicator').textContent = indicator;
-    }
-    
-    // Reload current section data
+    ['tropebook-project-indicator', 'memory-project-indicator', 'pipeline-project-indicator'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = indicator;
+    });
+    const graphInd = document.getElementById('graph-project-indicator');
+    if (graphInd) graphInd.textContent = name ? `Project: ${name}` : 'All citations';
+
+    updateGlobalProjectSelector();
+    updateFooterProject();
+
+    // Reload current section data — cache it so dashboard cards don't re-fetch
     const data = await api(`/memory/${encodeURIComponent(name)}`);
+    if (data) { state.cachedMemory = data; }
     if (data) {
         document.getElementById('project-title').textContent = name;
         const details = document.getElementById('project-details');
@@ -10618,168 +10599,152 @@ async function loadDashboardStatusCards() {
     const healthEl = document.getElementById('dash-health');
     const frictionEl = document.getElementById('dash-friction');
     const marketEl = document.getElementById('dash-market');
-    console.log('[Dashboard] loadDashboardStatusCards: project=', project);
     if (!project) {
         if (healthEl) healthEl.textContent = 'Select a project';
         if (frictionEl) frictionEl.textContent = 'Select a project';
         if (marketEl) marketEl.textContent = 'Select a project';
         return;
     }
-    // Health & Insights (merged — confidence score plus the session/pattern/
-    // stack detail that used to live in its own separate Insights card)
-    try {
-        const [conf, proj] = await Promise.all([
-            api(`/memory/${encodeURIComponent(project)}/confidence`),
-            api(`/memory/${encodeURIComponent(project)}`),
-        ]);
+    const pe = encodeURIComponent(project);
+
+    // Fetch ALL independent data in parallel — one batch, no sequential awaits
+    const [conf, proj, frictionData, bets, gitData, impactData, safetyData, reviewsData, alignData] = await Promise.allSettled([
+        api(`/memory/${pe}/confidence`),
+        api(`/memory/${pe}`),
+        api(`/memory/${pe}/friction/summary`),
+        api(`/memory/${pe}/market/leaderboard`),
+        api(`/git/summary?project=${encodeURIComponent(project)}`),
+        api(`/memory/${pe}/impact`),
+        api(`/memory/${pe}/safety-stats`),
+        api(`/memory/${pe}/reviews/pending`),
+        api(`/memory/${pe}/alignment/evaluate`),
+    ]);
+
+    const val = r => r.status === 'fulfilled' ? r.value : null;
+    const confD = val(conf), projD = val(proj), frictionD = val(frictionData),
+          betsD = val(bets), gitD = val(gitData), impactD = val(impactData),
+          safetyD = val(safetyData), reviewsD = val(reviewsData), alignD = val(alignData);
+
+    // Cache full memory for other renderers (avoids re-fetching 313KB)
+    if (projD) { state.decisions = projD.decisions || []; state.cachedMemory = projD; }
+
+    // Health & Insights
+    if (healthEl) {
         let html = '';
-        if (conf) {
-            const avg = conf.average_confidence ?? conf.average_score ?? conf.avg ?? 0;
+        if (confD) {
+            const avg = confD.average_confidence ?? confD.average_score ?? confD.avg ?? 0;
             const pct = Math.round(avg * 100);
             const tier = pct >= 80 ? 'text-accent-lime' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
             html += `<div><span class="${tier} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">avg confidence</span></div>`;
         }
-        if (proj) {
-            const sessCount = (proj.session_history || []).length;
-            const patCount = (proj.patterns || []).length;
-            const stack = (proj.tech_stack || []).join(', ') || 'None';
+        if (projD) {
+            const sessCount = (projD.session_history || []).length;
+            const patCount = (projD.patterns || []).length;
+            const stack = (projD.tech_stack || []).join(', ') || 'None';
             html += `<div class="text-xs mt-1"><span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
                 <div class="text-outline text-xs truncate mt-1" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>`;
         }
         healthEl.innerHTML = html || 'N/A';
-    } catch { if (healthEl) healthEl.textContent = 'N/A'; }
+    }
     // Friction
-    try {
-        const frictionData = await api(`/memory/${encodeURIComponent(project)}/friction/summary`);
-        if (frictionData) {
-            const hist = frictionData.history || [];
-            const totalScans = frictionData.total_scans ?? hist.length;
-            if (totalScans > 0) {
-                const recent = hist.slice(-3);
-                const avgScore = recent.reduce((s, f) => s + (f.score || 0), 0) / (recent.length || 1);
-                const pct = Math.round(avgScore * 100);
-                const cls = pct >= 50 ? 'text-red-400' : pct >= 25 ? 'text-yellow-400' : 'text-accent-lime';
-                frictionEl.innerHTML = `<span class="${cls} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">friction · ${totalScans} scan${totalScans !== 1 ? 's' : ''}</span>`;
-            } else {
-                frictionEl.innerHTML = '<span class="text-accent-lime font-mono text-sm">No friction recorded</span>';
-            }
+    if (frictionEl && frictionD) {
+        const hist = frictionD.history || [];
+        const totalScans = frictionD.total_scans ?? hist.length;
+        if (totalScans > 0) {
+            const recent = hist.slice(-3);
+            const avgScore = recent.reduce((s, f) => s + (f.score || 0), 0) / (recent.length || 1);
+            const pct = Math.round(avgScore * 100);
+            const cls = pct >= 50 ? 'text-red-400' : pct >= 25 ? 'text-yellow-400' : 'text-accent-lime';
+            frictionEl.innerHTML = `<span class="${cls} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">friction · ${totalScans} scan${totalScans !== 1 ? 's' : ''}</span>`;
+        } else {
+            frictionEl.innerHTML = '<span class="text-accent-lime font-mono text-sm">No friction recorded</span>';
         }
-    } catch { if (frictionEl) frictionEl.textContent = 'N/A'; }
+    }
     // Market
-    try {
-        const bets = await api(`/memory/${encodeURIComponent(project)}/market/leaderboard`);
-        if (bets && marketEl) {
-            const count = (bets.leaderboard || bets.bets || []).length;
-            if (count > 0) {
-                marketEl.innerHTML = `<span class="text-accent-sky font-mono text-lg">${count}</span> <span class="text-xs text-outline">active bet${count !== 1 ? 's' : ''}</span>`;
-            } else {
-                marketEl.innerHTML = '<span class="text-outline font-mono text-sm">No bets placed</span>';
-            }
+    if (marketEl && betsD) {
+        const count = (betsD.leaderboard || betsD.bets || []).length;
+        if (count > 0) {
+            marketEl.innerHTML = `<span class="text-accent-sky font-mono text-lg">${count}</span> <span class="text-xs text-outline">active bet${count !== 1 ? 's' : ''}</span>`;
+        } else {
+            marketEl.innerHTML = '<span class="text-outline font-mono text-sm">No bets placed</span>';
         }
-    } catch { if (marketEl) marketEl.textContent = 'N/A'; }
+    }
     // Git Status
     const gitEl = document.getElementById('dash-git');
-    if (gitEl) {
-        try {
-            const gitData = await api(`/git/summary?project=${encodeURIComponent(project || '')}`);
-            if (gitData) {
-                const commits = (gitData.commits || gitData.recent_commits || []).slice(0, 3);
-                const branch = gitData.branch || 'main';
-                const stack = (gitData.stack || []).join(', ') || 'N/A';
-                gitEl.innerHTML = `
-                    <div class="text-xs space-y-1">
-                        <div class="text-accent-periwinkle font-mono">${escapeHtml(branch)}</div>
-                        <div class="text-outline">Stack: ${escapeHtml(stack)}</div>
-                        ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || '')}</div>` : ''}
-                    </div>`;
-            }
-        } catch { gitEl.textContent = 'N/A'; }
+    if (gitEl && gitD) {
+        const commits = (gitD.commits || gitD.recent_commits || []).slice(0, 3);
+        const branch = gitD.branch || 'main';
+        const stack = (gitD.stack || []).join(', ') || 'N/A';
+        gitEl.innerHTML = `
+            <div class="text-xs space-y-1">
+                <div class="text-accent-periwinkle font-mono">${escapeHtml(branch)}</div>
+                <div class="text-outline">Stack: ${escapeHtml(stack)}</div>
+                ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || '')}</div>` : ''}
+            </div>`;
     }
-    // Key Decisions
+    // Key Decisions (reuse cached projD, no second fetch)
     const decEl = document.getElementById('dash-decisions-list');
-    if (decEl) {
-        try {
-            const proj = await api(`/memory/${encodeURIComponent(project)}`);
-            if (proj) {
-                const decisions = (proj.decisions || []).slice(-3).reverse();
-                if (decisions.length) {
-                    decEl.innerHTML = decisions.map(d => `
-                        <div class="text-xs p-1.5 rounded bg-surface-raised mb-1 border-l-2 border-accent-lavender/50">
-                            <span class="text-on-surface">${escapeHtml((d.decision || '').slice(0, 60))}</span>
-                            <span class="text-outline ml-1">${d.timestamp?.slice(0, 10) || ''}</span>
-                        </div>
-                    `).join('');
-                } else {
-                    decEl.innerHTML = '<span class="text-outline font-mono text-sm">No decisions recorded</span>';
-                }
-            }
-        } catch { decEl.textContent = 'N/A'; }
+    if (decEl && projD) {
+        const decisions = (projD.decisions || []).slice(-3).reverse();
+        if (decisions.length) {
+            decEl.innerHTML = decisions.map(d => `
+                <div class="text-xs p-1.5 rounded bg-surface-raised mb-1 border-l-2 border-accent-lavender/50">
+                    <span class="text-on-surface">${escapeHtml((d.decision || '').slice(0, 60))}</span>
+                    <span class="text-outline ml-1">${d.timestamp?.slice(0, 10) || ''}</span>
+                </div>
+            `).join('');
+        } else {
+            decEl.innerHTML = '<span class="text-outline font-mono text-sm">No decisions recorded</span>';
+        }
     }
     // Impact
     const impactEl = document.getElementById('dash-impact');
-    if (impactEl) {
-        try {
-            const impactData = await api(`/memory/${encodeURIComponent(project)}/impact`);
-            if (impactData) {
-                const highImpact = (impactData.decisions || []).filter(d => (d.impact_score || 0) >= 0.7).length;
-                const total = (impactData.decisions || []).length;
-                const avgScore = impactData.average_impact || 0;
-                const pct = Math.round(avgScore * 100);
-                impactEl.innerHTML = `
-                    <div class="text-xs space-y-1">
-                        <div><span class="text-accent-lime font-mono text-lg">${highImpact}</span> <span class="text-outline">high-impact decisions</span></div>
-                        <div class="text-outline">${total} total · avg score ${pct}%</div>
-                    </div>`;
-            }
-        } catch { impactEl.textContent = 'N/A'; }
+    if (impactEl && impactD) {
+        const highImpact = (impactD.decisions || []).filter(d => (d.impact_score || 0) >= 0.7).length;
+        const total = (impactD.decisions || []).length;
+        const avgScore = impactD.average_impact || 0;
+        const pct = Math.round(avgScore * 100);
+        impactEl.innerHTML = `
+            <div class="text-xs space-y-1">
+                <div><span class="text-accent-lime font-mono text-lg">${highImpact}</span> <span class="text-outline">high-impact decisions</span></div>
+                <div class="text-outline">${total} total · avg score ${pct}%</div>
+            </div>`;
     }
-    // Safety Score — includes the friction-penalty and pending-review
-    // cross-connects, not just the raw risk-level score, so this card
-    // reflects the same picture the Safety & Alignment tabs show.
+    // Safety Score
     const safetyEl = document.getElementById('dash-safety');
-    if (safetyEl) {
-        try {
-            const [safetyData, reviewsData] = await Promise.all([
-                api(`/memory/${encodeURIComponent(project)}/safety-stats`),
-                api(`/memory/${encodeURIComponent(project)}/reviews/pending`),
-            ]);
-            if (safetyData) {
-                const score = Math.round((safetyData.safety_score || 0) * 100);
-                const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
-                const highRisk = safetyData.high_risk_decisions || 0;
-                const pending = reviewsData?.total_pending || 0;
-                const frictionPenalty = safetyData.friction_penalty || 0;
-                let extra = '';
-                if (pending > 0) extra += `<div class="text-xs mt-1"><span class="text-yellow-400">${pending} pending review${pending === 1 ? '' : 's'}</span></div>`;
-                if (frictionPenalty > 0) extra += `<div class="text-xs mt-1 text-outline">-${(frictionPenalty * 100).toFixed(1)}% from recent friction</div>`;
-                safetyEl.innerHTML = `
-                    <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">safety score</span></div>
-                    <div class="text-xs mt-1">${highRisk > 0 ? `<span class="text-red-400">${highRisk} high-risk</span> · ` : ''}<span class="text-outline">${safetyData.total_decisions} decisions</span></div>
-                    ${extra}`;
-            }
-        } catch { safetyEl.textContent = 'N/A'; }
+    if (safetyEl && safetyD) {
+        const score = Math.round((safetyD.safety_score || 0) * 100);
+        const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
+        const highRisk = safetyD.high_risk_decisions || 0;
+        const pending = reviewsD?.total_pending || 0;
+        const frictionPenalty = safetyD.friction_penalty || 0;
+        let extra = '';
+        if (pending > 0) extra += `<div class="text-xs mt-1"><span class="text-yellow-400">${pending} pending review${pending === 1 ? '' : 's'}</span></div>`;
+        if (frictionPenalty > 0) extra += `<div class="text-xs mt-1 text-outline">-${(frictionPenalty * 100).toFixed(1)}% from recent friction</div>`;
+        safetyEl.innerHTML = `
+            <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">safety score</span></div>
+            <div class="text-xs mt-1">${highRisk > 0 ? `<span class="text-red-400">${highRisk} high-risk</span> · ` : ''}<span class="text-outline">${safetyD.total_decisions} decisions</span></div>
+            ${extra}`;
     }
     // Alignment Score
     const alignmentEl = document.getElementById('dash-alignment');
-    if (alignmentEl) {
-        try {
-            const alignData = await api(`/memory/${encodeURIComponent(project)}/alignment/evaluate`);
-            if (alignData) {
-                const score = Math.round((alignData.summary?.alignment_score || 0) * 100);
-                const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
-                const passing = alignData.summary?.passing_count || 0;
-                alignmentEl.innerHTML = `
-                    <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">alignment</span></div>
-                    <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span> <span class="text-outline">passing criteria</span></div>`;
-            }
-        } catch { alignmentEl.textContent = 'N/A'; }
+    if (alignmentEl && alignD) {
+        const score = Math.round((alignD.summary?.alignment_score || 0) * 100);
+        const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
+        const passing = alignD.summary?.passing_count || 0;
+        alignmentEl.innerHTML = `
+            <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">alignment</span></div>
+            <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span> <span class="text-outline">passing criteria</span></div>`;
     }
+    // Bottom row — parallelize independent renders
     renderRiskMixChart(document.getElementById('dash-risk-mix'), state.decisions || []);
-    try { await renderAgentActivityChart(document.getElementById('dash-agent-activity'), project); } catch (e) { console.error('Agent activity chart failed:', e); }
-    try { await renderCostTotalCard(project); } catch (e) { console.error('Cost total card failed:', e); }
-    try { await loadNeedsAttention(); } catch (e) { console.error('Needs Attention failed:', e); }
-    try { await renderRecentActivityStream(document.getElementById('dash-recent-activity'), project); } catch (e) { console.error('Recent activity stream failed:', e); }
-    try { await renderPatternLearnerCard(document.getElementById('dash-patterns'), project); } catch (e) { console.error('Pattern Learner card failed:', e); }
+    await Promise.allSettled([
+        renderAgentActivityChart(document.getElementById('dash-agent-activity'), project),
+        renderCostTotalCard(project),
+        loadNeedsAttention(),
+        renderRecentActivityStream(document.getElementById('dash-recent-activity'), project),
+        renderPatternLearnerCard(document.getElementById('dash-patterns'), project),
+    ]);
 }
 
 // Ghost Decisions & Activity Stream — real recent session activity. This
@@ -10792,7 +10757,7 @@ async function loadDashboardStatusCards() {
 // shows real session_history instead of pretending ghost data exists.
 async function renderRecentActivityStream(el, project) {
     if (!el || !project) return;
-    const proj = await api(`/memory/${encodeURIComponent(project)}`);
+    const proj = state.cachedMemory || await api(`/memory/${encodeURIComponent(project)}`);
     const sessions = Array.isArray(proj?.session_history)
         ? [...proj.session_history].reverse().slice(0, 8)
         : [];
@@ -10823,7 +10788,7 @@ async function renderRecentActivityStream(el, project) {
 // above ("category:ui 12x" / "category:backend 8x" were hardcoded).
 async function renderPatternLearnerCard(el, project) {
     if (!el || !project) return;
-    const proj = await api(`/memory/${encodeURIComponent(project)}`);
+    const proj = state.cachedMemory || await api(`/memory/${encodeURIComponent(project)}`);
     const patterns = Array.isArray(proj?.patterns)
         ? [...proj.patterns]
             .filter(p => p && typeof p === 'object')
@@ -12142,15 +12107,7 @@ function renderTimeTravelResults(data, date) {
 // Reinit
 async function init() {
     loadSettings();
-    await checkHealth();
-    await loadCitations();
-    await loadProjects();
-    await loadPatterns();
-    await loadFeeds();
     loadAlertConfig();
-    try { await loadDashboard(); } catch (e) { console.error('Dashboard load failed:', e); }
-    loadDeepResearchHistory();
-    
     // Initialize all project indicators to "No project"
     document.getElementById('tropebook-project-indicator').textContent = 'No project';
     document.getElementById('memory-project-indicator').textContent = 'No project';
@@ -12159,15 +12116,26 @@ async function init() {
         document.getElementById('pipeline-project-indicator').textContent = 'No project';
     }
 
+    // Parallelize all independent init calls — no reason to await each sequentially
+    const [healthResult] = await Promise.allSettled([
+        checkHealth(),
+        loadCitations(),
+        loadProjects(),
+        loadPatterns(),
+        loadFeeds(),
+    ]);
+
     // Restore persisted project selection (validate it still exists server-side)
     const savedProject = localStorage.getItem('tropelex-project');
-    if (savedProject) {
-        if (state.projects.some(p => (p.name || p) === savedProject)) {
-            await selectProject(savedProject);
-        } else {
-            localStorage.removeItem('tropelex-project'); // stale entry
-        }
+    if (savedProject && state.projects.some(p => (p.name || p) === savedProject)) {
+        // selectProject already calls loadDashboardStatusCards — no need for loadDashboard too
+        await selectProject(savedProject);
+    } else {
+        if (savedProject) localStorage.removeItem('tropelex-project'); // stale entry
+        try { await loadDashboard(); } catch (e) { console.error('Dashboard load failed:', e); }
     }
+
+    loadDeepResearchHistory();
 
     // Poll health every 30s
     setInterval(checkHealth, 30000);
