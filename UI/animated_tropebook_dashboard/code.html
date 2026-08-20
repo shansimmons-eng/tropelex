@@ -2632,19 +2632,29 @@ void main() {
                     <span class="material-symbols-outlined">radar</span>
                     Repo Seek
                 </h2>
-                <button id="rs-scan-btn" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer flex items-center gap-2">
-                    <span id="rs-spinner" class="hidden">
-                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
-                    </span>
-                    <span id="rs-btn-text">
-                        <span class="material-symbols-outlined text-sm">radar</span> Scan for Similar
-                    </span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <div id="rs-export-controls" class="hidden flex items-center gap-2">
+                        <button id="rs-copy-json-btn" class="px-3 py-1.5 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-raised transition-all cursor-pointer">Copy as JSON</button>
+                        <button id="rs-copy-md-btn" class="px-3 py-1.5 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-raised transition-all cursor-pointer">Copy as Markdown</button>
+                        <button id="rs-export-all-btn" class="px-3 py-1.5 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-raised transition-all cursor-pointer">Export All</button>
+                    </div>
+                    <button id="rs-scan-btn" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer flex items-center gap-2">
+                        <span id="rs-spinner" class="hidden">
+                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </span>
+                        <span id="rs-btn-text">
+                            <span class="material-symbols-outlined text-sm">radar</span> Scan for Similar
+                        </span>
+                    </button>
+                </div>
             </div>
-            <p class="text-sm text-outline mb-6">Find GitHub repositories similar to your current project based on tech stack and description.</p>
+            <p class="text-sm text-outline mb-4">Find GitHub repositories similar to your current project based on tech stack and description.</p>
+
+            <!-- Lineage breadcrumb -- which batch a batch was derived from -->
+            <div id="rs-lineage" class="hidden mb-4 text-xs font-mono text-outline flex items-center gap-1.5 flex-wrap"></div>
 
             <!-- Error state -->
             <div id="rs-error" class="hidden mb-4"></div>
@@ -2663,6 +2673,7 @@ void main() {
                                 <th class="py-3 px-4 font-mono text-xs uppercase tracking-wider text-accent-periwinkle text-right">Stars</th>
                                 <th class="py-3 px-4 font-mono text-xs uppercase tracking-wider text-accent-periwinkle text-right">Score</th>
                                 <th class="py-3 px-4 font-mono text-xs uppercase tracking-wider text-accent-periwinkle">Match Reasons</th>
+                                <th class="py-3 px-4 font-mono text-xs uppercase tracking-wider text-accent-periwinkle">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="rs-results-body"></tbody>
@@ -2672,6 +2683,31 @@ void main() {
         </div>
 
     </section>
+
+    <!-- Repo Seek: Add Citation modal -->
+    <div id="rs-citation-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="glass-panel rounded-xl p-6 w-full max-w-lg">
+            <h3 class="font-mono text-lg text-accent-lavender mb-4">Add Citation</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-outline uppercase font-mono">Title</label>
+                    <input id="rs-citation-title" type="text" class="w-full mt-1 bg-surface border border-glass-border rounded px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-outline uppercase font-mono">URL</label>
+                    <input id="rs-citation-url" type="text" class="w-full mt-1 bg-surface border border-glass-border rounded px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-outline uppercase font-mono">Description</label>
+                    <textarea id="rs-citation-summary" rows="3" class="w-full mt-1 bg-surface border border-glass-border rounded px-3 py-2 text-sm"></textarea>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2 mt-5">
+                <button id="rs-citation-cancel-btn" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-raised transition-all cursor-pointer">Cancel</button>
+                <button id="rs-citation-submit-btn" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer">Add Citation</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ==================== TEAM & COLLABORATION SECTION ==================== -->
     <section id="section-team" class="section w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-8 fade-in">
@@ -3733,6 +3769,13 @@ void main() {
                 <h3 class="font-mono text-sm text-outline uppercase mb-4">Drift Detection</h3>
                 <div id="alignment-drift" class="text-sm text-outline">Not enough data for drift detection.</div>
             </div>
+        </div>
+        <div class="glass-panel rounded-xl p-6 mt-6" id="alignment-failing-panel" style="display: none;">
+            <h3 class="font-mono text-sm text-outline uppercase mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm text-red-400">error</span>
+                Failing Decisions
+            </h3>
+            <div id="alignment-failing-list" class="space-y-2"></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <div class="glass-panel rounded-xl p-6">
@@ -8473,7 +8516,13 @@ async function loadAgentSkills(project, agent = '') {
         return;
     }
     const profColors = { expert: '#98fa80', proficient: '#80d5fa', competent: '#8098fa', learning: '#ffa500', novice: '#ff4444' };
-    el.innerHTML = skills.map(s => `
+    // Previously rendered in whatever order the backend happened to
+    // return (roughly first-recorded-first) -- highest proficiency first
+    // is more useful for a panel whose whole point is "what is this agent
+    // good/bad at," and matches how Personas already treats this same
+    // data (identifyStrengths/identifyWeaknesses split on score).
+    const sortedSkills = [...skills].sort((a, b) => (b.score || 0) - (a.score || 0));
+    el.innerHTML = sortedSkills.map(s => `
         <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-raised">
             <div class="w-12 text-right font-mono text-xs font-bold" style="color: ${profColors[s.proficiency] || '#958e9e'}">${Math.round(s.score * 100)}%</div>
             <div class="flex-1">
@@ -9211,10 +9260,36 @@ async function loadAlignment(project) {
             </div>
         `).join('') + `<p class="text-[11px] text-outline pt-1">Alignment Score above is a weighted average of these categories (by ×, not a plain mean) — governance counts more than reversibility by design.</p>`;
         renderAlignmentRadar(document.getElementById('alignment-radar'), categoryScores);
+        renderAlignmentFailing(data.failing_evaluations || []);
     }
 
     renderAlignmentDrift(document.getElementById('alignment-drift'), drift);
     loadCorrigibility(project);
+}
+
+// The Failing counter never explained itself -- evaluate_alignment now
+// returns failing_evaluations, a deliberately uncapped list of exactly
+// the decisions dragging the score below 0.7 (the general `evaluations`
+// preview is capped at 20 and can't be relied on to contain them), each
+// with its own per-criterion breakdown. This surfaces which decisions and
+// which specific criteria (score < 0.7) are responsible.
+function renderAlignmentFailing(failingEvaluations) {
+    const panel = document.getElementById('alignment-failing-panel');
+    const list = document.getElementById('alignment-failing-list');
+    if (!panel || !list) return;
+    if (!failingEvaluations.length) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    list.innerHTML = failingEvaluations.map(e => {
+        const weakCriteria = (e.criteria_evaluated || []).filter(c => c.score < 0.7);
+        const criteriaText = weakCriteria.map(c => `${escapeHtml(c.name)} (${c.score.toFixed(2)})`).join(', ') || 'no individual criterion breakdown';
+        return `<div class="p-3 rounded-lg bg-surface-raised border border-red-400/20">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium truncate">${escapeHtml((e.decision || '').slice(0, 100))}</p>
+                <span class="font-mono text-xs text-red-400 shrink-0">${e.alignment_score?.toFixed(2)}</span>
+            </div>
+            <p class="text-xs text-outline mt-1">Weak: ${criteriaText}</p>
+        </div>`;
+    }).join('');
 }
 
 // Radar chart of the 5 real alignment category scores (interpretability,
@@ -10921,7 +10996,11 @@ async function loadNeedsAttention() {
 
 document.getElementById('needs-attention-list').addEventListener('click', async (e) => {
     if (e.target.closest('.attn-review-btn')) {
+        // Was landing on Safety & Alignment's default tab (Dashboard) --
+        // "Review" should go straight to the Reviews sub-tab where the
+        // pending item actually lives.
         switchSectionWithGraph('safety');
+        switchSafetyTab('reviews');
         return;
     }
     const ackBtn = e.target.closest('.attn-ack-btn');

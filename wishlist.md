@@ -1244,6 +1244,84 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 
 ---
 
+### 74. Decision-Tree Inspect 404 for Git-Imported Decisions
+**Purpose:** Fix "Inspect" 404ing on every git-imported decision in the Quality Insights timeline.
+
+**Why:** `DecisionTree.add_decision()` preferred `decision["hash"]` over `decision["id"]` when building its node key, so `/decision-tree/timeline` and `/decision-tree/{id}` returned the git commit hash for git-imported decisions — but `/interpretability/{id}` and `/decisions/{id}/versions` match by the decision's real, persisted `id` (backfilled by `MemoryManager` on load), a different value. Every git-imported decision's Inspect action 404'd on two of its three lookups as a result.
+
+**Features:**
+- `id` now wins over `hash` for the node key; the git-hash-prefix revert-detection heuristic in `_detect_relationships` is preserved by reading `hash` directly off the node (added alongside `id`) instead of assuming `id` *is* the hash.
+- 3 new regression tests (`tests/test_decision_tree.py`), including a full HTTP-level test replaying the exact reported scenario against all three lookup endpoints.
+
+**Status:** ✅ Shipped `daf4d26`.
+
+---
+
+### 75. Adversarial Hardening Plan (P0–P8)
+**Purpose:** Close the gaps a dedicated adversarial-hardening review (`plan.md`) found in Tropelex's own security posture, directly validated by a real incident (an OpenRouter API key leak/misuse this session surfaced and led to remediating).
+
+**Why:** Tropelex had zero authentication on any write path, a GET endpoint with an undocumented side-effect mutation, no tamper-evidence on decision content itself (only on the audit log wrapped around it), a detection asymmetry between Ghost's preventive and post-hoc paths, thin injection-sentinel coverage, and no scheduled harness-config audit. Each item was independently verified against the live code before being scoped (several of `plan.md`'s own cited decision/goal IDs turned out not to exist in memory at review time — see #76 for why) rather than trusted at face value.
+
+**Features:**
+- **P0** (gap D): `_apply_persona_market_escalation` moved off the `GET /reviews/pending` read path onto an explicit `POST /reviews/escalate-persona-market` + a 6h scheduler task, both now writing an auditable `persona_market_escalated` event.
+- **P1** (gap A, highest priority): instance shared-secret auth + Host validation. `TROPEL_EX_SECRET` auto-generated into `.env`; every mutating call requires it unless the browser's own `Sec-Fetch-Site` header proves genuine same-origin traffic (dashboard needed zero client changes). Wired into the MCP server, OpenCode plugin, VSCode extension, and Emacs package. See [SAFETY.md](SAFETY.md#instance-access-control).
+- **P2** (gap B): decision-level tamper-evidence via content hashing, resynced on every legitimate mutation, cross-checked against the independently hash-chained audit log so forging the stored hash alone doesn't evade detection. See [SAFETY.md](SAFETY.md#tamper-evident-decision-history).
+- **P4** (gap C detection asymmetry): real git diffs wired into Ghost detection (`core/ghost/diff_source.py`) — previously `diff_data` was hardcoded empty, making the post-hoc scan structurally inert. Also surfaced and fixed two latent bugs: the scheduler's ghost scan had been silently no-op-ing since it was added (wrong argument type, treating a dataclass as a Result), and `git_integration.get_commit_diff` never showed a diff for a repo's own root commit.
+- **P7** (gap E): injection screening extended from 2 fields/5 markers to 8 write points (goals, session summaries, preferences, alignment_considerations, friction zones, prefetch tasks) and 9 markers, plus an operator-configurable additive marker list (`memory/config/injection_markers.json`).
+- **P8** (gap F): Agent Surface Audit now runs on a schedule (`AGENT_AUDIT_INTERVAL`, default 6h) against each project's connected repo, persisting a snapshot and surfacing high/critical findings in Needs Attention.
+- P3, P5, P6 (intent-falsification LLM check, session safety budget, poisoning anomaly detector) deliberately deferred — appropriately scoped for a solo-developer tool with no untrusted multi-operator surface yet, revisit if that changes.
+
+**Status:** ✅ P0/P1/P2 shipped `058da38`; P4/P7/P8 shipped `9c1d48e`. Full test suite passing at each step.
+
+---
+
+### 76. Memory Case-Split Incident, Recovery & Ghost Detector Fix
+**Purpose:** Document a real incident — not a feature — where a project-name case-sensitivity bug silently split Tropelex's own memory across two files, plus the recovery.
+
+**Why:** Another agent (opencode/big-pickle) building Repo Seek's initial MVP also fixed a real root-cause bug along the way (`.opencode/hooks/startup.py`'s `get_project_name()` returned the directory name's exact case; the rest of the codebase resolves `memory/{project}.json` by exact case too), but the fix didn't retroactively merge history that had already split across `Tropelex.json`/`tropelex.json`. A later HANDOFF.md asked for a recovery decision; investigating it directly against the code (not trusting the handoff doc's own risk assessment) found its two headline recommendations were wrong in opposite directions — it undersold what `git reset` to a "safe" branch would have actually thrown away (nothing from Adversarial Hardening, contrary to its claim), and it overstated the risk of keeping `master` (a direct branch diff showed the feared "tangled" UI changes were a clean, isolated 84-line addition) — while missing the one thing that mattered and *wasn't* git-recoverable: `memory/*.json` is gitignored, so 8 real decisions dropped by the merge (including the plan.md analysis decisions cited in #75, and the goal that originated the whole Adversarial Hardening effort) needed manual restoration from a backup commit, not a branch operation.
+
+**Features:**
+- Restored the 8 dropped decisions, the originating goal, and one session-history entry from the pre-merge backup, computing hashes for the ones that predated P2; added an honest `decisions_restored` audit event rather than pretending they were created live.
+- Fixed the actual root cause the recovery surfaced along the way: `_match_single_decision` was returning one `GhostDecision` per matching diff hunk instead of one per decision, combined with an over-permissive stopword list and a 0.2 similarity threshold — 809 false-positive ghosts from 50 real commits against Tropelex's own decision corpus. Aggregation + ~50 new stopwords + 0.35 threshold brought that to a believable 79.
+- Fixed a live secondary finding: `memory/prompt_genealogy/` was never gitignored despite every other per-project runtime-data directory being excluded.
+
+**Status:** ✅ Resolved. `master` kept as-is (no reset), ghost fix shipped `94df03d`, gitignore fix `4a0a034`.
+
+---
+
+### 77. Repo Seek: Add Citation / Exclude / Scan Item
+**Purpose:** Turn Repo Seek's read-only GitHub scan (shipped as part of the same work that surfaced #76) into a working research loop: bookmark a result, permanently rule one out, or drill into it as a new search seed — for competitive-landscape mapping, partnership scouting, and inspiration search, not just "find repos like mine."
+
+**Why:** GitHub's own search has no real similarity primitive — literal keyword matching, results skewed toward star count and exact string hits over anything conceptually similar. Repo Seek's scoring (language/topic/description overlap, not just keyword luck) already does better; this makes that scoring loop-able instead of a one-shot list.
+
+**Features:**
+- **Scan Item**: profiles a result as its own project (reusing its already-fetched description — no README fetch needed) and searches from there, forming a lineage tree shown as a clickable breadcrumb. Bounded on purpose: ≤3 drill-downs per batch, ≤2 rounds deep, after which the tree is terminal. A search that comes back empty after dedup is a normal stopping point, not an error — the batch still persists so the lineage stays inspectable.
+- **Exclude**: permanently removes a repo from every future scan for the project, including the initial one (a deliberate reading of "exclude" broader than the literal spec, since re-surfacing something already ruled out on a fresh scan would be a confusing gap).
+- **Add Citation**: prefilled modal, submits into the existing Tropebook citation store (`POST /api/citations`, which already dedupes by URL and screens content via the injection sentinel — no new logic needed); the row stays in results.
+- Every child batch is deduped against the exclude list *and* its immediate parent batch's own results, not just the global list.
+- Copy current batch as JSON/Markdown (client-side); export the project's full scan history as one Markdown file.
+- New `core/reposeek/storage.py` — one JSON file per project, deliberately lowercased in the filename to not seed a third copy of #76's case-split bug.
+
+**Status:** ✅ Shipped. 21 new tests (57 total in `tests/test_reposeek.py`), full suite passing, live-verified end to end in-browser against the real `tropelex` project.
+
+---
+
+### 78. Dashboard Bug-Fix Batch (Agent Data, Alignment Detail, Review Routing)
+**Purpose:** A batch of small, independently-reported dashboard bugs, several sharing one root cause.
+
+**Why:** Reported together as a punch list; investigated individually rather than patched blind.
+
+**Features:**
+- Needs Attention's Review button landed on Safety & Alignment's default tab instead of the Reviews sub-tab specifically — one missing `switchSafetyTab('reviews')` call.
+- Alignment Evaluation's "Failing" count had nothing behind it — `evaluate_alignment` computed `failing_count` over every decision but only ever returned a 20-item preview, so on a real project (236 decisions, 4 failing) none of the failing ones were ever actually visible in the response. New `failing_evaluations` field is deliberately uncapped.
+- Agent Activity Split (blank), Load Personas (falling back to a single project-named pseudo-persona), and Insights' agent list (stuck at 2 items) were all the same root cause: `memory/agent_skills/` had the same case-split as #76, just never fixed there. Cleared per the user's explicit request (to re-import cleaner history from OpenCode) rather than merged — which surfaced and fixed a real independent bug: `GET /personas` 404'd for any project with *zero* skill history at all, instead of the graceful empty state the frontend already had for exactly that case.
+- Insights' skill list had no sort order at all (roughly first-recorded-first); now sorts by proficiency score descending, matching how Personas already splits the same data into strengths/weaknesses.
+- Repo Seek's "endpoint not found" turned out to be a stale dev-server process predating the feature's own router mount, not a code bug.
+
+**Status:** ✅ Shipped. 1 new regression test (`tests/test_personas.py`), full suite passing.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
@@ -1390,6 +1468,16 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 
 ---
 
+### Phase 16: Adversarial Hardening (P0–P8), Repo Seek, Memory-Split Recovery (Complete)
+- ✅ Adversarial Hardening Plan P0/P1/P2/P4/P7/P8 — see #75 for the full breakdown. Instance shared-secret auth, decision-level tamper-evidence, and real-diff ghost detection are the three load-bearing pieces; SAFETY.md gained two new sections for the first two.
+- ✅ Memory case-split incident and recovery — see #76. Root-caused, 8 decisions + 1 goal + 1 session restored from a pre-merge backup (not a git operation, since `memory/*.json` is gitignored), and the ghost detector false-positive bug (809 → 79 ghosts) the recovery surfaced along the way was fixed, not just worked around.
+- ✅ Repo Seek — initial MVP (GitHub search scored by tech-stack/description similarity) plus Add Citation / Exclude / Scan Item (see #77): bounded drill-down (3 per batch, 2 rounds deep) with lineage tracking, permanent exclude with parent-batch dedup, and one-click citation capture.
+- ✅ Dashboard bug-fix batch — see #78. Needs Attention → Reviews tab routing, Alignment's previously-invisible failing-decisions detail, and the agent-data case-split's three downstream symptoms (Agent Activity Split, Load Personas, Insights agent list).
+- ✅ Decision-Tree Inspect 404 fix for git-imported decisions — see #74.
+- ✅ New tests across this phase, spanning `test_decision_tree.py`, `test_scheduler.py`, `test_ghost_diff_source.py` (new), `test_injection_sentinel.py`, `test_goals.py`, `test_learner.py`, `test_prefetch.py`, `test_friction.py`, `test_alignment_governance.py`, `test_personas.py`, `test_reposeek.py`, `test_reposeek_storage` coverage, `test_instance_auth.py` (new), and `test_decision_hash_integrity.py` (new) — full suite passing together (2389 total; was 1632 as of Phase 15).
+
+---
+
 ## Technical Notes
 
 ### Storage Considerations
@@ -1429,6 +1517,8 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 
 ---
 
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-08 (see 2026-08-19 correction below)
 **Status:** The entire original "Safety Infrastructure Hardening" external-review queue (#52–#60) is now implemented, most of it scoped down from its original proposal after verifying each against the actual code (real corrections documented in each entry: #57's live-project incident and fix, #58's decay-review flagging, #40's ingestion-point corrections, #59's dropped calibration/disagreement sub-features, #60's CI-scope question and the handoff risk-level gap it surfaced). That gap-finding directly seeded a second wave, #67–#73 (Semantic Intent Layer for Ghost, Session Shape soft-gating, Handoff Completeness as policy, a Constitutional Layer, Drift-Bench Phase 2, generalized soft-enforcement, and small infra polish — proposed 2026-08-10, all still Open), plus an extension to #44 (goal-scoped Decision Market/Dashboard integration). Remaining genuinely open: #19 (Session Replay with AI Analysis, the one item never picked up), #42–#44/#46–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Tagline Reconsideration, General Branding Alignment Pass — proposed 2026-08-07 off the agent-drift research pass following #41, mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`), #63–#66 (Session-End Auto-Wiring for Goal Detection, Draft Policy Schema for Gates, Dictionary Coverage Audit, Context Injection Middleware — reconciled 2026-08-10 from live Goal records that had never been written up as numbered wishlist items), and #67–#73 above. #45 (Session-Shape Baselining), #58 (Knowledge Decay Loop Closure), #40 (Injection Sentinel), #59 (Signed Handoffs, scoped), and #60 (Drift-Bench Harness, scoped) shipped 2026-08-09/10. Also implemented: Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), Goal-Shaped Language Detection (#48), Attention Pulse Animation (#49), the Error Handling Audit / Result-type consolidation (#50), the `nonsafety:bug` convention (#51), Real Append-Only Provenance Chain & Security Audit Log (#52), Enforceable Preventive Gates + Override-as-Decision (#53), Required Safety Metadata for High-Risk Decisions (#54), Doc Mining + Ghost Combined-Severity Alert (#55), Friction → Decision Promotion (#56), Semantic Detection Upgrade for Contradictions (#57, Ghost Decisions deferred), Prevention Report (#61), and Friction Persistence + Generic Review Queue (#62). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
-**Next Review:** 2026-08-15
+
+**2026-08-19 correction, verified against `git log --grep="wishlist #"` rather than re-guessed:** the paragraph above is stale on several points it stated as open. Actually shipped since: **#19** (Session Replay with AI Analysis — no longer "the one item never picked up"), **#43** (Coordination Drift Detection), **#44** (Goal Re-Anchoring in Context Bundles), **#64** (Draft Policy Schema for Gates), **#69** (Handoff Completeness as a First-Class Policy), **#72** (Generalized Soft-Enforcement + Override-as-Decision), and **#67** (Semantic Intent Layer for Ghost — infra only, per its own commit message). #74–#78 (Adversarial Hardening P0–P8, the memory case-split incident, Repo Seek MVP + Add Citation/Exclude/Scan Item, and a dashboard bug-fix batch — see Phase 16) also shipped this pass. Status of #42, #46, #47, #63, #65, #66, #68, #70, #71, #73 not re-verified this pass — no matching commits found, treat as still open but unconfirmed rather than re-audited.
+**Next Review:** 2026-08-26

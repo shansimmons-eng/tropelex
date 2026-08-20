@@ -26,6 +26,7 @@ from core.reposeek.github_client import (
 from core.reposeek.models import RepoResult, SeekQuery
 from core.reposeek.router import router as reposeek_router
 from core.reposeek.scoring import score_results
+from core.reposeek.storage import RepoSeekStore
 from core.result import Err, Ok
 
 
@@ -616,6 +617,17 @@ def _make_test_app() -> FastAPI:
     return app
 
 
+@pytest.fixture(autouse=True)
+def _isolated_reposeek_store(tmp_path):
+    """Every router endpoint now persists via RepoSeekStore(). Without this,
+    every test in this module would write real batch files into the actual
+    repo's memory/reposeek/ directory (confirmed live: a bare test run
+    left memory/reposeek/my-project.json sitting in the working tree).
+    Scope storage to tmp_path for every test in this file instead."""
+    with patch("core.reposeek.router.RepoSeekStore", return_value=RepoSeekStore(str(tmp_path))):
+        yield
+
+
 class TestRouter:
     def test_scan_success(self):
         """GET /api/reposeek/scan with valid project → 200 + correct shape."""
@@ -735,3 +747,347 @@ class TestRouter:
 
         # Assert
         assert response.status_code == 500
+
+    def test_scan_persists_a_depth_0_batch(self):
+        """A successful scan is now persisted, not just returned."""
+        profile = {"tech_stack": ["Python"], "description": "A Python project", "patterns": []}
+        results = [_make_result(title="a/repo"), _make_result(title="b/repo", url="https://github.com/b/repo")]
+
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value=profile),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=results)),
+            patch("core.reposeek.router.score_results", return_value=results),
+        ):
+            client = TestClient(_make_test_app())
+            response = client.get("/api/reposeek/scan", params={"project": "my-project"})
+
+        data = response.json()
+        assert "batch_id" in data
+        assert data["depth"] == 0
+
+        batches_resp = client.get("/api/reposeek/my-project/batches")
+        assert batches_resp.json()["count"] == 1
+        assert batches_resp.json()["batches"][0]["id"] == data["batch_id"]
+
+    def test_scan_caps_results_at_20(self):
+        profile = {"tech_stack": ["Python"], "description": "test", "patterns": []}
+        results = [_make_result(title=f"owner/repo{i}", url=f"https://github.com/owner/repo{i}") for i in range(30)]
+
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value=profile),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=results)),
+            patch("core.reposeek.router.score_results", return_value=results),
+        ):
+            client = TestClient(_make_test_app())
+            response = client.get("/api/reposeek/scan", params={"project": "my-project"})
+
+        assert len(response.json()["repos"]) == 20
+
+    def test_scan_filters_excluded_repos(self):
+        profile = {"tech_stack": ["Python"], "description": "test", "patterns": []}
+        results = [
+            _make_result(title="a/repo", url="https://github.com/a/repo"),
+            _make_result(title="b/repo", url="https://github.com/b/repo"),
+        ]
+
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value=profile),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=results)),
+            patch("core.reposeek.router.score_results", return_value=results),
+        ):
+            client = TestClient(_make_test_app())
+            client.post("/api/reposeek/my-project/exclude", json={"url": "https://github.com/a/repo", "title": "a/repo"})
+            response = client.get("/api/reposeek/scan", params={"project": "my-project"})
+
+        titles = [r["title"] for r in response.json()["repos"]]
+        assert "a/repo" not in titles
+        assert "b/repo" in titles
+
+
+class TestExcludeEndpoints:
+    def test_add_list_remove_roundtrip(self):
+        client = TestClient(_make_test_app())
+
+        add = client.post("/api/reposeek/my-project/exclude", json={"url": "https://github.com/a/repo", "title": "a/repo"})
+        assert add.status_code == 200
+        assert add.json()["excluded_count"] == 1
+
+        listed = client.get("/api/reposeek/my-project/exclude")
+        assert listed.json()["count"] == 1
+        assert listed.json()["excluded"][0]["url"] == "https://github.com/a/repo"
+
+        removed = client.delete("/api/reposeek/my-project/exclude", params={"url": "https://github.com/a/repo"})
+        assert removed.status_code == 200
+        assert removed.json()["excluded_count"] == 0
+
+    def test_remove_nonexistent_is_404(self):
+        client = TestClient(_make_test_app())
+        response = client.delete("/api/reposeek/my-project/exclude", params={"url": "https://github.com/nope/repo"})
+        assert response.status_code == 404
+
+    def test_add_same_url_twice_does_not_duplicate(self):
+        client = TestClient(_make_test_app())
+        client.post("/api/reposeek/my-project/exclude", json={"url": "https://github.com/a/repo", "title": "a/repo"})
+        second = client.post("/api/reposeek/my-project/exclude", json={"url": "https://github.com/a/repo", "title": "a/repo"})
+        assert second.json()["excluded_count"] == 1
+
+
+class TestItemScanEndpoint:
+    """POST /{project}/batches/{batch_id}/items/scan -- the "Scan Item"
+    action. Profiles a single result as its own project and searches from
+    that, bounded by depth (2 rounds) and width (3 per batch)."""
+
+    def _seed_batch(self, client, project="my-project", depth=0, item_scans_used=0, results=None):
+        """Create a batch directly via the initial scan endpoint (depth 0),
+        or synthesize a deeper one by calling the storage layer the same
+        way the router does, to set up depth/width-cap test scenarios
+        without needing 1-2 real item-scan round trips first."""
+        results = results if results is not None else [_make_result(title="target/repo", url="https://github.com/target/repo")]
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value={"tech_stack": [], "description": "x", "patterns": []}),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=results)),
+            patch("core.reposeek.router.score_results", return_value=results),
+        ):
+            resp = client.get("/api/reposeek/scan", params={"project": project})
+        batch_id = resp.json()["batch_id"]
+
+        if depth > 0 or item_scans_used > 0:
+            # Reach into the same isolated store the router is using
+            # (patched to tmp_path by the module's autouse fixture) to set
+            # up depth/width states that would otherwise take several real
+            # round trips to construct.
+            from core.reposeek.router import RepoSeekStore as PatchedStore
+            store = PatchedStore()
+            data = store._load(project)
+            for b in data["batches"]:
+                if b["id"] == batch_id:
+                    b["depth"] = depth
+                    b["item_scans_used"] = item_scans_used
+            store._save(project, data)
+
+        return batch_id
+
+    def test_successful_item_scan_creates_child_batch(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+
+        child_results = [_make_result(title="child/repo", url="https://github.com/child/repo")]
+        with (
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=child_results)),
+            patch("core.reposeek.router.score_results", return_value=child_results),
+        ):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["depth"] == 1
+        assert data["parent_batch_id"] == batch_id
+        assert data["source_item"]["title"] == "target/repo"
+        assert [r["title"] for r in data["repos"]] == ["child/repo"]
+
+    def test_item_scan_increments_parent_item_scans_used(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+
+        with (
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=[])),
+            patch("core.reposeek.router.score_results", return_value=[]),
+        ):
+            client.post(f"/api/reposeek/my-project/batches/{batch_id}/items/scan", json={"item_url": "https://github.com/target/repo"})
+
+        batches = client.get("/api/reposeek/my-project/batches").json()["batches"]
+        parent = next(b for b in batches if b["id"] == batch_id)
+        assert parent["item_scans_used"] == 1
+
+    def test_depth_cap_blocks_a_third_round(self):
+        """depth=2 is the terminal round -- no further item scans allowed."""
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client, depth=2)
+
+        response = client.post(
+            f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+            json={"item_url": "https://github.com/target/repo"},
+        )
+        assert response.status_code == 409
+        assert "depth" in response.json()["detail"].lower()
+
+    def test_width_cap_blocks_a_fourth_item_scan(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client, item_scans_used=3)
+
+        response = client.post(
+            f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+            json={"item_url": "https://github.com/target/repo"},
+        )
+        assert response.status_code == 409
+        assert "item scans" in response.json()["detail"].lower()
+
+    def test_unknown_batch_is_404(self):
+        client = TestClient(_make_test_app())
+        response = client.post(
+            "/api/reposeek/my-project/batches/doesnotexist/items/scan",
+            json={"item_url": "https://github.com/target/repo"},
+        )
+        assert response.status_code == 404
+
+    def test_unknown_item_url_is_404(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+        response = client.post(
+            f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+            json={"item_url": "https://github.com/not-in-this-batch/repo"},
+        )
+        assert response.status_code == 404
+
+    def test_dedup_against_exclude_list(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+        client.post("/api/reposeek/my-project/exclude", json={"url": "https://github.com/excluded/repo", "title": "excluded/repo"})
+
+        child_results = [
+            _make_result(title="excluded/repo", url="https://github.com/excluded/repo"),
+            _make_result(title="ok/repo", url="https://github.com/ok/repo"),
+        ]
+        with (
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=child_results)),
+            patch("core.reposeek.router.score_results", return_value=child_results),
+        ):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+
+        titles = [r["title"] for r in response.json()["repos"]]
+        assert "excluded/repo" not in titles
+        assert "ok/repo" in titles
+
+    def test_dedup_against_parent_batch(self):
+        """A result that's already in the parent batch must not reappear
+        in the child batch derived from it -- checked against the batch
+        immediately before, not just the global exclude list."""
+        client = TestClient(_make_test_app())
+        parent_results = [
+            _make_result(title="target/repo", url="https://github.com/target/repo"),
+            _make_result(title="sibling/repo", url="https://github.com/sibling/repo"),
+        ]
+        batch_id = self._seed_batch(client, results=parent_results)
+
+        # search returns the sibling (already in parent) plus something new
+        child_results = [
+            _make_result(title="sibling/repo", url="https://github.com/sibling/repo"),
+            _make_result(title="new/repo", url="https://github.com/new/repo"),
+        ]
+        with (
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=child_results)),
+            patch("core.reposeek.router.score_results", return_value=child_results),
+        ):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+
+        titles = [r["title"] for r in response.json()["repos"]]
+        assert "sibling/repo" not in titles
+        assert "new/repo" in titles
+
+    def test_empty_results_after_filtering_is_a_valid_terminal_batch_not_an_error(self):
+        """If everything found is already excluded or in the parent batch,
+        that's a normal stopping point -- the batch is still created, just
+        empty, and the endpoint returns 200."""
+        client = TestClient(_make_test_app())
+        parent_results = [_make_result(title="target/repo", url="https://github.com/target/repo")]
+        batch_id = self._seed_batch(client, results=parent_results)
+
+        # Everything the search turns up is already in the parent batch.
+        with (
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=parent_results)),
+            patch("core.reposeek.router.score_results", return_value=parent_results),
+        ):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["repos"] == []
+        # Still a real, persisted batch -- lineage stays visible.
+        batches = client.get("/api/reposeek/my-project/batches").json()["batches"]
+        assert any(b["id"] == data["batch_id"] for b in batches)
+
+    def test_rate_limit_does_not_burn_an_item_scan_slot(self):
+        """A transient API failure shouldn't count against the 3-per-batch
+        cap -- only a completed search (even an empty one) should."""
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+
+        with patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Err(error="rate limited", code="RATE_LIMITED")):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/scan",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+        assert response.status_code == 503
+
+        batches = client.get("/api/reposeek/my-project/batches").json()["batches"]
+        parent = next(b for b in batches if b["id"] == batch_id)
+        assert parent["item_scans_used"] == 0
+
+
+class TestBatchesAndExportEndpoints:
+    def test_get_batch_detail(self):
+        client = TestClient(_make_test_app())
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value={"tech_stack": [], "description": "x", "patterns": []}),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=[_make_result()])),
+            patch("core.reposeek.router.score_results", return_value=[_make_result()]),
+        ):
+            scan_resp = client.get("/api/reposeek/scan", params={"project": "my-project"})
+        batch_id = scan_resp.json()["batch_id"]
+
+        detail = client.get(f"/api/reposeek/my-project/batches/{batch_id}")
+        assert detail.status_code == 200
+        assert detail.json()["id"] == batch_id
+        assert len(detail.json()["results"]) == 1
+
+    def test_get_batch_detail_unknown_is_404(self):
+        client = TestClient(_make_test_app())
+        response = client.get("/api/reposeek/my-project/batches/doesnotexist")
+        assert response.status_code == 404
+
+    def test_export_json_default(self):
+        client = TestClient(_make_test_app())
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value={"tech_stack": [], "description": "x", "patterns": []}),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=[_make_result()])),
+            patch("core.reposeek.router.score_results", return_value=[_make_result()]),
+        ):
+            client.get("/api/reposeek/scan", params={"project": "my-project"})
+
+        response = client.get("/api/reposeek/my-project/export")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["project"] == "my-project"
+        assert len(data["batches"]) == 1
+
+    def test_export_markdown(self):
+        client = TestClient(_make_test_app())
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value={"tech_stack": [], "description": "x", "patterns": []}),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=[_make_result(title="a/repo")])),
+            patch("core.reposeek.router.score_results", return_value=[_make_result(title="a/repo")]),
+        ):
+            client.get("/api/reposeek/scan", params={"project": "my-project"})
+
+        response = client.get("/api/reposeek/my-project/export", params={"format": "markdown"})
+        assert response.status_code == 200
+        assert "a/repo" in response.text
+        assert "Initial scan" in response.text
+
+    def test_export_empty_project_returns_empty_batches(self):
+        client = TestClient(_make_test_app())
+        response = client.get("/api/reposeek/never-scanned/export")
+        assert response.status_code == 200
+        assert response.json()["batches"] == []

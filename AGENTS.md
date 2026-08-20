@@ -98,6 +98,12 @@ Tropelex accumulates knowledge across sessions so agents don't start from scratc
 - Primary integration point for OpenCode agent
 - `generate_session_prompt(project_name)` → creates Tropelex context block
 
+### Repo Seek (`core/reposeek/`)
+- Finds GitHub repos similar to a project's own tech stack/description, scored (not GitHub's own literal keyword search)
+- `router.py`'s `POST /{project}/batches/{batch_id}/items/scan` ("Scan Item") profiles a single result as its own project and searches from it, forming a lineage tree — bounded to 3 drill-downs per batch, 2 rounds deep
+- `storage.py`'s `RepoSeekStore` — one JSON file per project (`memory/reposeek/{project}.json`), deliberately lowercases the project name in the filename (see its module docstring): most of the codebase resolves project names by exact case, which has caused real data splits before (`.opencode/hooks/startup.py`'s `get_project_name` normalizes for the same reason)
+- Excludes are permanent and applied to every scan, including the initial one, and every child batch is also deduped against its immediate parent batch's results
+
 ### Safety & Alignment Framework (`core/tropebook/web/server.py`)
 - Safety metadata (risk_level, reversibility, affected_systems, safety_category) attachable to any decision
 - Safety Dashboard, Review Workflow, Alignment/Governance scoring, Provenance/Integrity chain, Synthetic Data Policy compliance gates

@@ -28,6 +28,7 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
 | **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
+| **Repo Seek** | Finds GitHub repos similar to a project's own tech stack/description, scored (not just keyword-matched). Drill into any result as its own search seed — bounded to 3 drill-downs per batch, 2 rounds deep, with a lineage breadcrumb — exclude unwanted matches permanently, or bookmark one straight into Tropebook as a citation |
 | **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp, plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
 | **Ghost Decisions** | Silent objective-drift detection: code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
@@ -88,6 +89,7 @@ Tropelex doubles as empirical safety infrastructure for autonomous agents. For t
 - Brave Search API key (optional, falls back to DuckDuckGo free)
 - xAI API key (optional, enables X/Twitter search + LLM planner for Deep Research)
 - ScrapeCreators API key (optional, unlocks Reddit without rate limits, TikTok, Instagram, Threads, Pinterest)
+- GitHub token (`GITHUB_TOKEN` or `GH_TOKEN`, optional, raises Repo Seek's GitHub Search rate limit above the unauthenticated 60/hr)
 
 ---
 
@@ -274,6 +276,15 @@ Two independent research engines, laid out side by side so neither buries the ot
 
 Configure sources for the multi-source scan in Settings → Deep Research Sources. Citation-grade research prefers `BRAVE_SEARCH_API_KEY` when set (falls back to the free DuckDuckGo provider otherwise, which rate-limits more aggressively under repeated use).
 
+#### Repo Seek
+Finds GitHub repositories similar to the current project, scored on tech-stack/language match, description overlap, and star count — not GitHub's own literal keyword search. Each result has three actions:
+
+- **Scan Item**: profiles the result as if it were its own project and searches from there, forming a lineage tree (shown as a breadcrumb above the table). Bounded on purpose — at most 3 drill-downs per batch, at most 2 rounds deep — after which the tree is terminal. A search that turns up nothing new (everything found was already excluded, or already in the batch it was derived from) is a normal stopping point, not an error.
+- **Exclude**: permanently removes a repo from this and every future scan for the project.
+- **Add Citation**: opens a prefilled modal and adds the result straight into Tropebook; the row stays in the results.
+
+Copy the current batch as JSON or Markdown, or export the project's full scan history as one Markdown file. Configure `GITHUB_TOKEN` or `GH_TOKEN` to raise GitHub's rate limit above the unauthenticated 60/hr.
+
 ### Team & Collaboration
 Getting decisions to the humans (and other agents) who need them.
 
@@ -436,6 +447,19 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 |---|---|---|
 | POST | `/api/memory/{project}/deep-research/web-research` | Citation-grade multi-step web research; imports results into the Tropebook |
 | POST | `/api/memory/{project}/deep-research/hybrid` | Runs last30days + web-researcher-mcp concurrently, LLM-merges the results |
+
+### Repo Seek
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/reposeek/scan?project=` | Scan for repos similar to a project's own profile; persists a new depth-0 batch |
+| POST | `/api/reposeek/{project}/batches/{batch_id}/items/scan` | "Scan Item" — profile one result as its own project, search from it, persist a child batch |
+| POST | `/api/reposeek/{project}/exclude` | Permanently exclude a repo from future scans |
+| DELETE | `/api/reposeek/{project}/exclude?url=` | Undo an exclude |
+| GET | `/api/reposeek/{project}/exclude` | List the current exclude list |
+| GET | `/api/reposeek/{project}/batches` | Summary of every batch (lineage: depth, parent, source item) |
+| GET | `/api/reposeek/{project}/batches/{batch_id}` | Full detail for one batch, including results |
+| GET | `/api/reposeek/{project}/export?format=json\|markdown` | Export one batch or the project's full scan history |
 
 ### Safety & Alignment
 
@@ -759,6 +783,13 @@ Tropelex/
 │   │   ├── synthesize_run.py # Pipeline + LLM synthesis + HTML render in one pass
 │   │   ├── runner.py        # Subprocess wrapper for the engine
 │   │   └── lib/             # Engine internals (sources, rendering, planning)
+│   ├── reposeek/            # Find GitHub repos similar to a project
+│   │   ├── github_client.py # Parallel, deduplicated GitHub Search API client
+│   │   ├── scoring.py       # Similarity scoring (language/topic/stars/description)
+│   │   ├── storage.py       # Batch + exclude-list persistence, one file per project
+│   │   └── router.py        # Scan, item-scan (bounded drill-down), exclude, export
+│   ├── auth/
+│   │   └── shared_secret.py # Instance shared-secret auth (P1, see SAFETY.md)
 │   └── tropebook/           # Research knowledge base
 │       ├── tropebook.py     # Core KB + graph
 │       ├── research.py      # Web search (Brave/DuckDuckGo)
@@ -817,6 +848,8 @@ memory/
 │   └── <project>.json          # Skill scores per category
 ├── prompt_genealogy/
 │   └── <project>.json          # Compression strategy outcomes
+├── reposeek/
+│   └── <project>.json          # Repo Seek batches (lineage) + exclude list
 └── embeddings/
     └── citations.json          # Vector embeddings for semantic search
 ```
