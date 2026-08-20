@@ -3056,6 +3056,16 @@ async def evaluate_alignment(project: str):
             else:
                 category_scores[cat] = 1.0
 
+        # failing_count above is computed over the full set, but the
+        # capped preview below only shows the first 20 -- with 236
+        # decisions and 4 failing ones, "4 failing" was previously not
+        # visible in any actual response unless all 4 happened to land in
+        # that window. failing_evaluations is deliberately never capped:
+        # by construction there are normally few failures, and the whole
+        # point of surfacing this is that a caller can always see all of
+        # them, not just whichever slice the general preview happens to include.
+        failing_evaluations = [e for e in evaluations if e["alignment_score"] < 0.7]
+
         return {
             "project": project,
             "summary": {
@@ -3067,6 +3077,7 @@ async def evaluate_alignment(project: str):
             },
             "category_scores": category_scores,
             "criteria_used": criteria,
+            "failing_evaluations": failing_evaluations,
             "evaluations": evaluations[:20],  # Top 20 most recent
         }
     except Exception as e:

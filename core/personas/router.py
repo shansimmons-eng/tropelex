@@ -200,24 +200,33 @@ async def get_all_personas(project: str) -> dict[str, Any]:
                 continue
             personas.append(entry.value)
     else:
-        # Legacy fallback: no agent-tagged data exists yet, so surface the
-        # old project-wide aggregate rather than an empty list.
-        try:
-            agent_skills = _load_agent_skills(project)
-        except HTTPException:
-            raise
-        except PersonaError as exc:
-            logger.error("PersonaError loading skills for '%s': %s", project, exc)
-            raise HTTPException(status_code=500, detail=str(exc))
-        except Exception as exc:
-            logger.error("Failed to load skills for '%s': %s", project, exc)
-            raise HTTPException(status_code=500, detail=f"Failed to load agent skills: {exc}")
+        # Legacy fallback: no agent-tagged data exists yet. If there's no
+        # skills file at all, there's genuinely nothing to aggregate -- an
+        # empty personas list (the docstring's own "predates agent
+        # tagging" case), not an error. _load_agent_skills 404s on a
+        # missing file by design for the "give me this specific named
+        # agent" endpoint; that 404 doesn't belong here, where a missing
+        # file is the expected state for a project with no history yet.
+        from core.agent_skills import AgentSkillGraph
 
-        entry = _build_entry(agent_skills, project)
-        if isinstance(entry, Err):
-            logger.error("Persona build failed for '%s': %s", project, entry.error)
-            raise HTTPException(status_code=500, detail=entry.error)
-        personas.append(entry.value)
+        graph = AgentSkillGraph(str(BASE_DIR))
+        if graph._skills_file(project).exists():
+            try:
+                agent_skills = _load_agent_skills(project)
+            except HTTPException:
+                raise
+            except PersonaError as exc:
+                logger.error("PersonaError loading skills for '%s': %s", project, exc)
+                raise HTTPException(status_code=500, detail=str(exc))
+            except Exception as exc:
+                logger.error("Failed to load skills for '%s': %s", project, exc)
+                raise HTTPException(status_code=500, detail=f"Failed to load agent skills: {exc}")
+
+            entry = _build_entry(agent_skills, project)
+            if isinstance(entry, Err):
+                logger.error("Persona build failed for '%s': %s", project, entry.error)
+                raise HTTPException(status_code=500, detail=entry.error)
+            personas.append(entry.value)
 
     return {
         "project": project,

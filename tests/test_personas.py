@@ -301,3 +301,15 @@ class TestPersonaRouterAgentRegression:
         personas = res.json()["personas"]
         assert len(personas) == 1
         assert personas[0]["persona"]["agent_name"] == project
+
+    def test_all_personas_endpoint_returns_empty_list_when_no_skills_file_exists(self, client, project):
+        """A project with zero skill outcomes ever recorded has no
+        agent_skills file on disk at all -- distinct from the fallback
+        case above (file exists, just untagged). Previously this hit
+        _load_agent_skills' 404-on-missing-file path (meant for "give me
+        this specific named agent"), so a brand-new project's Personas
+        panel would error instead of showing the graceful empty state the
+        frontend already has ("No personas built yet")."""
+        res = client.get(f"/api/memory/{project}/personas")
+        assert res.status_code == 200
+        assert res.json() == {"project": project, "personas": [], "count": 0}

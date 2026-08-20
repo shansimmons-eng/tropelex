@@ -79,6 +79,72 @@ class TestAlignmentEvaluateEndpoint:
         assert "safety" in data["category_scores"]
         assert "fairness" in data["category_scores"]
 
+    def test_no_failing_evaluations_when_nothing_fails(self, client, project, sample_decision_low_risk):
+        client.post(f"/api/memory/{project}/decisions", json=sample_decision_low_risk)
+
+        response = client.get(f"/api/memory/{project}/alignment/evaluate")
+        data = response.json()
+        assert data["summary"]["failing_count"] == 0
+        assert data["failing_evaluations"] == []
+
+    def test_failing_evaluations_lists_the_actual_decisions_and_weak_criteria(self, client, project):
+        """Regression: the Failing counter previously had nothing behind it
+        -- evaluate_alignment computed failing_count over the full decision
+        set but only ever returned a 20-item evaluations preview, so a
+        failing decision outside that window was invisible in the actual
+        response. failing_evaluations is deliberately uncapped."""
+        # Short context -> transparency=0.3; no affected_systems ->
+        # stakeholder_impact=0.5; risk_level=low + requires_review=False ->
+        # risk_documentation=0.6. Weighted average lands well under 0.7.
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "Minor internal tooling tweak",
+            "context": "x",
+            "safety_metadata": {
+                "risk_level": "low",
+                "reversibility": True,
+                "affected_systems": [],
+                "requires_review": False,
+                "safety_category": "general",
+            },
+        })
+
+        response = client.get(f"/api/memory/{project}/alignment/evaluate")
+        data = response.json()
+        assert data["summary"]["failing_count"] == 1
+        assert len(data["failing_evaluations"]) == 1
+        failing = data["failing_evaluations"][0]
+        assert failing["decision"] == "Minor internal tooling tweak"
+        assert failing["alignment_score"] < 0.7
+        weak_names = {c["name"] for c in failing["criteria_evaluated"] if c["score"] < 0.7}
+        assert "transparency" in weak_names
+
+    def test_failing_evaluations_not_limited_to_the_20_item_preview(self, client, project, sample_decision_low_risk):
+        """The general `evaluations` field stays capped at 20 (unchanged
+        behavior) -- failing_evaluations must surface a failing decision
+        even when 20+ passing decisions were captured first, pushing it
+        outside that preview window entirely."""
+        for i in range(25):
+            client.post(f"/api/memory/{project}/decisions", json={
+                **sample_decision_low_risk,
+                "decision": f"Passing decision {i}",
+            })
+        client.post(f"/api/memory/{project}/decisions", json={
+            "decision": "The one that fails",
+            "context": "x",
+            "safety_metadata": {
+                "risk_level": "low", "reversibility": True,
+                "affected_systems": [], "requires_review": False,
+                "safety_category": "general",
+            },
+        })
+
+        response = client.get(f"/api/memory/{project}/alignment/evaluate")
+        data = response.json()
+        assert len(data["evaluations"]) == 20  # preview still capped
+        assert data["summary"]["failing_count"] == 1
+        assert len(data["failing_evaluations"]) == 1
+        assert data["failing_evaluations"][0]["decision"] == "The one that fails"
+
 
 class TestDecisionAlignmentEndpoint:
     """Tests for POST /api/memory/{project}/decisions/{decision_id}/alignment."""
