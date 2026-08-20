@@ -16,11 +16,13 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from core.github.search_client import (
+    deduplicate_results as _deduplicate_results,
+    get_token as _get_token,
+    parse_item as _parse_item,
+)
 from core.reposeek.github_client import (
     _build_queries,
-    _deduplicate_results,
-    _get_token,
-    _parse_item,
     search_github,
 )
 from core.reposeek.models import RepoResult, SeekQuery

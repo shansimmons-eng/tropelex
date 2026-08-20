@@ -9,35 +9,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import warnings
 from typing import Any
 
 import httpx
 
+from core.github.search_client import (
+    DEFAULT_TIMEOUT,
+    auth_headers,
+    deduplicate_results,
+    fetch_search_page,
+    get_token,
+    parse_item,
+)
 from core.reposeek.models import RepoResult, SeekQuery
 from core.result import Err, Ok, Result
 
 logger = logging.getLogger("reposeek.github_client")
-
-_GITHUB_SEARCH_URL = "https://api.github.com/search/repositories"
-_DEFAULT_TIMEOUT = 15  # seconds
-
-
-def _get_token() -> str | None:
-    """Read GitHub token from env (GITHUB_TOKEN preferred, GH_TOKEN fallback).
-
-    Returns None if neither is set — caller decides whether to warn.
-    """
-    return os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-
-
-def _auth_headers(token: str | None) -> dict[str, str]:
-    """Build request headers, including Bearer auth when token is available."""
-    headers = {"Accept": "application/vnd.github+json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    return headers
 
 
 def _build_queries(query: SeekQuery) -> list[str]:
@@ -72,69 +60,13 @@ def _build_queries(query: SeekQuery) -> list[str]:
     return queries
 
 
-def _parse_item(item: dict[str, Any]) -> RepoResult:
-    """Convert a single GitHub Search API item into a RepoResult.
-
-    similarity_score and match_reasons are left as defaults — the scoring
-    layer fills those in after retrieval.
-    """
-    return RepoResult(
-        title=item.get("full_name", ""),
-        url=item.get("html_url", ""),
-        description=item.get("description") or "",
-        language=item.get("language"),
-        stars=item.get("stargazers_count", 0),
-        similarity_score=0.0,
-        match_reasons=[],
-    )
-
-
-async def _fetch_search_page(
-    client: httpx.AsyncClient,
-    search_query: str,
-) -> Result[list[dict[str, Any]], Err]:
-    """Execute a single GitHub Search API call and return raw items.
-
-    Maps HTTP status codes to domain error codes per the spec:
-    403 → RATE_LIMITED, 404 → NOT_FOUND, network errors → NETWORK_ERROR.
-    """
-    params = {"q": search_query, "per_page": 30}
-    try:
-        resp = await client.get(_GITHUB_SEARCH_URL, params=params)
-        if resp.status_code == 403:
-            return Err(error="GitHub API rate limit exceeded", code="RATE_LIMITED")
-        if resp.status_code == 404:
-            return Err(error="GitHub search endpoint not found", code="NOT_FOUND")
-        resp.raise_for_status()
-        data = resp.json()
-        return Ok(value=data.get("items", []))
-    except httpx.ConnectError as exc:
-        logger.warning("GitHub connection failed: %s", exc)
-        return Err(error=f"Connection failed: {exc}", code="NETWORK_ERROR")
-    except httpx.TimeoutException as exc:
-        logger.warning("GitHub request timed out: %s", exc)
-        return Err(error=f"Request timed out: {exc}", code="NETWORK_ERROR")
-
-
-def _deduplicate_results(all_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Deduplicate raw API items by html_url, keeping the first occurrence."""
-    seen_urls: set[str] = set()
-    unique: list[dict[str, Any]] = []
-    for item in all_items:
-        url = item.get("html_url", "")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            unique.append(item)
-    return unique
-
-
 async def search_github(query: SeekQuery) -> Result[list[RepoResult], Err]:
     """Search GitHub with parallel API calls and return deduplicated results.
 
     Up to 3 parallel requests: by query text, by language, by topics.
     Returns Ok(list[RepoResult]) on success, Err on failure.
     """
-    token = _get_token()
+    token = get_token()
     if not token:
         warnings.warn(
             "No GITHUB_TOKEN or GH_TOKEN set — using unauthenticated requests (60 req/hr limit)",
@@ -142,12 +74,12 @@ async def search_github(query: SeekQuery) -> Result[list[RepoResult], Err]:
         )
 
     search_queries = _build_queries(query)
-    headers = _auth_headers(token)
+    headers = auth_headers(token)
 
     async with httpx.AsyncClient(
-        headers=headers, timeout=_DEFAULT_TIMEOUT
+        headers=headers, timeout=DEFAULT_TIMEOUT
     ) as client:
-        tasks = [_fetch_search_page(client, q) for q in search_queries]
+        tasks = [fetch_search_page(client, q) for q in search_queries]
         results: list[Result[list[dict[str, Any]], Err]] = await asyncio.gather(*tasks)
 
     # Propagate first error encountered
@@ -160,6 +92,6 @@ async def search_github(query: SeekQuery) -> Result[list[RepoResult], Err]:
         if isinstance(r, Ok):
             all_items.extend(r.value)
 
-    unique_items = _deduplicate_results(all_items)
-    repo_results = [_parse_item(item) for item in unique_items]
+    unique_items = deduplicate_results(all_items)
+    repo_results = [parse_item(item) for item in unique_items]
     return Ok(value=repo_results)
