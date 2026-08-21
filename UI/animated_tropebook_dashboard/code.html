@@ -1342,7 +1342,7 @@ void main() {
                         <span class="font-mono text-xs uppercase text-outline">All goals</span>
                         <button id="btn-goals-filter-bugs" class="px-2 py-1 rounded-full border border-glass-border text-outline font-mono text-[10px] hover:border-red-400/40 transition-all cursor-pointer" title="Show only nonsafety:bug goals">🐛 Bugs</button>
                     </div>
-                    <div id="goals-list" class="space-y-2">
+                    <div id="goals-list" class="space-y-2 max-h-[32rem] overflow-y-auto pr-1">
                         <p class="text-sm text-outline">Select a project to see goals.</p>
                     </div>
                 </div>
@@ -4465,7 +4465,8 @@ const state = {
     citations: [],
     projects: [],
     patterns: [],
-    decisions: []
+    decisions: [],
+    hasFirstDecision: false
 };
 window.state = state;
 
@@ -4659,6 +4660,17 @@ const LEAF_TO_GROUP = {
 // internal id with the first letter capitalized (the fallback below).
 const SECTION_BREADCRUMB_LABELS = { content: 'Engine Core' };
 
+// Help & Command Hub (section-onboarding) is shown stacked below the whole
+// Engine Core group -- consistently across all of its sub-tabs, regardless
+// of which one you enter through -- until the user has recorded their first
+// decision in the current project, at which point it stops auto-showing
+// (still reachable via its own sidebar entry / "Full Documentation" link).
+function syncCommandHubVisibility() {
+    const el = document.getElementById('section-onboarding');
+    if (!el) return;
+    el.classList.toggle('active', state.currentSection === 'content' && !state.hasFirstDecision);
+}
+
 function switchSection(section) {
     // Resolve a legacy leaf ID to its parent group, remembering which
     // sub-tab within that group was actually requested.
@@ -4680,12 +4692,7 @@ function switchSection(section) {
     const target = document.getElementById(`section-${section}`);
     if (target) target.classList.add('active');
 
-    // The Content/Overview landing page intentionally shows the Help &
-    // Command Hub banner below it too - re-activate it every time so it
-    // doesn't silently drop out after navigating away and back.
-    if (section === 'content') {
-        document.getElementById('section-onboarding')?.classList.add('active');
-    }
+    syncCommandHubVisibility();
 
     // Sidebar nav items
     document.querySelectorAll('.sidebar .nav-item').forEach(n => {
@@ -4742,6 +4749,7 @@ function switchGenericTab(parent, tab) {
     console.log('[TabSwitch]', parent, tab);
     const parentSec = document.getElementById(`section-${parent}`);
     if (!parentSec) return;
+    if (parent === 'content') syncCommandHubVisibility();
 
     // Hide all tab panels for this parent
     const panels = parentSec.querySelectorAll(`.${parent}-tab-panel`);
@@ -11588,6 +11596,8 @@ async function updateOnboarding() {
         }
     }
     console.log('[Dashboard] updateOnboarding:', checks);
+    state.hasFirstDecision = checks.decision;
+    syncCommandHubVisibility();
     // Update both onboarding checklists (dashboard compact + full section)
     document.querySelectorAll('#onboarding-checklist [data-check], #onboarding-checklist-full [data-check]').forEach(el => {
         const key = el.dataset.check;

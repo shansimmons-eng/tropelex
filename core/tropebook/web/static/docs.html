@@ -7,11 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
     body { background: #010515; color: #dce2fa; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-    .container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .container { max-width: 880px; margin: 0 auto; padding: 2rem 1.5rem; }
     h1 { color: #a580fa; font-family: 'JetBrains Mono', monospace; font-size: 1.75rem; margin-bottom: 0.5rem; }
     h2 { color: #80d5fa; font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid rgba(165,128,250,0.15); padding-bottom: 0.5rem; }
     h3 { color: #98fa80; font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin-top: 1.5rem; }
-    h3.group { color: #80d5fa; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2.25rem; margin-bottom: 0.25rem; border-top: 1px solid rgba(165,128,250,0.1); padding-top: 1.25rem; }
+    h3.group { color: #80d5fa; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2.25rem; margin-bottom: 0.25rem; border-top: 1px solid rgba(165,128,250,0.1); padding-top: 1.25rem; }
     h3.group:first-of-type { border-top: none; padding-top: 0; }
     h4 { color: #dce2fa; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; margin-top: 1.25rem; margin-bottom: 0.3rem; }
     p, li { color: #958e9e; line-height: 1.7; font-size: 0.9rem; }
@@ -58,372 +58,468 @@
     <p>Persistent memory system for AI agents. Store decisions, track patterns, and maintain project context across sessions. The same mechanisms double as auditable safety infrastructure — see <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for how.</p>
 
     <div class="toc">
-        <div class="toc-title">On this page</div>
+        <div class="toc-title">Dashboard Categories &amp; Navigation</div>
         <ul>
             <li><a href="#getting-started">Getting Started</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#mcp-server">MCP Server</a></li>
-            <li><a href="#tui">Terminal UI</a></li>
+            <li><a href="#agent-workflow">AI Agent Workflow</a></li>
+            <li><a href="#group-engine">1. Engine Core</a></li>
+            <li><a href="#group-quality">2. Quality &amp; Integrity</a></li>
+            <li><a href="#group-explainability">3. Explainability &amp; Discovery</a></li>
+            <li><a href="#group-safety">4. Safety &amp; Alignment</a></li>
+            <li><a href="#group-lifecycle">5. Memory Lifecycle</a></li>
+            <li><a href="#group-research">6. Research &amp; Ingestion</a></li>
+            <li><a href="#group-team">7. Team &amp; Collaboration</a></li>
+            <li><a href="#group-ops">8. Integrations &amp; Ops</a></li>
+            <li><a href="#mcp-server">MCP Server Integration</a></li>
+            <li><a href="#vscode">VSCode Extension</a></li>
+            <li><a href="#tui">Terminal UI (TUI)</a></li>
             <li><a href="#opencode">OpenCode Integration</a></li>
-            <li><a href="#cli">CLI Reference</a></li>
             <li><a href="#emacs-integration">Emacs Integration</a></li>
+            <li><a href="#cli">CLI Reference</a></li>
             <li><a href="#api">API Reference</a></li>
-            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#env-vars">Environment Variables Reference</a></li>
+            <li><a href="#architecture">Architecture &amp; Storage Layout</a></li>
             <li><a href="#troubleshooting">Troubleshooting</a></li>
         </ul>
     </div>
 
     <div class="section" id="getting-started">
         <h2>Getting Started</h2>
-        <h3>1. Create a Project</h3>
-        <p>Projects are the top-level container for all memory. Go to <strong>Memory</strong> in the sidebar and click <strong>New Project</strong>.</p>
 
-        <h3>2. Record Decisions</h3>
-        <p>Decisions are the foundation. Click <strong>+ Add Decision</strong> in the Memory section. Each decision has:</p>
+        <h3>1. System Prerequisites &amp; Installation</h3>
+        <p>Tropelex requires Python 3.10+. Clone the repository and install core dependencies:</p>
+        <pre><code>git clone https://github.com/shansimmons-eng/tropelex.git
+cd tropelex
+pip install -r requirements.txt</code></pre>
+
+        <h3>2. Launch the Tropelex Server</h3>
+        <p>Start the REST API backend server from the repository root (runs by default at <code>http://localhost:8766</code>):</p>
+        <pre><code>python3 -m core.tropebook.web.server</code></pre>
+        <p>All client interfaces (Dashboard, MCP server, VSCode Extension, Emacs, TUI, OpenCode) communicate with this backend server.</p>
+
+        <h3>3. Create a Project Container</h3>
+        <p>Projects are the top-level container for all memory. Open the web dashboard at <code>http://localhost:8766</code>, go to <strong>Memory</strong> in the sidebar, and click <strong>New Project</strong>.</p>
+
+        <h3>4. Record Decisions &amp; End Sessions</h3>
+        <p>Decisions are the core building block of Tropelex memory. Click <strong>+ Add Decision</strong> in the Memory section to record architectural rationale:</p>
         <ul>
             <li><strong>Decision text</strong> — what you decided (e.g., "Using Python + FastAPI for backend")</li>
             <li><strong>Context</strong> — why you decided it (optional but recommended)</li>
         </ul>
+        <p>When completing a work session, click <strong>+ End Session</strong> to summarize work done and update pattern tracking.</p>
 
-        <h3>3. End Sessions</h3>
-        <p>When you finish a work session, click <strong>+ End Session</strong> to summarize what you did. This helps Tropelex learn your patterns.</p>
-
-        <h3>4. Configure API Keys (Optional)</h3>
-        <p>For web research features, set these environment variables:</p>
+        <h3>5. Configure API Keys (Optional)</h3>
+        <p>Set optional environment variables in your shell or <code>.env</code> file to enable advanced AI and search features:</p>
         <ul>
-            <li><code>BRAVE_SEARCH_API_KEY</code> — Brave dropped its free tier in Feb 2026; it now requires a credit card and a $5 prepaid minimum, metered at roughly $0.003–$0.005/query. Also used by citation-grade Deep Research when set.</li>
-            <li><code>EXA_API_KEY</code> / <code>SERPER_API_KEY</code> — cheaper/free Brave alternatives. Exa has a free tier around 1,000 searches/month, then pay-as-you-go; Serper gives 2,500 free queries up front with no card, then from $50/50k queries. Auto-Research (<code>/api/research/auto</code>) and last30days Deep Research both try Brave → Exa → Serper → DuckDuckGo in that order, using whichever of these three is configured first.</li>
-            <li><code>OPENAI_API_KEY</code> — for embeddings (<code>text-embedding-3-small</code>, $0.02/1M tokens) and LLM-backed features (query refinement, hybrid research merge, AI compression via <code>gpt-4o-mini</code>, $0.15/$0.60 per 1M input/output tokens) — optional, dictionary/concatenation fallbacks exist. All of OpenAI's cheapest tier; typical usage is fractions of a cent per call.</li>
+            <li><code>BRAVE_SEARCH_API_KEY</code> — Primary provider for citation-grade Deep Research and web search features.</li>
+            <li><code>EXA_API_KEY</code> / <code>SERPER_API_KEY</code> — Cost-effective/free alternatives to Brave. Auto-Research (<code>/api/research/auto</code>) tries Brave → Exa → Serper → DuckDuckGo.</li>
+            <li><code>OPENAI_API_KEY</code> — Enables <code>text-embedding-3-small</code> embeddings and <code>gpt-4o-mini</code> LLM compression/refinement. Dict/concatenation fallbacks run automatically if key is absent.</li>
         </ul>
-        <p class="text-xs" style="opacity:0.7">Pricing above is approximate and provider-set — it can change without notice, as Brave's did. Check the provider's own pricing page before budgeting around it. With none of the three search keys set, everything falls back to DuckDuckGo: free, no signup, but it rate-limits hard under repeated or automated use — fine for occasional lookups, not for heavy use.</p>
 
-        <h3>5. Pick your interface</h3>
-        <p>This page describes the web dashboard, but it's one of five ways in — pick whichever fits how you work: the <a href="#mcp-server">MCP Server</a> (any MCP-capable agent), the <a href="#tui">Terminal UI</a> (tmux-first), <a href="#opencode">OpenCode</a> slash commands, the <a href="#cli">CLI</a>, or <a href="#emacs-integration">Emacs</a>. All five talk to the same running server and the same project memory — nothing is interface-specific.</p>
+        <h3>6. Pick Your Client Interface</h3>
+        <p>Tropelex provides 6 integrated ways to interact with project memory:</p>
+        <ul>
+            <li><strong>Web Dashboard:</strong> Visual browser management at <code>http://localhost:8766</code></li>
+            <li><strong><a href="#mcp-server">MCP Server</a>:</strong> Native protocol integration for Claude Code, Cursor, and Claude Desktop</li>
+            <li><strong><a href="#vscode">VSCode Extension</a>:</strong> Sidebar memory viewer and Memory Lens inline diff scanning</li>
+            <li><strong><a href="#tui">Terminal UI</a>:</strong> Tmux-friendly Textual dashboard in <code>tui/</code></li>
+            <li><strong><a href="#opencode">OpenCode Plugin</a>:</strong> Slash commands and automated prompt context injection</li>
+            <li><strong><a href="#emacs-integration">Emacs Package</a>:</strong> Keybinding-driven capture mode (<code>tropelex-capture.el</code>)</li>
+        </ul>
+    </div>
+
+    <div class="section" id="agent-workflow">
+        <h2>Recommended AI Agent Coding Loop</h2>
+        <p>When an AI agent operates within a project using Tropelex, it follows a 4-phase lifecycle to maintain architectural consistency and prevent silent drift:</p>
+
+        <table>
+            <tr><th>Phase</th><th>Agent Goal</th><th>Tropelex Tool / Endpoint</th><th>Description</th></tr>
+            <tr>
+                <td><strong>1. Initialization</strong></td>
+                <td>Prefetch minimal relevant context</td>
+                <td><code>get_context_bundle</code> / <code>GET /api/memory/{project}/context</code></td>
+                <td>Predicts and bundles active decisions, patterns, and tech stack within a token budget before coding starts.</td>
+            </tr>
+            <tr>
+                <td><strong>2. Pre-Write Check</strong></td>
+                <td>Prevent code drift &amp; contradictions</td>
+                <td><code>check_diff_for_conflicts</code> / <code>POST /api/memory/{project}/ghost-check</code></td>
+                <td>Evaluates proposed code diffs against recorded decisions. Returns severity warnings prior to file mutation.</td>
+            </tr>
+            <tr>
+                <td><strong>3. Rationale Capture</strong></td>
+                <td>Record new architectural choices</td>
+                <td><code>capture_decision</code> / <code>POST /api/memory/{project}/decisions</code></td>
+                <td>Stores new technical decisions with rationale, superseding older choices or surfacing unresolved contradictions.</td>
+            </tr>
+            <tr>
+                <td><strong>4. Session Completion</strong></td>
+                <td>Persist session summary &amp; proficiency</td>
+                <td><code>end_session</code> &amp; <code>record_skill_outcome</code></td>
+                <td>Summarizes session outcomes, logs friction signals, and updates agent calibration stats.</td>
+            </tr>
+        </table>
     </div>
 
     <div class="section" id="features">
-        <h2>Features</h2>
-        <p>The 38 features below are grouped the same way the dashboard sidebar groups them — same 9 categories, same order. See <code>wishlist.md</code> in the repo for this grouping applied to the feature backlog.</p>
+        <h2>Features &amp; Sidebar Navigation</h2>
+        <p>The feature modules below are organized by their exact 8 sidebar categories and sub-navigation tabs in the Tropelex dashboard UI.</p>
 
-        <h3 class="group" id="group-content">Engine Core</h3>
+        <h3 class="group" id="group-engine">1. Engine Core</h3>
 
-        <h4 id="dashboard">Dashboard</h4>
-        <p>Landing overview: quick stats, recent activity, and the Getting Started checklist.</p>
-
-        <h4 id="tropebook">Tropebook</h4>
-        <p>Research knowledge base. Add citations, search locally or on the web, and build a knowledge graph.</p>
+        <h4 id="dashboard">Overview</h4>
+        <p>Landing overview: quick stats, recent activity timeline, and Getting Started onboarding progress. (<em>UI Tab: Overview</em>)</p>
 
         <h4 id="memory">Memory</h4>
-        <p>View and manage project memory — decisions, sessions, preferences, and patterns.</p>
+        <p>View and manage project memory — decisions, session logs, developer preferences, and active patterns. (<em>UI Tab: Memory / MCP <code>get_project_memory</code> / API <code>GET /api/memory/{project}</code></em>)</p>
+
+        <h4 id="goals">Goals <span class="badge badge-new">NEW</span></h4>
+        <p>Goal entity tracking, goal-shaped language detection (<code>detect_goals</code>), adherence scoring, and continuous context re-anchoring. (<em>UI Tab: Goals / API <code>GET /api/memory/{project}/goals</code></em>)</p>
 
         <h4 id="patterns">Patterns</h4>
-        <p>Auto-detected patterns from your usage. Tropelex learns what categories you work in, what days you're most active, and more.</p>
+        <p>Auto-detected architectural and workflow patterns learned from recorded sessions and git activity. (<em>UI Tab: Patterns / API <code>GET /api/patterns</code></em>)</p>
 
-        <h4 id="graph">Knowledge Graph</h4>
-        <p>Visual D3 force-directed graph of decisions and their relationships (supersedes, caused_by, related_to).</p>
-
-        <h3 class="group" id="group-quality">Quality &amp; Integrity</h3>
-
-        <h4 id="insights">Insights</h4>
-        <p>Decision intelligence and knowledge analysis: decision confidence scoring, agent proficiency tracking, decision timeline and chains, one-click ADR generation, session replay, and cross-project knowledge transfer.</p>
-
-        <h4 id="health">Health Dashboard</h4>
-        <p>Project health score based on decision confidence, session coverage, and pattern detection accuracy.</p>
-
-        <h4 id="impact">Impact Analysis</h4>
-        <p>See which decisions have the most downstream impact and track reversal rates.</p>
-
-        <h4 id="ghost-decisions">Ghost Decisions</h4>
-        <p>Detect when code silently drifts from documented decisions. Compares decision keywords against git diffs.</p>
-
-        <h4 id="pre-write-guard">Pre-Write Guard <span class="badge badge-new">NEW</span></h4>
-        <p>Check a proposed diff against active decisions <em>before</em> writing code. Prevention is better than detection.</p>
-
-        <h4 id="friction-mining">Friction Mining <span class="badge badge-new">NEW</span></h4>
-        <p>Detect frustration signals in session transcripts — rephrasing patterns, retry loops, escalation markers. No explicit logging needed.</p>
-
-        <h4 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h4>
-        <p>Scan for unresolved contradictions between active decisions. "Use REST" and "use GraphQL" both active? Tropelex catches it.</p>
-
-        <h3 class="group" id="group-explainability">Explainability &amp; Discovery</h3>
-
-        <h4 id="explain">"Why Do We...?" Chat</h4>
-        <p>Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers.</p>
-
-        <h4 id="prefetch">Context Prefetch <span class="badge badge-new">NEW</span></h4>
-        <p>Predict the ideal minimal context bundle for a task, sized to a token budget, prioritized by impact score.</p>
-
-        <h4 id="docmine">Doc Mining <span class="badge badge-new">NEW</span></h4>
-        <p>Scans every markdown file in the repo (excluding <code>node_modules</code>, venvs, <code>.git</code>, caches, and <code>memory/</code>) for three things, reusing the same matching engine as Contradictions rather than a separate one:</p>
-        <ul>
-            <li><strong>Doc vs. decision</strong> — a doc claims something that contradicts an active, recorded decision</li>
-            <li><strong>Doc vs. doc</strong> — two different markdown files contradict each other</li>
-            <li><strong>Uncaptured decisions</strong> — a decision-shaped statement ("we must...", "we use...") sitting in prose that never made it into the decision graph at all — candidates worth importing</li>
-        </ul>
-        <p>Findings are severity-ranked the same way Contradictions are (high/medium/low); the UI shows high+medium by default. Trigger a scan from the Doc Mining section, or directly:</p>
-        <pre><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{}'</code></pre>
-        <p>Pass <code>{"paths": ["README.md", "docs/"]}</code> to scan specific files/directories instead of the whole repo.</p>
-
-        <h3 class="group" id="group-safety">Safety &amp; Alignment</h3>
-        <p>Risk classification, review workflow, and compliance framing for the decision graph — one sidebar entry opening onto seven in-page tabs, each lazy-loaded on selection. See <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for the full alignment/control-terminology mapping.</p>
-
-        <h4 id="safety-dashboard">Dashboard <span class="badge badge-new">NEW</span></h4>
-        <p>Risk trends, system exposure, and aggregate safety score across a project's decisions.</p>
-
-        <h4 id="alignment">Alignment <span class="badge badge-new">NEW</span></h4>
-        <p>Scoring across interpretability, safety, fairness, robustness, and governance, with drift detection between evaluation runs.</p>
-
-        <h4 id="governance">Governance <span class="badge badge-new">NEW</span></h4>
-        <p>Compliance checks against EU AI Act, NIST, and ISO 42001 policies, plus fairness, accountability, robustness, and interpretability reports.</p>
-
-        <h4 id="provenance">Provenance &amp; Integrity <span class="badge badge-new">NEW</span></h4>
-        <p>Provenance chain, integrity verification, tamper detection, and an immutable security audit log for every decision.</p>
-
-        <h4 id="safety-reviews">Safety Reviews <span class="badge badge-new">NEW</span></h4>
-        <p>Review workflow for decisions flagged <code>requires_review</code>: pending queue, approve/reject, reviewer accountability, mitigation suggestions.</p>
-
-        <h4 id="synthetic-data">Synthetic Data Policy <span class="badge badge-new">NEW</span></h4>
-        <p>EU AI Act Art. 10 &amp; 50 compliant registration for synthetic datasets used in agent training/eval — fidelity, privacy budget, bias audit, adversarial testing, and 10 blocking compliance gates.</p>
-
-        <h4 id="agent-audit">Agent Surface Audit <span class="badge badge-new">NEW</span></h4>
-        <p>Every other feature above audits decisions and code. This audits the agent's own harness configuration instead — <code>CLAUDE.md</code>/<code>AGENTS.md</code>, <code>.mcp.json</code>, <code>.claude/settings.json</code>, hooks, agent definitions, and skills — across five categories: hardcoded secrets, over-broad tool permissions, hook-injection risk (e.g. a hook piping remote content into a shell), MCP server risk profiling (unpinned packages, unresolved env placeholders), and injected-instruction patterns in agent/skill definitions ("ignore previous instructions" and similar). Read-only — no files are modified. Grades A–F. Defaults to scanning this Tropelex instance's own repo when no path is given:</p>
-        <pre><code>curl -X POST http://localhost:8766/api/agent-audit/scan</code></pre>
-        <p>Pass <code>?repo_path=/path/to/other/repo</code> to audit a different project's harness config instead.</p>
-
-        <h3 class="group" id="group-lifecycle">Memory Lifecycle</h3>
-
-        <h4 id="time-travel">Time Travel <span class="badge badge-new">NEW</span></h4>
-        <p>Check out project memory as of any past date. Forensic tool for postmortems.</p>
-
-        <h4 id="compaction">Memory Compaction <span class="badge badge-new">NEW</span></h4>
-        <p>Collapse superseded decision chains into epoch summaries. Keeps memory lean as projects age.</p>
-
-        <h3 class="group" id="group-research">Research &amp; Ingestion</h3>
+        <h4 id="knowledge-graph">Knowledge Graph</h4>
+        <p>Visual D3 force-directed graph rendering relationships between decisions (<code>supersedes</code>, <code>caused_by</code>, <code>related_to</code>). (<em>UI Tab: Knowledge Graph</em>)</p>
 
         <h4 id="prompt-lab">Prompt Lab</h4>
-        <p>3-stage prompt preprocessor: compression (strips filler, fixes typos, makes prompts imperative), context check (flags vague or missing context), and structure (formats output as TASK / CONSTRAINTS / CONTEXT). Output is ready to paste into any AI assistant.</p>
+        <p>3-stage prompt preprocessor: compression, context gap checking, and imperative output structuring (TASK / CONSTRAINTS / CONTEXT). (<em>UI Tab: Prompt Lab / API <code>/prompt-lab</code></em>)</p>
 
-        <h4 id="feeds">Feeds</h4>
-        <p>Scheduled research feeds with trend detection across runs, anomaly flagging, cross-feed correlation, and email/Slack alerts for high-relevance changes.</p>
+        <h3 class="group" id="group-quality">2. Quality &amp; Integrity</h3>
+
+        <h4 id="insights">Insights</h4>
+        <p>Decision intelligence: confidence scoring, agent proficiency tracking, decision timeline chains, ADR generation, session replay, and cross-project knowledge transfer. (<em>UI Tab: Insights / API <code>GET /api/memory/{project}/insights</code></em>)</p>
+
+        <h4 id="health-dashboard">Health</h4>
+        <p>Aggregate project health score based on decision confidence tiers, session coverage, and pattern stability. (<em>UI Tab: Health / API <code>GET /api/health</code></em>)</p>
+
+        <h4 id="impact-analysis">Impact</h4>
+        <p>Calculates downstream decision dependency graphs, identifying high-impact choices, reversal rates, and ROI scoring. (<em>UI Tab: Impact / API <code>GET /api/memory/{project}/decision-impact</code></em>)</p>
+
+        <h4 id="ghost-decisions">Ghost Decisions</h4>
+        <p>Detects silent code drift by scanning git diffs and code keywords against documented decision constraints. (<em>UI Tab: Ghost Decisions / MCP <code>check_diff_for_conflicts</code> / API <code>POST /api/memory/{project}/ghost-check</code></em>)</p>
+
+        <h4 id="pre-write-guard">Pre-Write Guard <span class="badge badge-new">NEW</span></h4>
+        <p>Prevents bad edits before writing code. Checks a proposed git diff against active decisions and returns severity-scored compliance alerts. (<em>UI Tab: Pre-Write Guard / MCP <code>check_diff_for_conflicts</code> / API <code>POST /api/memory/{project}/ghost-check</code></em>)</p>
+
+        <h4 id="friction-mining">Friction Mining <span class="badge badge-new">NEW</span></h4>
+        <p>Scans conversation transcripts for frustration markers (rephrasing, retry loops, escalation phrases) to capture implicit preferences. (<em>UI Tab: Friction Mining / MCP <code>friction_scan</code> / API <code>POST /api/friction/scan</code> / Emacs <code>C-c t f</code></em>)</p>
+
+        <h4 id="contradictions">Contradictions <span class="badge badge-new">NEW</span></h4>
+        <p>Scans for opposing decision pairs ("use REST" vs "use GraphQL") and surfaces active conflict warnings with resolution suggestions. (<em>UI Tab: Contradictions / MCP <code>check_contradictions</code> / API <code>GET /api/memory/{project}/contradictions</code></em>)</p>
+
+        <h4 id="session-shape">Session Shape <span class="badge badge-new">NEW</span></h4>
+        <p>Baselining tool-call frequency, token budgets, and latency drift signals across agent sessions to detect performance degradation. (<em>UI Tab: Session Shape / API <code>GET /api/memory/{project}/session-shape</code></em>)</p>
+
+        <h3 class="group" id="group-explainability">3. Explainability &amp; Discovery</h3>
+
+        <h4 id="explain">Why Do We...? Chat</h4>
+        <p>Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers. (<em>UI Tab: Why Do We...? / MCP <code>explain_why</code> / API <code>POST /api/explain</code></em>)</p>
+
+        <h4 id="prefetch">Context Prefetch <span class="badge badge-new">NEW</span></h4>
+        <p>Predicts the optimal minimal context bundle for a task, sized to a token budget and prioritized by decision impact score. (<em>UI Tab: Context Prefetch / MCP <code>get_context_bundle</code> / API <code>GET /api/memory/{project}/prefetch</code></em>)</p>
+
+        <h4 id="docmine">Doc Mining <span class="badge badge-new">NEW</span></h4>
+        <p>Scans repository markdown files for doc-vs-decision contradictions, doc-vs-doc drift, and uncaptured decision statements: (<em>UI Tab: Doc Mining / API <code>POST /api/memory/{project}/docmine/scan</code></em>)</p>
+        <pre><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{"paths": ["README.md", "docs/"]}'</code></pre>
+
+        <h4 id="decision-lineage">Decision Lineage <span class="badge badge-new">NEW</span></h4>
+        <p>Visual tree showing decision evolution, version history, and parent-child parentage chains across project iterations. (<em>UI Tab: Decision Lineage / API <code>GET /api/memory/{project}/decisions/{id}/versions</code></em>)</p>
+
+        <h3 class="group" id="group-safety">4. Safety &amp; Alignment</h3>
+        <p>Risk classification, review workflow, and compliance framing for the decision graph — backed by auditable safety mechanisms. See <a href="https://github.com/shansimmons-eng/tropelex/blob/master/SAFETY.md">SAFETY.md</a> for full specifications.</p>
+        <div class="warn">
+            <strong>Safety Infrastructure Highlights:</strong>
+            <ul>
+                <li><strong>Knowledge Decay:</strong> Decision confidence scores decay automatically over time (default 90-day half-life) to prevent stale policy ossification.</li>
+                <li><strong>Prompt Injection Surface Reduction:</strong> Context compression normalizes prompts, shrinking instruction injection surfaces.</li>
+                <li><strong>Compliance Gates:</strong> Automated checks enforcing EU AI Act, NIST, and ISO 42001 governance policies.</li>
+            </ul>
+        </div>
+
+        <h4 id="safety-dashboard">Dashboard <span class="badge badge-new">NEW</span></h4>
+        <p>Risk trends, aggregate exposure metrics, and security scoring across project memory. (<em>UI Tab: Dashboard / API <code>GET /api/memory/{project}/safety-dashboard</code></em>)</p>
+
+        <h4 id="alignment">Alignment <span class="badge badge-new">NEW</span></h4>
+        <p>Evaluates interpretability, safety, fairness, robustness, and governance drift between evaluation runs. (<em>UI Tab: Alignment / API <code>GET /api/memory/{project}/alignment/evaluate</code></em>)</p>
+
+        <h4 id="governance">Governance <span class="badge badge-new">NEW</span></h4>
+        <p>Compliance checks against EU AI Act, NIST, and ISO 42001 frameworks with automated governance report generation. (<em>UI Tab: Governance / API <code>GET /api/memory/{project}/governance/compliance</code></em>)</p>
+
+        <h4 id="provenance">Provenance &amp; Integrity <span class="badge badge-new">NEW</span></h4>
+        <p>Immutable provenance chain verification, signature checks, tamper detection, and security audit logging for all decisions. (<em>UI Tab: Provenance / API <code>GET /api/memory/{project}/provenance/chain</code></em>)</p>
+
+        <h4 id="safety-reviews">Reviews <span class="badge badge-new">NEW</span></h4>
+        <p>Human-in-the-loop review queue for decisions tagged <code>requires_review</code>, offering mitigation advice and audit tracking. (<em>UI Tab: Reviews / API <code>GET /api/memory/{project}/reviews/pending</code></em>)</p>
+
+        <h4 id="synthetic-data">Synthetic Data Policy <span class="badge badge-new">NEW</span></h4>
+        <p>EU AI Act Art. 10 &amp; 50 registration for synthetic datasets — privacy budget tracking, bias audits, and compliance gate enforcement. (<em>UI Tab: Synthetic Data / API <code>GET /api/memory/{project}/synthetic-data/summary</code></em>)</p>
+
+        <h4 id="agent-audit">Agent Surface Audit <span class="badge badge-new">NEW</span></h4>
+        <p>Audits the agent's harness config (<code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.mcp.json</code>, hooks, skills) for hardcoded secrets, broad permissions, and injection risks (Grades A–F): (<em>UI Tab: Agent Audit / API <code>POST /api/agent-audit/scan</code></em>)</p>
+        <pre><code>curl -X POST http://localhost:8766/api/agent-audit/scan?repo_path=/path/to/repo</code></pre>
+
+        <h4 id="drift-bench">Drift-Bench <span class="badge badge-new">NEW</span></h4>
+        <p>Continuous safety regression suite evaluating alignment drift and goal stability across multi-turn agent sessions. (<em>UI Tab: Drift-Bench / API <code>GET /api/memory/{project}/alignment/drift</code></em>)</p>
+
+        <h3 class="group" id="group-lifecycle">5. Memory Lifecycle</h3>
+
+        <h4 id="time-travel">Time Travel <span class="badge badge-new">NEW</span></h4>
+        <p>Inspect project memory state as of any past date. Forensic postmortem debugger tool. (<em>UI Tab: Time Travel / API <code>GET /api/memory/{project}/timetravel</code></em>)</p>
+
+        <h4 id="compaction">Memory Compaction <span class="badge badge-new">NEW</span></h4>
+        <p>Collapses long, superseded decision chains into epoch summaries to maintain token efficiency. (<em>UI Tab: Compaction / API <code>POST /api/memory/{project}/compact</code></em>)</p>
+
+        <h3 class="group" id="group-research">6. Research &amp; Ingestion</h3>
+
+        <h4 id="feeds">Research Feeds</h4>
+        <p>Scheduled research feeds with trend detection across runs, anomaly alerts, cross-feed correlation, and Slack/email notifications. (<em>UI Tab: Research Feeds / API <code>GET /api/research-feeds</code></em>)</p>
 
         <h4 id="deep-research">Deep Research <span class="badge badge-new">NEW</span></h4>
-        <p>Two independent research engines, side by side, plus a hybrid mode that merges them:</p>
-        <ul>
-            <li><strong>Multi-Source Scan</strong> — the last30days engine. Searches Reddit, X, YouTube, GitHub, HackerNews, Polymarket, and web grounding in parallel, then synthesizes findings into a narrative brief with source citations and key patterns. 1–3 minutes.</li>
-            <li><strong>Citation-Grade Web Research</strong> — powered by <a href="https://github.com/zoharbabin/web-researcher-mcp">web-researcher-mcp</a>, spoken to directly over its MCP stdio protocol. Runs an iterative search → LLM-refined follow-up query → search again loop, and imports every real, verifiable source URL straight into the Tropebook citation library. Requires the <code>web-researcher-mcp</code> binary on <code>PATH</code> — free via the DuckDuckGo provider with no key, or point it at Brave with <code>BRAVE_SEARCH_API_KEY</code> for higher rate limits.</li>
-            <li><strong>Hybrid</strong> — runs both engines concurrently on the same query, then has the project's LLM backend deduplicate and merge them into one report. If one engine fails, the other's results (and citations) are still returned — the merge degrades gracefully rather than failing outright.</li>
-        </ul>
-        <ul>
-            <li><strong>Deep research feeds</strong> — select "Deep Research" as the provider when creating a feed for scheduled multi-source runs</li>
-            <li><strong>Research history</strong> — all multi-source runs are saved; click any previous run to view its output</li>
-            <li><strong>Source keys</strong> — configure xAI, ScrapeCreators, Bluesky, and more in Settings → Deep Research Sources for best multi-source coverage</li>
-        </ul>
-        <p>Free sources (HackerNews, GitHub, Polymarket, YouTube, DuckDuckGo) work without any keys. Additional sources and providers unlock with API keys.</p>
+        <p>Dual-engine research system (Multi-Source Scan + Citation-Grade Web Research) with hybrid report merging and citation library importing. (<em>UI Tab: Deep Research / API <code>POST /api/research/deep</code></em>)</p>
 
-        <h3 class="group" id="group-team">Team &amp; Collaboration</h3>
+        <h4 id="tropebook">Tropebook</h4>
+        <p>Citation library and research knowledge base for storing reference URLs, managing tags, and linking knowledge graph items. (<em>UI Tab: Tropebook / API <code>GET /api/citations</code> / CLI <code>tropelex</code></em>)</p>
+
+        <h4 id="repo-seek">Repo Seek <span class="badge badge-new">NEW</span></h4>
+        <p>Automated repository scanner that parses source code for uncaptured citations, external links, and reference docs with Add/Exclude controls. (<em>UI Tab: Repo Seek / API <code>POST /api/reposeek/scan</code></em>)</p>
+
+        <h4 id="trending">Trending <span class="badge badge-new">NEW</span></h4>
+        <p>Analyzes topic velocity, emerging technical keywords, and trend signals across research runs and scheduled feeds. (<em>UI Tab: Trending / API <code>GET /api/trending</code></em>)</p>
+
+        <h3 class="group" id="group-team">7. Team &amp; Collaboration</h3>
 
         <h4 id="handoff">Agent Handoff</h4>
-        <p>Generate role-aware context bundles when one agent hands off to another. Token-budget-aware, role-specific.</p>
+        <p>Generates role-aware, token-budgeted context packets for inter-agent delegation. (<em>UI Tab: Agent Handoff / MCP <code>get_handoff_packet</code> / API <code>POST /api/handoff/build</code></em>)</p>
 
         <h4 id="pr-bot">PR Bot <span class="badge badge-new">NEW</span></h4>
-        <p>Generate PR comments with relevant decision context and ghost warnings. Distribution channel for insights.</p>
+        <p>Generates pull request comments containing relevant decision context and ghost warnings. (<em>UI Tab: PR Bot / API <code>POST /api/prbot/comment</code></em>)</p>
 
-        <h4 id="narrative">Narrative Mode <span class="badge badge-new">NEW</span></h4>
-        <p>Generate readable prose from the decision graph. Audience presets: new hire, investor, product manager.</p>
+        <h4 id="narrative-mode">Narrative Mode <span class="badge badge-new">NEW</span></h4>
+        <p>Converts decision graphs into human-readable prose with audience presets (new hire, investor, PM). (<em>UI Tab: Narrative / API <code>GET /api/narrative/{project}</code></em>)</p>
 
         <h4 id="decision-market">Decision Market <span class="badge badge-new">NEW</span></h4>
-        <p>Place confidence bets on decisions and track calibration over time. Gamifies retrospective honesty. <code>agent_name</code> is free text you choose when placing a bet — see <a href="#agent-naming">Agent Naming</a> for how to pick one consistently.</p>
+        <p>Place confidence bets on decisions to track calibration and accuracy over time. (<em>UI Tab: Decision Market / API <code>POST /api/market/bet</code></em>)</p>
 
         <h4 id="slack-capture">Slack Capture <span class="badge badge-new">NEW</span></h4>
-        <p>Capture decisions from chat messages and extract implicit decisions from threads.</p>
+        <p>Extracts decisions and implicit architectural rationale directly from Slack chat threads. (<em>UI Tab: Slack Capture / API <code>POST /api/slack/events</code></em>)</p>
 
         <h4 id="personas">Personas <span class="badge badge-new">NEW</span></h4>
-        <p>Synthesize readable persona summaries from agent proficiency tracking. "This agent tends to over-engineer auth flows." See <a href="#agent-naming">Agent Naming</a> for an important caveat: Agent Skills data is tracked per-project, not per-agent, so two different agent names on the same project currently produce the same underlying numbers.</p>
+        <p>Synthesizes readable behavioral personas from agent proficiency metrics. (<em>UI Tab: Personas / API <code>GET /api/personas/{agent}</code></em>)</p>
 
-        <h4 id="agent-naming">Agent Naming</h4>
-        <p><code>agent_name</code> shows up in two places — Decision Market bets and <code>/personas/{agent}</code> — and neither enforces a format, so it's worth being deliberate. Pick one stable identifier per agent/model and reuse it everywhere: a model slug (<code>claude-sonnet-5</code>, <code>gpt-4o</code>) works better than a role or session label (<code>reviewer</code>, <code>session-42</code>), since roles and sessions change but the underlying agent identity is what calibration and proficiency tracking are meant to follow over time. For a human placing bets manually, a stable handle like <code>human-shan</code> keeps them distinguishable on the leaderboard from any AI agents.</p>
-        <p><strong>Caveat:</strong> Agent Skills (<code>core/agent_skills.py</code>) currently records proficiency per <em>project</em>, not per agent — <code>record_session_outcome()</code> has no agent parameter at all. <code>/personas/{agent}</code> takes whatever name you pass and labels the project's skill data with it, but doesn't actually filter by agent underneath. In practice: naming is consistent and free, but true per-agent skill segmentation (so Claude's and GPT's proficiency on the same project are tracked separately) isn't built yet. Decision Market's calibration, by contrast, genuinely is per-agent — bets are stored and scored per <code>agent_name</code>, so a consistent naming scheme pays off there immediately.</p>
+        <h3 class="group" id="group-ops">8. Integrations &amp; Ops</h3>
 
-        <h3 class="group" id="group-integrations">Integrations &amp; Ops</h3>
-
-        <h4 id="git">Git</h4>
-        <p>Tech stack detection, work category frequency, and recent commits (Summary); extracting decisions from conventional commits (Sync); and parsing diffs for rationale, dependency changes, revert chains, and structural patterns (Deep Sync).</p>
+        <h4 id="git">Git Integration</h4>
+        <p>Tech stack detection, conventional commit decision extraction, and deep diff parsing for rationale and revert chains. (<em>UI Tab: Git / API <code>POST /api/sync/git</code></em>)</p>
 
         <h4 id="benchmarks">Benchmarks <span class="badge badge-new">NEW</span></h4>
-        <p>Opt-in, privacy-preserving comparison of structural statistics across projects. "Projects using FastAPI+Postgres have a 12% reversal rate." Local-only by default — sharing and aggregation only see projects on this install. To compare across separate installs (e.g. a laptop and a desktop), use Export to save this install's shared stats as a JSON bundle, then Import that bundle on the other install; it's a plain file exchange, no networking involved.</p>
+        <p>Privacy-preserving cross-project decision metrics and reversal rate comparisons. Supports offline JSON import/export. (<em>UI Tab: Benchmarks / API <code>GET /api/benchmarks</code></em>)</p>
 
         <h4 id="cost-ledger">Cost Ledger <span class="badge badge-new">NEW</span></h4>
-        <p>Track actual dollars and tokens spent per decision. ROI scoring with real denominators.</p>
-
-        <h4 id="emacs-integration">Emacs Integration <span class="badge badge-new">NEW</span></h4>
-        <p>Capture decisions, friction signals, and git commits directly from Emacs. Zero external dependencies — uses only built-in Emacs libraries.</p>
-        <ul>
-            <li><code>C-c t c</code> — Capture a decision with auto-detected context (file, project, major mode, code context)</li>
-            <li><code>C-c t r</code> — Capture selected region as decision context (code snippet, log output)</li>
-            <li><code>C-c t f</code> — Scan current buffer for friction signals</li>
-            <li><code>C-c t g</code> — Capture current HEAD commit as a decision</li>
-            <li><code>C-c t s</code> — Check server connectivity and current project</li>
-            <li><code>C-c t p</code> — Override project name for the session</li>
-        </ul>
-        <p><strong>Automatic capture (when mode is on):</strong></p>
-        <ul>
-            <li><strong>Compilation errors</strong> — auto-scans compilation output for friction when a build fails. High friction (>30%) triggers a minibuffer alert.</li>
-            <li><strong>Rapid saves</strong> — 5+ file saves within 5 seconds triggers a friction signal ("rapid iteration detected").</li>
-            <li><strong>Git commits via Magit</strong> — after every magit commit, the message (50+ chars) is auto-captured as a Tropelex decision with diffstat context.</li>
-        </ul>
-        <p><strong>Code context (LSP / treesit / which-function):</strong></p>
-        <ul>
-            <li>Captures include current function name and type when available</li>
-            <li>Uses <strong>eglot</strong> or <strong>lsp-mode</strong> for symbol info, falls back to <strong>treesit</strong> (Emacs 29+) or <strong>which-function-mode</strong></li>
-            <li>Set <code>tropelex-include-code-context</code> to <code>nil</code> to disable</li>
-        </ul>
-        <p><strong>Setup:</strong></p>
-<pre><code>(add-to-list 'load-path "~/Tropelex/emacs")
-(require 'tropelex-capture)
-(tropelex-capture-mode 1)</code></pre>
-        <p>Project auto-detects from: projectile → <code>vc-root-dir</code> → directory name fallback. Override with <code>C-c t p</code>.</p>
-
+        <p>Tracks actual financial dollars and LLM tokens spent per decision to measure ROI. (<em>UI Tab: Cost Ledger / API <code>GET /api/cost/{project}</code></em>)</p>
     </div>
 
     <div class="section" id="mcp-server">
-        <h2>MCP Server <span class="badge badge-new">NEW</span></h2>
-        <p>Everything the dashboard, VSCode extension, and Emacs package do over Tropelex's REST API is also available as MCP tools, so any MCP-capable agent — Claude Code, Cursor, Claude Desktop — can read and write project memory directly, without a bespoke per-editor integration. Lives in <code>mcp_server/</code>, in its own venv kept separate from Tropelex's own system-Python server.</p>
+        <h2>MCP Server Integration</h2>
+        <p>Everything in Tropelex is exposed via the Model Context Protocol (MCP), enabling agents in <strong>Claude Code</strong>, <strong>Cursor</strong>, and <strong>Claude Desktop</strong> to interact directly with project memory. The server code lives in <code>mcp_server/</code>.</p>
 
-        <h3>Setup</h3>
+        <h3>Quick Setup</h3>
         <pre><code>cd mcp_server
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 
-        <h3>Registering it</h3>
-        <p>A project-scoped <code>.mcp.json</code> is committed at the repo root — anyone who clones Tropelex and opens it in Claude Code gets the <code>tropelex</code> MCP server automatically (it shells out to <code>mcp_server/run.sh</code>, which resolves its own venv relative to the repo, so no machine-specific absolute paths are baked in). No manual registration needed for Claude Code.</p>
-        <p>To register it elsewhere:</p>
-        <pre><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
-        <p>Requires the main Tropelex server running. Point at a non-default instance with the <code>TROPELEX_URL</code> environment variable.</p>
+        <h3>Automatic Registration (Claude Code)</h3>
+        <p>A repository-scoped <code>.mcp.json</code> is pre-configured at the repo root. Opening Tropelex in Claude Code registers the MCP server automatically via <code>mcp_server/run.sh</code>.</p>
 
-        <h3>Tools</h3>
+        <h3>Manual Registration</h3>
+        <pre><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
+
+        <h3>Available MCP Tools</h3>
         <table>
-            <tr><th>Tool</th><th>What it does</th></tr>
-            <tr><td><code>list_projects</code></td><td>List all Tropelex projects and basic stats for each.</td></tr>
-            <tr><td><code>get_project_memory</code></td><td>Load a project's full memory — decisions, sessions, preferences, patterns. Call this first when starting work on a project.</td></tr>
-            <tr><td><code>capture_decision</code></td><td>Record a new decision with optional context.</td></tr>
-            <tr><td><code>end_session</code></td><td>Record the current session as a snapshot, for Session Replay and Time Travel.</td></tr>
-            <tr><td><code>get_context_bundle</code></td><td>Predictive prefetch — assemble a budget-aware bundle of the most relevant past decisions for a task.</td></tr>
-            <tr><td><code>check_contradictions</code></td><td>Scan a project's decisions for unresolved contradictions.</td></tr>
-            <tr><td><code>check_diff_for_conflicts</code></td><td>Pre-write guard — check a proposed unified diff against active decisions before committing.</td></tr>
-            <tr><td><code>friction_scan</code></td><td>Scan a conversation transcript for rephrasing/escalation/retry signals.</td></tr>
-            <tr><td><code>record_skill_outcome</code></td><td>Record how well a task went, to build up per-agent skill and persona data.</td></tr>
-            <tr><td><code>get_handoff_packet</code></td><td>Generate a role-aware context bundle for handing work off to another agent.</td></tr>
-            <tr><td><code>explain_why</code></td><td>Ask a natural-language "why do we...?" question, get a causal-chain answer.</td></tr>
+            <tr><th>Tool Name</th><th>Parameters</th><th>Description</th></tr>
+            <tr><td><code>list_projects</code></td><td>None</td><td>List all recorded project memory containers.</td></tr>
+            <tr><td><code>get_project_memory</code></td><td><code>project</code></td><td>Retrieve active decisions, patterns, and preferences for a project.</td></tr>
+            <tr><td><code>capture_decision</code></td><td><code>project</code>, <code>decision</code>, <code>context</code></td><td>Store a new architectural decision.</td></tr>
+            <tr><td><code>end_session</code></td><td><code>project</code>, <code>summary</code>, <code>agent</code></td><td>Summarize session and trigger pattern detection. Pass <code>agent</code> handle.</td></tr>
+            <tr><td><code>get_context_bundle</code></td><td><code>project</code>, <code>token_budget</code></td><td>Fetch optimal prefiltered context bundle for a task.</td></tr>
+            <tr><td><code>check_contradictions</code></td><td><code>project</code></td><td>Scan project memory for conflicting decisions.</td></tr>
+            <tr><td><code>check_diff_for_conflicts</code></td><td><code>project</code>, <code>diff</code></td><td>Pre-write check: evaluate git diff against active decisions.</td></tr>
+            <tr><td><code>friction_scan</code></td><td><code>transcript</code>, <code>agent</code></td><td>Scan conversation transcript for user frustration signals.</td></tr>
+            <tr><td><code>record_skill_outcome</code></td><td><code>project</code>, <code>skill</code>, <code>success</code>, <code>agent</code></td><td>Record outcome for agent calibration &amp; persona tracking.</td></tr>
+            <tr><td><code>get_handoff_packet</code></td><td><code>project</code>, <code>target_role</code></td><td>Build role-aware context packet for agent handoffs.</td></tr>
+            <tr><td><code>explain_why</code></td><td><code>project</code>, <code>question</code></td><td>Ask natural language causal questions about decisions.</td></tr>
         </table>
-        <p><code>end_session</code>, <code>friction_scan</code>, and <code>record_skill_outcome</code> all take an <code>agent</code> argument — pass your own name (e.g. <code>"Claude"</code>) so per-agent skill and persona tracking has real data instead of everything landing under <code>"unspecified"</code>.</p>
-        <p>This is a curated subset of Tropelex's 150+ REST endpoints. Add more by following the same pattern in <code>mcp_server/server.py</code>: a thin <code>@mcp.tool()</code> wrapper around the existing <code>_request()</code> helper.</p>
+    </div>
+
+    <div class="section" id="vscode">
+        <h2>VSCode Extension Integration <span class="badge badge-new">NEW</span></h2>
+        <p>The Tropelex VSCode extension (<code>vscode-tropelex/</code>) provides native sidebar memory management and inline editor decision scanning (Memory Lens).</p>
+
+        <h3>Installation</h3>
+        <p>Open <code>vscode-tropelex/</code> in VSCode and press <code>F5</code> to launch in extension development mode, or package it using <code>vsce package</code> and install the resulting <code>.vsix</code>.</p>
+
+        <h3>Configuration Settings</h3>
+        <table>
+            <tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+            <tr><td><code>tropelex.serverUrl</code></td><td><code>http://localhost:8766</code></td><td>URL of the running Tropelex backend server.</td></tr>
+            <tr><td><code>tropelex.project</code></td><td>Workspace folder name</td><td>Tropelex project target name. Auto-detected if empty.</td></tr>
+            <tr><td><code>tropelex.instanceSecret</code></td><td><code>""</code></td><td>Required <code>TROPEL_EX_SECRET</code> value when server instance authentication is enabled.</td></tr>
+        </table>
+
+        <h3>Contributed Commands &amp; Views</h3>
+        <ul>
+            <li><strong>Project Memory View:</strong> Dedicated Activity Bar icon (<code>$(brain)</code>) providing an interactive list of active decisions.</li>
+            <li><strong>Editor Context Menu:</strong> Right-click focus in any editor buffer and select <strong>Scan File for Decision References (Memory Lens)</strong> (<code>tropelex.scanFileForDecisions</code>) to view inline annotations linking code to decisions.</li>
+            <li><code>tropelex.openMemoryViewer</code> — Opens the primary memory sidebar view.</li>
+            <li><code>tropelex.refreshMemory</code> — Force-refreshes project decisions and session context.</li>
+            <li><code>tropelex.clearLensAnnotations</code> — Clears inline Memory Lens editor decorations.</li>
+        </ul>
     </div>
 
     <div class="section" id="tui">
-        <h2>Terminal UI <span class="badge badge-new">NEW</span></h2>
-        <p>A Textual-based terminal dashboard in <code>tui/</code> for anyone who lives in tmux rather than an editor — browse projects, read decision history, capture new decisions, all over the same REST API every other interface uses. Own venv.</p>
-
-        <h3>Setup &amp; run</h3>
+        <h2>Terminal UI (TUI)</h2>
+        <p>A Textual-based terminal dashboard in <code>tui/</code> for tmux users. Browse projects, inspect decisions, and record new rationale without leaving the terminal.</p>
         <pre><code>cd tui
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python app.py</code></pre>
-
         <h3>Keybindings</h3>
-        <table>
-            <tr><th>Key</th><th>Action</th></tr>
-            <tr><td>↑ / ↓</td><td>Move between projects (sidebar) or decisions (table)</td></tr>
-            <tr><td>Enter</td><td>Select a project</td></tr>
-            <tr><td><code>a</code></td><td>Capture a new decision (modal — decision text + optional context)</td></tr>
-            <tr><td><code>r</code></td><td>Refresh the current view</td></tr>
-            <tr><td><code>q</code></td><td>Quit</td></tr>
-        </table>
-        <p>Shows the project sidebar (from <code>GET /api/memory</code>), a decision table for the selected project (most recent first, with confidence tier), and a status bar with decision count and unresolved contradiction count. First pass, not a full port of the dashboard — covers the core browse/capture loop.</p>
+        <ul>
+            <li><code>a</code> — Add new decision modal</li>
+            <li><code>r</code> — Refresh decision list</li>
+            <li><code>q</code> — Quit TUI</li>
+        </ul>
     </div>
 
     <div class="section" id="opencode">
         <h2>OpenCode Integration <span class="badge badge-new">NEW</span></h2>
-        <p>Slash commands and a startup hook for using Tropelex from inside <a href="https://opencode.ai">OpenCode</a>. Defined in <code>.opencode/</code> in this repo.</p>
+        <p>Slash commands and prompt injection hooks for <a href="https://opencode.ai">OpenCode</a>. Defined in <code>.opencode/</code>.</p>
 
-        <div class="warn"><strong>Setup required —</strong> OpenCode only loads plugins it's told about. Copy the plugin and register it:
+        <h3>Setup</h3>
         <pre><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
-        Then add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code> (and <code>opencode.jsonc</code>, if you have one — whichever OpenCode reads on your setup). Restart OpenCode to pick it up. If commands you expect aren't showing in the command palette, this is the first thing to check.</div>
+        <p>Add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code>.</p>
 
+        <h3>Slash Commands</h3>
         <table>
-            <tr><th>Command</th><th>What it does</th></tr>
-            <tr><td><code>/tropelex-record-decision</code></td><td>Record a decision: <code>/tropelex-record-decision Using PostgreSQL for database</code></td></tr>
-            <tr><td><code>/tropelex-end-session</code></td><td>Summarize the session and trigger pattern learning: <code>/tropelex-end-session Built user auth with JWT</code></td></tr>
-            <tr><td><code>/tropelex-show-context</code></td><td>Print the accumulated context for the current project (decisions, sessions, patterns, tech stack) — same context that's auto-injected into new sessions</td></tr>
-            <tr><td><code>/tropelex-context</code></td><td>Run raw queries against project memory, insights, and recent decisions</td></tr>
-            <tr><td><code>/tropelex-up</code></td><td>Create/update a project's memory record (name, description, tech stack)</td></tr>
+            <tr><th>Command</th><th>Usage &amp; Description</th></tr>
+            <tr><td><code>/tropelex-record-decision</code></td><td>Record decision: <code>/tropelex-record-decision Using PostgreSQL for database</code></td></tr>
+            <tr><td><code>/tropelex-end-session</code></td><td>Summarize session: <code>/tropelex-end-session Built user auth with JWT</code></td></tr>
+            <tr><td><code>/tropelex-show-context</code></td><td>Display active project context bundle</td></tr>
+            <tr><td><code>/tropelex-context</code></td><td>Query project memory &amp; recent decisions</td></tr>
+            <tr><td><code>/tropelex-up</code></td><td>Initialize or update project details</td></tr>
         </table>
+    </div>
 
-        <p>Project name is auto-detected from the workspace folder name (or git remote, if the plugin's <code>detectProject()</code> finds one) — each workspace gets its own isolated memory. Override with the <code>TROPELEX_PROJECT</code> environment variable.</p>
-        <p>The startup hook (<code>plugins/tropelex.js</code>) also compresses prompts over a configurable length threshold and injects project context before every prompt automatically — see the file header for the full list of environment variables (<code>TROPELEX_URL</code>, <code>TROPELEX_COMPRESS_MIN</code>, <code>TROPELEX_INJECT_CONTEXT</code>).</p>
+    <div class="section" id="emacs-integration">
+        <h2>Emacs Integration <span class="badge badge-new">NEW</span></h2>
+        <p>Zero-dependency Emacs package (<code>emacs/tropelex-capture.el</code>) for capturing decisions and friction signals straight from your editor.</p>
+
+        <h3>Setup</h3>
+        <pre><code>(add-to-list 'load-path "~/Tropelex/emacs")
+(require 'tropelex-capture)
+(tropelex-capture-mode 1)</code></pre>
+
+        <h3>Keybindings</h3>
+        <ul>
+            <li><code>C-c t c</code> — Capture decision with auto-detected buffer context (file, mode, function)</li>
+            <li><code>C-c t r</code> — Capture active region (code snippet, log trace) as decision context</li>
+            <li><code>C-c t f</code> — Scan buffer for friction patterns</li>
+            <li><code>C-c t g</code> — Capture current HEAD git commit message as decision</li>
+            <li><code>C-c t s</code> — Check server connectivity and current project</li>
+            <li><code>C-c t p</code> — Override active project name for session</li>
+        </ul>
     </div>
 
     <div class="section" id="cli">
         <h2>CLI Reference <span class="badge badge-new">NEW</span></h2>
-        <p>A local command-line interface for the Tropebook citation library — <code>core/tropebook/cli.py</code>, installed as the <code>tropelex</code> command (see <code>pyproject.toml</code>). Operates directly on local storage; doesn't require the server to be running.</p>
+        <p>Local command-line interface for the Tropebook citation engine (<code>core/tropebook/cli.py</code>), installed via <code>pyproject.toml</code>.</p>
         <table>
-            <tr><th>Command</th><th>What it does</th></tr>
-            <tr><td><code>tropelex add &lt;title&gt; &lt;url&gt; [summary]</code></td><td>Add a citation</td></tr>
-            <tr><td><code>tropelex search &lt;query&gt;</code></td><td>Search the knowledge base</td></tr>
-            <tr><td><code>tropelex list [tag]</code></td><td>List all citations, or filter by tag</td></tr>
-            <tr><td><code>tropelex import &lt;file&gt;</code></td><td>Import citations from a JSON or markdown file</td></tr>
-            <tr><td><code>tropelex stats</code></td><td>Show knowledge base stats</td></tr>
-            <tr><td><code>tropelex link &lt;url1&gt; &lt;url2&gt; &lt;rel&gt;</code></td><td>Add a relationship between two citations</td></tr>
-            <tr><td><code>tropelex help</code></td><td>Show usage</td></tr>
+            <tr><th>Command</th><th>Description</th></tr>
+            <tr><td><code>tropelex add &lt;title&gt; &lt;url&gt; [summary]</code></td><td>Add reference citation</td></tr>
+            <tr><td><code>tropelex search &lt;query&gt;</code></td><td>Search knowledge base</td></tr>
+            <tr><td><code>tropelex list [tag]</code></td><td>List citations with optional tag filter</td></tr>
+            <tr><td><code>tropelex import &lt;file&gt;</code></td><td>Import citations from JSON/markdown file</td></tr>
+            <tr><td><code>tropelex stats</code></td><td>Display citation library stats</td></tr>
+            <tr><td><code>tropelex link &lt;url1&gt; &lt;url2&gt; &lt;rel&gt;</code></td><td>Link two citations with a relationship</td></tr>
         </table>
-        <pre><code>tropelex add "Python Docs" "https://docs.python.org" "Official Python docs"
-tropelex search "machine learning"
-tropelex import research_exports.json</code></pre>
-        <p>If the <code>tropelex</code> command isn't on <code>PATH</code>, run it as a module instead: <code>python -m core.tropebook.cli &lt;command&gt;</code>.</p>
+        <p>Direct module fallback: <code>python -m core.tropebook.cli &lt;command&gt;</code>.</p>
     </div>
 
     <div class="section" id="api">
         <h2>API Reference</h2>
-        <p>All features expose REST API endpoints. The server runs at <code>http://localhost:8766</code>.</p>
-        <p>See <a href="/openapi.json">/openapi.json</a> for the full OpenAPI specification with all 152 endpoints.</p>
+        <p>All features expose REST API endpoints on <code>http://localhost:8766</code>. View interactive OpenAPI documentation at <a href="/openapi.json">/openapi.json</a>.</p>
+
+        <h3>Core API Endpoint Examples</h3>
+
+        <h4>1. Record Decision</h4>
+        <pre><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions   -H "Content-Type: application/json"   -d '{"decision": "Using FastAPI", "context": "Requires high performance async endpoints"}'</code></pre>
+
+        <h4>2. Prefetch Context Bundle</h4>
+        <pre><code>curl http://localhost:8766/api/memory/my_project/prefetch?token_budget=2000</code></pre>
+
+        <h4>3. Pre-Write Diff Guard (Ghost Check)</h4>
+        <pre><code>curl -X POST http://localhost:8766/api/memory/my_project/ghost-check   -H "Content-Type: application/json"   -d '{"diff": "--- a/db.py
++++ b/db.py
++import sqlite3"}'</code></pre>
+
+        <h4>4. Explain Architectural Rationale</h4>
+        <pre><code>curl -X POST http://localhost:8766/api/explain   -H "Content-Type: application/json"   -d '{"project": "my_project", "question": "Why did we choose FastAPI?"}'</code></pre>
+    </div>
+
+    <div class="section" id="env-vars">
+        <h2>Environment Variables Reference</h2>
+        <table>
+            <tr><th>Variable</th><th>Scope</th><th>Default</th><th>Description</th></tr>
+            <tr><td><code>TROPELEX_URL</code></td><td>Clients</td><td><code>http://localhost:8766</code></td><td>Server base endpoint for MCP, VSCode, Emacs, OpenCode, and TUI.</td></tr>
+            <tr><td><code>TROPELEX_PROJECT</code></td><td>Clients</td><td>Workspace directory name</td><td>Overrides target project name across integrations.</td></tr>
+            <tr><td><code>TROPEL_EX_SECRET</code></td><td>Server / Auth</td><td>None</td><td>Instance authentication token required when server auth is enabled.</td></tr>
+            <tr><td><code>OPENAI_API_KEY</code></td><td>AI Services</td><td>None (Fallback active)</td><td>Enables <code>text-embedding-3-small</code> and <code>gpt-4o-mini</code> compression/refinement.</td></tr>
+            <tr><td><code>BRAVE_SEARCH_API_KEY</code></td><td>Deep Research</td><td>None</td><td>Primary key for Brave search provider.</td></tr>
+            <tr><td><code>EXA_API_KEY</code> / <code>SERPER_API_KEY</code></td><td>Deep Research</td><td>None</td><td>Fallback keys for Exa/Serper web research providers.</td></tr>
+            <tr><td><code>TROPELEX_COMPRESS_MIN</code></td><td>OpenCode</td><td><code>500</code></td><td>Prompt length threshold for automatic prompt compression.</td></tr>
+            <tr><td><code>TROPELEX_INJECT_CONTEXT</code></td><td>OpenCode</td><td><code>true</code></td><td>Automatically injects project context into new prompt sessions.</td></tr>
+        </table>
     </div>
 
     <div class="section" id="architecture">
-        <h2>Architecture</h2>
-        <p>Tropelex is built with:</p>
+        <h2>Architecture &amp; Storage Layout</h2>
+        <p>Tropelex is designed with clean architectural boundaries and zero database external dependencies:</p>
+
+        <h3>Core Technical Stack</h3>
         <ul>
-            <li><strong>FastAPI</strong> — REST API server</li>
-            <li><strong>JSON files</strong> — storage with file-level locking (fcntl.flock)</li>
-            <li><strong>D3.js</strong> — knowledge graph visualization</li>
-            <li><strong>Pure functions</strong> — all business logic is side-effect free</li>
-            <li><strong>Result type</strong> — explicit error handling (Ok/Err)</li>
+            <li><strong>FastAPI:</strong> High-performance async REST API server.</li>
+            <li><strong>JSON File Engine + <code>fcntl.flock</code>:</strong> Thread-safe and process-safe local persistence with lockfile synchronization.</li>
+            <li><strong>D3.js:</strong> Interactive browser-side force-directed knowledge graph.</li>
+            <li><strong>Pure Business Logic:</strong> Side-effect-free functional decision calculations.</li>
         </ul>
+
+        <h3>On-Disk Storage Layout</h3>
+        <p>All project data is stored under the local <code>memory/</code> directory:</p>
+        <pre><code>memory/
+└── &lt;project_name&gt;/
+    ├── decisions.json   # Recorded decision graph and relations
+    ├── sessions.json    # Work session summaries and friction logs
+    ├── patterns.json    # Auto-detected usage &amp; work patterns
+    └── tropebook/       # Project reference citations &amp; links</code></pre>
     </div>
 
     <div class="section" id="troubleshooting">
         <h2>Troubleshooting</h2>
 
-        <h3>"Cannot reach Tropelex" / connection refused</h3>
-        <p>The server isn't running. Start it from the repo root:</p>
+        <h3>"Cannot reach Tropelex" / Connection Refused</h3>
+        <p>The server is not running. Launch it from the repository root:</p>
         <pre><code>python3 -m core.tropebook.web.server</code></pre>
-        <p>Every interface (dashboard, MCP server, TUI, OpenCode plugin, Emacs package, CLI-for-server-backed-features) talks to <code>http://localhost:8766</code> by default. If you're running it elsewhere, set <code>TROPELEX_URL</code> for whichever client needs it.</p>
 
-        <h3>MCP server or TUI won't start / <code>ModuleNotFoundError</code></h3>
-        <p>Both live in their own venv, separate from Tropelex's own system Python — the venv wasn't created, or dependencies weren't installed into it. From the relevant directory:</p>
+        <h3>MCP Server or TUI Fails with <code>ModuleNotFoundError</code></h3>
+        <p>Both tools run in isolated venvs. Set up dependencies in their respective directories:</p>
         <pre><code>uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
-        <p>This project runs on a system Python that's <a href="https://peps.python.org/pep-0668/">externally managed</a> (Debian/Ubuntu-style) — plain <code>pip install</code> at the system level will refuse to run. That's exactly why the MCP server and TUI each get an isolated venv instead.</p>
 
-        <h3>OpenCode commands missing from the palette</h3>
-        <p>See the <a href="#opencode">OpenCode Integration</a> section above — the plugin has to be copied to <code>~/.config/opencode/plugins/</code> and registered in <code>opencode.json</code>'s <code>"plugin"</code> array. It isn't picked up automatically just by being in this repo.</p>
+        <h3>VSCode Extension Fails to Connect</h3>
+        <p>Verify that <code>tropelex.serverUrl</code> matches your running server URL. If server instance auth is enabled, ensure <code>tropelex.instanceSecret</code> contains the matching <code>TROPEL_EX_SECRET</code> key.</p>
 
-        <h3>Settings show a key as "configured" that you never entered</h3>
-        <p>Check your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>) and any other <code>.env</code> files on the machine (e.g. <code>~/.config/last30days/.env</code>) for a stray <code>export</code> — environment variables set outside Tropelex's own <code>.env</code> still get picked up, since Settings reads from the process environment, not just the one file. This is usually a leftover from setting up a different tool, not a Tropelex bug.</p>
-
-        <h3>Deep Research citation-grade mode is rate-limited</h3>
-        <p>The free DuckDuckGo provider rate-limits aggressively under repeated use. Set <code>BRAVE_SEARCH_API_KEY</code> — Tropelex prefers Brave for web-researcher-mcp automatically when it's present.</p>
-
-        <h3>A feature shows "no data yet" and nothing happens when I try it</h3>
-        <p>Several features are empty by design until they're seeded — Decision Market needs a bet placed, Time Travel needs at least one recorded session (<strong>+ End Session</strong> in the Memory tab), Personas need a skill outcome recorded. This is normal for a fresh project, not a bug.</p>
+        <h3>OpenCode Commands Missing from Palette</h3>
+        <p>Ensure <code>plugins/tropelex.js</code> is copied to <code>~/.config/opencode/plugins/</code> and registered in <code>opencode.json</code> under the <code>"plugin"</code> array.</p>
     </div>
 </div>
 <script>
