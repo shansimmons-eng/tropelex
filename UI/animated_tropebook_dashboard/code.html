@@ -1196,7 +1196,7 @@ void main() {
                             + Add Decision
                         </button>
                     </div>
-                    <div id="decisions-list" class="space-y-3 mb-4">
+                    <div id="decisions-list" class="space-y-3 mb-4 max-h-96 overflow-y-auto pr-1">
                         <!-- Decisions will be injected here -->
                     </div>
                     
@@ -6718,12 +6718,22 @@ function renderDecisions(decisions) {
         list.innerHTML = '<p class="text-sm text-outline">No decisions recorded</p>';
         return;
     }
-    list.innerHTML = decisions.slice(-5).reverse().map(d => `
+    // Category badge matches Time Travel's existing decision-card treatment
+    // (safety.safety_category, 'untagged' fallback) rather than inventing a
+    // second style for the same field. No hard cap anymore -- the list
+    // scrolls (max-h-96, same bound Time Travel already uses for this
+    // exact card shape) instead of silently hiding older decisions.
+    list.innerHTML = decisions.slice().reverse().map(d => {
+        const safety = (d.safety_metadata && typeof d.safety_metadata === 'object') ? d.safety_metadata : {};
+        return `
         <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender">
             <p class="text-sm font-medium">${escapeHtml(d.decision)}</p>
-            <span class="text-xs text-outline font-mono">${d.timestamp?.slice(0, 10) || ''}</span>
-        </div>
-    `).join('');
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high text-outline uppercase">${escapeHtml(safety.safety_category || 'untagged')}</span>
+                <span class="text-xs text-outline font-mono">${d.timestamp?.slice(0, 10) || ''}</span>
+            </div>
+        </div>`;
+    }).join('');
     populateMarketDecisionSelect();
 }
 
@@ -10673,12 +10683,26 @@ document.getElementById('btn-delete-feed')?.addEventListener('click', async () =
 // Feed Intelligence
 document.getElementById('btn-feed-intel')?.addEventListener('click', async () => {
     if (!feedsState.selectedFeedId) return;
-    const data = await api(`/research-feeds/${feedsState.selectedFeedId}/intelligence`);
+    const [data, health] = await Promise.all([
+        api(`/research-feeds/${feedsState.selectedFeedId}/intelligence`),
+        api(`/research-feeds/${feedsState.selectedFeedId}/citation-health`),
+    ]);
     if (!data) return;
     const content = document.getElementById('feed-detail-content');
     const trends = data.trends || {};
     const anomalies = data.anomalies || [];
     const topics = (trends.trending_topics || []).slice(0, 5);
+    // #80: score_citation existed but was never wired to anything --
+    // surfaces which of this feed's own citations are aging (60-day
+    // half-life, faster than decisions) so staleness isn't invisible.
+    const agingBlock = (health && health.count > 0) ? `
+        <h4 class="font-mono text-xs uppercase text-accent-periwinkle mb-2">Citation Health</h4>
+        <div class="flex items-center gap-3 text-xs p-2 rounded bg-surface-raised mb-4">
+            <span class="text-outline">${health.count} citation${health.count === 1 ? '' : 's'} &middot; avg score ${health.average_score}</span>
+            ${health.aging_count > 0
+                ? `<span class="flex items-center gap-1 text-yellow-400"><span class="material-symbols-outlined text-sm">schedule</span>${health.aging_count} aging</span>`
+                : `<span class="text-accent-lime">all fresh</span>`}
+        </div>` : '';
     content.innerHTML = `
         <div class="grid grid-cols-3 gap-3 mb-4">
             <div class="p-3 rounded bg-surface-raised text-center">
@@ -10715,6 +10739,7 @@ document.getElementById('btn-feed-intel')?.addEventListener('click', async () =>
                 <span>${escapeHtml(a.description)}</span>
             </div>`
         ).join('')}</div>` : '<p class="text-sm text-accent-lime">No anomalies detected</p>'}
+        ${agingBlock}
     `;
 });
 
@@ -11106,10 +11131,11 @@ async function loadNeedsAttention() {
                 <button class="attn-ack-btn shrink-0 px-3 py-1.5 rounded-lg border border-accent-sky/30 text-accent-sky font-mono text-xs hover:bg-accent-sky/10 transition-all cursor-pointer" data-packet-hash="${escapeAttr(item.id)}">Acknowledge</button>
             </div>`;
         }
-        // decayed_decision / content_flagged / handoff_completeness_violation
-        // -- explicitly informational by design (see get_needs_attention's
-        // own comments): act on these from the Confidence tab, the flagged
-        // decisions list, or the audit trail, not inline here.
+        // decayed_decision / content_flagged / citation_flagged /
+        // handoff_completeness_violation -- explicitly informational by
+        // design (see get_needs_attention's own comments): act on these
+        // from the Confidence tab, the flagged decisions/citations list,
+        // or the audit trail, not inline here.
         return `<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-raised border border-glass-border">
             <div class="min-w-0">
                 <p class="text-sm font-medium truncate">${label}</p>
@@ -11275,9 +11301,15 @@ async function selectGoal(goalId) {
     const trend = alignment ? alignment.trend_drift : null;
     const calibration = alignment ? (alignment.market_calibration || []) : [];
 
+    // Editing a goal's category is what today's fix (monitoring -> general)
+    // needed a raw API call for -- PATCH /{project}/goals/{goal_id} already
+    // supported it, there was just no UI. text/priority go along for the
+    // same reason: same endpoint, same form, no reason to build three.
+    const nonsafetyLabel = (goal.category || '').startsWith('nonsafety:') && goal.category !== 'nonsafety:bug'
+        ? goal.category.slice('nonsafety:'.length) : '';
     detail.innerHTML = `
-        <div class="flex items-start justify-between mb-4">
-            <div>
+        <div class="flex items-start justify-between mb-4" id="goal-detail-header">
+            <div id="goal-detail-static">
                 <p class="text-base font-medium">${escapeHtml(goal.text)}</p>
                 <div class="flex items-center gap-2 mt-1 font-mono text-xs uppercase">
                     <span class="${_GOAL_STATUS_COLOR[goal.status] || 'text-outline'}">${goal.status}</span>
@@ -11286,7 +11318,27 @@ async function selectGoal(goalId) {
                     ${goal.category ? `<span class="text-outline">· ${escapeHtml(_formatGoalCategory(goal.category))}</span>` : ''}
                 </div>
             </div>
-            <button class="btn-delete-goal px-3 py-1.5 rounded-lg border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 font-mono text-xs transition-all cursor-pointer" data-id="${goal.id}">Delete</button>
+            <div class="flex gap-2 shrink-0">
+                <button class="btn-edit-goal px-3 py-1.5 rounded-lg border border-glass-border text-outline hover:border-accent-lavender/40 hover:text-accent-lavender font-mono text-xs transition-all cursor-pointer" data-id="${goal.id}" data-category="${escapeAttr(goal.category || '')}">Edit</button>
+                <button class="btn-delete-goal px-3 py-1.5 rounded-lg border border-glass-border text-outline hover:border-red-400/40 hover:text-red-400 font-mono text-xs transition-all cursor-pointer" data-id="${goal.id}" title="Removes this goal entirely and unlinks any decisions pointing to it -- for a wrong value, use Edit instead">Delete</button>
+            </div>
+        </div>
+        <div id="goal-edit-form" class="hidden mb-6 p-4 bg-surface-raised rounded-lg border border-accent-lavender/20">
+            <textarea id="goal-edit-text-input" rows="2" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface focus:border-accent-lavender focus:outline-none resize-none mb-3">${escapeHtml(goal.text)}</textarea>
+            <div class="flex gap-2 mb-3">
+                <select id="goal-edit-priority-input" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">
+                    <option value="low" ${goal.priority === 'low' ? 'selected' : ''}>low</option>
+                    <option value="medium" ${goal.priority === 'medium' ? 'selected' : ''}>medium</option>
+                    <option value="high" ${goal.priority === 'high' ? 'selected' : ''}>high</option>
+                    <option value="critical" ${goal.priority === 'critical' ? 'selected' : ''}>critical</option>
+                </select>
+                <select id="goal-edit-category-select" class="bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface focus:border-accent-lavender focus:outline-none cursor-pointer">${_GOAL_CANDIDATE_CATEGORY_OPTIONS}</select>
+                <input id="goal-edit-category-nonsafety-label" type="text" placeholder="label, e.g. performance" value="${escapeAttr(nonsafetyLabel)}" class="${nonsafetyLabel ? '' : 'hidden'} flex-1 bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-xs text-on-surface placeholder-outline focus:border-accent-lavender focus:outline-none"/>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn-save-goal-edit px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/30 transition-all cursor-pointer" data-id="${goal.id}">Save</button>
+                <button class="btn-cancel-goal-edit px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>
+            </div>
         </div>
         <div class="flex gap-2 mb-6">
             ${transitions.map(s => `<button class="btn-transition-goal px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-id="${goal.id}" data-status="${s}">Mark ${s} →</button>`).join('')}
@@ -11383,6 +11435,65 @@ document.getElementById('goal-detail')?.addEventListener('click', async (e) => {
             document.getElementById('goal-detail').innerHTML = '<p class="text-sm text-outline">Select a goal to see details, linked decisions, and drift.</p>';
             loadGoals();
         }
+        return;
+    }
+    const editBtn = e.target.closest('.btn-edit-goal');
+    if (editBtn) {
+        document.getElementById('goal-detail-static').classList.add('hidden');
+        document.getElementById('goal-edit-form').classList.remove('hidden');
+        // The shared option list has no dynamic `selected` -- set the
+        // current value explicitly rather than templating a third copy
+        // of the option list just to add `selected` attributes. Read
+        // straight off the button's own data-category rather than a
+        // separate module-level "current goal" variable to keep this
+        // self-contained.
+        const categorySelect = document.getElementById('goal-edit-category-select');
+        const category = editBtn.dataset.category || '';
+        if (category && category !== 'nonsafety:bug' && category.startsWith('nonsafety:')) {
+            categorySelect.value = '__nonsafety__';
+        } else {
+            categorySelect.value = category;
+        }
+        return;
+    }
+    const cancelEditBtn = e.target.closest('.btn-cancel-goal-edit');
+    if (cancelEditBtn) {
+        // Re-select rather than just toggling visibility -- guarantees the
+        // form's fields are reset from the true persisted state next time
+        // Edit is opened, instead of carrying over whatever was typed
+        // before Cancel.
+        selectGoal(_selectedGoalId);
+        return;
+    }
+    const saveEditBtn = e.target.closest('.btn-save-goal-edit');
+    if (saveEditBtn) {
+        const text = document.getElementById('goal-edit-text-input').value.trim();
+        if (!text) { showToast('Goal text cannot be empty'); return; }
+        const priority = document.getElementById('goal-edit-priority-input').value;
+        const categorySelect = document.getElementById('goal-edit-category-select').value;
+        let category = null;
+        if (categorySelect === '__nonsafety__') {
+            const label = document.getElementById('goal-edit-category-nonsafety-label').value.trim();
+            category = label ? `nonsafety:${label}` : null;
+        } else if (categorySelect) {
+            category = categorySelect;
+        }
+
+        const res = await api(
+            `/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(saveEditBtn.dataset.id)}`,
+            'PATCH', { text, priority, category }
+        );
+        if (res) {
+            showToast('Goal updated');
+            selectGoal(saveEditBtn.dataset.id);
+            loadGoals();
+        }
+    }
+});
+
+document.getElementById('goal-detail')?.addEventListener('change', (e) => {
+    if (e.target.id === 'goal-edit-category-select') {
+        document.getElementById('goal-edit-category-nonsafety-label').classList.toggle('hidden', e.target.value !== '__nonsafety__');
     }
 });
 

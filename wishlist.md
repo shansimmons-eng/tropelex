@@ -389,6 +389,8 @@ Separately, auditing the *other* half of error handling (business-logic `Result`
 
 **Status:** ✅ Implemented (`core/goals/`). Tests: `tests/test_goals.py` (42 tests). `core/tropebook/web/server.py`'s `get_alignment_drift` and `_friction_penalty` were refactored into reusable pure functions (`core/goals/drift.py`'s `score_trend_drift`, `core/friction/miner.py`'s `compute_friction_penalty`) as part of this — behavior-preserving, existing test coverage (`tests/test_far_cais_sff.py`) unchanged.
 
+**2026-08-21 addition — in-place goal editing:** `PATCH /{project}/goals/{goal_id}` already supported editing `text`/`priority`/`category` since day one, but the dashboard only ever exposed status-transition buttons and Delete — no way to fix a mis-tagged category without a raw API call (found live: a goal auto-created from session narration got tagged `monitoring` instead of `general`). Added an Edit button next to Delete in the goal detail view; opens an inline form reusing the same category option list as "New Goal" and goal-candidate review (`_GOAL_CANDIDATE_CATEGORY_OPTIONS`), pre-filled from the goal's current values. Considered whether full editability makes Delete redundant — decided no: Delete does something Edit deliberately doesn't (unlinks any decisions pointing at the goal, `res.decisions_unlinked`), which is correct for "this goal shouldn't exist" but wrong for "this goal has a wrong field" — collapsing them would either force spurious/duplicate goals to be `abandon()`-ed forever (a real terminal status, not a delete substitute) or make Edit silently cascade into decision-unlinking, which is a bigger side effect than a text/category fix should have. Kept both, backend unchanged (endpoint already existed) — pure dashboard addition, live-verified (edit → save → toast → re-render, and cancel → clean revert) in Chrome against the real `tropelex` project.
+
 ---
 
 ### 42. Formalized Goal Adherence Scoring
@@ -1040,6 +1042,146 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 
 ---
 
+## Research Deepening (External Review, 2026-08-21)
+
+A close read of Research & Ingestion (Prompt Lab, Feeds, Deep Research, Repo Seek, Tropebook) proposed ~25 improvements across 7 themes, ranked by leverage vs. architecture fit. Checked against the actual code before logging anything below — several of its premises were already true (feed trend/anomaly detection #9, feed alerts #12, cross-project learning #4, Cost Ledger #33, and Injection Sentinel #40 all already ✅ implemented; `score_citation` already exists in `core/knowledge_decay.py`; Deep Research's hybrid mode already exists in `web_researcher_router.py`), so those aren't re-logged here — only the genuine gaps are. Three flagged below (🎯) as the actual low-hanging fruit: small, already-scoped-in-part, reuse existing infra rather than standing up anything new. The rest are real ideas, several of them the highest-leverage ones in the source material (decision promotion, structured synthesis output), but bigger builds — logged for a later pass rather than attempted now.
+
+### 79. Citation Content-Flags → Needs Attention Integration 🎯
+**Purpose:** Surface citations with `content_flags` (from Injection Sentinel, #40) in the same triage queue as decisions — `get_needs_attention` already has a `content_flagged` source for decisions, citations don't feed it yet.
+
+**Why:** This isn't new — #40's own build notes list it explicitly under "Deferred, not built this pass." Nothing about the shape needs inventing, just extending an existing pattern to a second entity type.
+
+**Features:**
+- Add citation-sourced entries to `get_needs_attention`'s existing `content_flagged` source (or a distinct `citation_flagged` source, TBD which reads cleaner)
+- Reuse the existing dashboard warning-badge treatment already on Tropebook citation cards (#40) rather than building new UI
+
+**Resolved:** Went with a distinct `citation_flagged` kind rather than folding into `content_flagged` — the two entity types need different detail-text handling and this keeps `get_needs_attention`'s per-kind branches honest. New `GET /api/citations/flagged` (`core/tropebook/web/server.py`) mirrors the existing `GET /{project}/decisions/flagged` — global, not project-scoped, since Tropebook has no project field on `Citation` (confirmed by reading the dataclass directly); documented explicitly in both endpoints' docstrings rather than silently doing something a project-scoped route name wouldn't suggest. Registered before `/api/citations/{cid}` in the route table — first attempt 404'd because `{cid}` was swallowing the literal string "flagged".
+
+**Status:** ✅ Implemented (2026-08-21). Tests: `tests/test_injection_sentinel_router.py` (+5: empty/lists-only for the new endpoint, appears-in-needs-attention/clean-has-none/global-across-projects for the aggregation source).
+
+---
+
+### 80. Feed Source Quality Scoring & Decay 🎯
+**Purpose:** Weight/flag Feed-sourced citations by source reliability and staleness, using the scoring that already exists rather than building new logic.
+
+**Why:** `score_citation` (`core/knowledge_decay.py:281`) already does citation-level scoring; it's just never been applied specifically to Feed results or surfaced in the Feeds UI / Health dashboard. The source material's "official docs > blog > social" weighting is a real refinement on top, not a prerequisite — can ship the wiring first, refine the weighting later.
+
+**Features:**
+- Apply `score_citation` to Feed-run results, surface "this citation is aging" in the Feeds panel
+- Optional: source-type reliability weighting as a second pass once the base wiring is live
+
+**Resolved:** New `GET /api/research-feeds/{feed_id}/citation-health` (`core/tropebook/feed_intelligence_router.py`) resolves a feed's `citation_ids` against the global Tropebook store and scores each via `score_citation`; a new pure `score_feed_citation_health()` in `core/tropebook/feed_intelligence.py` does the aggregation (count/average_score/aging_count), matching that module's existing pure-function style. Wired into the dashboard's existing "Intelligence" button handler rather than adding a new button — fetches both `/intelligence` and `/citation-health` in parallel, appends a Citation Health block showing aging count. Source-type reliability weighting (official docs > blog > social) deferred, not built this pass — the wishlist's own framing already called this a real refinement on top, not a prerequisite.
+
+**Status:** ✅ Implemented (2026-08-21). Tests: `tests/test_feed_intelligence.py::TestScoreFeedCitationHealth` (4, pure function), `tests/test_feed_intelligence_router.py` (new, 3, router-level with isolated Tropebook + ResearchFeedManager). Live-verified against a real feed with 14 real citations (all scored `high` tier, correctly reflecting a feed that had run recently).
+
+---
+
+### 81. Repo Seek → Deep Research Auto-Research Loop 🎯
+**Purpose:** Let "Scan Item" (Repo Seek, #77) optionally trigger a lightweight Deep Research pass on the selected repo and auto-import findings as citations tagged with that repo, instead of Repo Seek and Deep Research staying two disconnected tools.
+
+**Why:** Both halves of this already exist and were both verified working this session — Scan Item's bounded drill-down (#77) and the Deep Research → Tropebook citation-import pipeline. This is a connector between two proven systems, not new infrastructure.
+
+**Features:**
+- "Scan Item" gains an optional "Research this repo" action — README + recent issues/PRs as the query seed
+- Imported citations tagged with the source repo for provenance
+- Deferred from this pass: tech-stack drift alerts (periodic re-scan diffing) and "bookmark → decision" linking — smaller UX add-ons, not blockers
+
+**Resolved:** Built as its own action ("Research" button) next to Scan Item, not folded into it — the two are semantically different (Scan Item searches GitHub again for more similar repos and creates a new lineage batch; Research searches the wider web for context about *this specific repo* and writes citations, no batch tree involved). New `POST /{project}/batches/{batch_id}/items/research` (`core/reposeek/router.py`) builds a topic from the item's title+description, runs `run_web_deep_research` (max_steps=2, kept low per "lightweight"), and imports sources via the existing `DeepResearchImporter` — each source tagged `repo:<title>` before import for provenance, since `import_sources` doesn't return citation IDs to tag after the fact. README/issues/PRs as a richer query seed (vs. just title+description) deferred, not built this pass.
+
+**Status:** ✅ Implemented (2026-08-21). Tests: `tests/test_reposeek.py::TestResearchItemEndpoint` (new, 4 — unknown batch/item 404s, successful import with repo tag verified against a real isolated Tropebook, WebResearcherError → 502). Route confirmed registered and correctly gated by the same mutating-endpoint auth as sibling endpoints; the actual deep-research call itself wasn't live-fired during verification since it has real API/token cost — correctness rests on the mocked test suite instead.
+
+---
+
+### 82. Decision Promotion from Research
+**Purpose:** After a Deep Research or Feed run, surface candidate decisions ("evidence suggests X over Y because...") with confidence + citations, and a one-click "Promote to Decision" that records provenance.
+
+**Why:** Named as the highest-leverage idea in the source material, and it's right — research currently only produces citations, never touches the decision graph. Not low-hanging: needs a confidence-surfacing UI, a promotion flow, and provenance linking (citation IDs → decision) that doesn't exist yet in any form.
+
+**Status:** Idea — biggest lift in this batch, but the biggest payoff too. Good candidate for the next real planning pass once #79–81 are through.
+
+---
+
+### 83. Targeted Rationale Refresh on Decay
+**Purpose:** Instead of the old blanket corroboration pass (correctly removed — see #30), run a constrained "does this still hold?" Deep Research query only when a decision is about to decay or sits in a high-impact context.
+
+**Why:** Reuses the existing hybrid Deep Research pipeline with a narrow, decision-text-derived query instead of standing up new research logic. Ties #58 (Knowledge Decay Loop Closure) to live research instead of only internal history.
+
+**Status:** Idea.
+
+---
+
+### 84. Deep Research Structured Synthesis + Citation Graph Enrichment
+**Purpose:** Force Deep Research's synthesis step to emit a consistent JSON shape (claims, evidence strength, open questions, citation map) alongside the narrative brief, and auto-propose links between new and existing citations by entity/semantic overlap.
+
+**Why:** A consistent schema is what would make #82 (decision promotion) and RAG injection reliable instead of parsing free text. Worth scoping together with #82 rather than separately.
+
+**Status:** Idea.
+
+---
+
+### 85. Adaptive Feed Scheduling & Query Rewriting
+**Purpose:** Lengthen a feed's interval automatically on repeated low-novelty runs; shorten it when anomaly score spikes. Optionally LLM-rewrite a stagnant query using run history.
+
+**Why:** #9 (Feed Intelligence) already computes novelty/anomaly signals — this consumes them to close the loop on scheduling instead of just reporting.
+
+**Status:** Idea.
+
+---
+
+### 86. Multi-Project / Shared Feeds
+**Purpose:** Let a feed be scoped to one project or marked global, with other projects able to opt in (e.g. "new FastAPI patterns" relevant across several projects).
+
+**Why:** Feeds are currently project-siloed; some feed topics genuinely aren't project-specific.
+
+**Status:** Idea.
+
+---
+
+### 87. Deep Research Budget Controls + Caching
+**Purpose:** A "quick vs. thorough" mode with max-sources/max-tokens/max-wall-time budget params, plus caching intermediate `last30days` results by query fingerprint so repeated/similar queries reuse work.
+
+**Why:** Cost control as research usage grows; ties into #33 (Cost Ledger, already implemented) as the natural place to record what a research run actually cost.
+
+**Status:** Idea.
+
+---
+
+### 88. Research Source Coverage Dashboard
+**Purpose:** Per-project view of which sources (Reddit, X, GitHub, academic, etc.) actually contribute useful citations vs. noise, with the ability to disable low-value sources per project.
+
+**Why:** Currently no visibility into which of Deep Research's many source providers are pulling their weight for a given project.
+
+**Status:** Idea.
+
+---
+
+### 89. Prompt Lab: Memory-Aware Context + Research-Ready Mode
+**Purpose:** Inject recent high-confidence decisions/citations into Prompt Lab's Context Check stage; add a mode that rewrites a vague question into a high-quality Deep Research or Feed query.
+
+**Why:** Overlaps significantly with existing #10 (Prompt Effectiveness Tracking, logged, not yet built) — the "track which compression/structure strategies later produced good outcomes" half is already that item. The memory-injection and research-ready-query halves are new. Scope together with #10 rather than as a separate build.
+
+**Status:** Idea.
+
+---
+
+### 90. MCP Tools for the Research Surface + CLI Parity
+**Purpose:** Expose Deep Research and Feeds as MCP tools (so agents can trigger/inspect them without leaving session) and as CLI commands (`tropelex research "query" --hybrid --project foo`, `tropelex feed run <id>`).
+
+**Why:** Verified this session — `mcp_server/server.py` currently has no research- or feed-related tools at all, only the memory/decision/goal surface. Real, confirmed gap, not a refinement.
+
+**Status:** Idea.
+
+---
+
+### 91. Research↔Decision UX Wins
+**Purpose:** Small workflow adds: a "Research this decision's rationale" button on decision cards, bulk import/export of feeds and their markdown histories.
+
+**Why:** Cheap UX layer on top of #82/#83 once those exist — not worth building standalone before the underlying research-promotion flow does.
+
+**Status:** Idea.
+
+---
+
 ## Team & Collaboration
 
 ### 8. Agent Handoff Packets
@@ -1521,4 +1663,6 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 **Status:** The entire original "Safety Infrastructure Hardening" external-review queue (#52–#60) is now implemented, most of it scoped down from its original proposal after verifying each against the actual code (real corrections documented in each entry: #57's live-project incident and fix, #58's decay-review flagging, #40's ingestion-point corrections, #59's dropped calibration/disagreement sub-features, #60's CI-scope question and the handoff risk-level gap it surfaced). That gap-finding directly seeded a second wave, #67–#73 (Semantic Intent Layer for Ghost, Session Shape soft-gating, Handoff Completeness as policy, a Constitutional Layer, Drift-Bench Phase 2, generalized soft-enforcement, and small infra polish — proposed 2026-08-10, all still Open), plus an extension to #44 (goal-scoped Decision Market/Dashboard integration). Remaining genuinely open: #19 (Session Replay with AI Analysis, the one item never picked up), #42–#44/#46–#47 (Goal Adherence Scoring, Coordination Drift Detection, Goal Re-Anchoring, Tagline Reconsideration, General Branding Alignment Pass — proposed 2026-08-07 off the agent-drift research pass following #41, mirrored as live Goal records in the `tropelex` project via `GET /api/memory/tropelex/goals`), #63–#66 (Session-End Auto-Wiring for Goal Detection, Draft Policy Schema for Gates, Dictionary Coverage Audit, Context Injection Middleware — reconciled 2026-08-10 from live Goal records that had never been written up as numbered wishlist items), and #67–#73 above. #45 (Session-Shape Baselining), #58 (Knowledge Decay Loop Closure), #40 (Injection Sentinel), #59 (Signed Handoffs, scoped), and #60 (Drift-Bench Harness, scoped) shipped 2026-08-09/10. Also implemented: Deep Research + Emacs Magit/LSP + Dashboard Overhaul + Safety, Alignment & Governance (Phase 12) + Agent Surface Audit, Safety & Alignment tab consolidation, and 6 cross-feature safety connections (#37, Phase 13) + integration-debt cleanup, data-integrity fixes, and search resilience (Phase 14) + tag-required gate, trigger registry, Needs Attention panel, Goal Entity & Alignment Layers (#41, Phase 15), Goal-Shaped Language Detection (#48), Attention Pulse Animation (#49), the Error Handling Audit / Result-type consolidation (#50), the `nonsafety:bug` convention (#51), Real Append-Only Provenance Chain & Security Audit Log (#52), Enforceable Preventive Gates + Override-as-Decision (#53), Required Safety Metadata for High-Risk Decisions (#54), Doc Mining + Ghost Combined-Severity Alert (#55), Friction → Decision Promotion (#56), Semantic Detection Upgrade for Contradictions (#57, Ghost Decisions deferred), Prevention Report (#61), and Friction Persistence + Generic Review Queue (#62). #30 (Rationale Corroboration) removed 2026-07-28; see its entry above.
 
 **2026-08-19 correction, verified against `git log --grep="wishlist #"` rather than re-guessed:** the paragraph above is stale on several points it stated as open. Actually shipped since: **#19** (Session Replay with AI Analysis — no longer "the one item never picked up"), **#43** (Coordination Drift Detection), **#44** (Goal Re-Anchoring in Context Bundles), **#64** (Draft Policy Schema for Gates), **#69** (Handoff Completeness as a First-Class Policy), **#72** (Generalized Soft-Enforcement + Override-as-Decision), and **#67** (Semantic Intent Layer for Ghost — infra only, per its own commit message). #74–#78 (Adversarial Hardening P0–P8, the memory case-split incident, Repo Seek MVP + Add Citation/Exclude/Scan Item, and a dashboard bug-fix batch — see Phase 16) also shipped this pass. Status of #42, #46, #47, #63, #65, #66, #68, #70, #71, #73 not re-verified this pass — no matching commits found, treat as still open but unconfirmed rather than re-audited.
+**2026-08-21 addition:** Logged #79–91 (Research Deepening, external review) after checking each proposed idea against the actual code first — several of the source material's claims about existing capabilities (#9, #12, #4, #33, #40, `score_citation`, Deep Research hybrid mode) were already accurate and weren't re-logged. #79–81 flagged as near-term picks (reuse existing infra, no new subsystems); #82–91 logged as open ideas, #82 (Decision Promotion from Research) being the highest-leverage but biggest lift of the batch.
+**2026-08-21 same-day follow-up:** All three near-term picks (#79, #80, #81) shipped same day as logged — see each entry's own "Resolved" note for what shifted from the original scoping. Full suite: 2438 passing (was 2422 before this pass). #82–91 remain open.
 **Next Review:** 2026-08-26

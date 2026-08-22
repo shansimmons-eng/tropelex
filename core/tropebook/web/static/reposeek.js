@@ -122,6 +122,7 @@
             <button class="rs-exclude-btn px-2 py-1 rounded border border-red-400/30 text-red-400 font-code-sm hover:bg-red-400/10 transition-all cursor-pointer"
                     data-title="${escapeHtml(title)}" data-url="${safeUrl}">Exclude</button>
             ${scanItemBlocked ? '' : `<button class="rs-scan-item-btn px-2 py-1 rounded border border-accent-lavender/30 text-accent-lavender font-code-sm hover:bg-accent-lavender/10 transition-all cursor-pointer" data-title="${escapeHtml(title)}" data-url="${safeUrl}">Scan Item</button>`}
+            <button class="rs-research-item-btn px-2 py-1 rounded border border-accent-sky/30 text-accent-sky font-code-sm hover:bg-accent-sky/10 transition-all cursor-pointer" data-title="${escapeHtml(title)}" data-url="${safeUrl}" title="Run a lightweight Deep Research pass on this repo and import findings as citations">Research</button>
           </div>
         </td>
       </tr>`;
@@ -257,6 +258,42 @@
       renderError(`Network error: ${err.message || 'Could not reach the server.'}`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  /** "Research" — run a lightweight Deep Research pass on this repo and
+   * import findings as citations tagged repo:<title>. Unlike Scan Item,
+   * this is a one-shot side effect (citations written elsewhere), not a
+   * new lineage node -- the current batch view doesn't change. */
+  async function researchItem(itemUrl, itemTitle, btn) {
+    const project = getProject();
+    if (!project || !currentBatch) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Researching…'; }
+
+    try {
+      const res = await fetch(`/api/reposeek/${encodeURIComponent(project)}/batches/${encodeURIComponent(currentBatch.batch_id)}/items/research`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_url: itemUrl }),
+      });
+
+      if (!res.ok) {
+        const detail = await extractErrorDetail(res);
+        if (typeof showToast === 'function') showToast(`Research failed: ${detail}`);
+        return;
+      }
+
+      const data = await res.json();
+      if (typeof showToast === 'function') {
+        showToast(data.imported > 0
+          ? `Imported ${data.imported} citation${data.imported === 1 ? '' : 's'} from researching "${itemTitle}"`
+          : `No new sources found researching "${itemTitle}"`);
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') showToast(`Network error: ${err.message}`);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Research'; }
     }
   }
 
@@ -450,6 +487,11 @@
         const scanItemBtn = e.target.closest('.rs-scan-item-btn');
         if (scanItemBtn) {
           scanItem(scanItemBtn.dataset.url, scanItemBtn.dataset.title);
+          return;
+        }
+        const researchItemBtn = e.target.closest('.rs-research-item-btn');
+        if (researchItemBtn) {
+          researchItem(researchItemBtn.dataset.url, researchItemBtn.dataset.title, researchItemBtn);
         }
       });
     }

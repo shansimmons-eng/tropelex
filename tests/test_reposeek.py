@@ -1038,6 +1038,98 @@ class TestItemScanEndpoint:
         assert parent["item_scans_used"] == 0
 
 
+class TestResearchItemEndpoint:
+    """POST /{project}/batches/{batch_id}/items/research -- the Repo Seek ->
+    Deep Research loop (wishlist #81). Distinct from Scan Item: this runs
+    a real (mocked in tests) web-researcher-mcp pass on the item and
+    imports findings as citations tagged repo:<title>, not another
+    GitHub search / batch tree node.
+    """
+
+    def _seed_batch(self, client, project="my-project"):
+        results = [_make_result(title="target/repo", url="https://github.com/target/repo")]
+        with (
+            patch("core.reposeek.router._load_profile_from_memory", return_value={"tech_stack": [], "description": "x", "patterns": []}),
+            patch("core.reposeek.router.search_github", new_callable=AsyncMock, return_value=Ok(value=results)),
+            patch("core.reposeek.router.score_results", return_value=results),
+        ):
+            resp = client.get("/api/reposeek/scan", params={"project": project})
+        return resp.json()["batch_id"]
+
+    def test_unknown_batch_is_404(self):
+        client = TestClient(_make_test_app())
+        response = client.post(
+            "/api/reposeek/my-project/batches/doesnotexist/items/research",
+            json={"item_url": "https://github.com/target/repo"},
+        )
+        assert response.status_code == 404
+
+    def test_unknown_item_is_404(self):
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+        response = client.post(
+            f"/api/reposeek/my-project/batches/{batch_id}/items/research",
+            json={"item_url": "https://github.com/not-in-batch/repo"},
+        )
+        assert response.status_code == 404
+
+    def test_research_imports_sources_tagged_with_repo(self, tmp_path):
+        from core.tropebook.tropebook import Tropebook
+        from core.tropebook.web import server as server_module
+
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+
+        original_tropebook = server_module._state["tropebook"]
+        server_module._state["tropebook"] = Tropebook(storage_path=str(tmp_path / "tropebook"))
+        try:
+            fake_result = {
+                "session_id": "s1",
+                "steps": [{}],
+                "report_markdown": "Found [Great Doc](https://example.com/doc) about this repo.",
+            }
+            with patch(
+                "core.tropebook.web_research_agent.run_web_deep_research",
+                new_callable=AsyncMock,
+                return_value=fake_result,
+            ):
+                response = client.post(
+                    f"/api/reposeek/my-project/batches/{batch_id}/items/research",
+                    json={"item_url": "https://github.com/target/repo"},
+                )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["repo"]["title"] == "target/repo"
+            assert data["sources_found"] == 1
+            assert data["imported"] == 1
+
+            citations = list(server_module._state["tropebook"].citations.values())
+            assert len(citations) == 1
+            assert citations[0].url == "https://example.com/doc"
+            assert "repo:target/repo" in citations[0].tags
+        finally:
+            server_module._state["tropebook"] = original_tropebook
+
+    def test_web_researcher_error_returns_502(self):
+        from core.tropebook.web_researcher_client import WebResearcherError
+
+        client = TestClient(_make_test_app())
+        batch_id = self._seed_batch(client)
+
+        with patch(
+            "core.tropebook.web_research_agent.run_web_deep_research",
+            new_callable=AsyncMock,
+            side_effect=WebResearcherError("mcp unavailable"),
+        ):
+            response = client.post(
+                f"/api/reposeek/my-project/batches/{batch_id}/items/research",
+                json={"item_url": "https://github.com/target/repo"},
+            )
+
+        assert response.status_code == 502
+
+
 class TestBatchesAndExportEndpoints:
     def test_get_batch_detail(self):
         client = TestClient(_make_test_app())

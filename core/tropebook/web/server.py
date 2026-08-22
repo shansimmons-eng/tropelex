@@ -568,6 +568,23 @@ async def create_citation(citation: CitationCreate):
         raise HTTPException(500, f"Failed to create citation: {e}")
 
 
+@app.get("/api/citations/flagged")
+async def list_flagged_citations():
+    """List citations with non-empty content_flags (#40) -- the citation
+    analog of GET /{project}/decisions/flagged. Global, not project-scoped,
+    because Tropebook itself is a single global citation store (no project
+    field on Citation) -- unlike decisions, there's no per-project slice to
+    take here. Registered before /api/citations/{cid} so "flagged" isn't
+    swallowed as a citation id.
+    """
+    tb = get_tropebook()
+    flagged = [
+        c.to_dict(id=cid) for cid, c in tb.citations.items()
+        if isinstance(c.content_flags, list) and c.content_flags
+    ]
+    return {"citations": flagged, "count": len(flagged)}
+
+
 @app.get("/api/citations/{cid}")
 async def get_citation(cid: str):
     tb = get_tropebook()
@@ -2732,11 +2749,17 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
     re-deriving their logic, so this stays a thin aggregation layer as more
     sources get added (e.g. a future promotion of a core/triggers check
     from severity="warn" to "block").
+
+    One source, flagged_citations, is global rather than project-scoped
+    (see list_flagged_citations) -- it shows the same items under every
+    project, which is the honest reflection of Tropebook having no
+    per-project citation split, not an oversight.
     """
     pending = await get_pending_reviews(project)
     untagged = await list_untagged_decisions(project)
     decayed = await list_decay_reviews(project, status="pending")
     flagged = await list_flagged_decisions(project)
+    flagged_citations = await list_flagged_citations()
     unacked_handoffs = await list_unacknowledged_handoffs(project)
     completeness_violations = await list_completeness_violations(project)
     agent_surface_findings = await list_high_severity_agent_surface_findings(project)
@@ -2789,6 +2812,16 @@ async def get_needs_attention(project: str) -> dict[str, Any]:
             "detail": _content_flagged_detail(d),
         }
         for d in flagged["decisions"]
+    ] + [
+        {
+            "kind": "citation_flagged",
+            "id": c.get("id"),
+            "label": c.get("title"),
+            # Informational only, same as content_flagged above -- review
+            # via GET /api/citations/flagged, no inline action here.
+            "detail": _content_flagged_detail(c),
+        }
+        for c in flagged_citations["citations"]
     ] + [
         {
             "kind": "unacknowledged_handoff",

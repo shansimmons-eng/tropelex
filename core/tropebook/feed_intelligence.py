@@ -67,6 +67,40 @@ def compute_feed_intelligence(feed_runs: list[dict]) -> dict[str, Any]:
     }
 
 
+def score_feed_citation_health(citations: list[dict]) -> dict[str, Any]:
+    """Score a feed's own citations for staleness using knowledge_decay's
+    score_citation -- defined since #40 (Injection Sentinel) but never
+    wired to anything until now (wishlist #80). Citations decay faster
+    than decisions (60-day half-life, see score_citation), so a feed left
+    on manual/monthly interval can quietly accumulate citations nobody
+    would trust anymore.
+
+    Args:
+        citations: List of citation dicts (Citation.to_dict() shape) for
+            one feed's citation_ids, already resolved by the caller.
+
+    Returns:
+        {count, average_score, aging_count, citations: [scored...]}
+        aging_count counts 'low'/'stale' tier citations -- the same two
+        tiers get_confidence_summary treats as needing attention.
+    """
+    if not citations:
+        return {"count": 0, "average_score": None, "aging_count": 0, "citations": []}
+
+    from core.knowledge_decay import score_citation
+
+    scored = [score_citation(c) for c in citations]
+    aging_count = sum(1 for s in scored if s["tier"] in ("low", "stale"))
+    average_score = round(sum(s["score"] for s in scored) / len(scored), 3)
+
+    return {
+        "count": len(scored),
+        "average_score": average_score,
+        "aging_count": aging_count,
+        "citations": scored,
+    }
+
+
 def _count_topics(runs: list[dict]) -> dict[str, list[int]]:
     """Count citation topics per run index."""
     topic_runs: dict[str, list[int]] = defaultdict(list)

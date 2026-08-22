@@ -325,6 +325,64 @@ async def scan_item(project: str, batch_id: str, body: ItemScanRequest):
     }
 
 
+@router.post("/{project}/batches/{batch_id}/items/research")
+async def research_item(project: str, batch_id: str, body: ItemScanRequest):
+    """Run a lightweight Deep Research pass on one item from an existing
+    batch and import the findings as citations tagged with that repo
+    (wishlist #81) -- distinct from Scan Item (which searches GitHub again
+    for more similar repos): this searches the wider web for the repo
+    itself, README/discussion/context Repo Seek's own GitHub Search calls
+    never surface.
+
+    Not bounded by scan depth/width like Scan Item -- there's no batch
+    tree here, this is a one-shot side-effect (citations get written),
+    not a new lineage node. max_steps kept low (2) since this is meant to
+    stay "lightweight" per the wishlist item, not a full Deep Research run.
+    """
+    project = _validate_project(project)
+    store = RepoSeekStore()
+
+    batch = store.get_batch(project, batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' not found for project '{project}'")
+
+    item = next((r for r in batch.get("results", []) if r.get("url") == body.item_url), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"Item '{body.item_url}' not found in batch '{batch_id}'")
+
+    repo = RepoResult.from_dict(item)
+    topic = f"{repo.title}: {repo.description}" if repo.description else repo.title
+
+    from core.tropebook.deep_research import DeepResearchImporter
+    from core.tropebook.tropebook import SourceType
+    from core.tropebook.web.server import get_tropebook
+    from core.tropebook.web_research_agent import run_web_deep_research
+    from core.tropebook.web_researcher_client import WebResearcherError
+
+    try:
+        result = await run_web_deep_research(topic, max_steps=2, project=project)
+    except WebResearcherError as exc:
+        logger.error("research_item deep research failed for %r: %s", topic, exc)
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    importer = DeepResearchImporter(get_tropebook())
+    sources = importer.parse_markdown_research(result["report_markdown"])
+    repo_tag = f"repo:{repo.title}"
+    for source in sources:
+        if repo_tag not in source.topics:
+            source.topics.append(repo_tag)
+    imported = importer.import_sources(
+        sources, add_relationships=False, source_type=SourceType.WEB_RESEARCHER_MCP
+    )
+
+    return {
+        "repo": {"title": repo.title, "url": repo.url},
+        "topic": topic,
+        "sources_found": len(sources),
+        "imported": imported,
+    }
+
+
 @router.post("/{project}/exclude")
 async def add_exclude(project: str, body: ExcludeRequest):
     """Permanently exclude a repo from future scans for this project."""

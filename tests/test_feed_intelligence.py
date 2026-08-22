@@ -5,6 +5,7 @@ from core.tropebook.feed_intelligence import (
     detect_trends,
     flag_anomalies,
     compute_feed_intelligence,
+    score_feed_citation_health,
     _count_topics,
     _compute_velocity,
     _classify_overall_trend,
@@ -100,3 +101,36 @@ class TestHelpers:
         peaks = _find_peak_periods(runs)
         assert len(peaks) == 1
         assert peaks[0]["run_index"] == 2
+
+
+def _citation(title="Fresh", created_at=None, days_old=0):
+    from datetime import datetime, timedelta, timezone
+    ts = created_at or (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
+    return {"title": title, "url": f"https://example.com/{title}", "created_at": ts}
+
+
+class TestScoreFeedCitationHealth:
+    def test_empty_citations(self):
+        result = score_feed_citation_health([])
+        assert result == {"count": 0, "average_score": None, "aging_count": 0, "citations": []}
+
+    def test_fresh_citation_is_not_aging(self):
+        result = score_feed_citation_health([_citation("Fresh", days_old=0)])
+        assert result["count"] == 1
+        assert result["aging_count"] == 0
+        assert result["citations"][0]["tier"] == "high"
+
+    def test_old_citation_counts_as_aging(self):
+        result = score_feed_citation_health([_citation("Old", days_old=365)])
+        assert result["aging_count"] == 1
+        assert result["citations"][0]["tier"] in ("low", "stale")
+
+    def test_average_score_reflects_mix(self):
+        result = score_feed_citation_health([
+            _citation("Fresh", days_old=0),
+            _citation("Old", days_old=365),
+        ])
+        assert result["count"] == 2
+        assert result["aging_count"] == 1
+        scores = [c["score"] for c in result["citations"]]
+        assert result["average_score"] == round(sum(scores) / 2, 3)
