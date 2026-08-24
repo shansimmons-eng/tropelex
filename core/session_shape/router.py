@@ -20,6 +20,12 @@ from fastapi import APIRouter, HTTPException
 from core.agent_identity import normalize_agent_name
 from core.memory.manager import MemoryManager
 from core.session_shape.baseline import filter_records_for_agent, latest_deviation_for_agent
+from core.session_shape.correlation import (
+    DEFAULT_WINDOW_DAYS,
+    correlate_deviations_with_outcomes,
+    deviations_for_agent,
+    outcome_events_for_agent,
+)
 
 logger = logging.getLogger("tropelex.session_shape")
 
@@ -57,6 +63,41 @@ async def get_agent_session_shape(project: str, agent: str) -> dict[str, Any]:
         result = latest_deviation_for_agent(records)
     except Exception as exc:
         logger.error("session-shape computation failed for %s/%s: %s", project, agent, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"project": project, "agent_name": agent_name, **result}
+
+
+@session_shape_router.get("/{project}/agents/{agent}/session-shape/correlation")
+async def get_session_shape_correlation(
+    project: str, agent: str, window_days: float = DEFAULT_WINDOW_DAYS,
+) -> dict[str, Any]:
+    """Does a session-shape deviation for this agent actually predict a
+    worse outcome (a gate override, or a later elevated-friction scan)
+    within `window_days` afterward, or is it noise? (#73-3)
+
+    Reuses #45's own baseline/classify functions, re-run per historical
+    record with self-exclusion, rather than a new detection mechanism --
+    this is a join over data both features already collect, not a new
+    signal. See core/session_shape/correlation.py's module docstring for
+    why Market outcomes aren't included.
+    """
+    try:
+        memory = _load_memory(project)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("session-shape correlation load failed for %s: %s", project, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    try:
+        agent_name = normalize_agent_name(agent)
+        records = filter_records_for_agent(memory.get("session_shapes", []), agent_name)
+        deviations = deviations_for_agent(records)
+        outcomes = outcome_events_for_agent(memory, agent_name)
+        result = correlate_deviations_with_outcomes(deviations, outcomes, window_days=window_days)
+    except Exception as exc:
+        logger.error("session-shape correlation computation failed for %s/%s: %s", project, agent, exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
     return {"project": project, "agent_name": agent_name, **result}

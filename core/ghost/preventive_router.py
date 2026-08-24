@@ -82,6 +82,11 @@ class GhostCheckRequest(BaseModel):
     """Request body for pre-write ghost diff checking."""
     diff: str = Field(..., min_length=1, max_length=100000,
                       description="Unified diff text to check against decisions")
+    agent_name: str = Field(
+        "unspecified", max_length=100,
+        description="Which agent is running this check -- attributes gate_blocked/"
+        "gate_warned audit events so #73-4's per-agent safety budget can see them.",
+    )
 
 
 class OverrideRequest(BaseModel):
@@ -255,6 +260,7 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
             "gate_blocked",
             decision_ids=list({w["decision_id"] for w in blocking if w.get("decision_id")}),
             severity_counts=_severity_counts(blocking),
+            agent_name=body.agent_name,
         )
         mutated = True
     if warn_tier:
@@ -263,6 +269,7 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
             "gate_warned",
             decision_ids=list({w["decision_id"] for w in warn_tier if w.get("decision_id")}),
             severity_counts=_severity_counts(warn_tier),
+            agent_name=body.agent_name,
         )
         mutated = True
     if mutated:

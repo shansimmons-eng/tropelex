@@ -974,6 +974,12 @@ class DecisionCreate(BaseModel):
             "the write should fail over."
         ),
     )
+    agent_name: str = Field(
+        "unspecified", max_length=100,
+        description="Which agent captured this decision -- attributes the decision "
+        "and any contradiction gate_blocked/gate_warned event it triggers so #73-4's "
+        "per-agent safety budget can see them.",
+    )
 
 
 class CategoryPreviewRequest(BaseModel):
@@ -1211,6 +1217,7 @@ async def add_decision(project: str, data: DecisionCreate):
                 memory, "gate_blocked",
                 decision_ids=[c.decision_b_id for c in blocking],
                 severity_counts={"high": len(blocking), "medium": 0, "low": 0},
+                agent_name=data.agent_name,
             )
             try:
                 mm.save_project_memory(project, memory)
@@ -1239,6 +1246,7 @@ async def add_decision(project: str, data: DecisionCreate):
                 memory, "gate_warned",
                 decision_ids=[c.decision_b_id for c in blocking],
                 severity_counts={"high": len(blocking), "medium": 0, "low": 0},
+                agent_name=data.agent_name,
             )
 
     import uuid as _uuid
@@ -1250,6 +1258,7 @@ async def add_decision(project: str, data: DecisionCreate):
         "safety_metadata": safety_metadata,
         "goal_id": data.goal_id,
         "citation_ids": resolved_citation_ids,
+        "agent_name": data.agent_name,
     }
 
     # #40: flag, don't block -- screens for stored-prompt-injection markers
@@ -2783,6 +2792,89 @@ async def escalate_persona_market_reviews(project: str):
     except Exception as e:
         logger.error("escalate_persona_market_reviews failed: %s", e)
         raise HTTPException(500, f"Failed to escalate persona/market reviews: {e}")
+
+
+@app.get("/api/memory/{project}/agents/{agent}/safety-budget")
+async def get_safety_budget(project: str, agent: str):
+    """Per-agent cumulative safety budget (#73-4): a weighted running total
+    of this agent's overrides, gate blocks/warnings, and high-risk decisions
+    captured in this project. Pure read, no mutation -- same "GET never
+    side-effects" split escalate_persona_market_reviews above already
+    established; see POST .../safety-budget/escalate for the mutating half.
+    """
+    try:
+        from core.agent_identity import normalize_agent_name
+        from core.safety_budget import compute_safety_budget
+
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        if project not in mm.list_projects():
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        memory = mm.get_project_memory(project)
+        agent_name = normalize_agent_name(agent)
+        return {"project": project, **compute_safety_budget(memory, agent_name)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_safety_budget failed for %s/%s: %s", project, agent, e)
+        raise HTTPException(500, f"Failed to compute safety budget: {e}")
+
+
+@app.post("/api/memory/{project}/agents/{agent}/safety-budget/escalate")
+async def escalate_safety_budget(project: str, agent: str):
+    """If this agent's cumulative safety budget is at or over threshold,
+    flag their most recent not-yet-reviewed decision for review -- same
+    requires_review=True + escalation_reason + resync_decision_hash +
+    audited-mutation shape as _apply_persona_market_escalation and
+    core/contradictions/router.py's _escalate_to_review, applied to a
+    per-agent cumulative signal instead of a per-decision one. A no-op
+    (escalated: false) if under threshold, or if over threshold but the
+    agent has no eligible decision left to flag -- both real, non-error
+    outcomes, not failures.
+    """
+    try:
+        from core.agent_identity import normalize_agent_name
+        from core.safety_budget import compute_safety_budget, most_recent_eligible_decision
+
+        project = _sanitise_project(project)
+        mm = get_memory_manager()
+        if project not in mm.list_projects():
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        memory = mm.get_project_memory(project)
+        agent_name = normalize_agent_name(agent)
+        budget = compute_safety_budget(memory, agent_name)
+
+        if not budget["over_threshold"]:
+            return {"project": project, "escalated": False, "reason": "under_threshold", **budget}
+
+        target = most_recent_eligible_decision(memory.get("decisions", []), agent_name)
+        if target is None:
+            return {"project": project, "escalated": False, "reason": "no_eligible_decision", **budget}
+
+        safety = target.setdefault("safety_metadata", {})
+        safety["requires_review"] = True
+        safety["escalation_reason"] = (
+            f"safety_budget_exceeded: {agent_name}'s cumulative score "
+            f"{budget['score']} >= threshold {budget['threshold']}"
+        )
+        if safety.get("risk_level", "low") == "low":
+            safety["risk_level"] = "medium"
+        _resync_decision_hash(
+            memory, target,
+            changed_fields=["safety_metadata.requires_review", "safety_metadata.escalation_reason"],
+        )
+        _append_audit_event(
+            memory, "safety_budget_escalated",
+            decision_id=target.get("id"), agent_name=agent_name, score=budget["score"],
+        )
+        mm.save_project_memory(project, memory)
+
+        return {"project": project, "escalated": True, "decision_id": target.get("id"), **budget}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("escalate_safety_budget failed for %s/%s: %s", project, agent, e)
+        raise HTTPException(500, f"Failed to escalate safety budget: {e}")
 
 
 def _content_flagged_detail(d: dict[str, Any]) -> str:
