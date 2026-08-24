@@ -1176,7 +1176,16 @@ Tests: 26 new in `tests/test_adaptive_scheduling.py` (pure functions) + 3 new in
 
 **Why:** Feeds are currently project-siloed; some feed topics genuinely aren't project-specific.
 
-**Status:** Idea.
+**Status:** ✅ Implemented (2026-08-24) -- built the opposite direction from what this entry's own "Why" assumed.
+
+Checked before building anything: `core/tropebook/research_feeds.py` had no `project` field at all, `GET /api/research-feeds` had no project filter, and the dashboard's `loadFeeds()` calls it unfiltered. Feeds were not project-siloed -- they were the reverse: fully global with zero per-project separation, every project's dashboard already saw every other project's feeds mixed together. This entry's premise was stale; the real gap was introducing *any* scoping capability, not adding an opt-in on top of siloing that didn't exist.
+
+- `ResearchFeed` gains `project: str | None = None` and `shared_with: list[str] = []`. `None` (global, visible everywhere) is the only behavior that existed before this change, so every one of the 10 real feeds live in this project stayed exactly as visible as before -- confirmed live, not assumed.
+- `ResearchFeedManager.list_feeds()` gains `visible_to_project` -- when given, keeps feeds that are global, owned by that project, or in its `shared_with`; omitted (the default), behavior is fully unchanged (returns everything, same as every existing caller expects).
+- `POST /api/research-feeds` gains an optional `project` field to scope a feed at creation. `PUT /{feed_id}` can re-scope one later (**known, disclosed gap**: since the endpoint's own "only include non-null fields" convention can't distinguish "don't touch project" from "clear it back to global," a scoped feed can't currently be un-scoped back to global through this endpoint -- deleting and recreating is the workaround; judged not worth a sentinel-based request model for what's expected to be a rare operation).
+- `POST /{feed_id}/share` / `DELETE /{feed_id}/share/{project}` manage `shared_with` — idempotent add/remove, kept as dedicated mutation endpoints (not part of the generic `PUT`) so a caller updating one unrelated field can't accidentally clobber the whole opt-in list.
+
+Tests: 11 new in `tests/test_research_feeds.py` (`TestMultiProjectFeeds`) + 9 new in `tests/test_feed_import_export.py` (`TestMultiProjectFeedsRouter`). Full suite: 2620 passing (was 2600). Live-verified against the real server: all 10 existing feeds still return `project: null`; a newly created project-scoped feed correctly stayed hidden from an unrelated project's filtered list until shared, then appeared; cleaned up afterward.
 
 ---
 

@@ -21,11 +21,14 @@ from pathlib import Path
 
 logger = logging.getLogger("tropelex.feeds")
 
-# Fields allowed to be mutated via update()
+# Fields allowed to be mutated via update(). `shared_with` deliberately
+# excluded -- mutated only via share_feed()/unshare_feed()'s atomic add/
+# remove, not a raw overwrite that could accidentally clobber the whole
+# opt-in list from a caller who only meant to change one other field.
 _UPDATABLE_FIELDS = frozenset({
     "name", "query", "description", "interval", "sources",
     "tags", "max_results_per_run", "enabled", "status", "next_run",
-    "research_provider",
+    "research_provider", "project",
 })
 
 # feed_id must be safe for use in file paths
@@ -89,6 +92,14 @@ class ResearchFeed:
     total_citations: int
     run_history: list[dict]
     research_provider: str = "web_search"
+    # Multi-project / shared feeds (#86): None means global (visible to
+    # every project) -- the only behavior that existed before this field,
+    # so every feed created before this change stays exactly as visible as
+    # it always was. A feed with a concrete `project` is scoped to that
+    # project by default; other projects can opt in via `shared_with`
+    # rather than the feed becoming global for everyone.
+    project: str | None = None
+    shared_with: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -197,8 +208,15 @@ class ResearchFeedManager:
         tags: list[str] | None = None,
         max_results_per_run: int = 20,
         research_provider: str = "web_search",
+        project: str | None = None,
     ) -> ResearchFeed:
-        """Create a new feed. Raises ValueError on invalid interval."""
+        """Create a new feed. Raises ValueError on invalid interval.
+
+        `project` (#86) scopes the feed to one project; None (the default,
+        and the only behavior that existed before this field) makes it
+        global -- visible to every project, same as every feed created
+        before this change.
+        """
         if interval not in {e.value for e in FeedInterval}:
             raise ValueError(f"Invalid interval: {interval!r}")
         if research_provider not in ("web_search", "deep_research"):
@@ -215,6 +233,7 @@ class ResearchFeedManager:
             status=FeedStatus.ACTIVE.value, total_runs=0,
             total_citations=0, run_history=[],
             research_provider=research_provider,
+            project=project,
         )
         self.feeds[feed_id] = feed
         self._dirty_feeds = True
@@ -225,9 +244,22 @@ class ResearchFeedManager:
         """Return a feed by ID, or None."""
         return self.feeds.get(feed_id)
 
-    def list_feeds(self, enabled_only: bool = False, tag: str | None = None) -> list[ResearchFeed]:
-        """Return feeds, optionally filtered by enabled state or tag."""
+    def list_feeds(
+        self, enabled_only: bool = False, tag: str | None = None, visible_to_project: str | None = None,
+    ) -> list[ResearchFeed]:
+        """Return feeds, optionally filtered by enabled state, tag, or
+        project visibility (#86). `visible_to_project`, when given, keeps
+        only feeds that are global (`project is None`), owned by that
+        project, or explicitly shared with it -- omitted entirely (the
+        default), every feed is returned regardless of scope, preserving
+        this method's original unfiltered contract for any existing caller.
+        """
         feeds = list(self.feeds.values())
+        if visible_to_project is not None:
+            feeds = [
+                f for f in feeds
+                if f.project is None or f.project == visible_to_project or visible_to_project in f.shared_with
+            ]
         if enabled_only:
             feeds = [f for f in feeds if f.enabled]
         if tag:
@@ -246,6 +278,40 @@ class ResearchFeedManager:
         feed.updated_at = datetime.now(timezone.utc).isoformat()
         self._dirty_feeds = True
         self._save()
+        return feed
+
+    def share_feed(self, feed_id: str, project: str) -> ResearchFeed | None:
+        """Opt `project` into seeing a feed it doesn't own (#86). Returns
+        None if the feed doesn't exist. A no-op (not an error) if the
+        project already has access, whether via prior sharing or because
+        the feed is already global/owned by that project -- same
+        idempotent-add convention core/gate.py's overridden_ids-style
+        mechanisms already use elsewhere in this codebase."""
+        feed = self.feeds.get(feed_id)
+        if not feed:
+            return None
+        if project not in feed.shared_with:
+            feed.shared_with.append(project)
+            feed.updated_at = datetime.now(timezone.utc).isoformat()
+            self._dirty_feeds = True
+            self._save()
+        return feed
+
+    def unshare_feed(self, feed_id: str, project: str) -> ResearchFeed | None:
+        """Revoke a project's opted-in access to a feed it doesn't own.
+        Returns None if the feed doesn't exist. A no-op if the project
+        wasn't in shared_with to begin with (including a feed's owning
+        project, which was never added to shared_with in the first place
+        and doesn't need to be removed from it to lose access -- ownership
+        and sharing are tracked separately)."""
+        feed = self.feeds.get(feed_id)
+        if not feed:
+            return None
+        if project in feed.shared_with:
+            feed.shared_with.remove(project)
+            feed.updated_at = datetime.now(timezone.utc).isoformat()
+            self._dirty_feeds = True
+            self._save()
         return feed
 
     def delete(self, feed_id: str) -> bool:

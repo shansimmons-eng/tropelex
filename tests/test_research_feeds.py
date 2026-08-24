@@ -289,6 +289,80 @@ class TestResearchFeedManager:
         assert len(updated.run_history) == 50
 
 
+class TestMultiProjectFeeds:
+    """wishlist #86: feeds are global by default (project=None), can be
+    scoped to one project, and other projects can opt in via shared_with."""
+
+    @pytest.fixture
+    def fm(self, tmp_path):
+        return ResearchFeedManager(storage_path=str(tmp_path / "feeds"))
+
+    def test_feed_is_global_by_default(self, fm):
+        feed = fm.create(name="Global", query="q")
+        assert feed.project is None
+        assert feed.shared_with == []
+
+    def test_feed_scoped_to_a_project(self, fm):
+        feed = fm.create(name="Scoped", query="q", project="proj-a")
+        assert feed.project == "proj-a"
+
+    def test_list_feeds_unfiltered_returns_everything_regardless_of_scope(self, fm):
+        fm.create(name="Global", query="q")
+        fm.create(name="A-only", query="q", project="proj-a")
+        fm.create(name="B-only", query="q", project="proj-b")
+        assert len(fm.list_feeds()) == 3
+
+    def test_list_feeds_visible_to_project_includes_global_and_own(self, fm):
+        fm.create(name="Global", query="q")
+        fm.create(name="A-only", query="q", project="proj-a")
+        fm.create(name="B-only", query="q", project="proj-b")
+
+        visible = fm.list_feeds(visible_to_project="proj-a")
+
+        names = {f.name for f in visible}
+        assert names == {"Global", "A-only"}
+
+    def test_share_feed_makes_it_visible_to_the_shared_project(self, fm):
+        feed = fm.create(name="A-only", query="q", project="proj-a")
+        fm.share_feed(feed.id, "proj-b")
+
+        visible = fm.list_feeds(visible_to_project="proj-b")
+
+        assert any(f.id == feed.id for f in visible)
+
+    def test_share_feed_is_idempotent(self, fm):
+        feed = fm.create(name="A-only", query="q", project="proj-a")
+        fm.share_feed(feed.id, "proj-b")
+        fm.share_feed(feed.id, "proj-b")
+        assert fm.get(feed.id).shared_with == ["proj-b"]
+
+    def test_share_feed_nonexistent_returns_none(self, fm):
+        assert fm.share_feed("nonexistent", "proj-b") is None
+
+    def test_unshare_feed_revokes_access(self, fm):
+        feed = fm.create(name="A-only", query="q", project="proj-a")
+        fm.share_feed(feed.id, "proj-b")
+        fm.unshare_feed(feed.id, "proj-b")
+
+        visible = fm.list_feeds(visible_to_project="proj-b")
+
+        assert not any(f.id == feed.id for f in visible)
+
+    def test_unshare_feed_not_previously_shared_is_a_no_op(self, fm):
+        feed = fm.create(name="A-only", query="q", project="proj-a")
+        result = fm.unshare_feed(feed.id, "proj-b")
+        assert result.shared_with == []
+
+    def test_unshare_feed_nonexistent_returns_none(self, fm):
+        assert fm.unshare_feed("nonexistent", "proj-b") is None
+
+    def test_owning_project_never_needs_sharing(self, fm):
+        feed = fm.create(name="A-only", query="q", project="proj-a")
+        visible = fm.list_feeds(visible_to_project="proj-a")
+        assert any(f.id == feed.id for f in visible)
+        assert "proj-a" not in feed.shared_with
+
+
 # ─── scheduler.py ────────────────────────────────────────────────────────────
 
 

@@ -6644,6 +6644,12 @@ class FeedCreateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     max_results_per_run: int = Field(20, ge=1, le=100)
     research_provider: str = Field("web_search", pattern=r"^(web_search|deep_research)$")
+    project: str | None = Field(
+        None, max_length=100,
+        description="Scope this feed to one project (#86). Omit for a global "
+        "feed visible to every project -- the only behavior that existed "
+        "before this field.",
+    )
 
 
 class FeedUpdateRequest(BaseModel):
@@ -6656,16 +6662,28 @@ class FeedUpdateRequest(BaseModel):
     max_results_per_run: int | None = None
     enabled: bool | None = None
     research_provider: str | None = None
+    project: str | None = None
+
+
+class FeedShareRequest(BaseModel):
+    project: str = Field(..., max_length=100)
 
 
 @app.get("/api/research-feeds")
 async def list_feeds(
     enabled_only: bool = Query(False),
     tag: str | None = Query(None),
+    project: str | None = Query(
+        None,
+        description="Filter to feeds visible to this project (#86): global "
+        "feeds, feeds owned by it, and feeds shared with it. Omit to list "
+        "every feed regardless of scope, unchanged from before this field.",
+    ),
 ):
-    """List all research feeds, optionally filtered by enabled state or tag."""
+    """List all research feeds, optionally filtered by enabled state, tag, or project visibility."""
     fm = _get_feed_manager()
-    feeds = fm.list_feeds(enabled_only=enabled_only, tag=tag)
+    visible_to = _sanitise_project(project) if project else None
+    feeds = fm.list_feeds(enabled_only=enabled_only, tag=tag, visible_to_project=visible_to)
     return {"feeds": [f.to_dict() for f in feeds], "count": len(feeds)}
 
 
@@ -6679,6 +6697,7 @@ async def create_feed(req: FeedCreateRequest):
             interval=req.interval, sources=req.sources, tags=req.tags,
             max_results_per_run=req.max_results_per_run,
             research_provider=req.research_provider,
+            project=_sanitise_project(req.project) if req.project else None,
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
@@ -7027,6 +7046,8 @@ async def update_feed(feed_id: str, req: FeedUpdateRequest):
     feed_id = _sanitize_feed_id(feed_id)
     fm = _get_feed_manager()
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    if "project" in updates:
+        updates["project"] = _sanitise_project(updates["project"])
     feed = fm.update(feed_id, **updates)
     if not feed:
         raise HTTPException(404, "Feed not found")
@@ -7041,6 +7062,33 @@ async def delete_feed(feed_id: str):
     if not fm.delete(feed_id):
         raise HTTPException(404, "Feed not found")
     return {"deleted": feed_id}
+
+
+@app.post("/api/research-feeds/{feed_id}/share")
+async def share_feed(feed_id: str, req: FeedShareRequest):
+    """Opt a project into seeing a project-scoped feed it doesn't own
+    (#86). Idempotent -- sharing with a project that already has access
+    (already shared, already the owner, or the feed is global) is a
+    successful no-op, not an error."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.share_feed(feed_id, _sanitise_project(req.project))
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    return feed.to_dict()
+
+
+@app.delete("/api/research-feeds/{feed_id}/share/{project}")
+async def unshare_feed(feed_id: str, project: str):
+    """Revoke a project's opted-in access to a feed it doesn't own. Does
+    not affect the feed's owning project or a global feed's visibility --
+    ownership/global scope and shared_with are tracked separately."""
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.unshare_feed(feed_id, _sanitise_project(project))
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+    return feed.to_dict()
 
 
 @app.post("/api/research-feeds/{feed_id}/run")

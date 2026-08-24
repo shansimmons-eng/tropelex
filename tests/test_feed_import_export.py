@@ -124,6 +124,70 @@ class TestImportFeeds:
         assert all_feeds["count"] == 2  # original + re-imported copy
 
 
+class TestMultiProjectFeedsRouter:
+    def test_create_feed_with_project(self, client):
+        resp = client.post("/api/research-feeds", json={"name": "A", "query": "q", "project": "proj-a"})
+        assert resp.json()["project"] == "proj-a"
+
+    def test_create_feed_without_project_is_global(self, client):
+        resp = client.post("/api/research-feeds", json={"name": "Global", "query": "q"})
+        assert resp.json()["project"] is None
+
+    def test_list_feeds_filtered_by_project_visibility(self, client):
+        client.post("/api/research-feeds", json={"name": "Global", "query": "q"})
+        client.post("/api/research-feeds", json={"name": "A-only", "query": "q", "project": "proj-a"})
+        client.post("/api/research-feeds", json={"name": "B-only", "query": "q", "project": "proj-b"})
+
+        resp = client.get("/api/research-feeds", params={"project": "proj-a"})
+
+        names = {f["name"] for f in resp.json()["feeds"]}
+        assert names == {"Global", "A-only"}
+
+    def test_list_feeds_without_project_param_returns_everything(self, client):
+        client.post("/api/research-feeds", json={"name": "A-only", "query": "q", "project": "proj-a"})
+        client.post("/api/research-feeds", json={"name": "B-only", "query": "q", "project": "proj-b"})
+
+        resp = client.get("/api/research-feeds")
+
+        assert resp.json()["count"] == 2
+
+    def test_share_and_list_visible(self, client):
+        created = client.post(
+            "/api/research-feeds", json={"name": "A-only", "query": "q", "project": "proj-a"},
+        ).json()
+
+        share_resp = client.post(f"/api/research-feeds/{created['id']}/share", json={"project": "proj-b"})
+        assert share_resp.json()["shared_with"] == ["proj-b"]
+
+        visible = client.get("/api/research-feeds", params={"project": "proj-b"}).json()
+        assert any(f["id"] == created["id"] for f in visible["feeds"])
+
+    def test_share_404_for_unknown_feed(self, client):
+        resp = client.post("/api/research-feeds/nope/share", json={"project": "proj-b"})
+        assert resp.status_code == 404
+
+    def test_unshare_revokes_access(self, client):
+        created = client.post(
+            "/api/research-feeds", json={"name": "A-only", "query": "q", "project": "proj-a"},
+        ).json()
+        client.post(f"/api/research-feeds/{created['id']}/share", json={"project": "proj-b"})
+
+        unshare_resp = client.delete(f"/api/research-feeds/{created['id']}/share/proj-b")
+        assert unshare_resp.json()["shared_with"] == []
+
+        visible = client.get("/api/research-feeds", params={"project": "proj-b"}).json()
+        assert not any(f["id"] == created["id"] for f in visible["feeds"])
+
+    def test_unshare_404_for_unknown_feed(self, client):
+        resp = client.delete("/api/research-feeds/nope/share/proj-b")
+        assert resp.status_code == 404
+
+    def test_update_feed_can_change_project_scope(self, client):
+        created = client.post("/api/research-feeds", json={"name": "Global", "query": "q"}).json()
+        resp = client.put(f"/api/research-feeds/{created['id']}", json={"project": "proj-a"})
+        assert resp.json()["project"] == "proj-a"
+
+
 class TestSuggestQueryRewrite:
     def test_404_for_unknown_feed(self, client):
         resp = client.post("/api/research-feeds/nope/suggest-query-rewrite")
