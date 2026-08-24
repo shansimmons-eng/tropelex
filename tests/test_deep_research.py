@@ -157,6 +157,131 @@ class TestDeepResearchPersistence:
             assert resp.status_code == 504
 
 
+# ─── #87: query-fingerprint caching + quick/thorough mode ────────────────
+
+
+class TestQueryFingerprintCaching:
+    @pytest.fixture
+    def isolated(self, tmp_path):
+        """Isolate the deep-research index/dir and mock the engine, tracking
+        call count so cache-hit tests can assert the expensive subprocess
+        was NOT invoked a second time. Yields (client, mock)."""
+        import core.tropebook.web.server as srv
+
+        dr_dir = tmp_path / "dr"
+        dr_dir.mkdir(exist_ok=True)
+        with patch.object(srv, "_DEEP_RESEARCH_DIR", dr_dir), \
+             patch.object(srv, "_DEEP_RESEARCH_INDEX", dr_dir / "index.json"), \
+             patch(
+                 "core.last30days.runner.run_query_and_extract_citations",
+                 return_value=("<html>result</html>", [{"title": "A", "url": "https://a.com"}]),
+             ) as mock_run:
+            test_app = FastAPI()
+            test_app.include_router(srv.app.router)
+            client = TestClient(test_app, raise_server_exceptions=False)
+            yield client, mock_run
+
+    def test_first_call_is_not_cached(self, isolated):
+        client, mock_run = isolated
+        resp = client.post("/api/last30days/query", json={"query": "cache test"})
+        assert resp.json()["cached"] is False
+        assert mock_run.call_count == 1
+
+    def test_identical_repeat_query_hits_cache(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test"})
+        resp = client.post("/api/last30days/query", json={"query": "cache test"})
+        body = resp.json()
+        assert body["cached"] is True
+        assert body["output"] == "<html>result</html>"
+        assert mock_run.call_count == 1  # engine not called a second time
+
+    def test_cache_hit_reports_citations_count_but_not_the_list(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test"})
+        resp = client.post("/api/last30days/query", json={"query": "cache test"})
+        body = resp.json()
+        assert body["citations"] is None
+        assert body["citations_count"] == 1
+
+    def test_case_and_whitespace_insensitive_fingerprint(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "  Cache   Test  "})
+        resp = client.post("/api/last30days/query", json={"query": "cache test"})
+        assert resp.json()["cached"] is True
+        assert mock_run.call_count == 1
+
+    def test_different_emit_mode_not_cached_together(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test", "emit": "html"})
+        resp = client.post("/api/last30days/query", json={"query": "cache test", "emit": "md"})
+        assert resp.json()["cached"] is False
+        assert mock_run.call_count == 2
+
+    def test_different_query_not_cached_together(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test"})
+        resp = client.post("/api/last30days/query", json={"query": "a completely different query"})
+        assert resp.json()["cached"] is False
+        assert mock_run.call_count == 2
+
+    def test_force_refresh_bypasses_cache(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test"})
+        resp = client.post("/api/last30days/query", json={"query": "cache test", "force_refresh": True})
+        assert resp.json()["cached"] is False
+        assert mock_run.call_count == 2
+
+    def test_expired_cache_entry_not_reused(self, isolated, monkeypatch):
+        import core.tropebook.web.server as srv
+
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "cache test"})
+        monkeypatch.setattr(srv, "_RESEARCH_CACHE_MAX_AGE_HOURS", -1.0)  # already "expired"
+        resp = client.post("/api/last30days/query", json={"query": "cache test"})
+        assert resp.json()["cached"] is False
+        assert mock_run.call_count == 2
+
+
+class TestModeBudgetPreset:
+    @pytest.fixture
+    def isolated(self, tmp_path):
+        import core.tropebook.web.server as srv
+
+        dr_dir = tmp_path / "dr"
+        dr_dir.mkdir(exist_ok=True)
+        with patch.object(srv, "_DEEP_RESEARCH_DIR", dr_dir), \
+             patch.object(srv, "_DEEP_RESEARCH_INDEX", dr_dir / "index.json"), \
+             patch(
+                 "core.last30days.runner.run_query_and_extract_citations",
+                 return_value=("<html></html>", []),
+             ) as mock_run:
+            test_app = FastAPI()
+            test_app.include_router(srv.app.router)
+            client = TestClient(test_app, raise_server_exceptions=False)
+            yield client, mock_run
+
+    def test_default_mode_is_quick_with_120s_timeout(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "mode test"})
+        assert mock_run.call_args.kwargs["timeout"] == 120
+
+    def test_thorough_mode_uses_400s_timeout(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "mode test", "mode": "thorough"})
+        assert mock_run.call_args.kwargs["timeout"] == 400
+
+    def test_explicit_timeout_wins_over_mode(self, isolated):
+        client, mock_run = isolated
+        client.post("/api/last30days/query", json={"query": "mode test", "mode": "thorough", "timeout": 60})
+        assert mock_run.call_args.kwargs["timeout"] == 60
+
+    def test_invalid_mode_rejected_with_422(self, isolated):
+        client, mock_run = isolated
+        resp = client.post("/api/last30days/query", json={"query": "mode test", "mode": "extreme"})
+        assert resp.status_code == 422
+
+
 # ─── Feed create API with research_provider ──────────────────────────────
 
 

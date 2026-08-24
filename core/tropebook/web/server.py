@@ -3,6 +3,7 @@ Tropelex Web API - FastAPI server for Tropelex web interface
 Linux-native, portable — no hardcoded paths.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -11,7 +12,7 @@ import shutil
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -6723,13 +6724,20 @@ def _save_deep_research_index(runs: list[dict]) -> None:
 
 
 def _save_deep_research_run(
-    query: str, html: str, citations: list[dict], engine: str = "last30days"
+    query: str, html: str, citations: list[dict], engine: str = "last30days",
+    query_fingerprint: str | None = None,
 ) -> dict:
     """Persist a deep research run. Returns the run metadata.
 
     `engine` distinguishes which research mode produced the run
     (last30days, citation-grade, or hybrid) so the shared history list
     can show all three instead of only last30days runs.
+
+    `query_fingerprint` (#87) is only set by last30days_query's own caching
+    path -- citation-grade/hybrid runs incorporate an LLM merge/step-search
+    process whose output isn't a pure function of the query text alone the
+    way last30days' raw engine output is, so those callers leave it None
+    and are simply never cache-matched.
     """
     import uuid
     run_id = uuid.uuid4().hex[:12]
@@ -6748,6 +6756,7 @@ def _save_deep_research_run(
         "citations_count": len(citations),
         "html_file": f"{run_id}.html",
         "engine": engine,
+        "query_fingerprint": query_fingerprint,
     }
 
     # Update index (prepend — newest first)
@@ -6769,30 +6778,106 @@ def _save_deep_research_run(
     return run
 
 
+# #87: quick/thorough is a preset over the one real wall-time lever this
+# layer has -- last30days shells out to an external engine subprocess with
+# no exposed max-tokens/max-sources knob at this layer, so those two named
+# budget params from the wishlist entry aren't implementable here; timeout
+# (and, for the web-researcher endpoints below, step count) are the two
+# genuine, already-controllable cost levers this maps onto.
+_MODE_TIMEOUT_DEFAULTS = {"quick": 120, "thorough": 400}
+_RESEARCH_CACHE_MAX_AGE_HOURS = 24.0
+
+
+def _query_fingerprint(query: str, emit: str) -> str:
+    """Normalize a query (case/whitespace-insensitive) and hash it with the
+    emit mode, for #87's caching layer -- two requests differing only in
+    casing or incidental whitespace should hit the same cache entry."""
+    normalized = " ".join(query.strip().lower().split())
+    return hashlib.sha256(f"{normalized}|{emit}".encode()).hexdigest()[:16]
+
+
+def _find_cached_last30days_run(fingerprint: str, max_age_hours: float) -> dict | None:
+    """Most recent last30days run matching this fingerprint, if any, within
+    the cache window. Only last30days is cached -- see _save_deep_research_run's
+    query_fingerprint docstring for why citation-grade/hybrid runs never
+    match here."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+    for run in _load_deep_research_index():
+        if run.get("engine") != "last30days" or run.get("query_fingerprint") != fingerprint:
+            continue
+        try:
+            ts = datetime.fromisoformat(run["timestamp"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if ts >= cutoff:
+            return run
+    return None
+
+
 class Last30DaysRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     emit: str = Field("html", pattern=r"^(html|md|compact)$")
     timeout: int | None = Field(None, ge=30, le=600)
     project: str = Field("", max_length=100)
+    mode: str = Field(
+        "quick", pattern=r"^(quick|thorough)$",
+        description="Budget preset (#87): sets the wall-time timeout when "
+        "`timeout` isn't given explicitly -- quick=120s, thorough=400s. "
+        "An explicit `timeout` always wins over the preset.",
+    )
+    force_refresh: bool = Field(
+        False,
+        description="Bypass the query-fingerprint cache (#87) and always run a fresh query.",
+    )
 
 
 @app.post("/api/last30days/query")
 async def last30days_query(req: Last30DaysRequest):
-    """Run a deep research query via the last30days engine. Returns HTML output."""
+    """Run a deep research query via the last30days engine. Returns HTML output.
+
+    #87: results are cached by query fingerprint (normalized query + emit
+    mode) for _RESEARCH_CACHE_MAX_AGE_HOURS, since last30days shells out to
+    a real external engine subprocess -- an exact repeat query within the
+    window reuses the prior run's HTML instead of paying for it again.
+    A cache hit can't return the original `citations` list (only the count
+    was ever persisted alongside the run, not the citation dicts
+    themselves) -- disclosed via `citations: null` rather than silently
+    returning an empty list that would read as "zero citations found".
+    Pass force_refresh=true to bypass deliberately.
+    """
     try:
         from core.last30days.runner import run_query, run_query_and_extract_citations
+
+        fingerprint = _query_fingerprint(req.query, req.emit)
+        if not req.force_refresh:
+            cached = _find_cached_last30days_run(fingerprint, _RESEARCH_CACHE_MAX_AGE_HOURS)
+            if cached:
+                html_file = _DEEP_RESEARCH_DIR / cached["html_file"]
+                if html_file.exists():
+                    return {
+                        "query": req.query,
+                        "output": html_file.read_text(encoding="utf-8"),
+                        "citations": None,
+                        "citations_count": cached.get("citations_count", 0),
+                        "run_id": cached["id"],
+                        "timestamp": cached["timestamp"],
+                        "cached": True,
+                        "cached_from": cached["timestamp"],
+                    }
+
+        effective_timeout = req.timeout if req.timeout is not None else _MODE_TIMEOUT_DEFAULTS[req.mode]
 
         # project is optional -- without it, real LLM spend inside the
         # engine subprocess simply isn't attributed to any project's cost
         # ledger (same "no project context, don't persist" rule core.llm
         # already follows).
         html, citations = run_query_and_extract_citations(
-            req.query, timeout=req.timeout, emit=req.emit,
+            req.query, timeout=effective_timeout, emit=req.emit,
             project=_sanitise_project(req.project) if req.project else None,
         )
 
         # Persist the run
-        run = _save_deep_research_run(req.query, html, citations)
+        run = _save_deep_research_run(req.query, html, citations, query_fingerprint=fingerprint)
 
         return {
             "query": req.query,
@@ -6801,6 +6886,7 @@ async def last30days_query(req: Last30DaysRequest):
             "citations_count": len(citations),
             "run_id": run["id"],
             "timestamp": run["timestamp"],
+            "cached": False,
         }
     except ImportError as e:
         raise HTTPException(503, f"last30days engine not available: {e}")

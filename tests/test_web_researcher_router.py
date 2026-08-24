@@ -129,3 +129,85 @@ class TestHybridResearchCitationIds:
 
         assert res.status_code == 200
         assert res.json()["citation_ids"] == []
+
+
+class TestWebResearchModePreset:
+    """#87: quick/thorough mode presets max_steps when it isn't given
+    explicitly. An explicit max_steps always wins over the preset."""
+
+    def test_default_mode_quick_uses_2_steps(self, client, project, isolated_tropebook):
+        fake_result = {"session_id": "s1", "steps": [{}], "report_markdown": _FAKE_REPORT}
+        with patch(
+            "core.tropebook.web_researcher_router.run_web_deep_research",
+            new=AsyncMock(return_value=fake_result),
+        ) as mock_run:
+            client.post(f"/api/memory/{project}/deep-research/web-research", json={"topic": "t"})
+        assert mock_run.call_args.kwargs["max_steps"] == 2
+
+    def test_thorough_mode_uses_5_steps(self, client, project, isolated_tropebook):
+        fake_result = {"session_id": "s1", "steps": [{}], "report_markdown": _FAKE_REPORT}
+        with patch(
+            "core.tropebook.web_researcher_router.run_web_deep_research",
+            new=AsyncMock(return_value=fake_result),
+        ) as mock_run:
+            client.post(
+                f"/api/memory/{project}/deep-research/web-research",
+                json={"topic": "t", "mode": "thorough"},
+            )
+        assert mock_run.call_args.kwargs["max_steps"] == 5
+
+    def test_explicit_max_steps_wins_over_mode(self, client, project, isolated_tropebook):
+        fake_result = {"session_id": "s1", "steps": [{}], "report_markdown": _FAKE_REPORT}
+        with patch(
+            "core.tropebook.web_researcher_router.run_web_deep_research",
+            new=AsyncMock(return_value=fake_result),
+        ) as mock_run:
+            client.post(
+                f"/api/memory/{project}/deep-research/web-research",
+                json={"topic": "t", "mode": "thorough", "max_steps": 1},
+            )
+        assert mock_run.call_args.kwargs["max_steps"] == 1
+
+    def test_invalid_mode_rejected_with_422(self, client, project):
+        res = client.post(
+            f"/api/memory/{project}/deep-research/web-research",
+            json={"topic": "t", "mode": "extreme"},
+        )
+        assert res.status_code == 422
+
+
+class TestHybridResearchModePreset:
+    def test_default_mode_quick_uses_1_web_step(self, client, project, isolated_tropebook):
+        fake_web_result = {"session_id": "s1", "steps": [{}], "report_markdown": _FAKE_REPORT}
+        with (
+            patch(
+                "core.tropebook.web_researcher_router.run_web_deep_research",
+                new=AsyncMock(return_value=fake_web_result),
+            ) as mock_run,
+            patch("core.last30days.runner.run_query_and_extract_citations", return_value=("r", [])),
+            patch(
+                "core.tropebook.web_researcher_router._merge_reports",
+                new=AsyncMock(return_value="Merged report."),
+            ),
+        ):
+            client.post(f"/api/memory/{project}/deep-research/hybrid", json={"query": "q"})
+        assert mock_run.call_args.kwargs["max_steps"] == 1
+
+    def test_thorough_mode_uses_3_web_steps(self, client, project, isolated_tropebook):
+        fake_web_result = {"session_id": "s1", "steps": [{}], "report_markdown": _FAKE_REPORT}
+        with (
+            patch(
+                "core.tropebook.web_researcher_router.run_web_deep_research",
+                new=AsyncMock(return_value=fake_web_result),
+            ) as mock_run,
+            patch("core.last30days.runner.run_query_and_extract_citations", return_value=("r", [])),
+            patch(
+                "core.tropebook.web_researcher_router._merge_reports",
+                new=AsyncMock(return_value="Merged report."),
+            ),
+        ):
+            client.post(
+                f"/api/memory/{project}/deep-research/hybrid",
+                json={"query": "q", "mode": "thorough"},
+            )
+        assert mock_run.call_args.kwargs["max_steps"] == 3

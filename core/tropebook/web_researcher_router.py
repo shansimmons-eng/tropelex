@@ -36,9 +36,19 @@ def _get_tropebook() -> Tropebook:
     return _tropebook
 
 
+# #87: quick/thorough budget preset for max_steps -- each step is a real
+# search+LLM round trip, so this is a genuine cost lever, not cosmetic.
+# An explicit max_steps always wins over the mode preset (None means "use
+# the preset"), same "explicit overrides default" convention core.gate's
+# severity policy already uses.
+_STEP_MODE_DEFAULTS = {"quick": 2, "thorough": 5}
+_HYBRID_STEP_MODE_DEFAULTS = {"quick": 1, "thorough": 3}
+
+
 class WebResearchRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=300)
-    max_steps: int = Field(3, ge=1, le=6)
+    max_steps: int | None = Field(None, ge=1, le=6)
+    mode: str = Field("quick", pattern=r"^(quick|thorough)$")
 
 
 @web_research_router.post("/{project}/deep-research/web-research")
@@ -53,7 +63,8 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
     writes to.
     """
     try:
-        result = await run_web_deep_research(body.topic, max_steps=body.max_steps, project=project)
+        max_steps = body.max_steps if body.max_steps is not None else _STEP_MODE_DEFAULTS[body.mode]
+        result = await run_web_deep_research(body.topic, max_steps=max_steps, project=project)
     except WebResearcherError as exc:
         logger.error("web deep research failed for topic %r: %s", body.topic, exc)
         raise HTTPException(status_code=502, detail=str(exc))
@@ -92,7 +103,8 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
 
 class HybridResearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
-    max_web_steps: int = Field(2, ge=1, le=4)
+    max_web_steps: int | None = Field(None, ge=1, le=4)
+    mode: str = Field("quick", pattern=r"^(quick|thorough)$")
     # A real query (multi-provider fanout: GitHub, YouTube incl. transcript
     # fetches with yt-dlp fallback, Reddit, HN, web grounding) measured at
     # ~2m14s end to end -- 180s left almost no margin and was the actual
@@ -127,9 +139,13 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
             logger.warning("last30days leg of hybrid research failed: %s", exc)
             return exc
 
+    max_web_steps = (
+        body.max_web_steps if body.max_web_steps is not None else _HYBRID_STEP_MODE_DEFAULTS[body.mode]
+    )
+
     async def _run_web_research() -> dict[str, Any] | Exception:
         try:
-            return await run_web_deep_research(body.query, max_steps=body.max_web_steps, project=project)
+            return await run_web_deep_research(body.query, max_steps=max_web_steps, project=project)
         except WebResearcherError as exc:
             logger.warning("web-research leg of hybrid research failed: %s", exc)
             return exc
