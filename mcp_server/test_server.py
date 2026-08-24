@@ -25,9 +25,11 @@ class _Recorder:
     def __init__(self, response: dict | None = None):
         self.response = response or {"ok": True}
         self.calls: list[tuple[str, str, str, dict | None]] = []
+        self.timeouts: list[float] = []
 
-    async def __call__(self, tool_name, method, path, json=None):
+    async def __call__(self, tool_name, method, path, json=None, timeout=30.0):
         self.calls.append((tool_name, method, path, json))
+        self.timeouts.append(timeout)
         return self.response
 
 
@@ -365,6 +367,63 @@ class TestRealRequestCapture:
         result = await server._request("test_tool", "GET", "/api/memory")
 
         assert result == {"ok": True}  # real result still returned despite the broken instrumentation
+
+
+class TestDeepResearchAndFeedTools:
+    """The 4 tools added for wishlist #90 -- confirmed gap: mcp_server had
+    no research/feed tools before this, only memory/decision/goal."""
+
+    @pytest.mark.asyncio
+    async def test_run_deep_research_default_hits_web_research_endpoint(self, recorder):
+        await server.run_deep_research("proj", "how does X work")
+
+        tool_name, method, path, body = recorder.calls[0]
+        assert method == "POST"
+        assert path == "/api/memory/proj/deep-research/web-research"
+        assert body == {"topic": "how does X work", "max_steps": 3}
+        assert recorder.timeouts[0] == 180.0
+
+    @pytest.mark.asyncio
+    async def test_run_deep_research_hybrid_hits_hybrid_endpoint_with_longer_timeout(self, recorder):
+        await server.run_deep_research("proj", "how does X work", hybrid=True, max_steps=2)
+
+        tool_name, method, path, body = recorder.calls[0]
+        assert path == "/api/memory/proj/deep-research/hybrid"
+        assert body == {"query": "how does X work", "max_web_steps": 2}
+        assert recorder.timeouts[0] == 480.0
+
+    @pytest.mark.asyncio
+    async def test_list_research_feeds_no_filters(self, recorder):
+        await server.list_research_feeds()
+
+        _, method, path, _ = recorder.calls[0]
+        assert method == "GET"
+        assert path == "/api/research-feeds"
+
+    @pytest.mark.asyncio
+    async def test_list_research_feeds_with_filters(self, recorder):
+        await server.list_research_feeds(enabled_only=True, tag="ai-safety")
+
+        _, _, path, _ = recorder.calls[0]
+        assert "enabled_only=true" in path
+        assert "tag=ai-safety" in path
+
+    @pytest.mark.asyncio
+    async def test_get_research_feed(self, recorder):
+        await server.get_research_feed("feed123")
+
+        _, method, path, _ = recorder.calls[0]
+        assert method == "GET"
+        assert path == "/api/research-feeds/feed123"
+
+    @pytest.mark.asyncio
+    async def test_run_research_feed_uses_extended_timeout(self, recorder):
+        await server.run_research_feed("feed123")
+
+        _, method, path, _ = recorder.calls[0]
+        assert method == "POST"
+        assert path == "/api/research-feeds/feed123/run"
+        assert recorder.timeouts[0] == 180.0
 
 
 class TestPrompts:

@@ -103,7 +103,8 @@ def _reset_session_shape() -> None:
 
 
 async def _request(
-    tool_name: str, method: str, path: str, json: dict[str, Any] | None = None
+    tool_name: str, method: str, path: str, json: dict[str, Any] | None = None,
+    timeout: float = 30.0,
 ) -> dict[str, Any]:
     """Call the Tropelex REST API and return the parsed JSON body.
 
@@ -114,8 +115,14 @@ async def _request(
     inspect.stack()) so session-shape capture has an unambiguous label —
     explicit over clever. Capture happens in `finally` so every exit path
     (success, connect error, 4xx/5xx, timeout) is recorded; a call that
-    dies after the full 30s timeout *is* the "hang duration" signal this
+    dies after the full timeout *is* the "hang duration" signal this
     feature exists to catch, so it isn't excluded.
+
+    timeout defaults to 30s (fine for every existing tool) but deep
+    research calls genuinely run 1-3+ minutes (hybrid mode fans out to
+    last30days concurrently with web-researcher-mcp, then merges) --
+    those callers pass a longer value explicitly rather than this default
+    silently cutting them off mid-run.
     """
     start = time.monotonic()
     error = False
@@ -126,7 +133,7 @@ async def _request(
         if TROPEL_EX_SECRET:
             headers["Authorization"] = f"Bearer {TROPEL_EX_SECRET}"
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.request(method, url, json=json, headers=headers)
         except httpx.ConnectError as exc:
             error = True
@@ -500,6 +507,97 @@ async def explain_why(project: str, question: str) -> dict[str, Any]:
     return await _request(
         "explain_why", "POST", f"/api/memory/{quote(project, safe='')}/explain",
         json={"question": question},
+    )
+
+
+@mcp.tool()
+async def run_deep_research(
+    project: str, query: str, hybrid: bool = False, max_steps: int = 3,
+) -> dict[str, Any]:
+    """Run Deep Research on a query and import findings as citations into
+    Tropebook (wishlist #90 -- confirmed gap: no research/feed tools
+    existed before this).
+
+    Two engines, picked via `hybrid`:
+    - False (default): web-researcher-mcp only -- citation-grade web
+      sources, real URLs, no fabricated citations. Faster, ~30-90s.
+    - True: last30days (social/news signal fanout: Reddit, X, YouTube,
+      HN, web) and web-researcher-mcp run concurrently, then merged by
+      the project's LLM backend. Slower, genuinely 1-3+ minutes -- this
+      call uses an extended timeout accordingly, don't assume a fast
+      response.
+
+    Args:
+        project: Project name.
+        query: The research question/topic.
+        hybrid: Use both engines and merge (slower, broader) instead of
+            just web-researcher-mcp (faster, narrower).
+        max_steps: Search->refine->search steps for the web-researcher-mcp
+            leg (1-6 for web-only, 1-4 for hybrid's web leg).
+    """
+    if hybrid:
+        return await _request(
+            "run_deep_research", "POST",
+            f"/api/memory/{quote(project, safe='')}/deep-research/hybrid",
+            json={"query": query, "max_web_steps": max_steps},
+            timeout=480.0,
+        )
+    return await _request(
+        "run_deep_research", "POST",
+        f"/api/memory/{quote(project, safe='')}/deep-research/web-research",
+        json={"topic": query, "max_steps": max_steps},
+        timeout=180.0,
+    )
+
+
+@mcp.tool()
+async def list_research_feeds(
+    enabled_only: bool = False, tag: str | None = None,
+) -> dict[str, Any]:
+    """List Tropelex's scheduled research feeds -- named, recurring queries
+    that accumulate citations over time.
+
+    Args:
+        enabled_only: Only return feeds that are currently active.
+        tag: Filter to feeds carrying this tag.
+    """
+    params = []
+    if enabled_only:
+        params.append("enabled_only=true")
+    if tag:
+        params.append(f"tag={quote(tag, safe='')}")
+    qs = f"?{'&'.join(params)}" if params else ""
+    return await _request("list_research_feeds", "GET", f"/api/research-feeds{qs}")
+
+
+@mcp.tool()
+async def get_research_feed(feed_id: str) -> dict[str, Any]:
+    """Get one research feed's configuration and metadata (name, query,
+    interval, tags, total citations, last run time).
+
+    Args:
+        feed_id: The feed's id, from list_research_feeds.
+    """
+    return await _request(
+        "get_research_feed", "GET", f"/api/research-feeds/{quote(feed_id, safe='')}"
+    )
+
+
+@mcp.tool()
+async def run_research_feed(feed_id: str) -> dict[str, Any]:
+    """Trigger an immediate run of a scheduled research feed, ingesting new
+    citations right now instead of waiting for its next scheduled run.
+
+    This invokes a real research provider (web_search or deep_research,
+    per the feed's own config), so it can take anywhere from a few seconds
+    to a couple of minutes depending on which provider the feed uses.
+
+    Args:
+        feed_id: The feed's id, from list_research_feeds.
+    """
+    return await _request(
+        "run_research_feed", "POST", f"/api/research-feeds/{quote(feed_id, safe='')}/run",
+        timeout=180.0,
     )
 
 

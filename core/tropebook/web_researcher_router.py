@@ -58,11 +58,16 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
         logger.error("web deep research failed for topic %r: %s", body.topic, exc)
         raise HTTPException(status_code=502, detail=str(exc))
 
-    importer = DeepResearchImporter(_get_tropebook())
+    tb = _get_tropebook()
+    importer = DeepResearchImporter(tb)
     sources = importer.parse_markdown_research(result["report_markdown"])
     imported = importer.import_sources(
         sources, add_relationships=False, source_type=SourceType.WEB_RESEARCHER_MCP
     )
+    # import_sources only returns a count, not ids -- resolve by URL via
+    # Tropebook's own index (#82: decision promotion needs real citation
+    # ids to hand to promote-candidates, a count alone isn't enough).
+    citation_ids = [tb._index["by_url"][s.url] for s in sources if s.url in tb._index["by_url"]]
 
     from core.tropebook.web.server import _save_deep_research_run
 
@@ -79,6 +84,7 @@ async def run_web_research(project: str, body: WebResearchRequest) -> dict[str, 
         "report_markdown": result["report_markdown"],
         "sources_found": len(sources),
         "sources_imported": imported,
+        "citation_ids": citation_ids,
         "run_id": run["id"],
         "timestamp": run["timestamp"],
     }
@@ -145,12 +151,16 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
     # regardless of merge outcome — those don't depend on the LLM succeeding.
     sources_imported = 0
     sources: list[dict[str, Any]] = []
+    citation_ids: list[str] = []
     if web_ok:
-        importer = DeepResearchImporter(_get_tropebook())
+        tb = _get_tropebook()
+        importer = DeepResearchImporter(tb)
         sources = importer.parse_markdown_research(web_markdown)
         sources_imported = importer.import_sources(
             sources, add_relationships=False, source_type=SourceType.WEB_RESEARCHER_MCP
         )
+        # #82: promote-candidates needs real citation ids, not just a count.
+        citation_ids = [tb._index["by_url"][s.url] for s in sources if s.url in tb._index["by_url"]]
 
     merged = await _merge_reports(body.query, l30d_markdown, web_markdown, project=project)
 
@@ -166,6 +176,7 @@ async def run_hybrid_research(project: str, body: HybridResearchRequest) -> dict
         "web_research_ok": web_ok,
         "web_research_error": None if web_ok else str(web_result),
         "sources_imported": sources_imported,
+        "citation_ids": citation_ids,
         "last30days_markdown": l30d_markdown,
         "web_research_markdown": web_markdown,
         "merged_report": merged,

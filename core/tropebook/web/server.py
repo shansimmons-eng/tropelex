@@ -261,7 +261,10 @@ from core.agent_audit.router import agent_audit_router              # noqa: E402
 from core.driftbench.router import driftbench_router                # noqa: E402
 from core.telemetry import telemetry_router, _emit_telemetry        # noqa: E402
 from core.triggers.tag_gate import require_tag, TagRequiredError, SAFETY_CATEGORIES  # noqa: E402
-from core.safety import require_safety_metadata, SafetyMetadataRequiredError  # noqa: E402
+from core.safety import (  # noqa: E402
+    SafetyMetadata, SafetyMetadataRequiredError,
+    auto_classify_safety, require_safety_metadata,
+)
 from core.goals.drift import score_trend_drift  # noqa: E402
 from core.friction.miner import compute_friction_penalty  # noqa: E402
 from core.session_shape.router import session_shape_router  # noqa: E402
@@ -866,47 +869,6 @@ async def update_memory_project(project: str, data: MemoryUpdate):
     return {"updated": True}
 
 
-class SafetyMetadata(BaseModel):
-    """Safety metadata for decisions, aligned with AI safety research priorities."""
-    risk_level: str = Field(
-        default="low",
-        pattern="^(low|medium|high|critical)$",
-        description="Risk level: low, medium, high, or critical"
-    )
-    reversibility: bool = Field(
-        default=True,
-        description="Whether this decision can be easily reversed"
-    )
-    affected_systems: list[str] = Field(
-        default_factory=list,
-        description="List of systems/components affected by this decision"
-    )
-    rationale_quality: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="Confidence score for the decision rationale (0.0-1.0)"
-    )
-    alignment_considerations: str = Field(
-        default="",
-        max_length=500,
-        description="Notes on alignment/safety considerations"
-    )
-    requires_review: bool = Field(
-        default=False,
-        description="Whether this decision requires human review"
-    )
-    safety_category: str | None = Field(
-        default=None,
-        pattern="^(general|adversarial|robustness|monitoring|governance|alignment)$",
-        description=(
-            "Safety category for classification. No default on purpose — "
-            "add_decision requires this to be an explicit choice, not a "
-            "silently-assigned one. See core/triggers/tag_gate.py."
-        ),
-    )
-
-
 class DecisionCreate(BaseModel):
     decision: str = Field(..., max_length=500)
     context: str = Field("", max_length=1000)
@@ -919,104 +881,16 @@ class DecisionCreate(BaseModel):
         max_length=128,
         description="Optional link to the Goal this decision serves.",
     )
-
-
-def _auto_classify_safety(decision: str, context: str) -> dict:
-    """
-    Auto-classify safety metadata for a decision based on content analysis.
-    Uses keyword matching and heuristics to assign risk levels and categories.
-    """
-    decision_lower = decision.lower()
-    context_lower = context.lower()
-    combined = f"{decision_lower} {context_lower}"
-
-    # Risk level classification
-    risk_level = "low"
-    requires_review = False
-
-    # High-risk indicators
-    high_risk_keywords = [
-        "delete", "remove", "drop", "destroy", "purge", "wipe",
-        "security", "auth", "permission", "access", "credential",
-        "production", "live", "deploy", "release",
-        "database", "schema", "migration", "backup",
-        "api key", "secret", "token", "password",
-    ]
-
-    # Critical-risk indicators
-    critical_risk_keywords = [
-        "rm -rf", "drop table", "delete all", "purge all",
-        "revoke access", "disable security", "bypass auth",
-        "emergency", "hotfix", "rollback",
-    ]
-
-    # Medium-risk indicators
-    medium_risk_keywords = [
-        "change", "update", "modify", "refactor",
-        "config", "settings", "environment",
-        "dependency", "upgrade", "version",
-    ]
-
-    # Check for critical risks first
-    if any(kw in combined for kw in critical_risk_keywords):
-        risk_level = "critical"
-        requires_review = True
-    elif any(kw in combined for kw in high_risk_keywords):
-        risk_level = "high"
-        requires_review = True
-    elif any(kw in combined for kw in medium_risk_keywords):
-        risk_level = "medium"
-
-    # Safety category classification
-    safety_category = "general"
-
-    category_keywords = {
-        "adversarial": ["adversarial", "attack", "exploit", "vulnerability", "penetration", "red team"],
-        "robustness": ["robust", "reliable", "fault tolerant", "resilient", "fail safe", "error handling"],
-        "monitoring": ["monitor", "observe", "track", "log", "alert", "detect", "anomaly"],
-        "governance": ["govern", "compliance", "audit", "policy", "standard", "regulation"],
-        "alignment": ["alignment", "value", "ethical", "safety", "harm", "bias", "fairness"],
-    }
-
-    for category, keywords in category_keywords.items():
-        if any(kw in combined for kw in keywords):
-            safety_category = category
-            break
-
-    # Reversibility assessment
-    reversible_indicators = ["add", "create", "enable", "extend", "augment"]
-    irreversible_indicators = ["delete", "remove", "drop", "destroy", "migrate", "convert"]
-
-    reversibility = True
-    if any(kw in combined for kw in irreversible_indicators):
-        reversibility = False
-    elif any(kw in combined for kw in reversible_indicators):
-        reversibility = True
-
-    # Affected systems detection
-    affected_systems = []
-    system_keywords = {
-        "memory": ["memory", "storage", "persistence", "database", "db"],
-        "api": ["api", "endpoint", "route", "server", "http"],
-        "auth": ["auth", "authentication", "authorization", "login", "session"],
-        "ui": ["ui", "frontend", "dashboard", "interface", "display"],
-        "security": ["security", "encryption", "hash", "token", "key"],
-        "git": ["git", "commit", "branch", "merge", "repository"],
-    }
-
-    for system, keywords in system_keywords.items():
-        if any(kw in combined for kw in keywords):
-            affected_systems.append(system)
-
-    return {
-        "risk_level": risk_level,
-        "reversibility": reversibility,
-        "affected_systems": affected_systems,
-        "rationale_quality": 0.5,  # Default, can be overridden
-        "alignment_considerations": "",
-        "requires_review": requires_review,
-        "safety_category": safety_category,
-    }
+    citation_ids: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional Tropebook citation ids this decision's rationale "
+            "draws on (#82 provenance). Unlike goal_id, unknown ids are "
+            "silently filtered rather than rejected -- Tropebook is a "
+            "global, loosely-coupled store, not a hard project dependency "
+            "the write should fail over."
+        ),
+    )
 
 
 class CategoryPreviewRequest(BaseModel):
@@ -1033,7 +907,7 @@ async def preview_decision_category(project: str, data: CategoryPreviewRequest):
     suggestion silently, see require_tag in core/triggers/tag_gate.py.
     """
     _sanitise_project(project)
-    return _auto_classify_safety(data.decision, data.context)
+    return auto_classify_safety(data.decision, data.context)
 
 
 @app.get("/api/memory/{project}/decisions/untagged")
@@ -1118,7 +992,7 @@ async def add_decision(project: str, data: DecisionCreate):
     mm = get_memory_manager()
     memory = mm.get_project_memory(project)
 
-    suggestion = _auto_classify_safety(data.decision, data.context)
+    suggestion = auto_classify_safety(data.decision, data.context)
     provided_category = data.safety_metadata.safety_category if data.safety_metadata else None
     try:
         category = require_tag(provided_category, suggested=suggestion["safety_category"])
@@ -1153,6 +1027,15 @@ async def add_decision(project: str, data: DecisionCreate):
         known_goal_ids = {g.get("id") for g in memory.get("goals", []) if g.get("id")}
         if data.goal_id not in known_goal_ids:
             raise HTTPException(status_code=404, detail=f"Goal '{data.goal_id}' not found in project '{project}'")
+
+    # #82: citation_ids is provenance, not a hard project dependency like
+    # goal_id -- Tropebook is a single global store, so an id that doesn't
+    # resolve there is silently dropped rather than rejecting the whole
+    # decision write over it.
+    resolved_citation_ids: list[str] = []
+    if data.citation_ids:
+        tb = get_tropebook()
+        resolved_citation_ids = [cid for cid in data.citation_ids if cid in tb.citations]
 
     # #72: gate on high-severity contradictions with existing decisions --
     # closes #53's own disclosed deferral ("Contradiction Detection isn't
@@ -1238,6 +1121,7 @@ async def add_decision(project: str, data: DecisionCreate):
         "context": data.context,
         "safety_metadata": safety_metadata,
         "goal_id": data.goal_id,
+        "citation_ids": resolved_citation_ids,
     }
 
     # #40: flag, don't block -- screens for stored-prompt-injection markers
@@ -1275,6 +1159,59 @@ async def add_decision(project: str, data: DecisionCreate):
     return {"added": True, "decision": decision_entry}
 
 
+class PromoteCandidatesRequest(BaseModel):
+    report_markdown: str = Field(..., min_length=1)
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+@app.post("/api/memory/{project}/research/promote-candidates")
+async def promote_candidates(project: str, data: PromoteCandidatesRequest):
+    """Identify candidate decisions from a research report (wishlist #82),
+    each with computed confidence and real citation ids -- an on-demand
+    action the caller triggers after reviewing a research result, not run
+    automatically on every Deep Research/Feed call.
+
+    Confidence is computed from real signals (citation count, source-type
+    diversity) after extraction, never asked of the LLM directly -- see
+    core/decision_promotion.py's module docstring for why.
+    """
+    project = _sanitise_project(project)
+    from core.decision_promotion import extract_candidate_decisions
+
+    tb = get_tropebook()
+    citations = [
+        tb.citations[cid].to_dict(id=cid) for cid in data.citation_ids if cid in tb.citations
+    ]
+    candidates = await extract_candidate_decisions(data.report_markdown, citations, project=project)
+    return {"candidates": candidates, "count": len(candidates)}
+
+
+class PromoteDecisionRequest(BaseModel):
+    decision: str = Field(..., max_length=500)
+    context: str = Field("", max_length=1000)
+    citation_ids: list[str] = Field(default_factory=list)
+    safety_metadata: SafetyMetadata | None = Field(default=None)
+    goal_id: str | None = Field(default=None, max_length=128)
+
+
+@app.post("/api/memory/{project}/decisions/promote")
+async def promote_decision(project: str, data: PromoteDecisionRequest):
+    """Promote a candidate decision (from promote-candidates) into a real
+    decision, with citation_ids recorded as provenance.
+
+    A thin wrapper around add_decision, not a parallel write path -- goes
+    through the exact same require_tag/contradiction/safety-metadata gates
+    a manually-typed decision does. Being auto-suggested doesn't exempt a
+    decision from the same explicit-choice discipline every other one
+    goes through.
+    """
+    return await add_decision(project, DecisionCreate(
+        decision=data.decision,
+        context=data.context,
+        safety_metadata=data.safety_metadata,
+        goal_id=data.goal_id,
+        citation_ids=data.citation_ids,
+    ))
 
 
 

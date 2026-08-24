@@ -6881,6 +6881,11 @@ document.getElementById('btn-add-decision').addEventListener('click', async () =
     document.getElementById('decision-form').classList.remove('hidden');
     document.getElementById('decision-input').focus();
     resetDecisionSafetyRequired();
+    // A stray citation_ids from an abandoned promotion (opened via a
+    // candidate's Promote button, then navigated away without saving or
+    // cancelling) must not silently attach to the next unrelated decision
+    // typed through this same "+ Add Decision" entry point.
+    _pendingPromotionCitationIds = [];
     await populateDecisionGoalSelect();
 });
 
@@ -6921,6 +6926,7 @@ document.getElementById('btn-cancel-decision').addEventListener('click', () => {
     document.getElementById('decision-goal-link').value = '';
     resetDecisionGoalInlineCreate();
     resetDecisionSafetyRequired();
+    _pendingPromotionCitationIds = [];
 });
 
 // Fetch a suggested category once the user's finished typing the decision.
@@ -6986,7 +6992,7 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
         resp = await fetch(`/api/memory/${encodeURIComponent(state.currentProject)}/decisions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision, context, safety_metadata, goal_id }),
+            body: JSON.stringify({ decision, context, safety_metadata, goal_id, citation_ids: _pendingPromotionCitationIds }),
         });
         data = await resp.json();
     } catch (e) {
@@ -7006,6 +7012,7 @@ document.getElementById('btn-save-decision').addEventListener('click', async () 
         document.getElementById('decision-goal-link').value = '';
         resetDecisionGoalInlineCreate();
         resetDecisionSafetyRequired();
+        _pendingPromotionCitationIds = [];
         selectProject(state.currentProject); // Refresh
         return;
     }
@@ -11902,6 +11909,73 @@ async function loadCompoundingRisk(project) {
     }).join('');
 }
 
+// ── Decision Promotion from Research (#82) ──
+// Keyed by engine ('web'/'hybrid') so the shared Suggest Decisions handler
+// below knows which report+citations to send, without re-parsing the DOM.
+const _researchReports = { web: null, hybrid: null };
+let _pendingPromotionCitationIds = [];
+
+function _renderCandidateDecisions(containerId, candidates) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!candidates.length) {
+        el.innerHTML = '<p class="text-xs text-outline">No candidate decisions found in this report.</p>';
+        return;
+    }
+    el._candidates = candidates; // read by the delegated click handler below
+    el.innerHTML = candidates.map((c, i) => `
+        <div class="glass-panel rounded-lg p-3 mb-2 border-l-2 border-accent-lavender/50">
+            <p class="text-sm font-medium">${escapeHtml(c.decision)}</p>
+            ${c.context ? `<p class="text-xs text-outline mt-1">${escapeHtml(c.context)}</p>` : ''}
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high text-accent-sky" title="Computed from supporting-citation count and source diversity -- not an LLM-reported confidence">confidence: ${Math.round((c.confidence || 0) * 100)}%</span>
+                <span class="text-xs text-outline">${(c.citation_ids || []).length} citation(s)</span>
+                <button class="btn-promote-candidate ml-auto px-3 py-1 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-idx="${i}">Promote to Decision</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.body.addEventListener('click', async (e) => {
+    const suggestBtn = e.target.closest('.btn-suggest-decisions');
+    if (suggestBtn) {
+        if (!state.currentProject) { showToast('Select a project first'); return; }
+        const engine = suggestBtn.dataset.engine;
+        const report = _researchReports[engine];
+        const containerId = engine === 'web' ? 'webresearch-candidates' : 'hybrid-candidates';
+        if (!report || !report.report_markdown) { showToast('Run research first'); return; }
+        suggestBtn.disabled = true;
+        suggestBtn.textContent = 'Analyzing…';
+        const data = await api(
+            `/memory/${encodeURIComponent(state.currentProject)}/research/promote-candidates`,
+            'POST', { report_markdown: report.report_markdown, citation_ids: report.citation_ids },
+        );
+        suggestBtn.disabled = false;
+        suggestBtn.textContent = 'Suggest Decisions';
+        if (data) _renderCandidateDecisions(containerId, data.candidates || []);
+        return;
+    }
+
+    const promoteBtn = e.target.closest('.btn-promote-candidate');
+    if (promoteBtn) {
+        const container = promoteBtn.closest('[id$="-candidates"]');
+        const candidate = container?._candidates?.[parseInt(promoteBtn.dataset.idx, 10)];
+        if (!candidate) return;
+
+        // Pre-fill the existing Add Decision form (Memory tab) rather than
+        // building a second decision-entry UI -- same explicit safety-
+        // category gate every other decision goes through, not bypassed
+        // just because the text came from a suggestion.
+        switchSection('content');
+        switchGenericTab('content', 'memory');
+        document.getElementById('btn-add-decision').click();
+        document.getElementById('decision-input').value = candidate.decision;
+        document.getElementById('decision-context').value = candidate.context || '';
+        _pendingPromotionCitationIds = candidate.citation_ids || [];
+        showToast('Decision pre-filled — pick a safety category to save');
+    }
+});
+
 // ── Web Research (web-researcher-mcp): Run ──
 document.getElementById('btn-run-webresearch')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
@@ -11917,7 +11991,12 @@ document.getElementById('btn-run-webresearch')?.addEventListener('click', async 
         const results = document.getElementById('webresearch-results');
         results.classList.remove('hidden');
         results.innerHTML = `<p class="text-xs text-outline mb-3">${data.steps_run} step(s) run · ${data.sources_found} source(s) found · ${data.sources_imported} imported into Tropebook</p>
-            <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>`;
+            <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap pt-6">${escapeHtml(data.report_markdown || 'No report generated.')}</pre></div>
+            <div class="mt-3">
+                <button class="btn-suggest-decisions px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-engine="web">Suggest Decisions</button>
+                <div id="webresearch-candidates" class="mt-3"></div>
+            </div>`;
+        _researchReports.web = { report_markdown: data.report_markdown || '', citation_ids: data.citation_ids || [] };
         try { localStorage.setItem('tropelex-deepresearch-raw-citationgrade', data.report_markdown || ''); } catch {}
         showToast(`Web research complete: ${data.sources_imported} sources imported`);
         loadDeepResearchHistory();
@@ -11972,7 +12051,12 @@ document.getElementById('btn-run-hybrid')?.addEventListener('click', async () =>
                     <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><p class="font-mono text-xs text-accent-periwinkle mb-2">Multi-Source</p><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.last30days_markdown || '(none)')}</pre></div>
                     <div class="glass-panel rounded-lg p-3 relative code-copy-wrap"><p class="font-mono text-xs text-accent-lime mb-2">Citation-Grade</p><button class="copy-btn absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded-md border border-glass-border text-outline hover:text-accent-lavender hover:border-accent-lavender/40 bg-surface/80 backdrop-blur-sm transition-all cursor-pointer" type="button" title="Copy to clipboard"><span class="material-symbols-outlined text-xs">content_copy</span></button><pre class="font-mono text-xs text-outline whitespace-pre-wrap">${escapeHtml(data.web_research_markdown || '(none)')}</pre></div>
                 </div>
-            </details>`;
+            </details>
+            <div class="mt-3">
+                <button class="btn-suggest-decisions px-3 py-1.5 rounded-lg border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-engine="hybrid">Suggest Decisions</button>
+                <div id="hybrid-candidates" class="mt-3"></div>
+            </div>`;
+        _researchReports.hybrid = { report_markdown: data.merged_report || '', citation_ids: data.citation_ids || [] };
         showToast('Hybrid research complete');
         loadDeepResearchHistory();
     }

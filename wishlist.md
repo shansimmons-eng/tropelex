@@ -860,7 +860,14 @@ Tests: 12 new in `tests/test_contradiction_gate.py` (blocking, override-then-ret
 - **Correlate Session-Shape anomalies with later Ghost/Friction/Market outcomes.** Right now #45's data and Ghost/Friction/Market's data are stored independently with no join — this is the analysis pass that would tell you whether a given behavioral signature (e.g. abnormally high tool-call count) actually predicts a later Ghost warning or override, turning #68's gate threshold from a guess into something calibrated against real correlation.
 - **Per-agent/session cumulative "safety budget."** A running risk-score total across a session's actions (decisions captured, overrides used, gates hit) that itself can trigger a review once it crosses a threshold — same "make the invisible cumulative thing visible" instinct behind #45 and #58, applied to risk exposure instead of behavioral drift or decay.
 
-**Status:** Open. Proposed 2026-08-10. None of these four block each other or anything else on this list — pick up independently as convenient.
+**Status:** Partially done. 2 of 4 resolved (2026-08-24):
+
+- **Move safety logic out of server.py** — ✅ Done, but scoped down from what this entry implied. Grepping before touching anything found the actual remaining surface is a dozen-plus interdependent functions (`get_safety_stats`, `get_safety_dashboard`, `get_safety_trend`, `submit_safety_review`, `run_safety_check`, `get_safety_envelope`, `DecisionCreate`, and their private helpers), not the "~150-line block" this entry estimated — `core/safety/__init__.py`'s own docstring had already flagged this exact same larger scope and deliberately deferred it once before. Moved only `SafetyMetadata` and `_auto_classify_safety` (now public `auto_classify_safety`) to `core/safety/classifier.py` — self-contained, no FastAPI coupling, matches the original estimate. The safety-report endpoints stay deferred, explicitly, for the same reason as before: moving a dozen interdependent endpoints in one pass is the wide, hard-to-review change this project avoids. Tests: `tests/test_safety_classifier.py` (new, 15). Full suite: 2453 passing (was 2438). Live-verified via `POST /decisions/preview-category` against the real `tropelex` project — identical output to before the move.
+- **Configurable Injection Sentinel marker list** — Turned out already done: `core/injection_sentinel.py`'s `_load_additional_markers()` (reads `memory/config/injection_markers.json`, additive-only, re-read per scan) is already fully wired into `scan_content()` and explicitly comment-labeled "wishlist #73-2" — shipped in an earlier commit (`9c1d48e`, Adversarial Hardening P4/P7/P8), with its own test coverage (`TestConfigurableMarkers`, 7 tests, still passing). This entry's status just never got updated to reflect it. Caught by reading the actual file before starting to build a duplicate.
+- **Correlate Session-Shape anomalies with later Ghost/Friction/Market outcomes** — still open.
+- **Per-agent/session cumulative safety budget** — still open.
+
+Proposed 2026-08-10.
 
 ---
 
@@ -1097,7 +1104,9 @@ A close read of Research & Ingestion (Prompt Lab, Feeds, Deep Research, Repo See
 
 **Why:** Named as the highest-leverage idea in the source material, and it's right — research currently only produces citations, never touches the decision graph. Not low-hanging: needs a confidence-surfacing UI, a promotion flow, and provenance linking (citation IDs → decision) that doesn't exist yet in any form.
 
-**Status:** Idea — biggest lift in this batch, but the biggest payoff too. Good candidate for the next real planning pass once #79–81 are through.
+**Resolved:** New `core/decision_promotion.py` — the LLM identifies candidate decisions and which of the *given* citations support each; confidence is computed afterward from real signals (supporting-citation count + source-type diversity), never asked of the LLM directly — deliberately mirrors #19/#67's established stance against ungrounded generative claims. Two new endpoints (`POST /research/promote-candidates`, `POST /decisions/promote`) on `core/tropebook/web/server.py`; `promote_decision` is a thin wrapper that calls `add_decision` directly, so a promoted decision goes through the exact same `require_tag`/contradiction/safety-metadata gates a manually-typed one does — not a bypass. New `DecisionCreate.citation_ids` field (mirrors `goal_id`, but unknown ids are silently filtered rather than 404'd, since Tropebook is global/loosely-coupled). `web_researcher_router.py`'s two research endpoints gained a `citation_ids` field in their response (previously only a count) so the dashboard has real ids to hand to promote-candidates. Dashboard: "Suggest Decisions" button on both Deep Research result panels, candidate cards with a computed-confidence badge, "Promote to Decision" pre-fills the existing Add Decision form (safety category still required, not pre-filled).
+
+**Status:** ✅ Implemented (2026-08-24). Tests: `tests/test_decision_promotion.py` (new, 16 — confidence computation, defensive JSON parsing, LLM-mocked extraction), `tests/test_decision_promotion_router.py` (new, 7), `tests/test_web_researcher_router.py` (new, 3 — no prior coverage existed for this router at all). Live-verified end to end with a real LLM call (not mocked) against a real citation: extraction correctly grounded the candidate in the given report text, matched the citation by URL, computed confidence exactly as expected (0.25 for 1 citation), and promotion persisted `citation_ids` through the same safety gate as a normal decision. Dashboard UI not live-browser-tested — would require firing a second real, paid Deep Research call just to reach it; same cost-avoidance call made for #81/#90.
 
 ---
 
@@ -1169,7 +1178,9 @@ A close read of Research & Ingestion (Prompt Lab, Feeds, Deep Research, Repo See
 
 **Why:** Verified this session — `mcp_server/server.py` currently has no research- or feed-related tools at all, only the memory/decision/goal surface. Real, confirmed gap, not a refinement.
 
-**Status:** Idea.
+**Resolved:** Shipped the MCP-tools half. 4 new `@mcp.tool()` functions: `run_deep_research` (wraps `/deep-research/web-research` or `/deep-research/hybrid` via a `hybrid` flag), `list_research_feeds`, `get_research_feed`, `run_research_feed`. Required extending `_request()` with an optional `timeout` param (previously hardcoded 30s) — hybrid research genuinely runs 1-3+ minutes (concurrent last30days + web-researcher-mcp, then LLM merge), so `run_deep_research`/`run_research_feed` pass extended timeouts (480s/180s) rather than the default silently cutting them off mid-run. CLI parity (`tropelex research`/`tropelex feed run` as actual shell commands) not built this pass — the MCP tools are the higher-leverage half since every MCP-connected agent gets them for free, a standalone CLI binary is separate, smaller-audience scope.
+
+**Status:** ✅ Implemented (2026-08-24). Tests: `mcp_server/test_server.py::TestDeepResearchAndFeedTools` (new, 6). Live-verified: `list_research_feeds`/`get_research_feed` (read-only) confirmed against the real server's 10 live feeds; `run_deep_research`/`run_research_feed` weren't live-fired (real API/LLM cost) — correctness rests on the mocked tests, same discipline as #81.
 
 ---
 
