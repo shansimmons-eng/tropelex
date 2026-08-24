@@ -1061,6 +1061,51 @@ async def tag_decision(project: str, decision_id: str, data: TagDecisionRequest)
     raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
 
 
+class UpdateDecisionContextRequest(BaseModel):
+    context: str = Field(..., max_length=1000)
+
+
+@app.patch("/api/memory/{project}/decisions/{decision_id}/context")
+async def update_decision_context(project: str, decision_id: str, data: UpdateDecisionContextRequest):
+    """Backfill or correct a decision's rationale after the fact -- the
+    write side of what add_decision's own `context` field is for, for
+    decisions captured without one (e.g. quick end-of-session logging that
+    only recorded the "what", never the "why"). context is a hash-covered
+    field, same as decision/safety_metadata, so this goes through
+    _resync_decision_hash like tag_decision does -- otherwise
+    verify_integrity would flag a legitimate edit as tampering.
+
+    Re-scans for injection markers on save, same as add_decision's
+    original write-time scan (#40) -- content_flags is recomputed fully
+    from decision+context+alignment_considerations together, not appended
+    to, so an edit that removes previously-flagged text correctly clears
+    the flag instead of leaving it stale.
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    for d in memory.get("decisions", []):
+        if d.get("id") == decision_id:
+            d["context"] = data.context
+            from core.injection_sentinel import scan_content
+
+            safety = d.get("safety_metadata") or {}
+            flags = (
+                scan_content(d.get("decision", ""))
+                + scan_content(data.context)
+                + scan_content(safety.get("alignment_considerations", ""))
+            )
+            if flags:
+                d["content_flags"] = flags
+            else:
+                d.pop("content_flags", None)
+            memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+            _resync_decision_hash(memory, d, changed_fields=["context"])
+            mm.save_project_memory(project, memory)
+            return {"updated": True, "decision": d}
+    raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
+
+
 @app.post("/api/memory/{project}/decisions")
 async def add_decision(project: str, data: DecisionCreate):
     """Add a decision to project memory. Requires an explicit safety_category.

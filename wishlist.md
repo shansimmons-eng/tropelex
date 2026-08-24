@@ -316,6 +316,19 @@ Separately, auditing the *other* half of error handling (business-logic `Result`
 
 ---
 
+### 94. Decision Context Backfill Endpoint
+**Purpose:** A write path for adding rationale (`context`) to a decision after the fact, for decisions captured without one.
+
+**Why:** `transparency` (`_score_criterion`, `core/tropebook/web/server.py`) is binary — 1.0 if `len(context) > 10` else 0.3, no partial credit — so any decision logged with an empty `context` (quick end-of-session captures that recorded the "what" but not the "why") permanently drags down its own alignment score and every category that reads from it (`stakeholder_impact`, `risk_documentation` are separate criteria but the same decisions tended to be weak on all three at once, since they were all quick captures). No endpoint existed to fix this — the only decision-mutation endpoint was `PATCH .../safety-category`. Editing `context` directly in `memory/{project}.json` was considered and rejected: `context` is one of the hash-covered fields `resync_decision_hash` (`core/audit.py`) exists specifically to protect, so a raw file edit would make `verify_integrity` flag a legitimate edit as tampering.
+
+**Status:** ✅ Implemented (`core/tropebook/web/server.py`). New `PATCH /api/memory/{project}/decisions/{decision_id}/context`, structured identically to the existing `safety-category` endpoint: find by id, mutate, call `resync_decision_hash(memory, d, changed_fields=["context"])`, save. Also re-scans `decision + context + alignment_considerations` through `scan_content` (Injection Sentinel) and fully recomputes `content_flags` on every edit — not appended to, so an edit that removes previously-flagged text correctly clears the flag rather than leaving it stale, matching `#40`'s original write-time scan discipline.
+
+Used live to backfill 4 decisions in the `tropelex` project itself that were failing alignment on `transparency` (#72 Generalized Soft-Enforcement, #19 Session Replay with AI Analysis, Early UI restructure, Build command palette) with real rationale pulled from `wishlist.md`'s own writeups and git commit history (`6d0744b`, `0760a29`) rather than placeholder text. Project-wide `alignment_score` moved from 4 failing decisions to `failing_count: 0`, `pass_rate: 1.0` across all 211 decisions.
+
+Tests: 4 new in `tests/test_decision_hash_integrity.py` (hash-resync doesn't trip tamper detection, 404 on unknown id, content_flags recomputed on a flagged edit, and cleared on a subsequent clean edit). Full suite: 2490 passing (was 2486).
+
+---
+
 ### 36. Synthetic Data Policy
 **Purpose:** EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets used in agent training/eval.
 
