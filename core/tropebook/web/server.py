@@ -1112,6 +1112,44 @@ async def update_decision_context(project: str, decision_id: str, data: UpdateDe
     raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
 
 
+class AttachCitationIdsRequest(BaseModel):
+    citation_ids: list[str] = Field(..., min_length=1, max_length=50)
+
+
+@app.patch("/api/memory/{project}/decisions/{decision_id}/citation-ids")
+async def attach_decision_citation_ids(project: str, decision_id: str, data: AttachCitationIdsRequest):
+    """Attach citations to an existing decision after the fact (#91) --
+    the write side of "Research this decision's rationale": the dashboard
+    runs POST /{project}/deep-research/web-research seeded from the
+    decision's own text, then calls this with the resulting citation_ids
+    to actually record them against the decision, mirroring #82's own
+    two-step "suggest, then explicitly promote" split rather than
+    auto-attaching research output the moment it comes back.
+
+    Merges into any existing citation_ids (union, de-duped) rather than
+    replacing -- running research against the same decision twice
+    shouldn't drop what a prior run already attached. Unknown ids are
+    silently filtered rather than rejected, same as DecisionCreate's own
+    citation_ids handling: Tropebook is a global, loosely-coupled store,
+    not a hard dependency the write should fail over. Not hash-covered
+    (decision_content_hash's field list doesn't include citation_ids, same
+    as goal_id), so no resync_decision_hash call is needed here.
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    for d in memory.get("decisions", []):
+        if d.get("id") == decision_id:
+            tb = get_tropebook()
+            valid_new = [cid for cid in data.citation_ids if cid in tb.citations]
+            existing = d.get("citation_ids") or []
+            d["citation_ids"] = list(dict.fromkeys([*existing, *valid_new]))
+            memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+            mm.save_project_memory(project, memory)
+            return {"updated": True, "decision": d}
+    raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
+
+
 @app.post("/api/memory/{project}/decisions")
 async def add_decision(project: str, data: DecisionCreate):
     """Add a decision to project memory. Requires an explicit safety_category.
@@ -6818,6 +6856,70 @@ async def tick_feeds():
     scheduler = _get_feed_scheduler()
     runs = scheduler.tick()
     return {"runs": [r.to_dict() for r in runs], "count": len(runs)}
+
+
+@app.get("/api/research-feeds/export")
+async def export_feeds():
+    """Bulk export every feed's config plus its accumulated markdown
+    history, for backup or migration to another instance (#91).
+
+    citation_ids/run_history are included here for reference but are NOT
+    restored by POST /import -- they reference this instance's own
+    citation store and run ids, which a re-import elsewhere can't
+    meaningfully resolve. Config + markdown is the actual round-trippable
+    content; see import_feeds' docstring.
+    """
+    fm = _get_feed_manager()
+    feeds = fm.list_feeds()
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "count": len(feeds),
+        "feeds": [{**f.to_dict(), "markdown": fm.get_feed_markdown(f.id)} for f in feeds],
+    }
+
+
+class FeedImportRequest(BaseModel):
+    feeds: list[dict] = Field(..., max_length=200)
+
+
+@app.post("/api/research-feeds/import")
+async def import_feeds(req: FeedImportRequest):
+    """Bulk-create feeds from a previously exported bundle (#91).
+
+    Each entry gets a fresh id via the normal validated create() path --
+    only config fields are restored (name/query/description/interval/
+    sources/tags/max_results_per_run/research_provider); markdown is
+    restored verbatim if present. citation_ids/run_history from the export
+    are deliberately NOT restored (see GET /export's docstring for why).
+
+    Per-entry failures don't abort the whole import -- one malformed entry
+    in a large bundle shouldn't block the rest, same "one bad record
+    degrades gracefully" stance core/session_shape/baseline.py already
+    documents for its own agent-supplied input.
+    """
+    fm = _get_feed_manager()
+    created: list[dict] = []
+    errors: list[dict] = []
+    for i, entry in enumerate(req.feeds):
+        try:
+            feed = fm.create(
+                name=entry.get("name") or "Imported feed",
+                query=entry.get("query") or "",
+                description=entry.get("description") or "",
+                interval=entry.get("interval") or "manual",
+                sources=entry.get("sources") or ["web"],
+                tags=entry.get("tags") or [],
+                max_results_per_run=entry.get("max_results_per_run") or 20,
+                research_provider=entry.get("research_provider") or "web_search",
+            )
+        except ValueError as e:
+            errors.append({"index": i, "error": str(e)})
+            continue
+        markdown = entry.get("markdown")
+        if isinstance(markdown, str) and markdown.strip():
+            fm.set_feed_markdown(feed.id, markdown)
+        created.append(feed.to_dict())
+    return {"created": created, "created_count": len(created), "errors": errors}
 
 
 # ── Parameterized /{feed_id} routes ──

@@ -6728,14 +6728,77 @@ function renderDecisions(decisions) {
         return `
         <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender">
             <p class="text-sm font-medium">${escapeHtml(d.decision)}</p>
-            <div class="flex items-center gap-2 mt-1">
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
                 <span class="text-xs px-2 py-0.5 rounded-full bg-surface-high text-outline uppercase">${escapeHtml(safety.safety_category || 'untagged')}</span>
                 <span class="text-xs text-outline font-mono">${d.timestamp?.slice(0, 10) || ''}</span>
+                <button class="btn-research-decision ml-auto px-2 py-0.5 rounded-full border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-decision-id="${escapeAttr(d.id)}" title="Run web research seeded from this decision's own text (#91)">Research rationale</button>
             </div>
+            <div id="decision-research-${escapeAttr(d.id)}" class="mt-2 hidden"></div>
         </div>`;
     }).join('');
     populateMarketDecisionSelect();
 }
+
+// ── "Research this decision's rationale" (#91) ──
+// Cheap now that #82 shipped: reuses the same deep-research/web-research
+// endpoint the Research tab's "Run Web Research" button already calls,
+// seeded from the decision's own text instead of a typed-in topic, then a
+// deliberate second click (mirroring #82's suggest-then-promote split)
+// attaches the resulting citations via PATCH .../citation-ids rather than
+// auto-attaching research output the moment it comes back.
+document.body.addEventListener('click', async (e) => {
+    const researchBtn = e.target.closest('.btn-research-decision');
+    if (researchBtn) {
+        if (!state.currentProject) { showToast('Select a project first'); return; }
+        const decisionId = researchBtn.dataset.decisionId;
+        const decision = (state.decisions || []).find(d => d.id === decisionId);
+        if (!decision) return;
+        const container = document.getElementById(`decision-research-${decisionId}`);
+        if (!container) return;
+
+        researchBtn.disabled = true;
+        researchBtn.textContent = 'Researching…';
+        const topic = (decision.decision + (decision.context ? ` — ${decision.context}` : '')).slice(0, 300);
+        const data = await api(
+            `/memory/${encodeURIComponent(state.currentProject)}/deep-research/web-research`,
+            'POST', { topic, max_steps: 2 },
+        );
+        researchBtn.disabled = false;
+        researchBtn.textContent = 'Research rationale';
+
+        container.classList.remove('hidden');
+        if (!data) {
+            container.innerHTML = '<p class="text-xs text-outline">Research failed — see toast for details.</p>';
+            return;
+        }
+        const citationIds = data.citation_ids || [];
+        container._citationIds = citationIds;
+        container.innerHTML = citationIds.length
+            ? `<p class="text-xs text-outline mb-1">${citationIds.length} citation(s) found.</p>
+               <button class="btn-attach-research-citations px-2 py-0.5 rounded-full border border-accent-lavender/30 text-accent-lavender font-mono text-xs hover:bg-accent-lavender/10 transition-all cursor-pointer" data-decision-id="${escapeAttr(decisionId)}">Attach to this decision</button>`
+            : '<p class="text-xs text-outline">No citations found.</p>';
+        return;
+    }
+
+    const attachBtn = e.target.closest('.btn-attach-research-citations');
+    if (attachBtn) {
+        if (!state.currentProject) return;
+        const decisionId = attachBtn.dataset.decisionId;
+        const container = document.getElementById(`decision-research-${decisionId}`);
+        const citationIds = container?._citationIds || [];
+        if (!citationIds.length) return;
+        attachBtn.disabled = true;
+        const result = await api(
+            `/memory/${encodeURIComponent(state.currentProject)}/decisions/${encodeURIComponent(decisionId)}/citation-ids`,
+            'PATCH', { citation_ids: citationIds },
+        );
+        attachBtn.disabled = false;
+        if (result) {
+            showToast(`${citationIds.length} citation(s) attached`);
+            container.innerHTML = '<p class="text-xs text-accent-lavender">Attached.</p>';
+        }
+    }
+});
 
 function populateMarketDecisionSelect() {
     const select = document.getElementById('bet-decision-id');

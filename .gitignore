@@ -27,6 +27,7 @@ memory/driftbench/
 memory/prompt_genealogy/
 memory/reposeek/
 memory/trending/
+memory/.trash/
 !memory/tropebook/.gitkeep
 !memory/.gitkeep.tmp/
 UI/UI2/

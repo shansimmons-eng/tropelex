@@ -256,6 +256,20 @@ class TestResearchFeedManager:
     def test_get_feed_markdown_empty(self, fm):
         assert fm.get_feed_markdown("nonexistent") == ""
 
+    def test_set_feed_markdown_replaces_content(self, fm):
+        feed = fm.create(name="Restore", query="q")
+        assert fm.set_feed_markdown(feed.id, "# Restored\n\ncontent") is True
+        assert fm.get_feed_markdown(feed.id) == "# Restored\n\ncontent"
+
+    def test_set_feed_markdown_overwrites_not_appends(self, fm):
+        feed = fm.create(name="Restore", query="q")
+        fm.set_feed_markdown(feed.id, "first")
+        fm.set_feed_markdown(feed.id, "second")
+        assert fm.get_feed_markdown(feed.id) == "second"
+
+    def test_set_feed_markdown_nonexistent_feed_returns_false(self, fm):
+        assert fm.set_feed_markdown("nonexistent", "content") is False
+
     def test_run_history_capped(self, fm):
         feed = fm.create(name="Cap", query="cap")
         for i in range(60):

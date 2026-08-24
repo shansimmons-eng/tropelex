@@ -316,6 +316,22 @@ class ResearchFeedManager:
             logger.error("Failed to read markdown for feed %s: %s", feed_id, e)
             return ""
 
+    def set_feed_markdown(self, feed_id: str, content: str) -> bool:
+        """Overwrite a feed's markdown file wholesale -- used by bulk
+        import (#91) to restore markdown history from an export bundle.
+        Unlike append_to_markdown, this replaces rather than adds a
+        section, since a freshly-created feed has no prior run to append
+        after. Returns False if the feed doesn't exist."""
+        if feed_id not in self.feeds:
+            return False
+        md_file = self.feeds_dir / f"{feed_id}.md"
+        try:
+            md_file.write_text(content)
+            return True
+        except Exception as e:
+            logger.error("Failed to set markdown for feed %s: %s", feed_id, e)
+            return False
+
     def append_to_markdown(self, feed_id: str, run: FeedRun, results: list[dict]) -> str:
         """Append a run's results to the feed's markdown file. Returns updated content."""
         feed = self.feeds.get(feed_id)
