@@ -503,5 +503,96 @@ async def explain_why(project: str, question: str) -> dict[str, Any]:
     )
 
 
+# ── Prompts ──────────────────────────────────────────────────────────────
+# MCP prompts (distinct from tools above) are auto-surfaced as native slash
+# commands by clients that support prompt discovery -- Devin CLI
+# (/mcp__tropelex__<name>), Gemini CLI, and Zed (via ACP, when the backing
+# agent is one of the above). No client-side command files needed for those
+# three; this is the one shared addition that covers all of them. Content
+# mirrors .claude/commands/*.md exactly -- same project-resolution
+# reasoning, just as a prompt template instead of hand-written prose for a
+# single client.
+
+
+@mcp.prompt()
+def tropelex_show_context(project: str | None = None) -> str:
+    """Show Tropelex's accumulated context for the current project."""
+    hint = f' (you may already know it as "{project}")' if project else ""
+    return (
+        f"Call list_projects first, and match the current repository directory "
+        f"name{hint} against the returned project names case-insensitively: "
+        "project names are case-sensitive server-side, so don't guess the "
+        "directory name's exact casing. If nothing matches clearly, ask which "
+        "project to use.\n\n"
+        "Then call get_project_memory for that project and summarize what it "
+        "returns for the user: past decisions and their rationale, session "
+        "summaries, learned patterns, and preferences, so this session starts "
+        "with the accumulated context instead of from scratch."
+    )
+
+
+@mcp.prompt()
+def tropelex_record_decision(decision: str, context: str = "") -> str:
+    """Record a decision in Tropelex memory."""
+    return (
+        "Call list_projects first, and match the current repository directory "
+        "name against the returned project names case-insensitively: project "
+        "names are case-sensitive server-side, so don't guess the directory "
+        "name's exact casing. If nothing matches clearly, ask which project "
+        "to use.\n\n"
+        "Record this decision in Tropelex using the capture_decision tool for "
+        "that project.\n\n"
+        f"Decision: {decision}\n"
+        f"Context: {context or '(none given -- ask if it would help future recall)'}\n\n"
+        "capture_decision requires safety_category; if you omit it the call "
+        "is rejected with a suggested category attached -- read it and either "
+        "accept (retry with it) or override with a better-fitting one. After "
+        "recording, confirm briefly and continue with the task at hand."
+    )
+
+
+@mcp.prompt()
+def tropelex_end_session(summary: str) -> str:
+    """End the session and record it in Tropelex for pattern learning."""
+    return (
+        "Call list_projects first, and match the current repository directory "
+        "name against the returned project names case-insensitively: project "
+        "names are case-sensitive server-side, so don't guess the directory "
+        "name's exact casing. If nothing matches clearly, ask which project "
+        "to use.\n\n"
+        f"Session summary: {summary or '(none given -- write one from the conversation)'}\n\n"
+        "Call end_session for that project with that summary and your own "
+        "agent name (e.g. \"Devin\", \"Gemini\", \"Zed\") in the agent field: "
+        "this attributes the session so per-agent skill and persona tracking "
+        "has real data instead of everything landing under \"unspecified\". "
+        "Confirm to the user once it's recorded."
+    )
+
+
+@mcp.prompt()
+def tropelex_up(description: str = "", tech_stack: str = "") -> str:
+    """Register a new project with Tropelex (description + tech stack)."""
+    return (
+        "Call list_projects first, and match the current repository directory "
+        "name against the returned project names case-insensitively. If a "
+        "matching project already exists, tell the user it's already "
+        "registered and stop -- don't re-create it. (Note: capture_decision "
+        "and end_session already auto-create a project on first use if it "
+        "doesn't exist yet, just without a description or tech stack -- this "
+        "prompt is specifically for setting those up properly instead of "
+        "leaving them blank.)\n\n"
+        "If no matching project exists: there's no tool for project creation "
+        "with metadata, so use the REST API directly -- "
+        "POST http://localhost:8766/api/memory with JSON body "
+        '{"project_name": <current directory\'s basename>, "description": '
+        '<description>, "tech_stack": [<tech_stack items>]}.\n\n'
+        f"Description: {description or '(none given -- infer one from the project files you can see, e.g. package.json, requirements.txt, pyproject.toml)'}\n"
+        f"Tech stack: {tech_stack or '(none given -- infer from the same files)'}\n\n"
+        "Confirm to the user once the project is created, and mention the "
+        "show-context, record-decision, and end-session prompts as what "
+        "they'll use from here."
+    )
+
+
 if __name__ == "__main__":
     mcp.run()

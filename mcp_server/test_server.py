@@ -365,3 +365,52 @@ class TestRealRequestCapture:
         result = await server._request("test_tool", "GET", "/api/memory")
 
         assert result == {"ok": True}  # real result still returned despite the broken instrumentation
+
+
+class TestPrompts:
+    """@mcp.prompt() functions (distinct from @mcp.tool()) -- auto-surfaced
+    as native slash commands by Devin CLI, Gemini CLI, and Zed (via ACP).
+    Still plain callables under the decorator, same as tools, so these are
+    called directly and asserted against their returned instruction text.
+    """
+
+    def test_show_context_instructs_project_resolution_and_get_project_memory(self):
+        text = server.tropelex_show_context()
+        assert "list_projects" in text
+        assert "case-insensitively" in text
+        assert "get_project_memory" in text
+
+    def test_record_decision_includes_decision_and_context(self):
+        text = server.tropelex_record_decision("Use Postgres", "Better relational support")
+        assert "capture_decision" in text
+        assert "Use Postgres" in text
+        assert "Better relational support" in text
+        assert "safety_category" in text
+
+    def test_record_decision_handles_missing_context(self):
+        text = server.tropelex_record_decision("Use Postgres")
+        assert "Use Postgres" in text
+        assert "Context:" in text
+
+    def test_end_session_includes_summary_and_agent_field_guidance(self):
+        text = server.tropelex_end_session("Shipped the feature")
+        assert "end_session" in text
+        assert "Shipped the feature" in text
+        assert "agent" in text.lower()
+
+    def test_up_includes_description_and_tech_stack_when_given(self):
+        text = server.tropelex_up("A test project", "Python,FastAPI")
+        assert "A test project" in text
+        assert "Python,FastAPI" in text
+        assert "POST http://localhost:8766/api/memory" in text
+
+    def test_up_handles_missing_description_and_tech_stack(self):
+        text = server.tropelex_up()
+        assert "infer" in text.lower()
+
+    def test_all_prompts_registered_on_the_mcp_instance(self):
+        names = {p.name for p in server.mcp._prompt_manager.list_prompts()}
+        assert names == {
+            "tropelex_show_context", "tropelex_record_decision",
+            "tropelex_end_session", "tropelex_up",
+        }

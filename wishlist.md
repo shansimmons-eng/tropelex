@@ -1342,6 +1342,23 @@ A close read of Research & Ingestion (Prompt Lab, Feeds, Deep Research, Repo See
 
 ---
 
+### 92. Slash Command / Skill Parity Across AI Coding Tools
+**Purpose:** Give the same 4 Tropelex actions (show context, record decision, end session, register a new project) native invocation across every AI coding tool the user actually uses — not just OpenCode (5 commands, pre-existing) and Claude Code (4 commands, `.claude/commands/`).
+
+**Why:** Researched each target tool's actual current command/MCP mechanism live (not assumed from training data — this space moves fast) before building anything. The result reshaped the work: most of it collapsed into two shared, reusable pieces instead of six independent per-tool builds.
+
+**Features:**
+- **MCP prompts** (`mcp_server/server.py`, 4 new `@mcp.prompt()` functions alongside the existing `@mcp.tool()` set) — auto-surfaced as native slash commands with zero client-side files by Devin CLI (`/mcp__tropelex__<name>`), Gemini CLI ("prompts appear as native slash commands"), and Zed (via ACP, when the backing agent is one of the above). One shared addition covers three tools.
+- **SKILL.md skills** (open Agent Skills standard — a portable `<name>/SKILL.md` folder), written once and deployed identically to `.agents/skills/` (Codex CLI) and `.cursor/skills/` (Cursor) — both read the same format, so no per-tool adaptation needed. Cursor's older `.cursor/commands/*.md` still works but its own docs now steer toward skills, so that path was skipped as redundant.
+- **Aider**: confirmed dead end for a native command (GitHub issue Aider-AI/aider#4506, still open as of mid-2026 — no MCP support, PRs closed unmerged; no user-definable slash commands, only a fixed built-in set). Built 4 standalone shell scripts (`scripts/aider/*.sh`) invoked via Aider's built-in `/run <command>` instead — the closest real equivalent, documented plainly as a workaround rather than pretending it's the same thing.
+- **`.claude/commands/tropelex-up.md`** (new) — the one Claude Code command that was missing; `tropelex-context` (OpenCode's 5th command) wasn't ported, judged redundant with `tropelex-show-context`.
+
+**Caught live, not by inspection:** the Aider scripts' first draft used `curl ... && echo done`, which reports success unconditionally because curl exits 0 even on a 401/422 — actually running each script against the live server surfaced two real bugs before shipping: (1) Tropelex's instance-secret auth middleware rejects any non-same-origin mutating call, including a raw curl from `/run`, so the scripts needed `TROPEL_EX_SECRET` support and honest HTTP-status checking; (2) the decisions endpoint requires an explicit `safety_category` and rejects the call otherwise (deliberately, not a bug to route around — a prior real incident let every uncategorized decision get silently tagged "general") so `tropelex-record-decision.sh` takes it as a required argument rather than defaulting one.
+
+**Status:** ✅ Implemented (2026-08-24). Tests: `mcp_server/test_server.py::TestPrompts` (new, 7 — one per prompt's content plus a registration check). Live-verified: all 4 MCP prompts confirmed registered and rendering correctly via FastMCP's own prompt manager (closest available proxy in this environment, since Devin/Gemini CLI/Zed aren't installed here); all 4 Aider scripts run end-to-end against the real local server with a disposable test project, cleaned up afterward (no project-delete API endpoint exists — matches Tropelex's immutable-memory philosophy — so cleanup was done directly via the isolated per-project JSON file rather than the too-broad `/api/memory/reset`). SKILL.md frontmatter validated by parsing; no live Cursor/Codex install available to test end-to-end.
+
+---
+
 ## UI & Presentation
 
 ### 38. Global Horizontal Sub-Navigation Migration
