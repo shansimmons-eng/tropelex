@@ -124,6 +124,93 @@ class TestImportFeeds:
         assert all_feeds["count"] == 2  # original + re-imported copy
 
 
+class TestSuggestQueryRewrite:
+    def test_404_for_unknown_feed(self, client):
+        resp = client.post("/api/research-feeds/nope/suggest-query-rewrite")
+        assert resp.status_code == 404
+
+    def test_not_stagnant_skips_the_llm_call(self, client):
+        from unittest.mock import AsyncMock, patch
+
+        created = client.post("/api/research-feeds", json={"name": "Fresh", "query": "q"}).json()
+        with patch(
+            "core.tropebook.adaptive_scheduling.suggest_query_rewrite", new=AsyncMock(),
+        ) as mock_suggest:
+            resp = client.post(f"/api/research-feeds/{created['id']}/suggest-query-rewrite")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["suggested"] is False
+        assert body["reason"] == "not_stagnant"
+        mock_suggest.assert_not_called()
+
+    def test_stagnant_feed_returns_llm_suggestion(self, client):
+        from unittest.mock import AsyncMock, patch
+        from core.tropebook.research_feeds import FeedRun
+        from core.tropebook.web import server as server_module
+
+        created = client.post("/api/research-feeds", json={"name": "Stale", "query": "old query"}).json()
+        fm = server_module._get_feed_manager()
+        for i in range(3):
+            fm.record_run(FeedRun(
+                id=f"r{i}", feed_id=created["id"], timestamp=f"2026-08-2{i}T00:00:00+00:00",
+                query="old query", results_count=0, citations_added=[],
+                status="success", error=None, duration_seconds=1.0,
+            ))
+
+        with patch(
+            "core.tropebook.adaptive_scheduling.llm.chat", new=AsyncMock(return_value="better query text"),
+        ):
+            resp = client.post(f"/api/research-feeds/{created['id']}/suggest-query-rewrite")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["suggested"] is True
+        assert body["rewritten_query"] == "better query text"
+        assert body["original_query"] == "old query"
+
+    def test_stagnant_feed_with_no_llm_backend_returns_suggested_false(self, client):
+        from unittest.mock import AsyncMock, patch
+        from core.tropebook.research_feeds import FeedRun
+        from core.tropebook.web import server as server_module
+
+        created = client.post("/api/research-feeds", json={"name": "Stale", "query": "old query"}).json()
+        fm = server_module._get_feed_manager()
+        for i in range(3):
+            fm.record_run(FeedRun(
+                id=f"r{i}", feed_id=created["id"], timestamp=f"2026-08-2{i}T00:00:00+00:00",
+                query="old query", results_count=0, citations_added=[],
+                status="success", error=None, duration_seconds=1.0,
+            ))
+
+        with patch("core.tropebook.adaptive_scheduling.llm.chat", new=AsyncMock(return_value=None)):
+            resp = client.post(f"/api/research-feeds/{created['id']}/suggest-query-rewrite")
+
+        body = resp.json()
+        assert body["suggested"] is False
+        assert body["reason"] == "no_llm_backend"
+
+    def test_never_mutates_the_feed(self, client):
+        from unittest.mock import AsyncMock, patch
+        from core.tropebook.research_feeds import FeedRun
+        from core.tropebook.web import server as server_module
+
+        created = client.post("/api/research-feeds", json={"name": "Stale", "query": "old query"}).json()
+        fm = server_module._get_feed_manager()
+        for i in range(3):
+            fm.record_run(FeedRun(
+                id=f"r{i}", feed_id=created["id"], timestamp=f"2026-08-2{i}T00:00:00+00:00",
+                query="old query", results_count=0, citations_added=[],
+                status="success", error=None, duration_seconds=1.0,
+            ))
+        with patch(
+            "core.tropebook.adaptive_scheduling.llm.chat", new=AsyncMock(return_value="a new query"),
+        ):
+            client.post(f"/api/research-feeds/{created['id']}/suggest-query-rewrite")
+
+        unchanged = client.get(f"/api/research-feeds/{created['id']}").json()
+        assert unchanged["query"] == "old query"
+
+
 class TestAttachCitationIds:
     def _create_decision(self, client, project):
         client.post("/api/memory", json={"project_name": project})

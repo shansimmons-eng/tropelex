@@ -122,6 +122,7 @@ class FeedScheduler:
             self.feeds.record_run(run)
             logger.info("Feed %s completed: %d found, %d new citations",
                         feed.name, len(filtered), len(citations_added))
+            self._maybe_adjust_interval(feed)
             return run
 
         except Exception as e:
@@ -133,6 +134,42 @@ class FeedScheduler:
             )
             self.feeds.record_run(run)
             return run
+
+    def _maybe_adjust_interval(self, feed: ResearchFeed) -> None:
+        """Adaptive scheduling (#85): after a successful run, check whether
+        this feed's recent novelty (results_count) history recommends
+        lengthening (repeated zero-novelty runs) or shortening (a genuine
+        spike) its interval, and apply it if so -- deterministic, bounded
+        to one tier per check, "manual"-interval feeds excluded entirely.
+        Not called from the error path in run_feed -- a failed run is a
+        reliability signal, not a novelty one.
+        """
+        try:
+            from core.tropebook.adaptive_scheduling import recommend_interval_change
+
+            recent = list(reversed(self.feeds.get_runs(feed_id=feed.id, limit=5)))
+            recommendation = recommend_interval_change(
+                feed.interval, [r.to_dict() for r in recent],
+            )
+            if recommendation["action"] == "none":
+                return
+
+            new_interval = recommendation["recommended_interval"]
+            self.feeds.update(feed.id, interval=new_interval)
+            logger.info(
+                "Adaptive scheduling: feed %s interval %s -> %s (%s)",
+                feed.name, recommendation["current_interval"], new_interval, recommendation["reason"],
+            )
+            from core.telemetry import _emit_telemetry
+            _emit_telemetry(
+                "RESEARCH",
+                f"Feed '{feed.name}' interval auto-adjusted {recommendation['current_interval']} "
+                f"-> {new_interval}: {recommendation['reason']}",
+            )
+        except Exception as e:
+            # Fail open -- an adaptive-scheduling bug must not break the
+            # actual research run this method is called after.
+            logger.warning("Adaptive interval adjustment failed for feed %s: %s", feed.name, e)
 
     def _append_deep_research_markdown(
         self, feed_id: str, run: FeedRun, html: str, results: list[dict],

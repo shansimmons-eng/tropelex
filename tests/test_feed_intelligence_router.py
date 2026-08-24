@@ -45,6 +45,60 @@ def isolated_stores(tmp_path):
         fi_router_module._get_fm = original_get_fm
 
 
+class TestFeedIntelligenceEndpoint:
+    """Regression coverage for a real bug found while building #85: FeedRun.
+    to_dict() has no 'citations' key (the real field is citations_added),
+    so compute_feed_intelligence's count-based signals (spike/drop/stale)
+    silently no-op against every real run until the router started passing
+    citations_added through as 'citations'."""
+
+    def test_404_for_unknown_feed(self, client, isolated_stores):
+        res = client.get("/api/research-feeds/nope/intelligence")
+        assert res.status_code == 404
+
+    def test_stale_run_detected_from_real_run_shape(self, client, isolated_stores):
+        from core.tropebook.research_feeds import FeedRun
+
+        fm = isolated_stores
+        feed = fm.create(name="Stale Feed", query="test query")
+        now = datetime.now(timezone.utc)
+        fm.record_run(FeedRun(
+            id="r1", feed_id=feed.id, timestamp=now.isoformat(),
+            query="test query", results_count=3, citations_added=["c1", "c2", "c3"],
+            status="success", error=None, duration_seconds=1.0,
+        ))
+        fm.record_run(FeedRun(
+            id="r2", feed_id=feed.id, timestamp=(now + timedelta(hours=1)).isoformat(),
+            query="test query", results_count=0, citations_added=[],
+            status="success", error=None, duration_seconds=1.0,
+        ))
+
+        res = client.get(f"/api/research-feeds/{feed.id}/intelligence")
+
+        assert res.status_code == 200
+        anomalies = res.json()["anomalies"]
+        assert any(a["anomaly_type"] == "stale" for a in anomalies)
+
+    def test_spike_detected_from_real_run_shape(self, client, isolated_stores):
+        from core.tropebook.research_feeds import FeedRun
+
+        fm = isolated_stores
+        feed = fm.create(name="Spike Feed", query="test query")
+        now = datetime.now(timezone.utc)
+        for i, count in enumerate([2, 2, 2, 20]):
+            fm.record_run(FeedRun(
+                id=f"r{i}", feed_id=feed.id, timestamp=(now + timedelta(hours=i)).isoformat(),
+                query="test query", results_count=count,
+                citations_added=[f"c{i}_{j}" for j in range(count)],
+                status="success", error=None, duration_seconds=1.0,
+            ))
+
+        res = client.get(f"/api/research-feeds/{feed.id}/intelligence")
+
+        anomalies = res.json()["anomalies"]
+        assert any(a["anomaly_type"] == "spike" for a in anomalies)
+
+
 class TestFeedCitationHealthEndpoint:
     def test_404_for_unknown_feed(self, client, isolated_stores):
         res = client.get("/api/research-feeds/nope/citation-health")

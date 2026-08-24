@@ -102,10 +102,20 @@ def score_feed_citation_health(citations: list[dict]) -> dict[str, Any]:
 
 
 def _count_topics(runs: list[dict]) -> dict[str, list[int]]:
-    """Count citation topics per run index."""
+    """Count citation topics per run index.
+
+    Only resolved citation dicts (with a 'topic'/'title' field) carry
+    anything to group by -- a run history built from FeedRun.citations_added
+    (plain citation-id strings, see feed_intelligence_router.py's own
+    caller-side comment) has no topic text at all, so those entries are
+    skipped rather than crashing on `.get()` against a bare string or
+    silently bucketing everything under 'unknown'.
+    """
     topic_runs: dict[str, list[int]] = defaultdict(list)
     for i, run in enumerate(runs):
         for cit in run.get("citations", []):
+            if not isinstance(cit, dict):
+                continue
             topic = cit.get("topic") or cit.get("title", "unknown")
             topic_runs[topic].append(i)
     return dict(topic_runs)

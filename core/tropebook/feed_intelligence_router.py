@@ -41,7 +41,16 @@ async def feed_intelligence(feed_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Feed '{feed_id}' not found")
 
     try:
-        runs = [r.to_dict() for r in fm.get_runs(feed_id=feed_id, limit=100)]
+        # compute_feed_intelligence reads run["citations"] for count-based
+        # signals (spike/drop/stale/error-cluster detection) -- FeedRun's
+        # own field is citations_added (a list of citation-id strings, not
+        # resolved citation dicts), so to_dict() alone never populated
+        # "citations" at all and every count-based signal silently no-opped
+        # against real data. citation_ids here are id strings, not dicts
+        # with topic/title, so topic-level trending still can't be computed
+        # from run history alone (see _count_topics' own docstring) --
+        # that's an honest, disclosed limitation, not something this fixes.
+        runs = [{**r.to_dict(), "citations": r.citations_added} for r in fm.get_runs(feed_id=feed_id, limit=100)]
         return compute_feed_intelligence(runs)
     except HTTPException:
         raise

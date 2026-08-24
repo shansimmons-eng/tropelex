@@ -374,6 +374,33 @@ class TestFeedScheduler:
         assert runs[0].status == "success"
 
     @patch.object(BraveSearch, "search")
+    def test_adaptive_scheduling_lengthens_interval_after_zero_novelty_streak(self, mock_search, fm, scheduler):
+        mock_search.return_value = []  # zero results every run
+        feed = fm.create(name="Stagnant", query="q", interval="daily")
+        for _ in range(3):
+            scheduler.run_feed(feed)
+        assert fm.get(feed.id).interval == "weekly"
+
+    @patch.object(BraveSearch, "search")
+    def test_adaptive_scheduling_never_adjusts_manual_feeds(self, mock_search, fm, scheduler):
+        mock_search.return_value = []
+        feed = fm.create(name="Manual", query="q", interval="manual")
+        for _ in range(3):
+            scheduler.run_feed(feed)
+        assert fm.get(feed.id).interval == "manual"
+
+    @patch.object(BraveSearch, "search")
+    def test_adaptive_scheduling_failure_does_not_break_run_feed(self, mock_search, fm, scheduler):
+        mock_search.return_value = [SearchResult("R", "https://r.com", "D", "web")]
+        feed = fm.create(name="T", query="q")
+        with patch(
+            "core.tropebook.adaptive_scheduling.recommend_interval_change",
+            side_effect=RuntimeError("boom"),
+        ):
+            run = scheduler.run_feed(feed)
+        assert run.status == "success"  # the real research run still succeeded
+
+    @patch.object(BraveSearch, "search")
     def test_tick_skips_non_due(self, mock_search, fm, scheduler):
         fm.create(name="Future", query="future")
         runs = scheduler.tick()

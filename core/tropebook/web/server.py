@@ -7094,6 +7094,42 @@ async def get_feed_citations(feed_id: str, limit: int = Query(50, ge=1, le=200))
     return {"citations": citations, "count": len(citations)}
 
 
+@app.post("/api/research-feeds/{feed_id}/suggest-query-rewrite")
+async def suggest_feed_query_rewrite(feed_id: str, project: str = Query("", max_length=100)):
+    """On-demand LLM query-rewrite suggestion for a stagnant feed (#85).
+
+    Suggestion-only -- never mutates the feed. Gated on the same
+    low-novelty-streak signal the automatic interval adjustment uses
+    (core/tropebook/adaptive_scheduling.py's is_query_stagnant): if the
+    feed hasn't actually gone stagnant, this returns without calling the
+    LLM at all, matching the project's cost-control stance on generative
+    features rather than spending on every request regardless of whether
+    there's a real signal. Apply a returned suggestion yourself via the
+    existing PUT /{feed_id} endpoint -- reusing it rather than adding a
+    second write path, same as #91's citation-ids attach reused an
+    existing endpoint rather than inventing a new one.
+    """
+    feed_id = _sanitize_feed_id(feed_id)
+    fm = _get_feed_manager()
+    feed = fm.get(feed_id)
+    if not feed:
+        raise HTTPException(404, "Feed not found")
+
+    from core.tropebook.adaptive_scheduling import is_query_stagnant, suggest_query_rewrite
+
+    recent = [r.to_dict() for r in reversed(fm.get_runs(feed_id=feed_id, limit=5))]
+    if not is_query_stagnant(recent):
+        return {"suggested": False, "reason": "not_stagnant", "original_query": feed.query}
+
+    rewritten = await suggest_query_rewrite(
+        feed.name, feed.query, recent, project=_sanitise_project(project) if project else None,
+    )
+    if rewritten is None:
+        return {"suggested": False, "reason": "no_llm_backend", "original_query": feed.query}
+
+    return {"suggested": True, "original_query": feed.query, "rewritten_query": rewritten.strip()}
+
+
 if __name__ == "__main__":
     import uvicorn
 
