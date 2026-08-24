@@ -970,6 +970,21 @@ Tests: 22 new (`test_session_insights.py`, `TestSetAiSummary` in `test_session_r
 
 ---
 
+### 93. Project Soft-Delete (Trash + Retention)
+**Purpose:** Move a project's memory (and replay history) into a dated trash folder instead of deleting it outright, with a retention window and opportunistic auto-purge — the Tropelex-side counterpart to a global Claude Code hook built the same session.
+
+**Why:** No delete endpoint for a single project existed at all before this — the only way to remove one was a raw filesystem `rm`, which is exactly what caused a real, unrecoverable data-loss incident during test cleanup earlier this session (a pre-existing test project's memory file deleted directly, no git tracking, no backup). Investigating the fix surfaced a second, worse instance of the same problem already live in the API: `DELETE /api/memory/reset` called `project_file.unlink()` directly on *every* project in one pass — same failure mode, larger blast radius, existing in production the whole time.
+
+**Features:**
+- New `POST`-adjacent `DELETE /api/memory/{project}` — moves `memory/{project}.json` (and `memory/replays/{project}/` if present) into `memory/.trash/YYYY-MM-DD/`, timestamped to avoid collisions. 404 if the project doesn't exist.
+- `DELETE /api/memory/reset` changed to soft-delete every project the same way, instead of `unlink()`.
+- Shared `_soft_delete_one_project`/`_purge_expired_project_trash` helpers — 30-day retention, purged opportunistically on every soft-delete call rather than a separate scheduler, mirroring the global hook's own approach.
+- The two trash layers compose correctly without data loss: soft-deleting Tropelex's own `memory/.trash/` folder itself (rather than a project) gets caught by the *global* Claude Code hook and relocated into `~/.claude-trash/` instead of vanishing — confirmed live, not by inspection, while cleaning up this feature's own test data.
+
+**Status:** ✅ Implemented (2026-08-24). Tests: `tests/test_project_soft_delete.py` (new, 7 — 404 on missing project, file+replay-dir moved not deleted, project no longer listed, retention purge, reset soft-deletes all projects, empty-reset no-op). Full suite: 2486 passing (was 2479). Live-verified against the real server with a disposable test project: created, deleted, confirmed gone from its original location and fully intact (readable JSON) in the dated trash folder, confirmed a second delete correctly 404s, confirmed it no longer appears in `GET /api/memory`.
+
+---
+
 ## Research & Ingestion
 
 ### 4. Cross-Project Learning Automation

@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -794,12 +795,72 @@ async def link_citations(req: LinkRequest):
 # ============================
 
 
+_PROJECT_TRASH_RETENTION_DAYS = 30
+
+
+def _project_trash_root() -> Path:
+    return get_memory_manager().memory_dir / ".trash"
+
+
+def _purge_expired_project_trash() -> None:
+    """Opportunistic cleanup, mirrors the retention-window pattern the
+    global Claude Code soft-delete-guard hook already established --
+    runs on every soft-delete call, no separate scheduler needed."""
+    trash_root = _project_trash_root()
+    if not trash_root.is_dir():
+        return
+    cutoff = time.time() - _PROJECT_TRASH_RETENTION_DAYS * 86400
+    for entry in trash_root.iterdir():
+        try:
+            if entry.is_dir() and entry.stat().st_mtime < cutoff:
+                shutil.rmtree(entry, ignore_errors=True)
+        except OSError:
+            continue
+
+
+def _soft_delete_one_project(project: str) -> list[str]:
+    """Move one project's memory file, plus its replay history directory
+    if it has one, into a dated trash folder instead of deleting them.
+    Returns the destination paths actually moved -- [] if the project had
+    no memory file (a legitimate no-op for a nonexistent project, not an
+    error; the caller decides whether that's a 404 or fine to skip)."""
+    mm = get_memory_manager()
+    memory_file = mm.memory_dir / f"{project}.json"
+    if not memory_file.exists():
+        return []
+
+    dest_dir = _project_trash_root() / datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    ts = time.time_ns()
+
+    moved = []
+    dest_json = dest_dir / f"{project}.json-{ts}"
+    shutil.move(str(memory_file), str(dest_json))
+    moved.append(str(dest_json))
+
+    replay_dir = mm.base_path / "memory" / "replays" / project
+    if replay_dir.is_dir():
+        dest_replay = dest_dir / f"{project}-replays-{ts}"
+        shutil.move(str(replay_dir), str(dest_replay))
+        moved.append(str(dest_replay))
+
+    return moved
+
+
 @app.delete("/api/memory/reset")
 async def reset_all_memory():
+    """Move every project's memory into the dated trash folder instead of
+    deleting outright. This used to call project_file.unlink() directly
+    on every project in one pass -- the same unrecoverable-delete pattern
+    that motivated soft-deleting a single project in the first place,
+    just with a much larger blast radius. Fixed the same way.
+    """
     mm = get_memory_manager()
-    for project_file in mm.memory_dir.glob("*.json"):
-        project_file.unlink()
-    return {"reset": True}
+    _purge_expired_project_trash()
+    trashed: list[str] = []
+    for project_file in list(mm.memory_dir.glob("*.json")):
+        trashed.extend(_soft_delete_one_project(project_file.stem))
+    return {"reset": True, "trashed_count": len(trashed)}
 
 
 @app.get("/api/memory")
@@ -825,6 +886,28 @@ async def create_memory_project(data: MemoryProjectCreate):
     except Exception as e:
         logger.error("create_memory_project failed: %s", e)
         raise HTTPException(500, f"Failed to create project: {e}")
+
+
+@app.delete("/api/memory/{project}")
+async def delete_memory_project(project: str):
+    """Move a project's memory (and replay history) into a dated trash
+    folder instead of deleting it. No delete endpoint existed for a
+    single project before this -- the only way to remove one was a raw
+    filesystem rm, the exact failure mode that caused a real,
+    unrecoverable data-loss incident during test cleanup this session.
+    Retention mirrors the global Claude Code soft-delete-guard hook: 30
+    days, purged opportunistically on each call, not a separate
+    scheduler. Registered before GET/PATCH's own {project} routes matter
+    less here since this is DELETE-only, but kept after the literal
+    /api/memory/reset DELETE route above regardless, matching this
+    file's own "specific BEFORE parameterised" convention.
+    """
+    project = _sanitise_project(project)
+    _purge_expired_project_trash()
+    moved = _soft_delete_one_project(project)
+    if not moved:
+        raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+    return {"deleted": True, "project": project, "trashed_to": moved}
 
 
 @app.get("/api/memory/{project}")
