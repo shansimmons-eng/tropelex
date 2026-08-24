@@ -6723,7 +6723,19 @@ function renderDecisions(decisions) {
     // second style for the same field. No hard cap anymore -- the list
     // scrolls (max-h-96, same bound Time Travel already uses for this
     // exact card shape) instead of silently hiding older decisions.
-    list.innerHTML = decisions.slice().reverse().map(d => {
+    //
+    // Sorted by timestamp, not array position (.reverse() alone assumes
+    // the array is already chronological, which broke when a batch of
+    // retroactive git-history decisions got appended out of order --
+    // real decisions from 8/11-8/24 were getting buried behind an older
+    // synthetic-timestamp batch appended later in the array). Plain
+    // string comparison on ISO 8601 timestamps sorts correctly regardless
+    // of "Z" vs "+00:00" suffix, same convention core/goals/logic.py's
+    // list_goals() already uses server-side for goals.
+    list.innerHTML = decisions.slice().sort((a, b) => {
+        const ta = a.timestamp || '', tb = b.timestamp || '';
+        return ta < tb ? 1 : ta > tb ? -1 : 0;
+    }).map(d => {
         const safety = (d.safety_metadata && typeof d.safety_metadata === 'object') ? d.safety_metadata : {};
         return `
         <div class="p-3 rounded-lg bg-surface-raised border-l-2 border-accent-lavender">
@@ -6806,7 +6818,10 @@ function populateMarketDecisionSelect() {
     const decisions = state.decisions || [];
     const current = select.value;
     select.innerHTML = '<option value="">Select a decision...</option>' +
-        decisions.slice().reverse().map(d => {
+        decisions.slice().sort((a, b) => {
+            const ta = a.timestamp || '', tb = b.timestamp || '';
+            return ta < tb ? 1 : ta > tb ? -1 : 0;
+        }).map(d => {
             const label = (d.decision || '').length > 70 ? d.decision.slice(0, 70) + '…' : (d.decision || d.id);
             return `<option value="${escapeAttr(d.id)}">${escapeHtml(label)}</option>`;
         }).join('');
@@ -10985,7 +11000,13 @@ async function loadDashboardStatusCards() {
     // Key Decisions (reuse cached projD, no second fetch)
     const decEl = document.getElementById('dash-decisions-list');
     if (decEl && projD) {
-        const decisions = (projD.decisions || []).slice(-3).reverse();
+        // Sorted by timestamp before taking the top 3, not array position --
+        // see renderDecisions' own comment for why array order alone isn't
+        // reliably chronological here.
+        const decisions = (projD.decisions || []).slice().sort((a, b) => {
+            const ta = a.timestamp || '', tb = b.timestamp || '';
+            return ta < tb ? 1 : ta > tb ? -1 : 0;
+        }).slice(0, 3);
         if (decisions.length) {
             decEl.innerHTML = decisions.map(d => `
                 <div class="text-xs p-1.5 rounded bg-surface-raised mb-1 border-l-2 border-accent-lavender/50">

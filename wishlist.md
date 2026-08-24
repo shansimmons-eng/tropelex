@@ -1411,6 +1411,21 @@ Tests: `tests/test_feed_import_export.py` (13, export/import round-trip + citati
 
 ## UI & Presentation
 
+### 95. Key Decisions Panel Sorted by Array Position, Not Timestamp
+**Purpose:** Fix the Memory tab's "Key Decisions" panel (and two related decision-ordering spots) showing stale decisions at the top instead of the most recent ones.
+
+**Why:** User-reported: "it looks like several decisions and goals are missing. There's a gap starting on 8/20 to the present." Investigated rather than assumed — nothing was actually missing from storage (257 real decisions through 2026-08-24, goals correctly sorted server-side via `core/goals/logic.py`'s `list_goals()`). The real cause: `renderDecisions()` (`UI/animated_tropebook_dashboard/code.html`) rendered `decisions.slice().reverse()`, which assumes the underlying array is already stored in chronological order. It wasn't — a batch of retroactive git-history decisions (synthetic `T00:00:00` timestamps, dated 2026-08-05 through 2026-08-10) had been appended to the *end* of the array, after real decisions from 8/11 through 8/24 that were already there. Reversing array position therefore put that older synthetic batch at the top of the list, burying every real decision from 8/11 onward below the panel's default-visible window — exactly matching the reported "gap starting 8/20."
+
+**Status:** ✅ Fixed (2026-08-24).
+
+- `renderDecisions()` (Memory tab's Key Decisions panel) now sorts by `d.timestamp` (plain string comparison, descending) before rendering, instead of relying on array order + `.reverse()`. Plain string comparison sorts ISO 8601 timestamps correctly regardless of `Z` vs `+00:00` suffix, same convention `core/goals/logic.py`'s `list_goals()` already uses server-side.
+- Same fix applied to `populateMarketDecisionSelect()` (the decision picker in the Decision Market bet form) and the Overview page's `dash-decisions-list` widget (`slice(-3)` was taking the wrong 3 for the same array-order reason) — both had the identical bug, found while fixing the first one.
+- Root cause of *why* the retroactive batch got appended out of order (rather than in its correct chronological position, or the array being re-sorted on ingest) not investigated further this pass — the display-side fix is correct and sufficient regardless of how future out-of-order appends happen, and is lower-risk than touching whatever process performs that git-history sync.
+
+Live-verified against the real `tropelex` project via browser: Key Decisions panel now shows today's real decisions first (#87/#94/#91/#73 work, correctly tagged `general`/`alignment` — not `untagged`, another symptom of the same stale-view impression) instead of the 8/05-8/10 synthetic batch.
+
+---
+
 ### 38. Global Horizontal Sub-Navigation Migration
 **Purpose:** Standardize all dashboard sections to use the horizontal tab architecture established in Safety & Alignment.
 **Why:** The left sidebar is suffering from horizontal text overflow and cognitive overload due to the sheer number of features. 
