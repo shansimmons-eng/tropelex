@@ -1390,6 +1390,77 @@ async def promote_decision(project: str, data: PromoteDecisionRequest):
     ))
 
 
+@app.get("/api/memory/{project}/research/source-coverage")
+async def get_source_coverage(project: str):
+    """Which sources are actually contributing useful citations to this
+    project vs. noise (#88).
+
+    Citation pool = every citation referenced by one of this project's own
+    decisions, unioned with every citation accumulated by a research feed
+    visible to this project (#86: global, owned, or shared-with). "Useful"
+    = referenced by one of this project's decisions specifically -- see
+    core/tropebook/source_coverage.py's module docstring for why this, not
+    Citation.access_count, is the real signal used.
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+
+    useful_ids: set[str] = set()
+    pool_ids: set[str] = set()
+    for d in memory.get("decisions", []):
+        if not isinstance(d, dict):
+            continue
+        ids = d.get("citation_ids") or []
+        useful_ids.update(ids)
+        pool_ids.update(ids)
+
+    fm = _get_feed_manager()
+    for feed in fm.list_feeds(visible_to_project=project):
+        pool_ids.update(feed.citation_ids)
+
+    tb = get_tropebook()
+    citations = [tb.citations[cid].to_dict(id=cid) for cid in pool_ids if cid in tb.citations]
+
+    from core.tropebook.source_coverage import compute_source_coverage
+
+    disabled = set(memory.get("disabled_research_sources", []))
+    return {"project": project, **compute_source_coverage(citations, useful_ids, disabled)}
+
+
+class DisabledSourcesRequest(BaseModel):
+    sources: list[str] = Field(default_factory=list, max_length=100)
+
+
+@app.get("/api/memory/{project}/research/disabled-sources")
+async def get_disabled_sources(project: str):
+    """This project's low-value-source suppression list (#88) -- purely a
+    read/write-time filter on what get_source_coverage and the dashboard
+    surface. Does NOT prevent a shared research feed from ingesting a
+    disabled source's citations in the first place: a feed can be visible
+    to several projects at once (#86) and ingestion happens once per feed,
+    not once per project, so an ingestion-time block would either affect
+    every project sharing that feed or require per-project citation
+    forking -- both a materially bigger change than this entry's own
+    "disable per project" framing implied. Disclosed, not silently
+    narrowed: this suppresses a source from one project's own view, it
+    doesn't stop the source from being collected.
+    """
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    return {"project": project, "disabled_sources": memory.get("disabled_research_sources", [])}
+
+
+@app.put("/api/memory/{project}/research/disabled-sources")
+async def set_disabled_sources(project: str, data: DisabledSourcesRequest):
+    project = _sanitise_project(project)
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    memory["disabled_research_sources"] = list(dict.fromkeys(data.sources))
+    memory["last_updated"] = datetime.now(timezone.utc).isoformat()
+    mm.save_project_memory(project, memory)
+    return {"project": project, "disabled_sources": memory["disabled_research_sources"]}
 
 
 class QuickCapture(BaseModel):
