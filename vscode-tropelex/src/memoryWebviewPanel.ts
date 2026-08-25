@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getProjectName } from './tropelexClient';
 
 /**
  * Singleton Webview panel for displaying Tropelex memory content.
@@ -120,11 +121,18 @@ export class MemoryWebviewPanel {
         return;
       }
 
-      // Prefer tropelex.json, otherwise take the first file
-      const tropelexFile = files.find(
-        (f) => path.basename(f.fsPath) === 'tropelex.json'
-      );
-      this._loadMemoryFile((tropelexFile ?? files[0]).fsPath);
+      // Prefer the file matching this workspace's actual resolved project
+      // name (tropelex.project setting, else the workspace folder name --
+      // the same resolution getProjectName() already uses for every write),
+      // not a hardcoded literal filename: that used to unconditionally
+      // prefer "tropelex.json" over whatever the real project name was,
+      // which silently pointed this exact panel at the wrong one of two
+      // case-diverged projects for weeks.
+      const projectName = getProjectName();
+      const expectedFile = projectName
+        ? files.find((f) => path.basename(f.fsPath) === `${projectName}.json`)
+        : undefined;
+      this._loadMemoryFile((expectedFile ?? files[0]).fsPath);
     });
   }
 

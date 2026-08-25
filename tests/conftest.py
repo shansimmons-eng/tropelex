@@ -51,17 +51,38 @@ _fa_testclient.TestClient = TestClient
 MEMORY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "memory")
 
 
+# Patterns (relative to MEMORY_DIR) swept by cleanup_test_projects below.
+# agent_skills/test_*.json was added after finding 2,992 leaked files there
+# live: tests that hit /agent-skills/record through the real app (e.g.
+# TestPersonaRouterAgentRegression, agent-identity endpoint tests) without
+# patching AgentSkillGraph's storage path write a real sidecar file there
+# as a side effect, separate from the main memory/{project}.json this
+# already covered -- nothing was cleaning that directory at all before.
+TEST_ARTIFACT_PATTERNS = ("test_*.json", os.path.join("agent_skills", "test_*.json"))
+
+
+def cleanup_test_artifacts(memory_dir: str) -> list[str]:
+    """Remove every file under `memory_dir` matching TEST_ARTIFACT_PATTERNS.
+    Returns the paths removed. Factored out of the fixture below so the
+    sweep pattern itself has direct test coverage, not just an end-to-end
+    session-teardown check."""
+    removed = []
+    for pattern in TEST_ARTIFACT_PATTERNS:
+        for f in glob.glob(os.path.join(memory_dir, pattern)):
+            try:
+                os.remove(f)
+                removed.append(f)
+            except OSError:
+                pass
+    return removed
+
+
 @pytest.fixture(autouse=True, scope="session")
 def cleanup_test_projects():
-    """Clean up test_* project files after all tests complete."""
+    """Clean up test_* project files (and their agent_skills/ sidecars)
+    after all tests complete."""
     yield
-    # After all tests, clean up any test_* project files
-    pattern = os.path.join(MEMORY_DIR, "test_*.json")
-    for f in glob.glob(pattern):
-        try:
-            os.remove(f)
-        except OSError:
-            pass
+    cleanup_test_artifacts(MEMORY_DIR)
 
 
 @pytest.fixture(autouse=True)

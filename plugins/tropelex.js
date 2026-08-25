@@ -12,23 +12,18 @@ const TROPELEX_PROJECT = process.env.TROPELEX_PROJECT || null;
 const COMPRESS_THRESHOLD = parseInt(process.env.TROPELEX_COMPRESS_MIN || "80");
 const INJECT_CONTEXT = process.env.TROPELEX_INJECT_CONTEXT !== "false";
 
-/** Detect the current project name from cwd or git remote */
+/** Detect the current project name from the working directory. */
 async function detectProject() {
     if (TROPELEX_PROJECT) return TROPELEX_PROJECT;
-    try {
-        const { execSync } = await import("child_process");
-        // Try git remote name
-        const remote = execSync("git remote get-url origin 2>/dev/null", { encoding: "utf8" })
-            .trim()
-            .split("/")
-            .pop()
-            ?.replace(/\.git$/, "");
-        if (remote && /^[a-zA-Z0-9_-]+$/.test(remote)) return remote;
-        // Fall back to directory name
-        return process.cwd().split("/").pop() || "default";
-    } catch {
-        return process.cwd().split("/").pop() || "default";
-    }
+    // Previously tried `git remote get-url origin` first and used the repo
+    // slug from that (e.g. "tropelex" for a repo whose real local directory
+    // is "Tropelex") -- a public repo slug has no principled reason to
+    // match the project's local memory key, and it silently split this very
+    // project's own data into two case-diverged copies for weeks before
+    // anyone noticed. Every other client (dashboard, Emacs, VSCode, the
+    // *_up skills) already keys off the actual directory name, so this does
+    // too now, with nothing else to silently disagree with it.
+    return process.cwd().split("/").pop() || "default";
 }
 
 /** Fetch from Tropelex server, returns null on failure */
