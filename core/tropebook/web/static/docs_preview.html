@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Tropelex Documentation</title>
-<link rel="icon" type="image/x-icon" href="/images/TL1.ico"/>
+<title>Tropelex Documentation (Vibrant Preview)</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -308,13 +307,17 @@
 <header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
 <div class="flex justify-between items-center px-6 py-3.5 w-full max-w-container-max mx-auto">
 <div class="flex items-center gap-8">
-<a class="flex items-center gap-2.5" href="/" title="Go to Dashboard">
-    <img src="/images/tl.png" alt="Tropelex" class="h-9 w-auto" />
+<a class="font-display-xl text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-indigo-300 to-cyan-300 tracking-tight flex items-center gap-2.5" href="/">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
+        <span class="material-symbols-outlined text-white text-[20px]">psychology</span>
+    </div>
+    Tropelex
 </a>
 <nav class="hidden md:flex gap-6">
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/"><span class="material-symbols-outlined text-[16px]">dashboard</span> Dashboard</a>
-<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="/guide"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
-<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/api-reference"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/guide"><span class="material-symbols-outlined text-[16px]">description</span> Docs (Live)</a>
+<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="/guide-preview"><span class="material-symbols-outlined text-[16px] text-tertiary">palette</span> Docs (Vibrant Preview)</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/openapi.json"><span class="material-symbols-outlined text-[16px]">api</span> API</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">
@@ -426,7 +429,7 @@
         <div class="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0"><span class="material-symbols-outlined text-[14px]">terminal</span></div>
         <span class="truncate">CLI Reference</span>
       </a>
-      <a href="/api-reference" data-tooltip="Interactive REST API Documentation" class="sidebar-link text-on-surface-variant hover:text-indigo-200 hover:bg-indigo-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
+      <a href="#api" class="sidebar-link text-on-surface-variant hover:text-indigo-200 hover:bg-indigo-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <div class="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0"><span class="material-symbols-outlined text-[14px]">http</span></div>
         <span class="truncate">API Reference</span>
       </a>
@@ -455,6 +458,9 @@
 <div class="glass-card rounded-2xl p-8 border-engine opacity-0 animate-fade-in-up relative">
 <div class="absolute -right-10 -bottom-10 w-60 h-60 rounded-full bg-purple-600/10 blur-3xl pointer-events-none"></div>
 <div class="flex items-center gap-3 mb-3">
+    <span class="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-400/30 text-purple-300 font-mono text-xs font-bold flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[14px]">auto_awesome</span> 100% Complete Text &amp; Vibrant Styling
+    </span>
     <span class="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-mono text-xs font-bold flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Active Server Connected
     </span>
@@ -738,7 +744,7 @@ pip install -r requirements.txt</code></pre>
 <h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="session-shape">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">show_chart</span> Session Shape
 </h4>
-<p class="font-body-md text-on-surface-variant text-sm">Baselining tool-call frequency, token budgets, and latency drift signals per agent. Correlates session-shape deviations against subsequent Ghost overrides or elevated friction scans, reported as lift over the baseline rate. (<em>UI Tab: Session Shape / API <code>GET /api/memory/{project}/agents/{agent}/session-shape</code>, <code>.../session-shape/correlation</code></em>)</p>
+<p class="font-body-md text-on-surface-variant text-sm">Baselining tool-call frequency, token budgets, and latency drift signals across agent sessions. Correlates session-shape deviations against subsequent Ghost overrides or elevated friction scans. (<em>UI Tab: Session Shape / API <code>GET /api/memory/{project}/session-shape</code></em>)</p>
 </div>
 </div>
 </section>
@@ -808,7 +814,7 @@ pip install -r requirements.txt</code></pre>
 <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-on-surface-variant text-sm font-body-md">
 <li class="p-3 rounded-xl bg-rose-900/20 border border-rose-500/20 flex items-start gap-2">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">account_balance_wallet</span>
-<div><strong class="text-rose-200 block text-xs">Per-Agent Safety Budget</strong>Weighted running total tracking gate blocks, warnings, and high-risk decisions per agent, auto-escalating that agent's most recent decision for review once over threshold. (<code>GET /api/memory/{project}/agents/{agent}/safety-budget</code>, <code>POST .../safety-budget/escalate</code>)</div>
+<div><strong class="text-rose-200 block text-xs">Per-Agent Safety Budget</strong>Weighted running total tracking gate blocks, warnings, and high-risk decisions per agent.</div>
 </li>
 <li class="p-3 rounded-xl bg-rose-900/20 border border-rose-500/20 flex items-start gap-2">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">schedule</span>
@@ -931,21 +937,14 @@ pip install -r requirements.txt</code></pre>
 <h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="feeds">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">rss_feed</span> Research Feeds
 </h4>
-<p class="font-body-md text-on-surface-variant text-sm">Scheduled research feeds, optionally scoped to one project or shared across several (<code>POST /api/research-feeds/{feed_id}/share</code>), with automatic interval adjustment on novelty/anomaly signals and on-demand LLM query-rewrite suggestions for stagnant feeds (<code>POST /api/research-feeds/{feed_id}/suggest-query-rewrite</code>), plus citation health metrics and bulk config export/import. (<em>UI Tab: Research Feeds / API <code>GET /api/research-feeds</code> / MCP <code>list_research_feeds</code></em>)</p>
+<p class="font-body-md text-on-surface-variant text-sm">Scheduled research feeds with multi-project/shared scope options, adaptive scheduling, query rewrite suggestions, citation health metrics, and Slack/email notifications. (<em>UI Tab: Research Feeds / API <code>GET /api/research-feeds</code> / MCP <code>list_research_feeds</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
 <h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="deep-research">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">manage_search</span> Deep Research
 </h4>
-<p class="font-body-md text-on-surface-variant text-sm">Dual-engine research system (Multi-Source Scan + Citation-Grade Web Research) with a quick/thorough budget preset (wall-time and step-count, not token/source caps — the underlying engines don't expose those), query-fingerprint caching for repeat queries, and one-click Decision Promotion (<code>POST /api/memory/{project}/research/promote-candidates</code>) with deterministic citation-diversity confidence scoring. A "Research this decision's rationale" action on any decision card seeds a fresh research run from that decision's own text and attaches results back via <code>PATCH /api/memory/{project}/decisions/{id}/citation-ids</code>. (<em>UI Tab: Deep Research / API <code>POST /api/memory/{project}/deep-research/web-research</code> / MCP <code>run_deep_research</code></em>)</p>
-</div>
-
-<div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="source-coverage">
-<span class="material-symbols-outlined text-fuchsia-400 text-[18px]">donut_large</span> Source Coverage
-</h4>
-<p class="font-body-md text-on-surface-variant text-sm">Per-project breakdown of which sources (by domain — GitHub, Reddit, academic, etc.) are actually producing citations a decision has cited, vs. noise, with a per-project suppression list for low-value sources. (<em>API <code>GET /api/memory/{project}/research/source-coverage</code>, <code>GET</code>/<code>PUT /api/memory/{project}/research/disabled-sources</code></em>)</p>
+<p class="font-body-md text-on-surface-variant text-sm">Dual-engine research system (Multi-Source Scan + Citation-Grade Web Research) featuring budget presets (Quick/Balanced/Deep), query-fingerprint caching, and one-click Decision Promotion (<code>POST /api/research/promote-candidates</code>) with deterministic citation-diversity confidence scoring. (<em>UI Tab: Deep Research / API <code>POST /api/research/deep</code> / MCP <code>run_deep_research</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
@@ -1110,19 +1109,16 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 <tbody class="font-body-md text-sm text-on-surface-variant">
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>list_projects</code></td><td class="p-3.5">None</td><td class="p-3.5">List all recorded project memory containers.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_project_memory</code></td><td class="p-3.5"><code>project</code></td><td class="p-3.5">Retrieve active decisions, patterns, and preferences for a project.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>capture_decision</code></td><td class="p-3.5"><code>project</code>, <code>decision</code>, <code>context</code>, <code>risk_level</code></td><td class="p-3.5">Store a new architectural decision.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>propose_goal</code></td><td class="p-3.5"><code>project</code>, <code>text</code>, <code>priority</code>, <code>category</code></td><td class="p-3.5">Propose a prospective goal for a project (the counterpart to decisions).</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>capture_decision</code></td><td class="p-3.5"><code>project</code>, <code>decision</code>, <code>context</code></td><td class="p-3.5">Store a new architectural decision.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>end_session</code></td><td class="p-3.5"><code>project</code>, <code>summary</code>, <code>agent</code></td><td class="p-3.5">Summarize session and trigger pattern detection. Pass <code>agent</code> handle.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_context_bundle</code></td><td class="p-3.5"><code>project</code>, <code>task</code>, <code>token_budget</code></td><td class="p-3.5">Fetch optimal prefiltered context bundle for a task.</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_context_bundle</code></td><td class="p-3.5"><code>project</code>, <code>token_budget</code></td><td class="p-3.5">Fetch optimal prefiltered context bundle for a task.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>check_contradictions</code></td><td class="p-3.5"><code>project</code></td><td class="p-3.5">Scan project memory for conflicting decisions.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>check_diff_for_conflicts</code></td><td class="p-3.5"><code>project</code>, <code>diff</code></td><td class="p-3.5">Pre-write check: evaluate git diff against active decisions.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>override_ghost_warning</code></td><td class="p-3.5"><code>project</code>, <code>decision_id</code>, <code>rationale</code>, <code>agent</code></td><td class="p-3.5">Explicitly accept a blocked ghost/contradiction warning on one decision.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>friction_scan</code></td><td class="p-3.5"><code>project</code>, <code>transcript</code>, <code>agent</code></td><td class="p-3.5">Scan conversation transcript for user frustration signals.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>record_skill_outcome</code></td><td class="p-3.5"><code>project</code>, <code>session_type</code>, <code>categories</code>, <code>outcome</code>, <code>agent</code></td><td class="p-3.5">Record outcome for agent calibration &amp; persona tracking.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_handoff_packet</code></td><td class="p-3.5"><code>project</code>, <code>role</code>, <code>token_budget</code>, <code>agent</code></td><td class="p-3.5">Build role-aware context packet for agent handoffs.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>acknowledge_handoff</code></td><td class="p-3.5"><code>project</code>, <code>packet_hash</code>, <code>agent</code>, <code>acknowledged_constraints</code></td><td class="p-3.5">Acknowledge receipt of a handoff packet, recorded to the audit trail.</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>friction_scan</code></td><td class="p-3.5"><code>transcript</code>, <code>agent</code></td><td class="p-3.5">Scan conversation transcript for user frustration signals.</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>record_skill_outcome</code></td><td class="p-3.5"><code>project</code>, <code>skill</code>, <code>success</code>, <code>agent</code></td><td class="p-3.5">Record outcome for agent calibration &amp; persona tracking.</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_handoff_packet</code></td><td class="p-3.5"><code>project</code>, <code>target_role</code></td><td class="p-3.5">Build role-aware context packet for agent handoffs.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>explain_why</code></td><td class="p-3.5"><code>project</code>, <code>question</code></td><td class="p-3.5">Ask natural language causal questions about decisions.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>run_deep_research</code></td><td class="p-3.5"><code>project</code>, <code>query</code>, <code>hybrid</code>, <code>max_steps</code></td><td class="p-3.5">Run Deep Research (citation-grade web research, optionally hybrid with the multi-source engine).</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>run_deep_research</code></td><td class="p-3.5"><code>query</code>, <code>mode</code>, <code>project</code></td><td class="p-3.5">Run Deep Research pass (multi-source, citation-grade, or hybrid).</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>list_research_feeds</code></td><td class="p-3.5">None</td><td class="p-3.5">List all configured research feeds.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>get_research_feed</code></td><td class="p-3.5"><code>feed_id</code></td><td class="p-3.5">Retrieve details and recent run results for a research feed.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-purple-300 font-mono text-xs"><code>run_research_feed</code></td><td class="p-3.5"><code>feed_id</code></td><td class="p-3.5">Trigger an immediate execution of a research feed.</td></tr>
@@ -1131,12 +1127,12 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> MCP Prompts (Slash Command Parity)</h3>
-<p class="text-on-surface-variant text-sm mb-2">Exposes 4 MCP prompts (defined in <code>mcp_server/server.py</code>) enabling auto-generated slash commands in Devin, Gemini CLI, and Zed — named after their Python function, so the generated command carries the <code>tropelex_</code> prefix:</p>
+<p class="text-on-surface-variant text-sm mb-2">Exposes 4 MCP prompts enabling auto-generated slash commands in Devin, Gemini CLI, and Zed:</p>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1 mb-4">
-<li><code>tropelex_show_context</code> — Retrieves accumulated project context bundle</li>
-<li><code>tropelex_record_decision</code> — Prompts for decision title and rationale context</li>
-<li><code>tropelex_end_session</code> — Prompts for session summary</li>
-<li><code>tropelex_up</code> — Initializes or updates project description and tech stack</li>
+<li><code>record_decision</code> — Prompts for decision title and rationale context</li>
+<li><code>end_session</code> — Prompts for session summary</li>
+<li><code>show_context</code> — Retrieves accumulated project context bundle</li>
+<li><code>explain_why</code> — Asks causal questions about architectural decisions</li>
 </ul>
 
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">grid_view</span> AI Tool Support Matrix</h3>
@@ -1218,67 +1214,40 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </ul>
 </section>
 
-<!-- OpenCode & AI Tool Slash Commands -->
+<!-- OpenCode Integration -->
 <section class="glass-card rounded-2xl p-8 border-safety relative stagger-card" id="opencode">
 <div class="flex items-center gap-4 mb-6 pb-4 border-b border-outline-variant/20">
 <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500/30 to-teal-600/20 flex items-center justify-center border border-emerald-500/40 text-emerald-300 shadow-lg shadow-emerald-500/20 icon-glow">
 <span class="material-symbols-outlined text-[26px]">terminal</span>
 </div>
 <div>
-<h2 class="font-headline-lg text-2xl font-bold text-on-surface">AI Coding Tools &amp; Slash Commands</h2>
-<p class="text-xs text-on-surface-variant font-mono leading-relaxed whitespace-normal break-words">Native slash command parity across OpenCode, Claude Code, Devin, Gemini CLI, Zed, Cursor &amp; Aider</p>
+<h2 class="font-headline-lg text-2xl font-bold text-on-surface">OpenCode Integration</h2>
+<p class="text-xs text-on-surface-variant font-mono leading-relaxed whitespace-normal break-words">Slash commands &amp; context injection plugin</p>
 </div>
 </div>
-<p class="font-body-md text-on-surface-variant text-sm mb-4">Tropelex exposes unified slash commands across all major AI coding environments. Commands are delivered via OpenCode plugins, MCP prompts, Agent Skills, or shell scripts.</p>
+<p class="font-body-md text-on-surface-variant text-sm mb-4">Slash commands and prompt injection hooks for OpenCode. Defined in <code>.opencode/</code>.</p>
 
-<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> Slash Commands Matrix</h3>
-<div class="rounded-xl overflow-hidden border border-emerald-500/20 bg-surface-container-lowest/70 shadow-md mb-6">
+<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-1">Setup</h3>
+<pre><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
+<p class="text-on-surface-variant text-sm mb-4">Add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code>.</p>
+
+<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-2">Slash Commands</h3>
+<div class="rounded-xl overflow-hidden border border-emerald-500/20 bg-surface-container-lowest/70 shadow-md">
 <table class="w-full text-left border-collapse">
 <thead>
 <tr class="border-b border-emerald-500/30 bg-emerald-950/40">
-<th class="font-label-caps text-xs text-emerald-300 p-3.5 uppercase tracking-wider">Slash Command</th>
-<th class="font-label-caps text-xs text-emerald-300 p-3.5 uppercase tracking-wider">Supported AI Tools</th>
+<th class="font-label-caps text-xs text-emerald-300 p-3.5 uppercase tracking-wider">Command</th>
 <th class="font-label-caps text-xs text-emerald-300 p-3.5 uppercase tracking-wider">Usage &amp; Description</th>
 </tr>
 </thead>
 <tbody class="font-body-md text-sm text-on-surface-variant">
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-record-decision</code><br><span class="text-[11px] text-on-surface-variant font-normal">or <code>/tropelex_record_decision</code></span></td><td class="p-3.5 text-xs font-semibold text-purple-200">OpenCode, Claude Code, Devin, Gemini CLI, Zed, Cursor, Aider</td><td class="p-3.5">Record architectural choice: <code>/tropelex-record-decision Using PostgreSQL for database</code></td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-end-session</code><br><span class="text-[11px] text-on-surface-variant font-normal">or <code>/tropelex_end_session</code></span></td><td class="p-3.5 text-xs font-semibold text-purple-200">OpenCode, Claude Code, Devin, Gemini CLI, Zed, Cursor, Aider</td><td class="p-3.5">Summarize work session: <code>/tropelex-end-session Built user auth with JWT</code></td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-show-context</code><br><span class="text-[11px] text-on-surface-variant font-normal">or <code>/tropelex_show_context</code></span></td><td class="p-3.5 text-xs font-semibold text-purple-200">OpenCode, Claude Code, Devin, Gemini CLI, Zed, Cursor, Aider</td><td class="p-3.5">Display optimal context bundle for active task</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-up</code><br><span class="text-[11px] text-on-surface-variant font-normal">or <code>/tropelex_up</code></span></td><td class="p-3.5 text-xs font-semibold text-purple-200">OpenCode, Claude Code, Devin, Gemini CLI, Zed</td><td class="p-3.5">Initialize or update project description and tech stack</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-record-decision</code></td><td class="p-3.5">Record decision: <code>/tropelex-record-decision Using PostgreSQL for database</code></td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-end-session</code></td><td class="p-3.5">Summarize session: <code>/tropelex-end-session Built user auth with JWT</code></td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-show-context</code></td><td class="p-3.5">Display active project context bundle</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-context</code></td><td class="p-3.5">Query project memory &amp; recent decisions</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-emerald-300 font-mono text-xs"><code>/tropelex-up</code></td><td class="p-3.5">Initialize or update project details</td></tr>
 </tbody>
 </table>
-</div>
-
-<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">build</span> Tool-by-Tool Integration Guide</h3>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-body-md">
-<div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
-<strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">terminal</span> OpenCode Plugin</strong>
-<p class="text-on-surface-variant mb-2">Defined in <code>.opencode/</code> and <code>plugins/tropelex.js</code>. Copy to your OpenCode plugins directory:</p>
-<pre class="my-0"><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
-<p class="text-on-surface-variant mt-2">Add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code>.</p>
-</div>
-
-<div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
-<strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">api</span> Claude Code</strong>
-<p class="text-on-surface-variant mb-2">Auto-configured via root <code>.mcp.json</code>. Provides native slash commands <code>/tropelex-up</code>, <code>/tropelex-record-decision</code>, <code>/tropelex-end-session</code>, and <code>/tropelex-show-context</code>.</p>
-</div>
-
-<div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
-<strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">smart_toy</span> Devin, Gemini CLI &amp; Zed</strong>
-<p class="text-on-surface-variant mb-2">Zero-config slash command parity via MCP Prompts in <code>mcp_server/server.py</code> — these tools auto-generate slash commands <code>/tropelex_show_context</code>, <code>/tropelex_record_decision</code>, <code>/tropelex_end_session</code>, and <code>/tropelex_up</code> automatically upon connection.</p>
-</div>
-
-<div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
-<strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">code</span> Cursor &amp; Codex CLI</strong>
-<p class="text-on-surface-variant mb-2">Powered by the open Agent Skills standard. Deployed to <code>.agents/skills/</code> and <code>.cursor/skills/</code> for automatic prompt context inclusion.</p>
-</div>
-
-<div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20 sm:col-span-2">
-<strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">terminal</span> Aider Integration</strong>
-<p class="text-on-surface-variant">Invoked directly via Aider's built-in <code>/run</code> command executing local shell scripts: <code>/run tropelex-record-decision</code>.</p>
-</div>
 </div>
 </section>
 
@@ -1381,9 +1350,9 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="State mutation request" class="method-post font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 3. Promote Candidate Decision from Research
 </h4>
-<pre><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions/promote \
+<pre><code>curl -X POST http://localhost:8766/api/research/promote-candidates \
   -H "Content-Type: application/json" \
-  -d '{"decision": "Adopt vector search", "context": "Recall was the bottleneck", "citation_ids": ["cit_456"], "safety_metadata": {"safety_category": "general"}}'</code></pre>
+  -d '{"project": "my_project", "decision": "Adopt vector search", "citation_ids": ["cit_456"]}'</code></pre>
 </div>
 
 <div>
@@ -1433,7 +1402,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>OPENAI_API_KEY</code></td><td class="p-3.5 text-xs">AI Services</td><td class="p-3.5 text-xs">None (Fallback active)</td><td class="p-3.5">Enables <code>text-embedding-3-small</code> and <code>gpt-4o-mini</code> compression/refinement.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>BRAVE_SEARCH_API_KEY</code></td><td class="p-3.5 text-xs">Deep Research</td><td class="p-3.5 text-xs">None</td><td class="p-3.5">Primary key for Brave search provider.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>EXA_API_KEY</code> / <code>SERPER_API_KEY</code></td><td class="p-3.5 text-xs">Deep Research</td><td class="p-3.5 text-xs">None</td><td class="p-3.5">Fallback keys for Exa/Serper web research providers.</td></tr>
-<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>TROPELEX_COMPRESS_MIN</code></td><td class="p-3.5 text-xs">OpenCode</td><td class="p-3.5 font-mono text-xs"><code>80</code></td><td class="p-3.5">Prompt length threshold for automatic prompt compression.</td></tr>
+<tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>TROPELEX_COMPRESS_MIN</code></td><td class="p-3.5 text-xs">OpenCode</td><td class="p-3.5 font-mono text-xs"><code>500</code></td><td class="p-3.5">Prompt length threshold for automatic prompt compression.</td></tr>
 <tr class="border-b border-outline-variant/10"><td class="p-3.5 font-bold text-rose-300 font-mono text-xs"><code>TROPELEX_INJECT_CONTEXT</code></td><td class="p-3.5 text-xs">OpenCode</td><td class="p-3.5 font-mono text-xs"><code>true</code></td><td class="p-3.5">Automatically injects project context into new prompt sessions.</td></tr>
 </tbody>
 </table>
@@ -1463,18 +1432,14 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </ul>
 
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> On-Disk Storage Layout</h3>
-<p class="text-on-surface-variant text-sm mb-2">All project data is stored under the local <code>memory/</code> directory. Each project is one flat JSON file, not a directory of separate files:</p>
+<p class="text-on-surface-variant text-sm mb-2">All project data is stored under the local <code>memory/</code> directory:</p>
 <pre><code>memory/
-├── &lt;project_name&gt;.json  # One file per project: decisions, goals,
-│                        # session_history, patterns, audit_log, safety
-│                        # and alignment state -- all as keys in a single
-│                        # document, not split across separate files
-├── .trash/
-│   └── YYYY-MM-DD/      # Soft-deleted projects, 30-day retention
-├── tropebook/           # Citation library -- a single store shared
-│                        # across every project, not nested per-project
-└── feeds/               # Research feed configs &amp; run history, global
-                          # by default with optional per-project scope</code></pre>
+├── .trash/             # Soft-deleted projects with 30-day retention
+└── &lt;project_name&gt;/
+    ├── decisions.json   # Recorded decision graph and relations
+    ├── sessions.json    # Work session summaries and friction logs
+    ├── patterns.json    # Auto-detected usage &amp; work patterns
+    └── tropebook/       # Project reference citations &amp; links</code></pre>
 </section>
 
 <!-- Troubleshooting -->

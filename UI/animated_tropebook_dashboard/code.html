@@ -4668,6 +4668,15 @@ const SECTION_BREADCRUMB_LABELS = { content: 'Engine Core' };
 function syncCommandHubVisibility() {
     const el = document.getElementById('section-onboarding');
     if (!el) return;
+    // #section-onboarding is dual-purpose: a first-run nudge overlay shown
+    // on top of 'content' before the first decision, AND the real "Getting
+    // Started" destination the sidebar navigates to directly via
+    // switchSection('onboarding'). Without this guard, every switchSection
+    // call re-ran this right after setting .active on the target section
+    // and immediately toggled it back off (state.currentSection was never
+    // 'content' when navigating straight to onboarding), so clicking
+    // "Getting Started" always landed on a blank page.
+    if (state.currentSection === 'onboarding') return;
     el.classList.toggle('active', state.currentSection === 'content' && !state.hasFirstDecision);
 }
 
