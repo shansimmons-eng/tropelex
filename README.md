@@ -1,6 +1,6 @@
 # Tropelex
 
-**Persistent memory and learning system for AI agents.**
+**AI Memory System with Safety and Alignment Infrastructure**
 
 Tropelex accumulates knowledge across projects (decisions, patterns, preferences, research) so sessions don't start from scratch. It grows smarter with use.
 

@@ -1,7 +1,7 @@
 [project]
 name = "tropelex"
 version = "1.2.0"
-description = "Persistent memory and learning system for AI agents"
+description = "AI Memory System with Safety and Alignment Infrastructure"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 readme = "README.md"
