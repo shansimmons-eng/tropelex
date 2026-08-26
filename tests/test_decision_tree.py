@@ -2,7 +2,14 @@
 Tests for Decision Tree.
 """
 
-from core.decision_tree import DecisionTree, _extract_keywords, _similarity, _is_revert, _gen_id
+from core.decision_tree import (
+    DecisionTree,
+    _extract_keywords,
+    _find_caused_by,
+    _gen_id,
+    _is_revert,
+    _similarity,
+)
 
 
 class TestExtractKeywords:
@@ -45,6 +52,53 @@ class TestIsRevert:
 
     def test_normal_decision(self):
         assert _is_revert("Added dark mode support") is False
+
+
+class TestFindCausedBy:
+    """Regression coverage: _find_caused_by used to flag a match on ANY
+    single keyword shared with another decision's text, co-occurring
+    ANYWHERE (not adjacent, not actually related) with a generic word like
+    "after"/"due to". Found live: one decision whose context happened to
+    mention "memory" -- about the most common word possible in a memory
+    system -- ended up falsely claiming 131 of the project's ~306 decisions
+    as its own causes. Now returns [] unconditionally; these tests prove
+    that holds even against inputs specifically engineered to have
+    triggered the old heuristic."""
+
+    def test_always_returns_empty(self):
+        assert _find_caused_by({"context": "x"}, [{"id": "a", "decision": "x"}]) == []
+
+    def test_empty_on_the_exact_shape_that_used_to_false_positive(self):
+        # Old behavior: one shared keyword ("memory") + one signal word
+        # ("after") anywhere in the text was enough to match, regardless
+        # of whether the two decisions have anything to do with each other.
+        new = {
+            "context": "Parallelized the dashboard init calls after profiling "
+            "showed 15s load times, caching the memory payload.",
+            "rationale": "",
+        }
+        existing = [
+            {"id": "unrelated-1", "decision": "Use MySQL for the primary database"},
+            {"id": "unrelated-2", "decision": "Added dark mode to the memory viewer"},
+            {"id": "unrelated-3", "decision": "Documented the CLI in the README"},
+        ]
+        assert _find_caused_by(new, existing) == []
+
+    def test_add_decision_never_auto_creates_a_caused_by_edge(self):
+        tree = DecisionTree()
+        tree.add_decision({
+            "decision": "Use MySQL for the primary database",
+            "context": "",
+            "timestamp": "2026-01-01T00:00:00Z",
+        })
+        did = tree.add_decision({
+            "decision": "Parallelize dashboard init calls, cache memory payload",
+            "context": "After profiling showed 15s load times due to sequential "
+            "API calls and a large memory payload.",
+            "timestamp": "2026-01-02T00:00:00Z",
+        })
+        node = tree.get_decision(did)
+        assert all(e["relationship"] != "caused_by" for e in node["edges"])
 
 
 class TestDecisionTree:

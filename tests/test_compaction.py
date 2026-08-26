@@ -98,26 +98,31 @@ def _make_epoch_record(
     )
 
 
-# Decisions with caused_by relationships (rationale triggers chain detection).
+# Decisions with supersedes relationships (topical keyword overlap + an
+# explicit revert/removal marker word triggers chain detection --
+# _find_supersedes, not caused_by: caused_by's own heuristic was removed
+# entirely (wishlist testing round, 2026-08-25) after it was found live
+# flagging one decision as "caused by" 139 of the project's ~306 others,
+# so a fixture relying on it to form a chain no longer applies).
 # All timestamps are old (2025) to ensure stale confidence scores.
 _CHAIN_DECISIONS = [
     _decision(
         "d1",
-        "Switched auth to JWT tokens for API access",
+        "Switched authentication to JWT tokens for API access",
         ts_days_ago=400,
         rationale="Need stateless authentication for microservices",
     ),
     _decision(
         "d2",
-        "Switched auth to OAuth2 after JWT security issues",
+        "Replaced JWT tokens authentication with OAuth2 tokens for API access",
         ts_days_ago=350,
-        rationale="Because JWT tokens had vulnerability issues with auth",
+        rationale="JWT tokens had vulnerability issues",
     ),
     _decision(
         "d3",
-        "Switched auth back to JWT with rotation after OAuth complexity",
+        "Reverted API authentication back to JWT tokens with key rotation",
         ts_days_ago=300,
-        rationale="Due to OAuth2 complexity, reverted to JWT with key rotation for auth",
+        rationale="OAuth2 added too much complexity",
     ),
 ]
 
@@ -160,12 +165,12 @@ class TestIdentifyCompactableChains:
         """Two independent chains → both detected."""
         # Arrange — create a second independent chain
         chain_b = [
-            _decision("b1", "Used PostgreSQL for primary database", ts_days_ago=500),
+            _decision("b1", "Used PostgreSQL as the primary database", ts_days_ago=500),
             _decision(
                 "b2",
-                "Switched database to MySQL because of licensing",
+                "Replaced PostgreSQL primary database with MySQL due to licensing",
                 ts_days_ago=450,
-                rationale="Due to PostgreSQL licensing, migrated database",
+                rationale="PostgreSQL licensing changed",
             ),
         ]
         all_decisions = _CHAIN_DECISIONS + chain_b

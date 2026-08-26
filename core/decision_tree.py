@@ -85,29 +85,25 @@ def _find_supersedes(new: dict, existing: list[dict]) -> list[str]:
 def _find_caused_by(new: dict, existing: list[dict]) -> list[str]:
     """
     Find decisions that caused the new decision.
-    Looks for rationale signals in the new decision referencing existing ones.
+
+    Deliberately returns [] unconditionally -- this used to flag a match on
+    ANY single keyword shared with another decision's text, co-occurring
+    ANYWHERE (not adjacent, not related) with a generic word like "after" or
+    "due to". Found live: two decisions with unusually long context fields
+    (one quoting other decisions' text as grounding examples, one just
+    mentioning "memory" -- about the most common word possible in a memory
+    system) ended up falsely claiming 139 and 131 of the project's ~306
+    decisions as their own causes respectively. Same "untuned signal is
+    worse than no signal" failure this project has already rejected twice
+    elsewhere (#57, #67) -- just hadn't been checked here yet.
+
+    No caused_by edges are auto-detected until there's an explicit,
+    human/agent-authored way to record one (e.g. a real field a decision is
+    created or updated with) -- not reinstated as a heuristic. `existing`
+    is kept as a parameter so callers/signature don't need to change if
+    that's ever built.
     """
-    rationale = new.get("rationale", "")
-    context = new.get("context", "")
-    text = f"{rationale} {context}".lower()
-
-    if not text.strip():
-        return []
-
-    caused = []
-    signals = ["because", "due to", "caused by", "following", "after", "in response to"]
-
-    for d in existing:
-        old_decision = d.get("decision", "").lower()
-        old_kw = _extract_keywords(old_decision)
-
-        # Check if rationale explicitly references the old decision
-        for word in old_kw:
-            if word in text and any(s in text for s in signals):
-                caused.append(d.get("id", ""))
-                break
-
-    return caused
+    return []
 
 
 def _find_related(new: dict, existing: list[dict], threshold: float = 0.25) -> list[str]:
@@ -321,17 +317,26 @@ class DecisionTree:
             })
         return timeline
 
+    # Relationship types that form a walkable decision chain -- supersedes
+    # (keyword-similarity + an explicit revert/removal marker word,
+    # core.decision_tree._find_supersedes) and reverts (an explicit
+    # is_revert/reverts field set at capture time, not a heuristic) are
+    # both real signals today. caused_by is included for when it has a
+    # real, non-heuristic source again -- see _find_caused_by's own
+    # docstring for why it currently never produces an edge.
+    _CHAIN_RELATIONSHIPS = ("caused_by", "supersedes", "reverts")
+
     def get_chains(self) -> list[list[dict]]:
         """
-        Find decision chains: sequences where A caused B caused C.
-        Returns list of chains, each a list of decisions in order.
+        Find decision chains: sequences of decisions that supersede or
+        revert one another. Returns list of chains, each a list of
+        decisions in order.
         """
-        # Find chain roots (nodes with no incoming caused_by edges)
-        caused_targets = {
-            e["target"] for e in self.edges if e["relationship"] == "caused_by"
+        chained_targets = {
+            e["target"] for e in self.edges if e["relationship"] in self._CHAIN_RELATIONSHIPS
         }
         roots = [
-            did for did in self.nodes if did not in caused_targets
+            did for did in self.nodes if did not in chained_targets
         ]
 
         chains = []
@@ -340,14 +345,11 @@ class DecisionTree:
             if len(chain) > 1:
                 chains.append(chain)
 
-        # Also find revert chains
-        revert_chains = self._find_revert_chains()
-        chains.extend(revert_chains)
-
         return chains
 
     def _build_chain(self, start_id: str, max_depth: int = 10) -> list[dict]:
-        """Build a chain starting from a decision following caused_by edges."""
+        """Build a chain starting from a decision, following any edge type
+        in _CHAIN_RELATIONSHIPS."""
         chain = []
         visited = set()
         current = start_id
@@ -359,29 +361,16 @@ class DecisionTree:
                 break
             chain.append(node)
 
-            # Find next in chain (caused_by edges pointing FROM current)
+            # Find next in chain (edges pointing FROM current)
             next_id = None
             for edge in self.edges:
-                if edge["source"] == current and edge["relationship"] == "caused_by":
+                if edge["source"] == current and edge["relationship"] in self._CHAIN_RELATIONSHIPS:
                     if edge["target"] not in visited:
                         next_id = edge["target"]
                         break
             current = next_id
 
         return chain
-
-    def _find_revert_chains(self) -> list[list[dict]]:
-        """Find chains of decisions that revert each other."""
-        chains = []
-        revert_edges = [e for e in self.edges if e["relationship"] == "reverts"]
-
-        for edge in revert_edges:
-            chain = []
-            source = self.nodes.get(edge["source"])
-            target = self.nodes.get(edge["target"])
-            if source and target:
-                chain = [target, source]  # original, then revert
-                chains.append(chain)
 
         return chains
 
