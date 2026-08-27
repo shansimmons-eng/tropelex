@@ -183,6 +183,11 @@ class DecisionTree:
 
         # Add edges (skip duplicates: same source→target+relationship)
         existing_edges = {(e["source"], e["target"], e["relationship"]) for e in self.edges}
+        manual_notes = {
+            mc["target_id"]: mc.get("note", "")
+            for mc in decision.get("manual_causes", [])
+            if mc.get("target_id")
+        }
         for rel_type, targets in relationships.items():
             for target_id in targets:
                 key = (did, target_id, rel_type)
@@ -194,6 +199,8 @@ class DecisionTree:
                     "relationship": rel_type,
                     "created_at": _now(),
                 }
+                if rel_type == "caused_by" and target_id in manual_notes:
+                    edge["note"] = manual_notes[target_id]
                 self.edges.append(edge)
                 self.nodes[did]["edges"].append(edge)
                 existing_edges.add(key)
@@ -211,8 +218,17 @@ class DecisionTree:
         if supersedes:
             rels["supersedes"] = supersedes
 
-        # Caused by
+        # Caused by (keyword-heuristic auto-detection stays permanently
+        # disabled, see _find_caused_by's docstring -- manual_causes is
+        # the "explicit, human/agent-authored way to record one" it calls
+        # for, set via POST .../decisions/{id}/link-cause, not a heuristic
+        # match, so it isn't gated on `existing` the way the heuristic was)
         caused_by = _find_caused_by(new_decision, existing)
+        manual = [
+            mc["target_id"] for mc in new_decision.get("manual_causes", [])
+            if mc.get("target_id")
+        ]
+        caused_by = list(dict.fromkeys(caused_by + manual))
         if caused_by:
             rels["caused_by"] = caused_by
 
@@ -259,6 +275,7 @@ class DecisionTree:
                         result.append({
                             "decision": target,
                             "relationship": edge["relationship"],
+                            "note": edge.get("note", ""),
                             "depth": depth + 1,
                         })
                         _walk(target_id, depth + 1)
@@ -285,6 +302,7 @@ class DecisionTree:
                         result.append({
                             "decision": source,
                             "relationship": edge["relationship"],
+                            "note": edge.get("note", ""),
                             "depth": depth + 1,
                         })
                         _walk(source_id, depth + 1)

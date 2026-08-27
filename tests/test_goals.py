@@ -384,7 +384,16 @@ class TestGoalRouter:
         created = client.post("/api/memory/demo/goals", json={"text": "x"})
         goal_id = created.json()["goal"]["id"]
         client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "active"})
-        client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "achieved"})
+
+        # achieved requires evidence (require_goal_evidence) -- link a
+        # decision first so this test exercises the state-machine
+        # illegality it's named for, not the evidence gate.
+        memory = goals_router_mod._mm.get_project_memory("demo")
+        memory.setdefault("decisions", []).append({"id": "d1", "decision": "y", "goal_id": goal_id})
+        goals_router_mod._mm.save_project_memory("demo", memory)
+
+        achieved = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "achieved"})
+        assert achieved.status_code == 200
         resp = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "proposed"})
         assert resp.status_code == 422
 
@@ -406,6 +415,102 @@ class TestGoalRouter:
     def test_delete_unknown_goal_404s(self, client: TestClient) -> None:
         resp = client.delete("/api/memory/demo/goals/does-not-exist")
         assert resp.status_code == 404
+
+
+class TestGoalEvidenceGate:
+    """require_goal_evidence (core/triggers/goal_gate.py) -- achieved is
+    the one transition that requires a real decision on record, same
+    "explicit basis, not a silent default" discipline as tag_gate.py's
+    require_tag for safety_category."""
+
+    def _to_active(self, client: TestClient, text: str = "x") -> str:
+        created = client.post("/api/memory/demo/goals", json={"text": text})
+        goal_id = created.json()["goal"]["id"]
+        client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "active"})
+        return goal_id
+
+    def test_achieved_blocked_with_no_linked_decision(self, client: TestClient) -> None:
+        goal_id = self._to_active(client)
+        resp = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "achieved"})
+        assert resp.status_code == 422
+        assert resp.json()["detail"]["error"] == "goal_evidence_required"
+        assert resp.json()["detail"]["goal_id"] == goal_id
+
+        # blocked, not silently applied -- status stays active
+        got = client.get(f"/api/memory/demo/goals/{goal_id}")
+        assert got.json()["status"] == "active"
+
+    def test_achieved_allowed_once_a_decision_references_it(self, client: TestClient) -> None:
+        goal_id = self._to_active(client)
+        memory = goals_router_mod._mm.get_project_memory("demo")
+        memory.setdefault("decisions", []).append({"id": "d1", "decision": "y", "goal_id": goal_id})
+        goals_router_mod._mm.save_project_memory("demo", memory)
+
+        resp = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "achieved"})
+        assert resp.status_code == 200
+        assert resp.json()["goal"]["status"] == "achieved"
+
+    def test_a_decision_linked_to_a_different_goal_does_not_satisfy_the_gate(self, client: TestClient) -> None:
+        goal_id = self._to_active(client)
+        other_goal_id = self._to_active(client, text="unrelated goal")
+        memory = goals_router_mod._mm.get_project_memory("demo")
+        memory.setdefault("decisions", []).append({"id": "d1", "decision": "y", "goal_id": other_goal_id})
+        goals_router_mod._mm.save_project_memory("demo", memory)
+
+        resp = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "achieved"})
+        assert resp.status_code == 422
+
+    def test_achieve_override_bypasses_the_gate_and_records_rationale(self, client: TestClient) -> None:
+        goal_id = self._to_active(client)
+        resp = client.post(
+            f"/api/memory/demo/goals/{goal_id}/achieve-override",
+            json={"rationale": "Verified externally, not via a Tropelex decision", "agent_name": "shan"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["goal"]["status"] == "achieved"
+        assert resp.json()["override"]["goal_id"] == goal_id
+        assert resp.json()["override"]["rationale"] == "Verified externally, not via a Tropelex decision"
+
+        memory = goals_router_mod._mm.get_project_memory("demo")
+        overrides = [o for o in memory.get("overrides", []) if o.get("goal_id") == goal_id]
+        assert len(overrides) == 1
+        assert overrides[0]["kind"] == "goal_achieved"
+
+        audit = [e for e in memory.get("audit_log", []) if e.get("event_type") == "goal_achieved_without_evidence"]
+        assert len(audit) == 1
+        assert audit[0]["goal_id"] == goal_id
+
+    def test_achieve_override_still_enforces_the_state_machine(self, client: TestClient) -> None:
+        """The override bypasses the evidence requirement, not the legal-
+        transition rules -- a still-proposed goal can't jump straight to
+        achieved even via the override endpoint."""
+        created = client.post("/api/memory/demo/goals", json={"text": "still proposed"})
+        goal_id = created.json()["goal"]["id"]
+        resp = client.post(
+            f"/api/memory/demo/goals/{goal_id}/achieve-override",
+            json={"rationale": "trying to skip active"},
+        )
+        assert resp.status_code == 422
+
+    def test_achieve_override_unknown_goal_404s(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/memory/demo/goals/does-not-exist/achieve-override",
+            json={"rationale": "x"},
+        )
+        assert resp.status_code == 404
+
+    def test_achieve_override_requires_a_rationale(self, client: TestClient) -> None:
+        goal_id = self._to_active(client)
+        resp = client.post(f"/api/memory/demo/goals/{goal_id}/achieve-override", json={"rationale": ""})
+        assert resp.status_code == 422
+
+    def test_abandoned_transition_is_not_gated(self, client: TestClient) -> None:
+        """The evidence requirement is specific to 'achieved' -- abandoning
+        a goal doesn't claim anything was accomplished, so it isn't gated."""
+        created = client.post("/api/memory/demo/goals", json={"text": "x"})
+        goal_id = created.json()["goal"]["id"]
+        resp = client.patch(f"/api/memory/demo/goals/{goal_id}/status", json={"status": "abandoned"})
+        assert resp.status_code == 200
 
 
 class TestGoalDetectRouter:

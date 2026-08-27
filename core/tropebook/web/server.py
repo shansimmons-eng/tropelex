@@ -14,7 +14,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -1151,6 +1151,68 @@ async def update_decision_context(project: str, decision_id: str, data: UpdateDe
             mm.save_project_memory(project, memory)
             return {"updated": True, "decision": d}
     raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
+
+
+class LinkCauseRequest(BaseModel):
+    targets: list[str] = Field(..., min_length=1, max_length=20)
+    direction: Literal["caused_by", "led_to"]
+    note: str = Field("", max_length=500)
+
+
+@app.post("/api/memory/{project}/decisions/{decision_id}/link-cause")
+async def link_decision_cause(project: str, decision_id: str, data: LinkCauseRequest):
+    """Explicit, user/agent-authored caused_by edges -- the mechanism
+    core.decision_tree._find_caused_by's own docstring calls for as the
+    only acceptable replacement for the keyword-heuristic it replaced
+    (which produced hundreds of false positives and was removed
+    outright). Never re-derives a relationship from text; every edge here
+    is a decision id the caller explicitly picked.
+
+    manual_causes always means "this decision was caused by target_id",
+    stored on the effect decision -- so "caused_by" writes here, and
+    "led_to" (decision_id caused each target) writes the equivalent entry
+    onto each target instead. Not hash-covered (core/audit.py excludes
+    relationship fields like citation_ids from decision_content_hash the
+    same way), so no _resync_decision_hash call -- an explicit audit event
+    is still recorded for traceability.
+    """
+    project = _sanitise_project(project)
+    if decision_id in data.targets:
+        raise HTTPException(status_code=422, detail="A decision cannot be linked to itself")
+
+    mm = get_memory_manager()
+    memory = mm.get_project_memory(project)
+    decisions_by_id = {d.get("id"): d for d in memory.get("decisions", []) if d.get("id")}
+    source = decisions_by_id.get(decision_id)
+    if not source:
+        raise HTTPException(status_code=404, detail=f"Decision '{decision_id}' not found")
+
+    linked, skipped = [], []
+    now = datetime.now(timezone.utc).isoformat()
+    for target_id in data.targets:
+        target = decisions_by_id.get(target_id)
+        if not target:
+            raise HTTPException(status_code=404, detail=f"Decision '{target_id}' not found")
+
+        # caused_by: target caused source. led_to: source caused target --
+        # so the effect/cause roles (and which dict gets the entry) flip.
+        effect, cause = (source, target) if data.direction == "caused_by" else (target, source)
+        entries = effect.setdefault("manual_causes", [])
+        if any(e.get("target_id") == cause["id"] for e in entries):
+            skipped.append(target_id)
+            continue
+        entries.append({"target_id": cause["id"], "note": data.note, "created_at": now})
+        _append_audit_event(
+            memory, "decision_manual_link",
+            decision_id=effect["id"], target_id=cause["id"],
+            direction=data.direction, note=data.note,
+        )
+        linked.append(target_id)
+
+    if linked:
+        memory["last_updated"] = now
+        mm.save_project_memory(project, memory)
+    return {"linked": linked, "skipped": skipped}
 
 
 class AttachCitationIdsRequest(BaseModel):

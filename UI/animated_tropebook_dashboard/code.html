@@ -1719,7 +1719,12 @@ void main() {
                     <div id="chains-list" class="space-y-2"></div>
                 </div>
                 <div id="adr-output" class="hidden mt-4 p-4 rounded-lg bg-surface-raised border border-glass-border">
-                    <h4 class="font-mono text-xs uppercase text-accent-lime mb-2">Generated ADRs</h4>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-mono text-xs uppercase text-accent-lime">Generated ADRs</h4>
+                        <button id="btn-download-adrs" class="flex items-center gap-1 text-xs font-mono text-outline hover:text-accent-lime transition-colors cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">download</span> Download .md
+                        </button>
+                    </div>
                     <div id="adr-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
             </div>
@@ -2114,7 +2119,12 @@ void main() {
         <div class="glass-panel rounded-xl p-6">
             <div class="flex items-center justify-between mb-4">
                 <span class="font-mono text-sm text-outline">Full Repo Scan</span>
-                <button id="btn-docmine-scan" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Markdown Files</button>
+                <div class="flex items-center gap-2">
+                    <button id="btn-docmine-export" class="hidden px-3 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:text-accent-lavender transition-colors cursor-pointer flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">download</span> Export
+                    </button>
+                    <button id="btn-docmine-scan" class="px-4 py-2 rounded-lg bg-accent-lavender/20 text-accent-lavender font-mono text-sm hover:bg-accent-lavender/30 transition-all cursor-pointer">Scan Markdown Files</button>
+                </div>
             </div>
             <div id="docmine-summary" class="text-sm text-outline">Select a project, then scan — this reads every .md file in the repo (excluding node_modules, venvs, and scratch dirs).</div>
         </div>
@@ -2148,7 +2158,7 @@ void main() {
                     <button id="lineage-export-adrs" class="px-3 py-1 rounded-lg bg-accent-lime/20 text-accent-lime font-mono text-xs hover:bg-accent-lime/30 transition-all cursor-pointer">Export ADRs</button>
                 </div>
             </div>
-            <p class="text-outline text-sm mb-4">Shows only parentage relationships between decisions — supersedes, caused_by, reverts.</p>
+            <p class="text-outline text-sm mb-4">Shows only parentage relationships between decisions — supersedes, caused_by, reverts. Click a node to link a cause.</p>
             <div id="lineage-graph-container" class="relative w-full rounded-xl overflow-hidden" style="height:520px; background:rgba(1,5,21,0.8); border:1px solid rgba(165,128,250,0.1);">
                 <svg id="lineage-graph-svg" width="100%" height="100%"></svg>
                 <div id="lineage-graph-tooltip" class="hidden absolute pointer-events-none glass-panel rounded-lg p-3 max-w-xs z-10">
@@ -2163,7 +2173,12 @@ void main() {
             </div>
         </div>
         <div id="lineage-adr-output" class="hidden glass-panel rounded-xl p-6">
-            <h4 class="font-mono text-xs uppercase text-accent-lime mb-2">Generated ADRs</h4>
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="font-mono text-xs uppercase text-accent-lime">Generated ADRs</h4>
+                <button id="lineage-download-adrs" class="flex items-center gap-1 text-xs font-mono text-outline hover:text-accent-lime transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">download</span> Download .md
+                </button>
+            </div>
             <div id="lineage-adr-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
         </div>
         </div>
@@ -2593,6 +2608,9 @@ void main() {
                         <span class="font-mono text-sm text-outline" id="results-count">0 results</span>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button id="btn-link-citations" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline hover:text-accent-periwinkle transition-colors cursor-pointer flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-base">link</span> Link Citations
+                        </button>
                         <select id="sort-select" class="glass-panel rounded-lg px-3 py-2 text-sm font-mono text-outline bg-transparent border-none focus:outline-none cursor-pointer">
                             <option value="relevance">Relevance</option>
                             <option value="date">Date</option>
@@ -4293,7 +4311,12 @@ void main() {
             <div class="glass-panel rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-mono text-sm text-outline uppercase">By Category</h3>
-                    <span class="text-xs text-outline font-mono" id="driftbench-generated-at"></span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-outline font-mono" id="driftbench-generated-at"></span>
+                        <button id="btn-driftbench-export" class="flex items-center gap-1 text-xs font-mono text-outline hover:text-red-400 transition-colors cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">download</span> Export
+                        </button>
+                    </div>
                 </div>
                 <div id="driftbench-categories" class="space-y-2"></div>
             </div>
@@ -4423,6 +4446,84 @@ void main() {
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Link Citations Modal -->
+<div id="link-citations-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-panel rounded-xl p-6 w-full max-w-lg mx-4 fade-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Link Citations</h3>
+            <button id="link-citations-close" class="text-outline hover:text-accent-lavender transition-colors cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <input type="text" id="link-citations-filter" placeholder="Filter citations..."
+            class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm mb-3 focus:border-accent-lavender focus:outline-none"/>
+        <div id="link-citations-list" class="space-y-1 max-h-64 overflow-y-auto border border-glass-border rounded-lg p-2 mb-4"></div>
+        <div class="mb-4">
+            <label class="block text-sm text-outline mb-2">Relationship name (optional)</label>
+            <input type="text" id="link-citations-relationship" placeholder="related_to"
+                class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none"/>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" id="link-citations-cancel" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-outline hover:bg-surface-raised transition-all cursor-pointer">
+                Cancel
+            </button>
+            <button type="button" id="link-citations-submit" disabled class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-accent-lavender hover:bg-surface-high transition-all hover:glow cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                Connect
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- View Citation Links Modal -->
+<div id="citation-links-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-panel rounded-xl p-6 w-full max-w-lg mx-4 fade-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Linked Citations</h3>
+            <button id="citation-links-close" class="text-outline hover:text-accent-lavender transition-colors cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div id="citation-links-body" class="space-y-4 max-h-96 overflow-y-auto"></div>
+    </div>
+</div>
+
+<!-- Link Cause Modal -->
+<div id="link-decision-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-panel rounded-xl p-6 w-full max-w-lg mx-4 fade-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Link Cause</h3>
+            <button id="link-decision-close" class="text-outline hover:text-accent-lavender transition-colors cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <p id="link-decision-subject" class="text-sm text-outline mb-3 truncate"></p>
+        <div class="flex items-center gap-4 mb-3 font-mono text-sm">
+            <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="link-decision-direction" value="caused_by" checked/> was caused by
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="link-decision-direction" value="led_to"/> led to
+            </label>
+        </div>
+        <input type="text" id="link-decision-filter" placeholder="Filter decisions..."
+            class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm mb-3 focus:border-accent-lavender focus:outline-none"/>
+        <div id="link-decision-list" class="space-y-1 max-h-56 overflow-y-auto border border-glass-border rounded-lg p-2 mb-4"></div>
+        <div class="mb-4">
+            <label class="block text-sm text-outline mb-2">Note (the cause or result)</label>
+            <textarea id="link-decision-note" rows="2"
+                class="w-full bg-surface border border-glass-border rounded-lg px-4 py-2.5 font-mono text-sm focus:border-accent-lavender focus:outline-none resize-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" id="link-decision-cancel" class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-outline hover:bg-surface-raised transition-all cursor-pointer">
+                Cancel
+            </button>
+            <button type="button" id="link-decision-submit" disabled class="glass-panel px-5 py-2.5 rounded-lg font-mono text-sm text-accent-lavender hover:bg-surface-high transition-all hover:glow cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                Link
+            </button>
+        </div>
     </div>
 </div>
 
@@ -5073,6 +5174,7 @@ document.getElementById('ghost-project-select')?.addEventListener('change', load
 
 // ==================== FRICTION MINING ====================
 
+let lastFrictionReport = null;
 async function scanFriction() {
     const transcript = document.getElementById('friction-transcript').value.trim();
     if (!transcript) {
@@ -5112,7 +5214,12 @@ async function scanFriction() {
             <div class="glass-panel rounded-xl p-6 fade-in">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-mono text-sm text-accent-sky uppercase tracking-wider">Friction Report</h3>
-                    <span class="font-mono text-lg ${scoreColor}">${scorePct}%</span>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-lg ${scoreColor}">${scorePct}%</span>
+                        <button id="btn-friction-export" class="flex items-center gap-1 text-xs font-mono text-outline hover:text-accent-sky transition-colors cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">download</span> Export
+                        </button>
+                    </div>
                 </div>
                 <p class="text-xs text-outline mb-4">${data.total_signals} signal(s) detected · ${data.zones?.length ?? 0} friction zone(s)</p>`;
 
@@ -5172,6 +5279,16 @@ async function scanFriction() {
 
         html += `</div>`;
         results.innerHTML = html;
+        lastFrictionReport = data;
+        document.getElementById('btn-friction-export')?.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(lastFrictionReport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${(state.currentProject || 'tropelex')}-friction-report.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
         // #62: newly-scanned zones just got persisted to friction_zones —
         // refresh the review queue so they show up without a tab switch.
         loadFrictionZones();
@@ -5965,6 +6082,12 @@ function renderCitations() {
                     <button class="related-btn text-outline hover:text-accent-sky transition-colors cursor-pointer" data-id="${c.id || ''}" data-url="${escapeAttr(c.url || '')}" title="Find related citations">
                         <span class="material-symbols-outlined text-lg">hub</span>
                     </button>
+                    <button class="link-btn text-outline hover:text-accent-periwinkle transition-colors cursor-pointer" data-id="${c.id || ''}" title="Link to other citations">
+                        <span class="material-symbols-outlined text-lg">link</span>
+                    </button>
+                    <button class="view-links-btn text-outline hover:text-accent-periwinkle transition-colors cursor-pointer" data-id="${c.id || ''}" title="View linked citations">
+                        <span class="material-symbols-outlined text-lg">account_tree</span>
+                    </button>
                     <button class="bookmark-btn text-outline hover:text-accent-lavender transition-colors cursor-pointer" data-id="${c.id || ''}">
                         <span class="material-symbols-outlined text-lg">bookmark_border</span>
                     </button>
@@ -6006,6 +6129,22 @@ function renderCitations() {
             panel.innerHTML = '<p class="text-xs text-outline">Searching...</p>';
             const data = await api(`/citations/${cid}/related`);
             renderRelatedPanel(panel, data?.related || [], sourceUrl);
+        });
+    });
+
+    // Attach link handlers
+    grid.querySelectorAll('.link-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            openLinkCitationsModal(btn.dataset.id);
+        });
+    });
+    grid.querySelectorAll('.view-links-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            openCitationLinksModal(btn.dataset.id);
         });
     });
 
@@ -6089,6 +6228,152 @@ document.getElementById('citations-grid').addEventListener('click', async (e) =>
         btn.textContent = 'Link';
         showToast('Failed to link citations');
     }
+});
+
+// ── Link Citations modal (multi-select + named relationship) ──────────────
+const linkCitationsState = { selected: new Set() };
+const LINK_CITATIONS_MAX = 8;
+
+function openLinkCitationsModal(preselectId) {
+    linkCitationsState.selected = new Set(preselectId ? [preselectId] : []);
+    document.getElementById('link-citations-filter').value = '';
+    document.getElementById('link-citations-relationship').value = '';
+    renderLinkCitationsList('');
+    const modal = document.getElementById('link-citations-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeLinkCitationsModal() {
+    const modal = document.getElementById('link-citations-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function renderLinkCitationsList(filter) {
+    const list = document.getElementById('link-citations-list');
+    const q = (filter || '').toLowerCase();
+    const items = state.citations.filter(c =>
+        !q || (c.title || '').toLowerCase().includes(q) || (c.url || '').toLowerCase().includes(q));
+
+    list.innerHTML = items.map(c => {
+        const checked = linkCitationsState.selected.has(c.id) ? 'checked' : '';
+        const disabled = c.url ? '' : 'disabled';
+        return `
+        <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-raised cursor-pointer ${disabled ? 'opacity-40 cursor-not-allowed' : ''}">
+            <input type="checkbox" class="link-citation-checkbox" data-id="${c.id || ''}" ${checked} ${disabled}/>
+            <span class="text-sm truncate">${escapeHtml(c.title)}</span>
+        </label>`;
+    }).join('') || '<p class="text-xs text-outline px-2 py-1.5">No citations match.</p>';
+
+    list.querySelectorAll('.link-citation-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) {
+                if (linkCitationsState.selected.size >= LINK_CITATIONS_MAX) {
+                    cb.checked = false;
+                    showToast(`You can link up to ${LINK_CITATIONS_MAX} citations at once`);
+                    return;
+                }
+                linkCitationsState.selected.add(cb.dataset.id);
+            } else {
+                linkCitationsState.selected.delete(cb.dataset.id);
+            }
+            document.getElementById('link-citations-submit').disabled = linkCitationsState.selected.size < 2;
+        });
+    });
+    document.getElementById('link-citations-submit').disabled = linkCitationsState.selected.size < 2;
+}
+
+document.getElementById('link-citations-filter').addEventListener('input', (e) => {
+    renderLinkCitationsList(e.target.value);
+});
+document.getElementById('link-citations-close').addEventListener('click', closeLinkCitationsModal);
+document.getElementById('link-citations-cancel').addEventListener('click', closeLinkCitationsModal);
+document.getElementById('btn-link-citations').addEventListener('click', () => openLinkCitationsModal(null));
+
+document.getElementById('link-citations-submit').addEventListener('click', async () => {
+    const ids = [...linkCitationsState.selected];
+    if (ids.length < 2) return;
+    const relationship = document.getElementById('link-citations-relationship').value.trim() || 'related_to';
+    const byId = Object.fromEntries(state.citations.map(c => [c.id, c]));
+
+    // Clique: every checked citation linked to every other, sharing the
+    // one typed relationship label -- matches "a named group" better than
+    // requiring the user to pick an anchor citation.
+    const pairs = [];
+    for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+            pairs.push([ids[i], ids[j]]);
+        }
+    }
+
+    const submitBtn = document.getElementById('link-citations-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Connecting...';
+    let linked = 0, skipped = 0, failed = 0;
+    for (const [aId, bId] of pairs) {
+        const a = byId[aId], b = byId[bId];
+        if (!a?.url || !b?.url) { failed++; continue; }
+        const already = (a.relationships || []).some(r => r === `${bId}:${relationship}`);
+        if (already) { skipped++; continue; }
+        try {
+            const result = await api('/link', 'POST', {
+                source_url: a.url, target_url: b.url, relationship,
+            });
+            if (result?.linked) linked++; else failed++;
+        } catch {
+            failed++;
+        }
+    }
+    submitBtn.textContent = 'Connect';
+    submitBtn.disabled = false;
+
+    let msg = `Linked ${linked} pair${linked === 1 ? '' : 's'}`;
+    if (skipped) msg += `, ${skipped} already linked`;
+    if (failed) msg += `, ${failed} failed`;
+    showToast(msg);
+    closeLinkCitationsModal();
+    await loadCitations();
+    if (typeof loadCitationGraph === 'function' && document.getElementById('graph-mode')?.value === 'citations') {
+        loadCitationGraph();
+    }
+});
+
+// ── View Citation Links modal (linked citations grouped by relationship) ──
+function openCitationLinksModal(citationId) {
+    const c = state.citations.find(x => x.id === citationId);
+    const body = document.getElementById('citation-links-body');
+    if (!c || !(c.relationships || []).length) {
+        body.innerHTML = '<p class="text-sm text-outline">No linked citations yet.</p>';
+    } else {
+        const groups = {};
+        for (const rel of c.relationships) {
+            const idx = rel.lastIndexOf(':');
+            if (idx === -1) continue;
+            const otherId = rel.slice(0, idx);
+            const label = rel.slice(idx + 1) || 'related_to';
+            (groups[label] ||= []).push(otherId);
+        }
+        body.innerHTML = Object.entries(groups).map(([label, otherIds]) => `
+            <div>
+                <h4 class="text-xs font-mono uppercase text-accent-periwinkle mb-2">${escapeHtml(label)}</h4>
+                <div class="space-y-1 border-l-2 border-glass-border pl-3">
+                    ${otherIds.map(oid => {
+                        const other = state.citations.find(x => x.id === oid);
+                        return `<a href="${safeUrl(other?.url)}" target="_blank" rel="noopener noreferrer" class="block text-sm text-accent-lavender hover:text-accent-periwinkle truncate transition-colors">${escapeHtml(other?.title || oid)}</a>`;
+                    }).join('')}
+                </div>
+            </div>`).join('') || '<p class="text-sm text-outline">No linked citations yet.</p>';
+    }
+    const modal = document.getElementById('citation-links-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+document.getElementById('citation-links-close').addEventListener('click', () => {
+    const modal = document.getElementById('citation-links-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 });
 
 function escapeHtml(str) {
@@ -8117,7 +8402,9 @@ async function loadDecisionGraph() {
     document.getElementById('graph-stats').textContent =
         `${nodes.length} node${nodes.length !== 1 ? 's' : ''} · ${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
     document.getElementById('graph-empty').style.display = nodes.length === 0 ? 'flex' : 'none';
-    renderDecisionGraph(nodes, edges);
+    renderDecisionGraph(nodes, edges, {
+        onNodeClick: (d) => openLinkDecisionModal(state.currentProject, d.id, d.fullText || d.title),
+    });
 }
 
 async function loadCitationGraph() {
@@ -8377,6 +8664,13 @@ function renderDecisionGraph(nodes, edges, opts = {}) {
         tooltip.style.top  = Math.min(e.clientY - rect.top + 12, H - 120) + 'px';
     }).on('mouseout', () => tooltip.classList.add('hidden'));
 
+    if (typeof opts.onNodeClick === 'function') {
+        node.on('click', (e, d) => {
+            tooltip.classList.add('hidden');
+            opts.onNodeClick(d);
+        });
+    }
+
     graphSimulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
             .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
@@ -8438,6 +8732,7 @@ async function loadLineageGraph() {
         tooltipTitleId: 'lineage-tooltip-title',
         tooltipUrlId: 'lineage-tooltip-url',
         tooltipSummaryId: 'lineage-tooltip-summary',
+        onNodeClick: (d) => openLinkDecisionModal(project, d.id, d.fullText || d.title),
     });
 }
 
@@ -8468,6 +8763,13 @@ document.getElementById('lineage-export-adrs')?.addEventListener('click', async 
         </details>
     `).join('');
     showToast(`Generated ${data.adrs.length} ADRs (${format})`);
+});
+
+document.getElementById('lineage-download-adrs')?.addEventListener('click', () => {
+    const project = document.getElementById('lineage-project-select')?.value || state.currentProject;
+    if (!project) return showToast('Select a project first');
+    const format = document.getElementById('lineage-adr-format').value;
+    window.open(`/api/memory/${encodeURIComponent(project)}/adrs/bundle?format=${encodeURIComponent(format)}`, '_blank');
 });
 
 document.getElementById('semantic-search-btn').addEventListener('click', async () => {
@@ -8885,22 +9187,32 @@ async function loadDecisionTimeline(project) {
 // breakdown + plain-language explanation), GET /decisions/{id}/versions
 // (edit history). Every decision has these, unlike outgoing-relationship
 // badges which only some decisions have, so every row is now inspectable.
-function renderDecisionLineage(panel, ancestors, descendants) {
+function renderDecisionLineage(panel, ancestors, descendants, did) {
     const side = (title, items, emptyLabel) => {
         if (!items.length) return `<div><h5 class="text-[10px] font-mono uppercase text-outline mb-1">${title}</h5><p class="text-xs text-outline">${emptyLabel}</p></div>`;
         return `<div>
             <h5 class="text-[10px] font-mono uppercase text-outline mb-1">${title}</h5>
             <div class="space-y-1">${items.map(i => `
-                <div class="flex items-start gap-2 text-xs">
-                    <span class="px-1.5 py-0.5 rounded bg-surface-high text-accent-periwinkle shrink-0">${escapeHtml(i.relationship)}</span>
-                    <span class="text-on-surface truncate">${escapeHtml(i.decision?.decision || '')}</span>
+                <div class="text-xs">
+                    <div class="flex items-start gap-2">
+                        <span class="px-1.5 py-0.5 rounded bg-surface-high text-accent-periwinkle shrink-0">${escapeHtml(i.relationship)}</span>
+                        <span class="text-on-surface truncate">${escapeHtml(i.decision?.decision || '')}</span>
+                    </div>
+                    ${i.note ? `<p class="text-outline pl-1 mt-0.5 truncate" title="${escapeAttr(i.note)}">${escapeHtml(i.note)}</p>` : ''}
                 </div>`).join('')}</div>
         </div>`;
     };
-    panel.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        ${side('Led here from', ancestors, 'No prior causes recorded.')}
-        ${side('Led to', descendants, 'Nothing downstream yet.')}
-    </div>`;
+    panel.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <h5 class="text-[10px] font-mono uppercase text-outline">Lineage</h5>
+            <button class="link-decision-btn text-xs font-mono text-accent-periwinkle hover:text-accent-lavender transition-colors cursor-pointer flex items-center gap-1" data-id="${escapeAttr(did || '')}">
+                <span class="material-symbols-outlined text-sm">add_link</span> Link Cause
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            ${side('Led here from', ancestors, 'No prior causes recorded.')}
+            ${side('Led to', descendants, 'Nothing downstream yet.')}
+        </div>`;
 }
 
 function renderInterpretability(panel, report) {
@@ -8933,6 +9245,7 @@ function renderVersionHistory(panel, versionData) {
 }
 
 document.getElementById('decision-timeline').addEventListener('click', async (e) => {
+    if (e.target.closest('.link-decision-btn')) return;
     const item = e.target.closest('.timeline-item');
     if (!item || !item.classList.contains('cursor-pointer')) return;
     const did = item.dataset.id;
@@ -8951,10 +9264,7 @@ document.getElementById('decision-timeline').addEventListener('click', async (e)
         api(`/memory/${encodeURIComponent(project)}/decisions/${encodeURIComponent(did)}/versions`),
     ]);
     panel.innerHTML = `
-        <div>
-            <h5 class="text-[10px] font-mono uppercase text-outline mb-1">Lineage</h5>
-            <div id="lineage-${escapeAttr(did)}"></div>
-        </div>
+        <div id="lineage-${escapeAttr(did)}"></div>
         <div>
             <h5 class="text-[10px] font-mono uppercase text-outline mb-1">Interpretability</h5>
             <div id="interp-${escapeAttr(did)}"></div>
@@ -8964,9 +9274,109 @@ document.getElementById('decision-timeline').addEventListener('click', async (e)
             <div id="versions-${escapeAttr(did)}"></div>
         </div>
     `;
-    if (lineage) renderDecisionLineage(document.getElementById(`lineage-${did}`), lineage.ancestors || [], lineage.descendants || []);
+    if (lineage) renderDecisionLineage(document.getElementById(`lineage-${did}`), lineage.ancestors || [], lineage.descendants || [], did);
     renderInterpretability(document.getElementById(`interp-${did}`), interp?.report);
     renderVersionHistory(document.getElementById(`versions-${did}`), versions);
+});
+
+async function refreshDecisionLineage(project, did) {
+    const el = document.getElementById(`lineage-${did}`);
+    if (!el) return;
+    const lineage = await api(`/memory/${encodeURIComponent(project)}/decision-tree/${encodeURIComponent(did)}`);
+    if (lineage) renderDecisionLineage(el, lineage.ancestors || [], lineage.descendants || [], did);
+}
+
+// ── Link Cause modal (explicit, user-authored caused_by/led_to edges) ─────
+const linkDecisionState = { project: null, did: null, targets: new Set(), timeline: [] };
+
+// Shared entry point -- reachable both from a Decision Timeline row's
+// "+ Link Cause" button and from clicking a node directly in either
+// graph view (Insights Knowledge Graph or the Explainability > Lineage
+// parentage graph), since neither graph previously had any click
+// behavior at all to hang this off of.
+async function openLinkDecisionModal(project, did, subjectLabel) {
+    if (!project || !did) return;
+    linkDecisionState.project = project;
+    linkDecisionState.did = did;
+    linkDecisionState.targets = new Set();
+    document.getElementById('link-decision-note').value = '';
+    document.getElementById('link-decision-filter').value = '';
+    document.querySelector('input[name="link-decision-direction"][value="caused_by"]').checked = true;
+    const subjectEl = document.getElementById('link-decision-subject');
+    if (subjectEl) subjectEl.textContent = subjectLabel || '';
+    const data = await api(`/memory/${encodeURIComponent(project)}/decision-tree/timeline`);
+    linkDecisionState.timeline = (data?.timeline || []).filter(d => d.id && d.id !== did);
+    renderLinkDecisionList('');
+    const modal = document.getElementById('link-decision-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+document.getElementById('decision-timeline').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.link-decision-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    const item = btn.closest('.timeline-item');
+    const project = item?.dataset.project || getInsightsProject();
+    const decisionText = item?.querySelector('p.text-sm.font-medium')?.textContent || '';
+    await openLinkDecisionModal(project, btn.dataset.id, decisionText);
+});
+
+function closeLinkDecisionModal() {
+    const modal = document.getElementById('link-decision-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function renderLinkDecisionList(filter) {
+    const list = document.getElementById('link-decision-list');
+    const q = (filter || '').toLowerCase();
+    const items = linkDecisionState.timeline.filter(d => !q || (d.decision || '').toLowerCase().includes(q));
+    list.innerHTML = items.slice(0, 200).map(d => `
+        <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-raised cursor-pointer">
+            <input type="checkbox" class="link-decision-checkbox" data-id="${escapeAttr(d.id)}" ${linkDecisionState.targets.has(d.id) ? 'checked' : ''}/>
+            <span class="text-sm truncate">${escapeHtml(d.decision || '')}</span>
+        </label>`).join('') || '<p class="text-xs text-outline px-2 py-1.5">No decisions match.</p>';
+
+    list.querySelectorAll('.link-decision-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) linkDecisionState.targets.add(cb.dataset.id);
+            else linkDecisionState.targets.delete(cb.dataset.id);
+            document.getElementById('link-decision-submit').disabled = linkDecisionState.targets.size === 0;
+        });
+    });
+    document.getElementById('link-decision-submit').disabled = linkDecisionState.targets.size === 0;
+}
+
+document.getElementById('link-decision-filter').addEventListener('input', (e) => renderLinkDecisionList(e.target.value));
+document.getElementById('link-decision-close').addEventListener('click', closeLinkDecisionModal);
+document.getElementById('link-decision-cancel').addEventListener('click', closeLinkDecisionModal);
+
+document.getElementById('link-decision-submit').addEventListener('click', async () => {
+    const { project, did, targets } = linkDecisionState;
+    if (!targets.size) return;
+    const direction = document.querySelector('input[name="link-decision-direction"]:checked').value;
+    const note = document.getElementById('link-decision-note').value.trim();
+    const submitBtn = document.getElementById('link-decision-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Linking...';
+    const result = await api(`/memory/${encodeURIComponent(project)}/decisions/${encodeURIComponent(did)}/link-cause`, 'POST', {
+        targets: [...targets], direction, note,
+    });
+    submitBtn.textContent = 'Link';
+    if (result?.linked) {
+        let msg = `Linked ${result.linked.length} decision${result.linked.length === 1 ? '' : 's'}`;
+        if (result.skipped?.length) msg += `, ${result.skipped.length} already linked`;
+        showToast(msg);
+        closeLinkDecisionModal();
+        await refreshDecisionLineage(project, did);
+        if (typeof loadGraph === 'function' && document.getElementById('graph-mode')?.value === 'decisions') {
+            loadGraph();
+        }
+    } else {
+        submitBtn.disabled = false;
+        showToast(result?.detail || 'Failed to link decisions');
+    }
 });
 
 // Decision Chains
@@ -9016,6 +9426,12 @@ document.getElementById('btn-generate-adrs').addEventListener('click', async () 
         </details>
     `).join('');
     showToast(`Generated ${data.adrs.length} ADRs`);
+});
+
+document.getElementById('btn-download-adrs').addEventListener('click', () => {
+    const project = getInsightsProject();
+    if (!project) return showToast('Select a project first');
+    window.open(`/api/memory/${encodeURIComponent(project)}/adrs/bundle?format=tropelex`, '_blank');
 });
 
 // Session Replay
@@ -10065,6 +10481,18 @@ const DRIFTBENCH_FP_COLOR = (rate) => {
     return rate === 0 ? 'text-accent-lime' : rate <= 0.1 ? 'text-yellow-400' : 'text-red-400';
 };
 
+let lastDriftBenchReport = null;
+document.getElementById('btn-driftbench-export')?.addEventListener('click', () => {
+    if (!lastDriftBenchReport) return;
+    const blob = new Blob([JSON.stringify(lastDriftBenchReport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tropelex-driftbench-report.json';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
 async function loadDriftBenchLatest() {
     try {
         const res = await fetch('/api/driftbench/latest');
@@ -10097,6 +10525,7 @@ async function runDriftBench() {
 
 function renderDriftBenchReport(data) {
     if (!data || typeof data !== 'object') return;
+    lastDriftBenchReport = data;
     document.getElementById('driftbench-empty')?.classList.add('hidden');
     document.getElementById('driftbench-results')?.classList.remove('hidden');
 
@@ -11519,11 +11948,39 @@ document.getElementById('goal-detail')?.addEventListener('click', async (e) => {
     const project = state.currentProject;
     const transitionBtn = e.target.closest('.btn-transition-goal');
     if (transitionBtn) {
-        const res = await api(
-            `/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(transitionBtn.dataset.id)}/status`,
-            'PATCH', { status: transitionBtn.dataset.status }
+        const goalId = transitionBtn.dataset.id;
+        const status = transitionBtn.dataset.status;
+        if (status !== 'achieved') {
+            const res = await api(`/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(goalId)}/status`, 'PATCH', { status });
+            if (res) { showToast(`Goal marked ${status}`); loadGoals(); }
+            return;
+        }
+        // "achieved" specifically requires a decision on record (goal_id
+        // pointing at this goal) -- require_goal_evidence in
+        // core/triggers/goal_gate.py. Uses a raw fetch instead of api()
+        // here so the structured 422 (error: "goal_evidence_required")
+        // can be told apart from an ordinary failure and offer the
+        // override path instead of just a dead-end toast.
+        const resp = await fetch(`/api/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(goalId)}/status`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'achieved' }),
+        });
+        const data = await resp.json();
+        if (resp.ok) { showToast('Goal marked achieved'); loadGoals(); return; }
+        if (data?.detail?.error !== 'goal_evidence_required') {
+            showToast(`API Error ${resp.status}: ${describeApiError(data.detail)}`);
+            return;
+        }
+        const rationale = prompt(
+            'No decision is linked to this goal yet (none has this goal_id set). ' +
+            'Link a decision instead for a real record, or enter a reason to mark it achieved anyway:'
         );
-        if (res) { showToast(`Goal marked ${transitionBtn.dataset.status}`); loadGoals(); }
+        if (!rationale || !rationale.trim()) return;
+        const override = await api(
+            `/memory/${encodeURIComponent(project)}/goals/${encodeURIComponent(goalId)}/achieve-override`,
+            'POST', { rationale: rationale.trim(), agent_name: 'dashboard-user' }
+        );
+        if (override) { showToast('Goal marked achieved (override recorded)'); loadGoals(); }
         return;
     }
     const deleteBtn = e.target.closest('.btn-delete-goal');
@@ -11835,13 +12292,32 @@ document.getElementById('btn-narrative')?.addEventListener('click', async () => 
         document.getElementById('narrative-empty')?.classList.add('hidden');
         const results = document.getElementById('narrative-results');
         results.classList.remove('hidden');
-        let html = `<h3 class="font-mono text-lg text-accent-sky mb-3">${escapeHtml(data.title)}</h3>`;
+        let html = `<div class="flex items-center justify-between mb-3">
+            <h3 class="font-mono text-lg text-accent-sky">${escapeHtml(data.title)}</h3>
+            <button id="btn-download-narrative" class="flex items-center gap-1 text-xs font-mono text-outline hover:text-accent-sky transition-colors cursor-pointer">
+                <span class="material-symbols-outlined text-sm">download</span> Download
+            </button>
+        </div>`;
         html += `<p class="text-xs text-outline mb-4">Audience: ${escapeHtml(data.audience)} | ${data.word_count} words | ${data.sections?.length || 0} sections</p>`;
         (data.sections || []).forEach(s => {
             html += `<div class="mb-4"><h4 class="font-mono text-sm text-accent-periwinkle mb-1">${escapeHtml(s.heading)}</h4><p class="text-sm text-outline">${escapeHtml(s.body)}</p></div>`;
         });
         if (data.summary) html += `<div class="mt-4 p-3 rounded-lg bg-surface-raised border border-glass-border"><p class="font-mono text-xs text-accent-lime mb-1">Summary</p><p class="text-sm">${escapeHtml(data.summary)}</p></div>`;
         results.innerHTML = html;
+
+        const md = [`# ${data.title}`, '', `_Audience: ${data.audience} | ${data.word_count} words_`, '',
+            ...(data.sections || []).flatMap(s => [`## ${s.heading}`, '', s.body, '']),
+            ...(data.summary ? ['## Summary', '', data.summary, ''] : []),
+        ].join('\n');
+        document.getElementById('btn-download-narrative').addEventListener('click', () => {
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${(state.currentProject || 'tropelex')}-narrative-${data.audience}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     }
 });
 
@@ -12156,6 +12632,7 @@ document.getElementById('btn-run-hybrid')?.addEventListener('click', async () =>
 });
 
 // ── Doc Mining: Scan Markdown Files ──
+let lastDocmineScan = null;
 document.getElementById('btn-docmine-scan')?.addEventListener('click', async () => {
     if (!state.currentProject) { showToast('Select a project first'); return; }
     const btn = document.getElementById('btn-docmine-scan');
@@ -12226,7 +12703,20 @@ document.getElementById('btn-docmine-scan')?.addEventListener('click', async () 
 
         results.innerHTML = html;
         showToast(`Doc mining complete: ${data.finding_count} finding(s), ${data.uncaptured_count} uncaptured`);
+        lastDocmineScan = data;
+        document.getElementById('btn-docmine-export').classList.remove('hidden');
     }
+});
+
+document.getElementById('btn-docmine-export')?.addEventListener('click', () => {
+    if (!lastDocmineScan) return;
+    const blob = new Blob([JSON.stringify(lastDocmineScan, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(state.currentProject || 'tropelex')}-docmine-scan.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 });
 
 // ── Doc Mining: Add/Remove uncaptured claim rows (event delegation, since

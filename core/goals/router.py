@@ -14,11 +14,14 @@ Mount into the main app:
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from core.audit import append_audit_event
 from core.friction.miner import compute_friction_penalty
 from core.goals import Err, Ok
 from core.goals.detector import detect_goals
@@ -26,6 +29,7 @@ from core.goals.drift import score_goal_drift, score_trend_drift, suggest_drift_
 from core.goals.logic import create_goal, list_goals, transition_status, update_goal
 from core.market.calibration import compute_calibration
 from core.memory.manager import MemoryManager
+from core.triggers.goal_gate import GoalEvidenceRequiredError, require_goal_evidence
 
 logger = logging.getLogger("tropelex.goals")
 
@@ -177,6 +181,12 @@ async def transition_goal_status(project: str, goal_id: str, req: GoalStatusRequ
     if target is None:
         raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
 
+    if req.status == "achieved":
+        try:
+            require_goal_evidence(goal_id, memory.get("decisions", []))
+        except GoalEvidenceRequiredError as exc:
+            raise HTTPException(status_code=422, detail=exc.to_dict())
+
     result = transition_status(target, req.status)
     if isinstance(result, Err):
         raise _err_to_http(result)
@@ -184,6 +194,54 @@ async def transition_goal_status(project: str, goal_id: str, req: GoalStatusRequ
     memory["goals"] = [result.value if g.get("id") == goal_id else g for g in goals]
     _save_memory(project, memory)
     return {"transitioned": True, "goal": result.value}
+
+
+class GoalAchieveOverrideRequest(BaseModel):
+    rationale: str = Field(..., min_length=1, max_length=1000)
+    agent_name: str = Field("unspecified", max_length=100)
+
+
+@goals_router.post("/{project}/goals/{goal_id}/achieve-override")
+async def override_goal_evidence(project: str, goal_id: str, req: GoalAchieveOverrideRequest) -> dict[str, Any]:
+    """Force a goal to 'achieved' despite no decision referencing it via
+    goal_id -- the explicit-override escape hatch for require_goal_evidence
+    (core/triggers/goal_gate.py). Same shape as
+    core/ghost/preventive_router.py's decision override: written into the
+    append-only audit trail, not silently applied. The state-machine
+    legality check in transition_status still applies underneath this --
+    the override bypasses the evidence requirement, not the achieved
+    transition having to come from 'active'.
+    """
+    memory = _load_memory(project)
+    goals = memory.get("goals", [])
+    target = next((g for g in goals if g.get("id") == goal_id), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
+
+    result = transition_status(target, "achieved")
+    if isinstance(result, Err):
+        raise _err_to_http(result)
+
+    memory["goals"] = [result.value if g.get("id") == goal_id else g for g in goals]
+
+    override_id = uuid.uuid4().hex[:12]
+    override_entry = {
+        "id": override_id,
+        "kind": "goal_achieved",
+        "goal_id": goal_id,
+        "rationale": req.rationale,
+        "agent_name": req.agent_name,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    memory.setdefault("overrides", []).append(override_entry)
+    append_audit_event(
+        memory, "goal_achieved_without_evidence",
+        override_id=override_id, goal_id=goal_id,
+        rationale=req.rationale, agent_name=req.agent_name,
+    )
+
+    _save_memory(project, memory)
+    return {"transitioned": True, "goal": result.value, "override": override_entry}
 
 
 @goals_router.delete("/{project}/goals/{goal_id}")

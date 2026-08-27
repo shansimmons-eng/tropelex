@@ -1,45 +1,19 @@
 """
-Tag-required capture gate — sketch, not wired into server.py.
+Tag-required capture gate — wired into add_decision.
 
-Today, POST /api/memory/{project}/decisions (core/tropebook/web/server.py,
-add_decision) accepts an optional `safety_metadata.safety_category`. If it's
-omitted, _auto_classify_safety() silently invents one from keyword matching
-and the decision is saved with a category nobody chose. The MCP tool wrapper
-(mcp_server/server.py capture_decision) makes this worse by defaulting the
-parameter to "general" itself, so even an agent that never thinks about
-category gets a clean-looking, wrong-by-default save.
+POST /api/memory/{project}/decisions (core/tropebook/web/server.py,
+add_decision) requires an explicit, valid `safety_metadata.safety_category`.
+_auto_classify_safety() still runs, but its output is only ever a
+*suggestion* carried on a 422 (TagRequiredError.to_dict()'s `suggested`
+field) -- never a value silently written to disk. Every write path funnels
+through the same gate: manual capture, research-promoted decisions
+(promote_decision), and the MCP tool (mcp_server/server.py capture_decision,
+which requires the caller to pass a real category rather than defaulting to
+"general" itself).
 
-This module is the primitive for closing that gap: don't let a category be
-silently assigned. Auto-classification still runs, but its output becomes a
-*suggestion* attached to an error, not a value written to disk.
-
-Deliberately not wired into add_decision in this pass: doing so changes the
-API's existing contract (any caller currently omitting safety_category,
-including the live dashboard and the MCP tool's own default, would start
-getting rejected instead of auto-classified) and that's a call worth making
-on purpose, not as a side effect of a sketch.
-
-If/when wiring it in, the shape at the call site would be:
-
-    from core.triggers.tag_gate import require_tag, TagRequiredError
-
-    @app.post("/api/memory/{project}/decisions")
-    async def add_decision(project: str, data: DecisionCreate):
-        ...
-        suggestion = _auto_classify_safety(data.decision, data.context)
-        try:
-            category = require_tag(
-                data.safety_metadata.safety_category if data.safety_metadata else None,
-                suggested=suggestion["safety_category"],
-            )
-        except TagRequiredError as exc:
-            raise HTTPException(status_code=422, detail=exc.to_dict())
-        ...
-
-    # and mcp_server/server.py's capture_decision would need to drop its
-    # `safety_category: str = "general"` default so the MCP-level caller is
-    # forced to either pass a real category or surface the 422's suggestion
-    # back to whoever/whatever is driving it.
+This is the reference pattern for core/triggers/goal_gate.py's
+require_goal_evidence: don't let a claim (a category, a goal being
+"achieved") be recorded without an explicit, checkable basis for it.
 """
 
 from __future__ import annotations
