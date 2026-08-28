@@ -9379,6 +9379,9 @@ document.getElementById('link-decision-submit').addEventListener('click', async 
         if (typeof loadGraph === 'function' && document.getElementById('graph-mode')?.value === 'decisions') {
             loadGraph();
         }
+        if (typeof loadLineageGraph === 'function') {
+            loadLineageGraph();
+        }
     } else {
         submitBtn.disabled = false;
         showToast(result?.detail || 'Failed to link decisions');
