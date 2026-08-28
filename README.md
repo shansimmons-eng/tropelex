@@ -74,7 +74,7 @@ flowchart TD
 
 **Docs, without running anything:** [Full Guide](https://shansimmons-eng.github.io/tropelex/) · [API Reference](https://shansimmons-eng.github.io/tropelex/api-reference.html) · [Getting Started](https://shansimmons-eng.github.io/tropelex/getting-started.html) · [FAQ](https://shansimmons-eng.github.io/tropelex/faq.html)
 
-**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Security:** [SECURITY.md](SECURITY.md)
+**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Security:** [SECURITY.md](SECURITY.md) · **License:** [MIT](LICENSE)
 
 ---
 

@@ -1686,17 +1686,6 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
                 });
             });
 
-            // Universal Tooltip Renderer for items with data-tooltip
-            document.querySelectorAll('[data-tooltip]').forEach(el => {
-                const text = el.getAttribute('data-tooltip');
-                if (!text) return;
-                el.classList.add('tooltip-wrap');
-                const box = document.createElement('div');
-                box.className = 'tooltip-box';
-                box.innerHTML = text;
-                el.appendChild(box);
-            });
-
             // Auto wrap <pre> blocks with macOS dots and floating copy button
             document.querySelectorAll('pre').forEach(pre => {
                 const wrap = document.createElement('div');
