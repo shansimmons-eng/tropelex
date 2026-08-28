@@ -1,5 +1,17 @@
 # Tropelex
 
+<table>
+<tr>
+<td width="50%"><img src="site/images/screenshots/01-engine-core-dashboard.jpg" alt="Engine Core dashboard"/></td>
+<td width="50%"><img src="site/images/screenshots/02-safety-alignment-dashboard.jpg" alt="Safety &amp; Alignment dashboard"/></td>
+</tr>
+<tr>
+<td width="50%"><img src="site/images/screenshots/03-decision-lineage.jpg" alt="Decision Lineage graph with real caused_by edges"/></td>
+<td width="50%"><img src="site/images/screenshots/04-tropebook-linked-citations.jpg" alt="Tropebook citations linked with a named relationship"/></td>
+</tr>
+</table>
+<p align="center"><img src="site/images/screenshots/05-why-do-we.jpg" alt="Why Do We...? causal-chain answer" width="80%"/></p>
+
 **AI Memory System with Safety and Alignment Infrastructure**
 
 Tropelex accumulates knowledge across projects (decisions, patterns, preferences, research) so sessions don't start from scratch. It grows smarter with use.
@@ -42,6 +54,8 @@ flowchart TD
     MM --> Storage
     Audit --> Storage
 ```
+
+**Docs, without running anything:** [Full Guide](https://shansimmons-eng.github.io/tropelex/) · [API Reference](https://shansimmons-eng.github.io/tropelex/api-reference.html) · [Getting Started](https://shansimmons-eng.github.io/tropelex/getting-started.html) · [FAQ](https://shansimmons-eng.github.io/tropelex/faq.html)
 
 ---
 
