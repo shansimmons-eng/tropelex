@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Tropelex Documentation</title>
-<link rel="icon" type="image/x-icon" href="/images/TL1.ico"/>
+<link rel="icon" type="image/x-icon" href="images/TL1.ico"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -308,17 +308,18 @@
 <header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
 <div class="flex justify-between items-center px-6 py-3.5 w-full max-w-container-max mx-auto">
 <div class="flex items-center gap-8">
-<a class="flex items-center gap-2.5" href="/" title="Go to Dashboard">
-    <img src="/images/tl.png" alt="Tropelex" class="h-9 w-auto" />
+<a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
+    <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
 </a>
 <nav class="hidden md:flex gap-6">
-<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/"><span class="material-symbols-outlined text-[16px]">dashboard</span> Dashboard</a>
-<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="/guide"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
-<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/api-reference"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="faq.html"><span class="material-symbols-outlined text-[16px]">help</span> FAQ</a>
 </nav>
 </div>
 <div class="flex items-center gap-4">
-<a class="text-on-surface-variant font-medium hover:text-primary transition-colors text-sm hidden md:flex items-center gap-1.5" href="/"><span class="material-symbols-outlined text-[16px]">arrow_back</span> Back to Dashboard</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors text-sm hidden md:flex items-center gap-1.5" href="https://github.com/shansimmons-eng/tropelex" target="_blank" rel="noopener"><span class="material-symbols-outlined text-[16px]">code</span> View on GitHub</a>
 <div class="w-9 h-9 rounded-full overflow-hidden border border-purple-400/40 flex items-center justify-center bg-purple-500/20 shadow-md shadow-purple-500/20">
 <span class="material-symbols-outlined text-purple-300 text-[22px]">smart_toy</span>
 </div>
@@ -426,7 +427,7 @@
         <div class="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0"><span class="material-symbols-outlined text-[14px]">terminal</span></div>
         <span class="truncate">CLI Reference</span>
       </a>
-      <a href="/api-reference" data-tooltip="Interactive REST API Documentation" class="sidebar-link text-on-surface-variant hover:text-indigo-200 hover:bg-indigo-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
+      <a href="api-reference.html" data-tooltip="Interactive REST API Documentation" class="sidebar-link text-on-surface-variant hover:text-indigo-200 hover:bg-indigo-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <div class="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0"><span class="material-symbols-outlined text-[14px]">http</span></div>
         <span class="truncate">API Reference</span>
       </a>
@@ -455,11 +456,12 @@
 <div class="glass-card rounded-2xl p-8 border-engine opacity-0 animate-fade-in-up relative">
 <div class="absolute -right-10 -bottom-10 w-60 h-60 rounded-full bg-purple-600/10 blur-3xl pointer-events-none"></div>
 <div class="flex items-center gap-3 mb-3">
-    <span class="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-mono text-xs font-bold flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Active Server Connected
+    <span class="px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-bold flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">terminal</span> Documentation for a project you run yourself
     </span>
 </div>
 <h1 class="font-display-xl text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-indigo-100 to-cyan-200 font-extrabold mb-3">Tropelex Documentation</h1>
+<p class="text-sm text-on-surface-variant mb-2">This page describes what Tropelex does once installed — it isn't a live instance. See the <a class="text-indigo-300 underline hover:text-indigo-200 font-semibold" href="https://github.com/shansimmons-eng/tropelex#installation" target="_blank" rel="noopener">README</a> or <a class="text-indigo-300 underline hover:text-indigo-200 font-semibold" href="getting-started.html">Getting Started</a> to run it against your own project.</p>
 <p class="font-body-lg text-on-surface-variant text-base leading-relaxed"><strong class="text-on-surface font-semibold">AI Memory System with Safety and Alignment Infrastructure.</strong> Store decisions, track patterns, and maintain project context across sessions. The same mechanisms double as auditable safety infrastructure — see <a class="text-purple-300 underline hover:text-purple-200 font-semibold" href="https://github.com/shansimmons-eng/tropelex/blob/main/SAFETY.md" target="_blank">SAFETY.md</a> for how.</p>
 </div>
 
@@ -1356,7 +1358,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <p class="text-xs text-on-surface-variant font-mono leading-relaxed whitespace-normal break-words">REST API endpoint examples for all memory &amp; safety modules</p>
 </div>
 </div>
-<p class="font-body-md text-on-surface-variant text-sm mb-4">All features expose REST API endpoints on <code>http://localhost:8766</code>. View interactive OpenAPI documentation at <a class="text-indigo-300 underline font-semibold" href="/openapi.json" target="_blank">/openapi.json</a>.</p>
+<p class="font-body-md text-on-surface-variant text-sm mb-4">All features expose REST API endpoints on <code>http://localhost:8766</code>. Once you're running it yourself, view interactive OpenAPI documentation at <a class="text-indigo-300 underline font-semibold" href="http://localhost:8766/openapi.json" target="_blank">localhost:8766/openapi.json</a>.</p>
 
 <div class="space-y-4">
 <div>

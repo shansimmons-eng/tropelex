@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html class="dark scroll-smooth" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tropelex FAQ</title>
+<link rel="icon" type="image/x-icon" href="images/TL1.ico"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#121829",
+                      "on-primary-container": "#3a008b",
+                      "on-error-container": "#ffdad6",
+                      "surface-tint": "#d1bcff",
+                      "primary-fixed": "#eaddff",
+                      "on-primary": "#3c058d",
+                      "outline": "#958e9e",
+                      "on-surface-variant": "#cbc3d5",
+                      "error-container": "#93000a",
+                      "surface-bright": "#32394c",
+                      "on-primary-fixed": "#24005b",
+                      "secondary-fixed-dim": "#7cd1f6",
+                      "surface-container-high": "#1e263b",
+                      "tertiary-container": "#4ca93a",
+                      "surface": "#0a0f1d",
+                      "on-secondary-fixed": "#001f2a",
+                      "on-secondary": "#003546",
+                      "on-primary-fixed-variant": "#532ba4",
+                      "primary": "#d1bcff",
+                      "primary-container": "#a580fa",
+                      "tertiary-fixed": "#98fa80",
+                      "on-error": "#690005",
+                      "surface-container": "#151c2e",
+                      "outline-variant": "#494452",
+                      "surface-container-lowest": "#060a17",
+                      "secondary-fixed": "#bde9ff",
+                      "on-tertiary-fixed": "#012200",
+                      "on-tertiary": "#023a00",
+                      "on-tertiary-fixed-variant": "#045300",
+                      "surface-container-highest": "#283149",
+                      "inverse-on-surface": "#293042",
+                      "secondary": "#7cd1f6",
+                      "on-surface": "#dce2fa",
+                      "on-tertiary-container": "#023700",
+                      "inverse-primary": "#6c46bd",
+                      "on-secondary-fixed-variant": "#004d64",
+                      "surface-dim": "#0a0f1d",
+                      "primary-fixed-dim": "#d1bcff",
+                      "tertiary-fixed-dim": "#7cdc67",
+                      "secondary-container": "#007697",
+                      "on-secondary-container": "#def3ff",
+                      "on-background": "#dce2fa",
+                      "inverse-surface": "#dce2fa",
+                      "surface-variant": "#283149",
+                      "background": "#0a0f1d",
+                      "tertiary": "#7cdc67",
+                      "error": "#ffb4ab"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "1.75rem",
+                      "xl": "2.5rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "280px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-lg": ["JetBrains Mono"],
+                      "display-xl": ["JetBrains Mono"],
+                      "label-caps": ["JetBrains Mono"],
+                      "headline-md": ["JetBrains Mono"],
+                      "code-sm": ["JetBrains Mono"],
+                      "body-md": ["Plus Jakarta Sans"]
+              },
+              animation: {
+                  'fade-in-up': 'fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                  'slide-in-left': 'slideInLeft 0.5s ease-out forwards',
+                  'pulse-glow': 'pulseGlow 2.5s infinite ease-in-out',
+                  'shimmer': 'shimmer 3s infinite linear',
+              },
+              keyframes: {
+                  fadeInUp: {
+                      '0%': { opacity: '0', transform: 'translateY(24px)' },
+                      '100%': { opacity: '1', transform: 'translateY(0)' },
+                  },
+                  slideInLeft: {
+                      '0%': { opacity: '0', transform: 'translateX(-20px)' },
+                      '100%': { opacity: '1', transform: 'translateX(0)' },
+                  },
+                  pulseGlow: {
+                      '0%, 100%': { opacity: '0.6', filter: 'drop-shadow(0 0 15px rgba(165, 128, 250, 0.4))' },
+                      '50%': { opacity: '1', filter: 'drop-shadow(0 0 25px rgba(165, 128, 250, 0.8))' },
+                  }
+              }
+            },
+          },
+        }
+</script>
+<style>
+        body {
+            background-color: #060a17;
+            color: #dce2fa;
+            -webkit-font-smoothing: antialiased;
+        }
+        #bg-canvas {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: -1; pointer-events: none;
+        }
+        .glass-panel {
+            background: rgba(10, 15, 29, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(165, 128, 250, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        }
+        .glass-card {
+            background: rgba(14, 20, 37, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(165, 128, 250, 0.16);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+        .glass-card::before {
+            content: ''; position: absolute;
+            top: 0; left: -100%; width: 60%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg); transition: left 0.8s ease;
+            z-index: 1; pointer-events: none;
+        }
+        .glass-card:hover::before { left: 200%; }
+        .glass-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(165, 128, 250, 0.4);
+            box-shadow: 0 16px 48px -12px rgba(165, 128, 250, 0.15);
+        }
+        .glass-card:hover .icon-glow {
+            transform: scale(1.12) rotate(3deg);
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+        .icon-glow { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Domain Specific Neon Gradients & Border Accents */
+        .border-engine { border-top: 3px solid #a580fa; }
+        .border-quality { border-top: 3px solid #7cd1f6; }
+        .border-explainability { border-top: 3px solid #7cdc67; }
+        .border-safety { border-top: 3px solid #ffb4ab; }
+        .border-lifecycle { border-top: 3px solid #fac880; }
+        .border-research { border-top: 3px solid #f080fa; }
+        .border-team { border-top: 3px solid #8098fa; }
+        .border-ops { border-top: 3px solid #80fad5; }
+
+        .method-get { background: rgba(124, 220, 103, 0.15); color: #7cdc67; border: 1px solid rgba(124, 220, 103, 0.3); }
+        .method-post { background: rgba(124, 209, 246, 0.15); color: #7cd1f6; border: 1px solid rgba(124, 209, 246, 0.3); }
+        .method-patch { background: rgba(250, 200, 128, 0.15); color: #fac880; border: 1px solid rgba(250, 200, 128, 0.3); }
+        .method-delete { background: rgba(255, 180, 171, 0.15); color: #ffb4ab; border: 1px solid rgba(255, 180, 171, 0.3); }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(165, 128, 250, 0.8); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(165, 128, 250, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(165, 128, 250, 0); }
+        }
+        .status-led {
+            width: 9px; height: 9px; border-radius: 50%;
+            background-color: #a580fa; animation: pulse 2s infinite;
+        }
+
+        .nav-link { position: relative; }
+        .nav-link::after {
+            content: ''; position: absolute; width: 0; height: 2px;
+            bottom: -2px; left: 0; background: linear-gradient(90deg, #a580fa, #7cd1f6);
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after, .nav-link.active-nav::after { width: 100%; }
+
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(165, 128, 250, 0.25); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(165, 128, 250, 0.45); }
+
+        h1, h2, h3, h4, .font-display-xl, .font-headline-lg, .font-headline-md, .font-label-caps, .font-code-sm {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        body, p, span, .font-body-lg, .font-body-md { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .stagger-1 { animation-delay: 0.08s; }
+        .stagger-2 { animation-delay: 0.16s; }
+        .stagger-3 { animation-delay: 0.24s; }
+        .stagger-4 { animation-delay: 0.32s; }
+        .stagger-5 { animation-delay: 0.40s; }
+        .stagger-6 { animation-delay: 0.48s; }
+        .stagger-7 { animation-delay: 0.56s; }
+        .stagger-8 { animation-delay: 0.64s; }
+
+        pre { background: rgba(5, 8, 18, 0.95); padding: 1.1rem; border-radius: 12px; overflow-x: auto; border: 1px solid rgba(165, 128, 250, 0.2); font-family: 'JetBrains Mono', monospace; font-size: 0.83rem; color: #7cd1f6; margin-top: 0.6rem; margin-bottom: 1rem; }
+        code { font-family: 'JetBrains Mono', monospace; background: rgba(20, 28, 48, 0.85); padding: 0.15rem 0.45rem; border-radius: 5px; color: #80d5fa; font-size: 0.83rem; border: 1px solid rgba(128, 213, 250, 0.15); }
+        pre code { padding: 0; background: none; color: inherit; border: none; }
+        .code-copy-wrap { position: relative; margin-top: 0.6rem; margin-bottom: 1rem; }
+        .code-copy-wrap pre { margin: 0; padding-top: 2.5rem; }
+        .copy-btn-floating {
+            position: absolute; top: 0.5rem; right: 0.6rem;
+            display: flex; align-items: center; gap: 0.3rem;
+            padding: 0.25rem 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+            color: #cbc3d5; background: rgba(18, 25, 45, 0.9); border: 1px solid rgba(165, 128, 250, 0.25);
+            border-radius: 7px; cursor: pointer; transition: all 0.2s ease; z-index: 10;
+        }
+        .copy-btn-floating:hover { color: #dce2fa; border-color: rgba(165, 128, 250, 0.6); background: rgba(30, 40, 70, 0.95); }
+        .copy-btn-floating.copied { color: #7cdc67; border-color: rgba(124, 220, 103, 0.6); }
+
+        .mac-dots { display: flex; gap: 6px; position: absolute; top: 0.7rem; left: 0.8rem; z-index: 10; }
+        .mac-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .mac-dot-red { background: #ff5f56; }
+        .mac-dot-yellow { background: #ffbd2e; }
+        .mac-dot-green { background: #27c93f; }
+
+        
+        #toast-container {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 100;
+            display: flex; flex-col; gap: 0.5rem; pointer-events: none;
+        }
+        .toast-msg {
+            background: rgba(14, 20, 37, 0.95);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(124, 220, 103, 0.4); color: #7cdc67;
+            padding: 0.6rem 1rem; border-radius: 12px; font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 600;
+            display: flex; align-items: center; gap: 0.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Interactive inline code clickable copy badge */
+        code.interactive-copy {
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+        }
+        code.interactive-copy:hover {
+            border-color: rgba(165, 128, 250, 0.5); background: rgba(165, 128, 250, 0.15);
+        }
+
+
+        /* Global High-Visibility Fixed Tooltip & Toast */
+        #global-tooltip {
+            position: fixed; z-index: 999999; pointer-events: none;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            background: rgba(10, 15, 28, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(165, 128, 250, 0.6); color: #f0edfe;
+            padding: 0.45rem 0.8rem; border-radius: 9px; font-size: 0.75rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600;
+            white-space: nowrap; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(165, 128, 250, 0.35);
+        }
+        #toast-container {
+            position: fixed; top: 5rem; right: 2rem; z-index: 999999;
+            display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
+        }
+        .toast-card {
+            background: rgba(12, 20, 36, 0.96);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid #7cdc67; color: #ffffff;
+            padding: 0.75rem 1.25rem; border-radius: 12px; font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700;
+            display: flex; align-items: center; gap: 0.6rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(124, 220, 103, 0.4);
+            animation: toastSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastSlide {
+            0% { opacity: 0; transform: translateX(40px) scale(0.9); }
+            100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        .copy-pill-btn {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700;
+            background: rgba(165, 128, 250, 0.2); color: #d1bcff;
+            border: 1px solid rgba(165, 128, 250, 0.4); cursor: pointer;
+            transition: all 0.2s ease; margin-left: 0.4rem;
+        }
+        .copy-pill-btn:hover {
+            background: rgba(165, 128, 250, 0.4); color: #ffffff;
+            border-color: rgba(165, 128, 250, 0.7); box-shadow: 0 0 12px rgba(165, 128, 250, 0.5);
+        }
+
+</style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
+<canvas id="bg-canvas"></canvas>
+
+<!-- TopNavBar -->
+<header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
+<div class="flex justify-between items-center px-6 py-3.5 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
+    <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
+</a>
+<nav class="hidden md:flex gap-6">
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
+<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="faq.html"><span class="material-symbols-outlined text-[16px]">help</span> FAQ</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors text-sm hidden md:flex items-center gap-1.5" href="https://github.com/shansimmons-eng/tropelex" target="_blank" rel="noopener"><span class="material-symbols-outlined text-[16px]">code</span> View on GitHub</a>
+<div class="w-9 h-9 rounded-full overflow-hidden border border-purple-400/40 flex items-center justify-center bg-purple-500/20 shadow-md shadow-purple-500/20">
+<span class="material-symbols-outlined text-purple-300 text-[22px]">smart_toy</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow pt-28 pb-20 px-4 md:px-8 max-w-4xl mx-auto w-full">
+
+<div class="glass-card rounded-2xl p-8 border-engine mb-8">
+<h1 class="font-display-xl text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-indigo-100 to-cyan-200 font-extrabold mb-3">Technical &amp; Governance FAQ</h1>
+<p class="font-body-lg text-on-surface-variant text-base leading-relaxed">Answers for developers, architects, and teams new to AI-assisted coding: how Tropelex captures rationale, optimizes token consumption, enforces safety governance, and accelerates AI pair programming. Click any question to expand it.</p>
+</div>
+
+<div class="space-y-4">
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-tropelex-and-what-problem-does-it-solve">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is Tropelex and what problem does it solve?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Tropelex is a persistent memory and rationale engine designed for AI coding agents. It solves the "stateless AI" problem where agents lose architectural context between chat sessions and repeatedly make conflicting decisions.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Without Tropelex, every new session requires re-explaining architectural choices, tech stack preferences, and safety boundaries. Tropelex acts as a long-term memory layer that automatically injects relevant project decisions, learned coding patterns, and rationale graphs directly into the AI prompt context, keeping human developers and AI agents perfectly aligned over months of active development.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="where-is-governance-data-ingested-and-stored">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Where is governance data ingested and stored?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">All governance data, safety evaluation metadata, architectural decisions, and session histories are ingested directly from your workspace and stored in local JSON files inside the <code>memory/</code> directory.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Tropelex operates on a 100% local-first architecture:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Project Decisions &amp; Governance:</strong> Saved per project in <code>memory/&lt;project-name&gt;.json</code>.</li>
+<li><strong class="text-on-surface font-semibold">Research &amp; Citations:</strong> Managed in <code>memory/tropebook/citations.json</code> and <code>graph.json</code>.</li>
+<li><strong class="text-on-surface font-semibold">Session Diff Snapshots:</strong> Stored in <code>memory/snapshots/</code> for time-travel and rollback.</li>
+</ul>
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">No governance metrics or project code files are ever transmitted to third-party cloud servers or external databases.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-do-i-do-if-i-am-not-seeing-any-results-for-the-active-page">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What do I do if I am not seeing any results for the active page?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">If a section displays empty metrics or zero decisions, ensure a project is selected in the top-bar dropdown (<code>#global-project-select</code>) and click the <strong class="text-on-surface font-semibold">Refresh</strong> button on the section panel.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Follow these quick diagnostic steps:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Check Global Project Selection:</strong> Look at the top-right header dropdown. If it displays <code>No project</code>, click to select your active project (e.g., <code>tropelex</code>).</li>
+<li><strong class="text-on-surface font-semibold">Run Diagnostic Self-Test:</strong> Navigate to <strong class="text-on-surface font-semibold">Getting Started</strong> (<code>Help Hub</code>) and click <strong class="text-on-surface font-semibold">Re-test All Systems</strong> to verify FastAPI backend connection and Pytest status.</li>
+<li><strong class="text-on-surface font-semibold">Verify File Memory:</strong> Confirm that <code>memory/&lt;project-name&gt;.json</code> exists in your workspace root. If empty, run <code>/tropelex-show-context</code> or record a starter decision.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-best-way-to-consistently-record-decisions-and-activity">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the best way to consistently record decisions and activity?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The most consistent method is using Tropelex slash commands during agent prompts, capturing directly from Emacs (<code>C-c t c</code>), or committing code with conventional Git commit messages.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Here are the 3 recommended capture channels:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Slash Command (In Chat):</strong> <code>/tropelex-record-decision &lt;what&gt; | &lt;why&gt;</code> (e.g., <code>/tropelex-record-decision Used Application Passwords | WP auth needed X-API-Key fallback</code>).</li>
+<li><strong class="text-on-surface font-semibold">Emacs Integration:</strong> Press <code>C-c t c</code> inside any code buffer to automatically capture the active function signature, project name, and decision context.</li>
+<li><strong class="text-on-surface font-semibold">Conventional Commits:</strong> Commit code with descriptive conventional messages (e.g., <code>feat: implement Redis cache strategy for session tokens</code>). Tropelex automatically extracts decisions and rationale directly from git diffs.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-can-i-improve-my-general-ai-coding-workflows">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How can I improve my general AI coding workflows?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Improving AI coding relies on <strong class="text-on-surface font-semibold">Context Precision</strong> over prompt length: provide high-signal architectural constraints, clear boundary conditions, and authoritative file snippets while omitting irrelevant code.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Top practices for maximizing AI coding performance:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Load Context First:</strong> Always begin sessions by injecting past architectural decisions (<code>/tropelex-show-context</code>) so the AI does not re-invent patterns.</li>
+<li><strong class="text-on-surface font-semibold">Enforce Single Responsibilities:</strong> Break large monolithic requests into modular sub-tasks with verifiable acceptance criteria.</li>
+<li><strong class="text-on-surface font-semibold">Use Code Signatures:</strong> Pass type definitions, interface contracts, and function signatures rather than dumping 2,000 lines of implementation logic.</li>
+<li><strong class="text-on-surface font-semibold">Demand Automated Verification:</strong> Instruct the AI to run unit tests (<code>pytest</code>) or linters (<code>ruff</code>) to verify changes before declaring a task complete.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-makes-the-ais-job-easier-and-potentially-reduces-token-consumption">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What makes the AI's job easier and potentially reduces token consumption?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Using Tropelex's <strong class="text-on-surface font-semibold">Context Compressor</strong> and <strong class="text-on-surface font-semibold">Prompt Lab</strong> reduces prompt size by up to 80% by stripping boilerplate while preserving critical type signatures, active decisions, and code interfaces.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Key strategies for drastic token reduction:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Signature Extraction:</strong> Tropelex's <code>ContextCompressor</code> keeps class definitions, function parameters, and docstrings while dropping function bodies.</li>
+<li><strong class="text-on-surface font-semibold">Prefetching:</strong> The <strong class="text-on-surface font-semibold">Context Prefetch</strong> engine (<code>Explainability &amp; Discovery</code>) analyzes your task and outputs only the exact minimal context bundle needed.</li>
+<li><strong class="text-on-surface font-semibold">Anti-Rationalization:</strong> Recording decisions once prevents the AI from engaging in long, expensive reasoning loops to rediscover why a library or pattern was chosen.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-context-compression-and-how-does-it-work">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is context compression and how does it work?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Context compression (<code>core/context-compressor/compressor.py</code>) is an automated pipeline that trims long code files and session transcripts while preserving high-signal type signatures and core logic.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The compressor uses three strategies:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold"><code>extract_signatures(code)</code></strong>: Replaces function and method bodies with <code>...</code> while maintaining exact parameters, return types, and class hierarchies.</li>
+<li><strong class="text-on-surface font-semibold">Priority Trimming:</strong> Keeps top-level decisions and active constraints while condensing past log history.</li>
+<li><strong class="text-on-surface font-semibold">Summarization:</strong> Keeps opening requirements and final outcomes while collapsing middle conversation loops.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-tropelex-prevent-ai-hallucinations-and-contradictions">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex prevent AI hallucinations and contradictions?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Tropelex features a <strong class="text-on-surface font-semibold">Contradiction Detector</strong> (<code>Quality &amp; Integrity</code>) that performs pairwise evaluation of active decisions to surface conflicting claims before code is written.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">For example, if one decision states <code>"Use Postgres for primary database"</code> and a new prompt attempts to <code>"Use MySQL for primary database"</code>, Tropelex immediately flags a high-priority contradiction. The AI agent is forced to resolve or supersede the conflict before proceeding, preventing architectural hallucinations.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-synthetic-data">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is synthetic data?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Synthetic data refers to artificially generated datasets—created via LLMs, algorithmic text synthesis, diffusion models, or CTGAN—used to train, fine-tune, or benchmark AI models without relying on sensitive real-world user data.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">In modern AI engineering, synthetic data allows teams to generate massive, privacy-preserving edge-case testing sets and alignment benchmarks. However, because synthetic data lacks human unpredictability, unmonitored synthetic datasets can introduce bias, hallucinated edge cases, and compliance risks under emerging AI regulations.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="why-should-i-provide-synthetic-data-details">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Why should I provide synthetic data details?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Providing synthetic data details prevents the catastrophic <strong class="text-on-surface font-semibold">"Synthetic Mirror" risk</strong>—an AI feedback loop where models train on AI-generated data, leading to severe mode collapse, rationale drift, and degraded reasoning over time.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Registering synthetic datasets in Tropelex enforces compliance with <strong class="text-on-surface font-semibold">EU AI Act Articles 10 &amp; 50</strong> by standardizing "nutritional labels" for every dataset:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Synthetic-to-Real Ratio:</strong> Ensures adequate grounding against real-world sample data.</li>
+<li><strong class="text-on-surface font-semibold">Provenance &amp; Authorization:</strong> Tracks Data Protection Officer (DPO) approvals and lawful seed data.</li>
+<li><strong class="text-on-surface font-semibold">Operational Constraints:</strong> Demarcates prohibited use-cases and risk tiers before data enters model fine-tuning loops.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-eu-ai-act-compliance-checker-in-the-synthetic-data-policy">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the EU AI Act compliance checker in the Synthetic Data Policy?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The compliance checker evaluates registered synthetic datasets against EU AI Act risk tiers (Minimal Risk, Specific Transparency, High Risk, Systemic Risk) to ensure proper labeling and data governance.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Under EU AI Act Articles 10 &amp; 50:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li>Synthetic text and media must be marked with Machine-Readable Provenance.</li>
+<li>High-risk training sets require audited seed data lineage and lawful basis documentation.</li>
+<li>Tropelex automatically flags datasets missing DPO authorization or synthetic-to-real ratio bounds as <strong class="text-on-surface font-semibold">Non-Compliant</strong>.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-the-pre-write-safety-guard-evaluate-proposed-diffs">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does the Pre-Write Safety Guard evaluate proposed diffs?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The Pre-Write Safety Guard (<code>Quality &amp; Integrity</code>) lets you paste a proposed code diff or function change *before* applying it to test if it violates active decisions or security rules.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">When you click <strong class="text-on-surface font-semibold">Check for Ghosts / Pre-Write Check</strong>, Tropelex parses the AST and diff signature, comparing it against the project decision graph. If the proposed code introduces an unrecorded architecture change or breaks a safety constraint, Tropelex issues a warning report with recommended mitigations.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-an-architecture-decision-record-adr">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Architecture Decision Record (ADR)?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">An <strong class="text-on-surface font-semibold">ADR (Architecture Decision Record)</strong> is a short text document that captures an important architectural choice made in a project, along with its context, rationale, and consequences.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Tropelex introduces <strong class="text-on-surface font-semibold">Living ADRs</strong> (<code>core/adr_generator.py</code>), which automatically compile your recorded project decisions into standardized industry formats:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Nygard Format:</strong> Concise Title, Context, Decision, and Status.</li>
+<li><strong class="text-on-surface font-semibold">MADR (Markdown Architectural Decision Records):</strong> Standardized rationale, options considered, and pros/cons.</li>
+<li><strong class="text-on-surface font-semibold">Tropelex Enhanced:</strong> Enriched with live decision tree relationships (supersedes, caused_by, reverts) and real-time confidence scores.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-difference-between-a-static-adr-and-a-living-adr">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the difference between a static ADR and a Living ADR?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Traditional ADRs are static Markdown files written manually that quickly become outdated. A <strong class="text-on-surface font-semibold">Living ADR</strong> in Tropelex is dynamically generated from real-time project memory, automatically updating confidence scores and lineage graph connections.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Unlike static files:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li>Living ADRs track <strong class="text-on-surface font-semibold">Downstream Impact</strong> (which subsequent decisions were caused by this choice).</li>
+<li>Living ADRs incorporate <strong class="text-on-surface font-semibold">Time-Based Knowledge Decay</strong> scores.</li>
+<li>Living ADRs automatically update when a decision is superseded or reverted in Git.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-are-ghost-decisions-and-why-do-they-matter">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What are Ghost Decisions and why do they matter?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Ghost decisions occur when developers or AI agents write new code features or change architectures without logging the underlying rationale in project memory.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Ghost decisions create "silent drift," where future AI agents misunderstand the codebase structure and unintentionally break or revert unrecorded choices. Tropelex's <strong class="text-on-surface font-semibold">Ghost Decision Scanner</strong> (<code>Quality &amp; Integrity</code>) scans your repository diffs against active memory to surface uncaptured decisions before technical debt accumulates.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-knowledge-graph-and-how-are-decisions-connected">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the Knowledge Graph and how are decisions connected?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The Knowledge Graph (<code>Content</code> -&gt; <code>Knowledge Graph</code>) is a D3.js visualization powered by <code>DecisionTree</code> (<code>core/decision_tree.py</code>) that auto-detects relationships between architectural choices.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">The graph automatically links decisions using 4 key relationship types:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><code>supersedes</code>: A newer decision replaces an older strategy.</li>
+<li><code>caused_by</code>: A decision was required due to a previous technical choice.</li>
+<li><code>related_to</code>: Shared component or tag context.</li>
+<li><code>reverts</code>: Undoes a previous decision.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-tropelex-track-developer-friction-and-frustration-signals">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex track developer friction and frustration signals?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Friction Mining (<code>Quality &amp; Integrity</code>) scans session transcripts and editor behavior for implicit frustration signals (such as rapid repeated file saves, failed compilation loops, or repeated prompts).</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">When 5+ rapid saves occur in 5 seconds or a build command fails twice, Tropelex flags a <strong class="text-on-surface font-semibold">Friction Zone</strong>. This alerts team leads and AI agents to clarify underspecified requirements before developer fatigue sets in.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-an-agent-handoff-packet-and-when-should-i-use-it">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Agent Handoff Packet and when should I use it?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">An Agent Handoff Packet (<code>Team &amp; Collaboration</code> -&gt; <code>Agent Handoff</code>) is a role-tailored context bundle designed to transfer work from one specialized agent role to another (e.g., from <code>Architect</code> to <code>CoderAgent</code> or <code>TestEngineer</code>).</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Instead of dumping raw context, the packet builder (<code>core/handoff/packet_builder.py</code>) filters decisions and requirements to match the receiving agent's role profile:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold"><code>CoderAgent</code></strong>: Receives function signatures, active API tasks, and structural guidelines.</li>
+<li><strong class="text-on-surface font-semibold"><code>TestEngineer</code></strong>: Receives boundary conditions, failure cases, and assertion targets.</li>
+<li><strong class="text-on-surface font-semibold"><code>DevOpsSpecialist</code></strong>: Receives deployment constraints, environment variables, and safety envelope limits.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="can-tropelex-share-rationale-and-knowledge-across-different-projects">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Can Tropelex share rationale and knowledge across different projects?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Yes. Tropelex includes a <strong class="text-on-surface font-semibold">Cross-Pollination Engine</strong> (<code>core/rag.py</code>) that searches across multiple project memories to suggest proven architectural solutions and patterns from other repositories.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">If you encounter a problem in project B (e.g., <code>"implement JWT auth with refresh tokens"</code>), Tropelex's semantic RAG engine checks project A's decision ledger and suggests identical, verified solutions that succeeded in past sessions.</p>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-integrate-tropelex-with-emacs-or-vscode">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I integrate Tropelex with Emacs or VSCode?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Tropelex includes native integrations for Emacs (<code>emacs/tropelex-capture.el</code>) and VSCode extensions.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">In Emacs:</p>
+<ul class="list-disc list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><code>C-c t c</code>: Capture active buffer / function as a decision.</li>
+<li><code>C-c t r</code>: Capture selected region as decision context.</li>
+<li><code>C-c t f</code>: Scan buffer for friction signals.</li>
+<li><code>C-c t g</code>: Capture current git HEAD commit as a decision.</li>
+</ul>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-rollback-memory-or-time-travel-to-a-previous-session">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I rollback memory or time-travel to a previous session?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Session Replay (<code>core/session_replay.py</code>) snapshots memory state at the start and end of every session, allowing you to view structured diffs or rollback project memory.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">If an experimental session introduced unwanted or incorrect decisions into project memory:</p>
+<ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li>Navigate to <strong class="text-on-surface font-semibold">Memory Lifecycle</strong> -&gt; <strong class="text-on-surface font-semibold">Session Replay</strong>.</li>
+<li>Click <strong class="text-on-surface font-semibold">diff</strong> to inspect exact memory changes made during that session.</li>
+<li>Click <strong class="text-on-surface font-semibold">Rollback</strong> (<code>rollback_session()</code>) to restore project memory to the exact state before that session began.</li>
+</ol>
+</div>
+</details>
+
+<details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-run-the-automated-pytest-suite-to-verify-system-health">
+<summary class="cursor-pointer list-none flex items-start justify-between gap-4">
+  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I run the automated Pytest suite to verify system health?</h3>
+  <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-3">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Per the Tropelex testing mandate, run <code>pytest</code> directly in your Linux/WSL terminal:</p>
+<pre><code>pytest tests/ -x -q</code></pre>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">All 1,450+ unit tests must pass before declaring features or bug fixes complete. Note: Last30Days engine tests consume external API tokens and are excluded by default; to run them explicitly, run <code>pytest -m last30days</code>.</p>
+</div>
+</details>
+</div>
+
+<div class="glass-card rounded-2xl p-8 border-engine mt-8 text-center">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-2">Need Further Help?</h2>
+<p class="text-sm text-on-surface-variant">Once you're running Tropelex, launch the dashboard at <code>http://localhost:8766</code> and open <a class="text-indigo-300 underline hover:text-indigo-200" href="getting-started.html">Getting Started</a> for live diagnostics and one-click CLI copiers. Otherwise, see the full <a class="text-indigo-300 underline hover:text-indigo-200" href="index.html">Documentation</a> or the <a class="text-indigo-300 underline hover:text-indigo-200" href="https://github.com/shansimmons-eng/tropelex" target="_blank" rel="noopener">GitHub repo</a>.</p>
+</div>
+
+</main>
+
+<div id="toast-container"></div>
+<div id="global-tooltip"></div>
+<div id="toast-container"></div>
+
+<script>
+    // 1. Fixed Body-Level Floating Tooltip Engine (Guaranteed 100% Unclipped)
+    (function() {
+        const tooltipEl = document.getElementById('global-tooltip') || document.createElement('div');
+        tooltipEl.id = 'global-tooltip';
+        if (!document.body.contains(tooltipEl)) document.body.appendChild(tooltipEl);
+
+        let activeEl = null;
+
+        document.addEventListener('mousemove', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (!target) {
+                if (activeEl) {
+                    tooltipEl.style.opacity = '0';
+                    tooltipEl.style.visibility = 'hidden';
+                    activeEl = null;
+                }
+                return;
+            }
+
+            const text = target.getAttribute('data-tooltip');
+            if (!text) return;
+
+            activeEl = target;
+            tooltipEl.innerHTML = text;
+            tooltipEl.style.visibility = 'visible';
+            tooltipEl.style.opacity = '1';
+
+            const rect = target.getBoundingClientRect();
+            let top = rect.top - 42;
+            let left = rect.left + (rect.width / 2);
+
+            if (top < 10) top = rect.bottom + 10;
+            if (left < 80) left = 80;
+            if (left > window.innerWidth - 80) left = window.innerWidth - 80;
+
+            tooltipEl.style.top = top + 'px';
+            tooltipEl.style.left = left + 'px';
+            tooltipEl.style.transform = 'translateX(-50%)';
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target && target === activeEl) {
+                tooltipEl.style.opacity = '0';
+                tooltipEl.style.visibility = 'hidden';
+                activeEl = null;
+            }
+        });
+    })();
+
+    // 2. High-Visibility Toast Notification Helper
+    function showToast(msg) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'toast-card';
+        toast.innerHTML = '<span class="material-symbols-outlined text-[20px]" style="color:#7cdc67;">check_circle</span> <span>' + msg + '</span>';
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(40px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    }
+
+    // 3. Universal Copy Handler with Fallback Support
+    function copyCodeText(text, shortLabel) {
+        const cleanText = text.trim();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(cleanText).then(() => {
+                showToast('Copied: ' + (shortLabel || cleanText.substring(0, 25) + '...'));
+            }).catch(() => fallbackCopy(cleanText, shortLabel));
+        } else {
+            fallbackCopy(cleanText, shortLabel);
+        }
+    }
+
+    function fallbackCopy(text, shortLabel) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('Copied: ' + (shortLabel || text.substring(0, 25) + '...'));
+        } catch (e) {
+            showToast('Copy Failed');
+        }
+        document.body.removeChild(ta);
+    }
+
+    // 4. Initialize Copy Buttons on All PRE Blocks and Standalone Code Elements
+    document.addEventListener('DOMContentLoaded', () => {
+        // PRE blocks
+        document.querySelectorAll('pre').forEach((pre, idx) => {
+            if (!pre.parentElement.classList.contains('code-copy-wrap')) {
+                const wrap = document.createElement('div');
+                wrap.className = 'code-copy-wrap';
+                pre.parentNode.insertBefore(wrap, pre);
+                
+                const dots = document.createElement('div');
+                dots.className = 'mac-dots';
+                dots.innerHTML = '<span class="mac-dot mac-dot-red"></span><span class="mac-dot mac-dot-yellow"></span><span class="mac-dot mac-dot-green"></span>';
+                wrap.appendChild(dots);
+                
+                wrap.appendChild(pre);
+
+                const btn = document.createElement('button');
+                btn.className = 'copy-btn-floating';
+                btn.type = 'button';
+                btn.setAttribute('data-tooltip', 'Copy code snippet');
+                btn.innerHTML = '<span class="material-symbols-outlined text-[14px]">content_copy</span><span>Copy Code</span>';
+                btn.onclick = () => copyCodeText(pre.innerText, 'Code Snippet #' + (idx + 1));
+                wrap.insertBefore(btn, pre);
+            } else {
+                const btn = pre.parentElement.querySelector('.copy-btn-floating');
+                if (btn) {
+                    btn.setAttribute('data-tooltip', 'Copy code snippet');
+                    btn.onclick = () => copyCodeText(pre.innerText, 'Code Snippet #' + (idx + 1));
+                }
+            }
+        });
+
+        // Standalone inline CODE tags
+        document.querySelectorAll('code').forEach(code => {
+            if (code.closest('pre')) return; // skip code inside pre
+            
+            // Add tooltip and copy handler
+            const codeText = code.innerText || code.textContent || '';
+            if (codeText.length > 2) {
+                code.setAttribute('data-tooltip', 'Click to copy: ' + codeText);
+                code.style.cursor = 'pointer';
+                code.onclick = (e) => {
+                    e.stopPropagation();
+                    copyCodeText(codeText, codeText);
+                };
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

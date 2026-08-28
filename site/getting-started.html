@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html class="dark scroll-smooth" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tropelex Getting Started</title>
+<link rel="icon" type="image/x-icon" href="images/TL1.ico"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#121829",
+                      "on-primary-container": "#3a008b",
+                      "on-error-container": "#ffdad6",
+                      "surface-tint": "#d1bcff",
+                      "primary-fixed": "#eaddff",
+                      "on-primary": "#3c058d",
+                      "outline": "#958e9e",
+                      "on-surface-variant": "#cbc3d5",
+                      "error-container": "#93000a",
+                      "surface-bright": "#32394c",
+                      "on-primary-fixed": "#24005b",
+                      "secondary-fixed-dim": "#7cd1f6",
+                      "surface-container-high": "#1e263b",
+                      "tertiary-container": "#4ca93a",
+                      "surface": "#0a0f1d",
+                      "on-secondary-fixed": "#001f2a",
+                      "on-secondary": "#003546",
+                      "on-primary-fixed-variant": "#532ba4",
+                      "primary": "#d1bcff",
+                      "primary-container": "#a580fa",
+                      "tertiary-fixed": "#98fa80",
+                      "on-error": "#690005",
+                      "surface-container": "#151c2e",
+                      "outline-variant": "#494452",
+                      "surface-container-lowest": "#060a17",
+                      "secondary-fixed": "#bde9ff",
+                      "on-tertiary-fixed": "#012200",
+                      "on-tertiary": "#023a00",
+                      "on-tertiary-fixed-variant": "#045300",
+                      "surface-container-highest": "#283149",
+                      "inverse-on-surface": "#293042",
+                      "secondary": "#7cd1f6",
+                      "on-surface": "#dce2fa",
+                      "on-tertiary-container": "#023700",
+                      "inverse-primary": "#6c46bd",
+                      "on-secondary-fixed-variant": "#004d64",
+                      "surface-dim": "#0a0f1d",
+                      "primary-fixed-dim": "#d1bcff",
+                      "tertiary-fixed-dim": "#7cdc67",
+                      "secondary-container": "#007697",
+                      "on-secondary-container": "#def3ff",
+                      "on-background": "#dce2fa",
+                      "inverse-surface": "#dce2fa",
+                      "surface-variant": "#283149",
+                      "background": "#0a0f1d",
+                      "tertiary": "#7cdc67",
+                      "error": "#ffb4ab"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "1.75rem",
+                      "xl": "2.5rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "280px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-lg": ["JetBrains Mono"],
+                      "display-xl": ["JetBrains Mono"],
+                      "label-caps": ["JetBrains Mono"],
+                      "headline-md": ["JetBrains Mono"],
+                      "code-sm": ["JetBrains Mono"],
+                      "body-md": ["Plus Jakarta Sans"]
+              },
+              animation: {
+                  'fade-in-up': 'fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                  'slide-in-left': 'slideInLeft 0.5s ease-out forwards',
+                  'pulse-glow': 'pulseGlow 2.5s infinite ease-in-out',
+                  'shimmer': 'shimmer 3s infinite linear',
+              },
+              keyframes: {
+                  fadeInUp: {
+                      '0%': { opacity: '0', transform: 'translateY(24px)' },
+                      '100%': { opacity: '1', transform: 'translateY(0)' },
+                  },
+                  slideInLeft: {
+                      '0%': { opacity: '0', transform: 'translateX(-20px)' },
+                      '100%': { opacity: '1', transform: 'translateX(0)' },
+                  },
+                  pulseGlow: {
+                      '0%, 100%': { opacity: '0.6', filter: 'drop-shadow(0 0 15px rgba(165, 128, 250, 0.4))' },
+                      '50%': { opacity: '1', filter: 'drop-shadow(0 0 25px rgba(165, 128, 250, 0.8))' },
+                  }
+              }
+            },
+          },
+        }
+</script>
+<style>
+        body {
+            background-color: #060a17;
+            color: #dce2fa;
+            -webkit-font-smoothing: antialiased;
+        }
+        #bg-canvas {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: -1; pointer-events: none;
+        }
+        .glass-panel {
+            background: rgba(10, 15, 29, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(165, 128, 250, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        }
+        .glass-card {
+            background: rgba(14, 20, 37, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(165, 128, 250, 0.16);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+        .glass-card::before {
+            content: ''; position: absolute;
+            top: 0; left: -100%; width: 60%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg); transition: left 0.8s ease;
+            z-index: 1; pointer-events: none;
+        }
+        .glass-card:hover::before { left: 200%; }
+        .glass-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(165, 128, 250, 0.4);
+            box-shadow: 0 16px 48px -12px rgba(165, 128, 250, 0.15);
+        }
+        .glass-card:hover .icon-glow {
+            transform: scale(1.12) rotate(3deg);
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+        .icon-glow { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Domain Specific Neon Gradients & Border Accents */
+        .border-engine { border-top: 3px solid #a580fa; }
+        .border-quality { border-top: 3px solid #7cd1f6; }
+        .border-explainability { border-top: 3px solid #7cdc67; }
+        .border-safety { border-top: 3px solid #ffb4ab; }
+        .border-lifecycle { border-top: 3px solid #fac880; }
+        .border-research { border-top: 3px solid #f080fa; }
+        .border-team { border-top: 3px solid #8098fa; }
+        .border-ops { border-top: 3px solid #80fad5; }
+
+        .method-get { background: rgba(124, 220, 103, 0.15); color: #7cdc67; border: 1px solid rgba(124, 220, 103, 0.3); }
+        .method-post { background: rgba(124, 209, 246, 0.15); color: #7cd1f6; border: 1px solid rgba(124, 209, 246, 0.3); }
+        .method-patch { background: rgba(250, 200, 128, 0.15); color: #fac880; border: 1px solid rgba(250, 200, 128, 0.3); }
+        .method-delete { background: rgba(255, 180, 171, 0.15); color: #ffb4ab; border: 1px solid rgba(255, 180, 171, 0.3); }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(165, 128, 250, 0.8); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(165, 128, 250, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(165, 128, 250, 0); }
+        }
+        .status-led {
+            width: 9px; height: 9px; border-radius: 50%;
+            background-color: #a580fa; animation: pulse 2s infinite;
+        }
+
+        .nav-link { position: relative; }
+        .nav-link::after {
+            content: ''; position: absolute; width: 0; height: 2px;
+            bottom: -2px; left: 0; background: linear-gradient(90deg, #a580fa, #7cd1f6);
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after, .nav-link.active-nav::after { width: 100%; }
+
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(165, 128, 250, 0.25); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(165, 128, 250, 0.45); }
+
+        h1, h2, h3, h4, .font-display-xl, .font-headline-lg, .font-headline-md, .font-label-caps, .font-code-sm {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        body, p, span, .font-body-lg, .font-body-md { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .stagger-1 { animation-delay: 0.08s; }
+        .stagger-2 { animation-delay: 0.16s; }
+        .stagger-3 { animation-delay: 0.24s; }
+        .stagger-4 { animation-delay: 0.32s; }
+        .stagger-5 { animation-delay: 0.40s; }
+        .stagger-6 { animation-delay: 0.48s; }
+        .stagger-7 { animation-delay: 0.56s; }
+        .stagger-8 { animation-delay: 0.64s; }
+
+        pre { background: rgba(5, 8, 18, 0.95); padding: 1.1rem; border-radius: 12px; overflow-x: auto; border: 1px solid rgba(165, 128, 250, 0.2); font-family: 'JetBrains Mono', monospace; font-size: 0.83rem; color: #7cd1f6; margin-top: 0.6rem; margin-bottom: 1rem; }
+        code { font-family: 'JetBrains Mono', monospace; background: rgba(20, 28, 48, 0.85); padding: 0.15rem 0.45rem; border-radius: 5px; color: #80d5fa; font-size: 0.83rem; border: 1px solid rgba(128, 213, 250, 0.15); }
+        pre code { padding: 0; background: none; color: inherit; border: none; }
+        .code-copy-wrap { position: relative; margin-top: 0.6rem; margin-bottom: 1rem; }
+        .code-copy-wrap pre { margin: 0; padding-top: 2.5rem; }
+        .copy-btn-floating {
+            position: absolute; top: 0.5rem; right: 0.6rem;
+            display: flex; align-items: center; gap: 0.3rem;
+            padding: 0.25rem 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+            color: #cbc3d5; background: rgba(18, 25, 45, 0.9); border: 1px solid rgba(165, 128, 250, 0.25);
+            border-radius: 7px; cursor: pointer; transition: all 0.2s ease; z-index: 10;
+        }
+        .copy-btn-floating:hover { color: #dce2fa; border-color: rgba(165, 128, 250, 0.6); background: rgba(30, 40, 70, 0.95); }
+        .copy-btn-floating.copied { color: #7cdc67; border-color: rgba(124, 220, 103, 0.6); }
+
+        .mac-dots { display: flex; gap: 6px; position: absolute; top: 0.7rem; left: 0.8rem; z-index: 10; }
+        .mac-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .mac-dot-red { background: #ff5f56; }
+        .mac-dot-yellow { background: #ffbd2e; }
+        .mac-dot-green { background: #27c93f; }
+
+        
+        #toast-container {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 100;
+            display: flex; flex-col; gap: 0.5rem; pointer-events: none;
+        }
+        .toast-msg {
+            background: rgba(14, 20, 37, 0.95);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(124, 220, 103, 0.4); color: #7cdc67;
+            padding: 0.6rem 1rem; border-radius: 12px; font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 600;
+            display: flex; align-items: center; gap: 0.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Interactive inline code clickable copy badge */
+        code.interactive-copy {
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+        }
+        code.interactive-copy:hover {
+            border-color: rgba(165, 128, 250, 0.5); background: rgba(165, 128, 250, 0.15);
+        }
+
+
+        /* Global High-Visibility Fixed Tooltip & Toast */
+        #global-tooltip {
+            position: fixed; z-index: 999999; pointer-events: none;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            background: rgba(10, 15, 28, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(165, 128, 250, 0.6); color: #f0edfe;
+            padding: 0.45rem 0.8rem; border-radius: 9px; font-size: 0.75rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600;
+            white-space: nowrap; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(165, 128, 250, 0.35);
+        }
+        #toast-container {
+            position: fixed; top: 5rem; right: 2rem; z-index: 999999;
+            display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
+        }
+        .toast-card {
+            background: rgba(12, 20, 36, 0.96);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid #7cdc67; color: #ffffff;
+            padding: 0.75rem 1.25rem; border-radius: 12px; font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700;
+            display: flex; align-items: center; gap: 0.6rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(124, 220, 103, 0.4);
+            animation: toastSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastSlide {
+            0% { opacity: 0; transform: translateX(40px) scale(0.9); }
+            100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        .copy-pill-btn {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700;
+            background: rgba(165, 128, 250, 0.2); color: #d1bcff;
+            border: 1px solid rgba(165, 128, 250, 0.4); cursor: pointer;
+            transition: all 0.2s ease; margin-left: 0.4rem;
+        }
+        .copy-pill-btn:hover {
+            background: rgba(165, 128, 250, 0.4); color: #ffffff;
+            border-color: rgba(165, 128, 250, 0.7); box-shadow: 0 0 12px rgba(165, 128, 250, 0.5);
+        }
+
+</style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
+<canvas id="bg-canvas"></canvas>
+
+<!-- TopNavBar -->
+<header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
+<div class="flex justify-between items-center px-6 py-3.5 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
+    <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
+</a>
+<nav class="hidden md:flex gap-6">
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="faq.html"><span class="material-symbols-outlined text-[16px]">help</span> FAQ</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors text-sm hidden md:flex items-center gap-1.5" href="https://github.com/shansimmons-eng/tropelex" target="_blank" rel="noopener"><span class="material-symbols-outlined text-[16px]">code</span> View on GitHub</a>
+<div class="w-9 h-9 rounded-full overflow-hidden border border-purple-400/40 flex items-center justify-center bg-purple-500/20 shadow-md shadow-purple-500/20">
+<span class="material-symbols-outlined text-purple-300 text-[22px]">smart_toy</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow pt-28 pb-20 px-4 md:px-8 max-w-4xl mx-auto w-full">
+
+<div class="glass-card rounded-2xl p-8 border-engine mb-8">
+<h1 class="font-display-xl text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-indigo-100 to-cyan-200 font-extrabold mb-3">Getting Started</h1>
+<p class="font-body-lg text-on-surface-variant text-base leading-relaxed">Tropelex runs on your own machine against your own projects — there's no hosted version to sign up for. This is the shortest path from clone to a working dashboard.</p>
+</div>
+
+<div class="space-y-6">
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">checklist</span> Requirements</h2>
+<ul class="list-disc list-inside space-y-1.5 text-sm text-on-surface-variant">
+<li>Python 3.10+</li>
+<li><code>uv</code> (recommended) or <code>pip</code></li>
+<li>OpenAI API key — optional, only needed for AI-backed prompt compression (a dictionary-based fallback works without one)</li>
+<li>Brave Search API key — optional, falls back to the free DuckDuckGo provider</li>
+</ul>
+</div>
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_one</span> Clone and install</h2>
+<pre><code>git clone https://github.com/shansimmons-eng/tropelex.git
+cd tropelex
+
+# With uv (recommended)
+uv venv
+uv pip install -r requirements.txt
+
+# Or with pip
+pip install -r requirements.txt</code></pre>
+</div>
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_two</span> Set your API key (optional)</h2>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-2">Create a <code>.env</code> file in the project root — skip this entirely and Tropelex still runs, with AI compression falling back to dictionary-based rules:</p>
+<pre><code>OPENAI_API_KEY=sk-your-key-here
+BRAVE_SEARCH_API_KEY=your-brave-key-here   # optional</code></pre>
+</div>
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_3</span> Start the server</h2>
+<pre><code>python -m core.tropebook.web.server</code></pre>
+<p class="text-sm text-on-surface-variant leading-relaxed mt-2">Then open <code>http://localhost:8766</code> in your browser.</p>
+</div>
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_4</span> First steps in the dashboard</h2>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-3">This mirrors the in-app "Getting Started" checklist (Engine Core sidebar) — the same four steps get you from a blank install to a project that actually has memory worth having:</p>
+<ol class="list-decimal list-inside space-y-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Create a project</strong> — the "+ New" button in the top bar. A project is a scoped memory store; you can have as many as you have codebases.</li>
+<li><strong class="text-on-surface font-semibold">Record a decision</strong> — Memory tab → "+ Add Decision," or from your own agent/editor via the MCP tools, Emacs integration, or a slash command. This is the seed every other feature (drift detection, ADRs, the decision graph) reads from.</li>
+<li><strong class="text-on-surface font-semibold">Configure API keys</strong> — Settings, if you want AI-backed compression or Brave-powered search instead of the free fallbacks.</li>
+<li><strong class="text-on-surface font-semibold">Set up a research feed</strong> — Research &amp; Ingestion → Research Feeds, if you want Tropelex to keep pulling outside signal into a project's memory on a schedule instead of only capturing what you feed it manually.</li>
+</ol>
+</div>
+
+<div class="glass-card rounded-2xl p-6 border-engine">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">terminal</span> Using it from an AI coding agent</h2>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-2">A project-scoped <code>.mcp.json</code> is committed at the repo root, so opening the cloned repo in Claude Code registers the <code>tropelex</code> MCP server automatically — no manual setup. For other MCP clients, or Emacs/OpenCode specifically, see the full <a class="text-indigo-300 underline hover:text-indigo-200" href="index.html#mcp-server">Documentation</a> for setup steps.</p>
+</div>
+
+</div>
+
+<div class="glass-card rounded-2xl p-8 border-engine mt-8 text-center">
+<h2 class="font-headline-md text-lg font-bold text-on-surface mb-2">Next</h2>
+<p class="text-sm text-on-surface-variant">Read the full <a class="text-indigo-300 underline hover:text-indigo-200" href="index.html">Documentation</a>, browse the <a class="text-indigo-300 underline hover:text-indigo-200" href="api-reference.html">API Reference</a>, or check the <a class="text-indigo-300 underline hover:text-indigo-200" href="faq.html">FAQ</a> if something isn't behaving the way you expect.</p>
+</div>
+
+</main>
+
+<div id="toast-container"></div>
+<div id="global-tooltip"></div>
+<div id="toast-container"></div>
+
+<script>
+    // 1. Fixed Body-Level Floating Tooltip Engine (Guaranteed 100% Unclipped)
+    (function() {
+        const tooltipEl = document.getElementById('global-tooltip') || document.createElement('div');
+        tooltipEl.id = 'global-tooltip';
+        if (!document.body.contains(tooltipEl)) document.body.appendChild(tooltipEl);
+
+        let activeEl = null;
+
+        document.addEventListener('mousemove', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (!target) {
+                if (activeEl) {
+                    tooltipEl.style.opacity = '0';
+                    tooltipEl.style.visibility = 'hidden';
+                    activeEl = null;
+                }
+                return;
+            }
+
+            const text = target.getAttribute('data-tooltip');
+            if (!text) return;
+
+            activeEl = target;
+            tooltipEl.innerHTML = text;
+            tooltipEl.style.visibility = 'visible';
+            tooltipEl.style.opacity = '1';
+
+            const rect = target.getBoundingClientRect();
+            let top = rect.top - 42;
+            let left = rect.left + (rect.width / 2);
+
+            if (top < 10) top = rect.bottom + 10;
+            if (left < 80) left = 80;
+            if (left > window.innerWidth - 80) left = window.innerWidth - 80;
+
+            tooltipEl.style.top = top + 'px';
+            tooltipEl.style.left = left + 'px';
+            tooltipEl.style.transform = 'translateX(-50%)';
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target && target === activeEl) {
+                tooltipEl.style.opacity = '0';
+                tooltipEl.style.visibility = 'hidden';
+                activeEl = null;
+            }
+        });
+    })();
+
+    // 2. High-Visibility Toast Notification Helper
+    function showToast(msg) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'toast-card';
+        toast.innerHTML = '<span class="material-symbols-outlined text-[20px]" style="color:#7cdc67;">check_circle</span> <span>' + msg + '</span>';
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(40px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    }
+
+    // 3. Universal Copy Handler with Fallback Support
+    function copyCodeText(text, shortLabel) {
+        const cleanText = text.trim();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(cleanText).then(() => {
+                showToast('Copied: ' + (shortLabel || cleanText.substring(0, 25) + '...'));
+            }).catch(() => fallbackCopy(cleanText, shortLabel));
+        } else {
+            fallbackCopy(cleanText, shortLabel);
+        }
+    }
+
+    function fallbackCopy(text, shortLabel) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('Copied: ' + (shortLabel || text.substring(0, 25) + '...'));
+        } catch (e) {
+            showToast('Copy Failed');
+        }
+        document.body.removeChild(ta);
+    }
+
+    // 4. Initialize Copy Buttons on All PRE Blocks and Standalone Code Elements
+    document.addEventListener('DOMContentLoaded', () => {
+        // PRE blocks
+        document.querySelectorAll('pre').forEach((pre, idx) => {
+            if (!pre.parentElement.classList.contains('code-copy-wrap')) {
+                const wrap = document.createElement('div');
+                wrap.className = 'code-copy-wrap';
+                pre.parentNode.insertBefore(wrap, pre);
+                
+                const dots = document.createElement('div');
+                dots.className = 'mac-dots';
+                dots.innerHTML = '<span class="mac-dot mac-dot-red"></span><span class="mac-dot mac-dot-yellow"></span><span class="mac-dot mac-dot-green"></span>';
+                wrap.appendChild(dots);
+                
+                wrap.appendChild(pre);
+
+                const btn = document.createElement('button');
+                btn.className = 'copy-btn-floating';
+                btn.type = 'button';
+                btn.setAttribute('data-tooltip', 'Copy code snippet');
+                btn.innerHTML = '<span class="material-symbols-outlined text-[14px]">content_copy</span><span>Copy Code</span>';
+                btn.onclick = () => copyCodeText(pre.innerText, 'Code Snippet #' + (idx + 1));
+                wrap.insertBefore(btn, pre);
+            } else {
+                const btn = pre.parentElement.querySelector('.copy-btn-floating');
+                if (btn) {
+                    btn.setAttribute('data-tooltip', 'Copy code snippet');
+                    btn.onclick = () => copyCodeText(pre.innerText, 'Code Snippet #' + (idx + 1));
+                }
+            }
+        });
+
+        // Standalone inline CODE tags
+        document.querySelectorAll('code').forEach(code => {
+            if (code.closest('pre')) return; // skip code inside pre
+            
+            // Add tooltip and copy handler
+            const codeText = code.innerText || code.textContent || '';
+            if (codeText.length > 2) {
+                code.setAttribute('data-tooltip', 'Click to copy: ' + codeText);
+                code.style.cursor = 'pointer';
+                code.onclick = (e) => {
+                    e.stopPropagation();
+                    copyCodeText(codeText, codeText);
+                };
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
