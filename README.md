@@ -1,5 +1,21 @@
 # Tropelex
 
+<p align="center">
+  <a href="https://shansimmons-eng.github.io/tropelex/"><img src="https://img.shields.io/badge/Docs-Full%20Guide-7c3aed?style=for-the-badge&logo=bookstack&logoColor=white" alt="Docs"/></a>
+  <a href="https://shansimmons-eng.github.io/tropelex/api-reference.html"><img src="https://img.shields.io/badge/API-Reference-0284c7?style=for-the-badge&logo=fastapi&logoColor=white" alt="API Reference"/></a>
+  <a href="https://shansimmons-eng.github.io/tropelex/getting-started.html"><img src="https://img.shields.io/badge/Getting%20Started-Guide-059669?style=for-the-badge&logo=rocket&logoColor=white" alt="Getting Started"/></a>
+  <a href="https://shansimmons-eng.github.io/tropelex/faq.html"><img src="https://img.shields.io/badge/FAQ-Reference-d97706?style=for-the-badge&logo=help-circle&logoColor=white" alt="FAQ"/></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/Tests-2672%20Passing-brightgreen?style=flat-square&logo=pytest&logoColor=white" alt="Tests"/>
+  <img src="https://img.shields.io/badge/Architecture-Linux--Native-E95420?style=flat-square&logo=linux&logoColor=white" alt="Linux Native"/>
+</p>
+
+---
+
 <table>
 <tr>
 <td width="50%"><img src="site/images/screenshots/01-engine-core-dashboard.jpg" alt="Engine Core dashboard"/></td>
@@ -12,7 +28,8 @@
 </table>
 <p align="center"><img src="site/images/screenshots/05-why-do-we.jpg" alt="Why Do We...? causal-chain answer" width="80%"/></p>
 
-**AI Memory System with Safety and Alignment Infrastructure**
+> [!NOTE]
+> **AI Memory System with Safety and Alignment Infrastructure**
 
 Tropelex accumulates knowledge across projects (decisions, patterns, preferences, research) so sessions don't start from scratch. It grows smarter with use.
 
@@ -57,9 +74,15 @@ flowchart TD
 
 **Docs, without running anything:** [Full Guide](https://shansimmons-eng.github.io/tropelex/) · [API Reference](https://shansimmons-eng.github.io/tropelex/api-reference.html) · [Getting Started](https://shansimmons-eng.github.io/tropelex/getting-started.html) · [FAQ](https://shansimmons-eng.github.io/tropelex/faq.html)
 
+**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Security:** [SECURITY.md](SECURITY.md)
+
 ---
 
 ## What it does
+
+<details open>
+<summary>⚡ <b>Click to expand / collapse the full 60+ Feature Matrix</b></summary>
+<br>
 
 | Component | Purpose |
 |---|---|
@@ -119,6 +142,8 @@ flowchart TD
 | **Automated Safety Checks** | Pre-decision safety analysis with risk scoring and recommendations |
 | **Synthetic Data Policy** | EU AI Act Articles 10 & 50 compliant "nutritional label" for synthetic datasets: fidelity, privacy, bias audits, blocking gates |
 
+</details>
+
 ---
 
 ## Safety & Alignment Documentation
@@ -137,7 +162,8 @@ flowchart LR
     E --> H["Provenance Chain<br/>tamper-evident history"]
 ```
 
-Nothing here claims the agent's judgment is trustworthy — the claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
+> [!IMPORTANT]
+> Nothing here claims the agent's judgment is trustworthy — the claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
 
 - [SAFETY.md](./SAFETY.md): mapping developer features to AI safety & control terminology.
 - [CAIS Grant Technical Summary](./docs/cais-summary.md) (objective drift and reward hacking prevention).
@@ -400,6 +426,10 @@ Configure compression behavior, session limits, and API keys. Keys entered here 
 
 The server exposes a REST API at `http://localhost:8766/api/`:
 
+<details>
+<summary>🔌 <b>Click to expand / collapse full REST API Reference tables</b></summary>
+<br>
+
 ### Core
 
 | Method | Endpoint | Description |
@@ -581,6 +611,8 @@ The server exposes a REST API at `http://localhost:8766/api/`:
 | DELETE | `/api/memory/{project}/synthetic-data-policies/{id}` | Delete a policy |
 | GET | `/api/memory/{project}/synthetic-data-policies/{id}/compliance` | Run compliance check with blocking gates |
 | GET | `/api/memory/{project}/synthetic-data/summary` | Aggregate statistics across all policies |
+
+</details>
 
 ---
 
@@ -934,11 +966,18 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ## Status
 
-**v3.2.0**: Dashboard overhaul + Emacs Magit/LSP integration + 17 router fixes + section persistence.
+**v1.2.0**
+
+### Recently Added
+- **Manual `caused_by`/`led_to` decision edges**: explicit, user-authored causal links between decisions, created from the timeline or by clicking a node in either graph — the non-heuristic replacement for an earlier auto-detection heuristic that was removed for producing false positives
+- **Goal-evidence gate**: a goal can no longer transition to `achieved` with no decision on record for it (`require_goal_evidence`); an explicit override is still available and is written to the audit trail, never silently applied
+- **Multi-citation linking**: select several citations, name the relationship, connect them in one action; a matching viewer shows a citation's links grouped by relationship name
+- **Content exports**: download buttons for ADRs, narrative reports, doc-mining scans, friction reports, and Drift-Bench results, wherever those panels didn't already have one
+- **Standalone docs site**: the guide, API reference, FAQ, and a new Getting Started page, hosted on GitHub Pages independent of a running instance — see the docs links above
 
 ### Core Features
 - Memory, compression, pattern learning, research KB all working
-- Web UI with 8 sections: Tropebook, Memory, Patterns, Prompt Lab, **Insights**, **Git**, **Deep Research**, Settings
+- Web UI: 32 sections across 9 categories (see [Web Interface](#web-interface) below)
 - Git-aware memory: auto-extract decisions from commits with deep diff analysis
 - Decision trees: graph of decision evolution with causal chains
 - Living ADRs: auto-generate Architecture Decision Records (Nygard/MADR/Tropelex formats)
@@ -984,8 +1023,7 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 - **Background scheduler**: Automatic periodic tasks with error recovery
 
 ### Quality Metrics
-- **1408 tests passing** (up from 262)
-- 7 previously untested subsystems now have full coverage (3,093 lines)
+- **2672 tests passing**
 - AI compression via OpenAI (`gpt-4o-mini`)
 - CORS locked to localhost
 - In-memory rate limiting (no external dependencies)
