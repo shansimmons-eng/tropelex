@@ -414,23 +414,6 @@ async def root():
 
 
 
-@app.get("/guide-preview")
-async def docs_preview():
-    from fastapi.responses import HTMLResponse
-
-    docs_path = SCRIPT_DIR / "static" / "docs_preview.html"
-    if not docs_path.exists():
-        return HTMLResponse(
-            content="<h1>Tropelex Docs Preview</h1><p>Preview file docs_preview.html not found.</p>",
-            status_code=404,
-        )
-    with open(docs_path, encoding="utf-8") as f:
-        content = f.read()
-    return HTMLResponse(
-        content=content,
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
-    )
-
 @app.get("/api-reference")
 @app.get("/api-docs")
 async def api_reference():
