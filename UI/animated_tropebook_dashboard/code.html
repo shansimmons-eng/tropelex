@@ -1418,7 +1418,7 @@ void main() {
                     <p class="text-xs text-outline mt-1" id="tooltip-url"></p>
                     <p class="text-xs text-on-surface mt-1" id="tooltip-summary"></p>
                 </div>
-                <div id="graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline">
+                <div id="graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-5xl mb-3">hub</span>
                     <p class="font-mono text-sm">Add citations and link them to see the graph</p>
                 </div>
@@ -2166,7 +2166,7 @@ void main() {
                     <p class="text-xs text-outline mt-1" id="lineage-tooltip-url"></p>
                     <p class="text-xs text-on-surface mt-1" id="lineage-tooltip-summary"></p>
                 </div>
-                <div id="lineage-graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline">
+                <div id="lineage-graph-empty" class="absolute inset-0 flex flex-col items-center justify-center text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-5xl mb-3">account_tree</span>
                     <p class="font-mono text-sm">Select a project to see decision parentage</p>
                 </div>
@@ -8723,7 +8723,13 @@ async function loadLineageGraph() {
 
     document.getElementById('lineage-graph-stats').textContent =
         `${nodes.length} node${nodes.length !== 1 ? 's' : ''} · ${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
-    document.getElementById('lineage-graph-empty').style.display = edges.length === 0 ? 'flex' : 'none';
+    // nodes, not edges -- 0 edges with nodes present is the exact state
+    // "click a node to link a cause" exists for. Gating on edges.length
+    // instead left this pointer-events-blocking overlay (see the
+    // pointer-events-none fix below) permanently up over a fully
+    // populated, clickable graph whenever a project has no parentage
+    // edges yet -- which is now and then, not an edge case.
+    document.getElementById('lineage-graph-empty').style.display = nodes.length === 0 ? 'flex' : 'none';
     renderDecisionGraph(nodes, edges, {
         containerId: 'lineage-graph-container',
         svgId: 'lineage-graph-svg',
