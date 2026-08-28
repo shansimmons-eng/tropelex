@@ -1448,6 +1448,23 @@ Live-verified against the real `tropelex` project via browser: Key Decisions pan
 
 ---
 
+### 96. Goal-Linkage Trend Metric (Manually-Captured Decisions Only)
+
+**Priority:** Low.
+
+**Purpose:** Surface whether the fraction of decisions linked to a goal (`decision.goal_id`) is shifting over time — not as a flat percentage with a good/bad threshold, but as a windowed trend, same shape as `core/goals/drift.py`'s `score_trend_drift()`.
+
+**Why:** Raised while discussing whether decisions should have a 1:1 relationship with goals. Checked the real data first: of 276 decisions in the `Tropelex` project, only 35 (13%) carry a `goal_id`, and of the 125 git-imported decisions specifically, *zero* do — because `core/git_integration.py` has no field or path to ever set one on a commit-derived decision. That's a real confound, not noise: a flat "% of decisions with a goal" ratio moves whenever the mix of capture channels shifts (more git-import activity this week vs. more manual/MCP capture), regardless of whether anyone's actual planning discipline changed. There's also no universal "good" direction — an exploratory phase legitimately runs low, a roadmap-execution phase can legitimately run high — so a single cross-sectional number can't be labeled healthy or unhealthy on its own.
+
+**What would make it a real, consistent signal instead of a vague one:**
+- Restrict the denominator to decisions captured through a channel that *can* carry a `goal_id` (manual capture, MCP capture, research-promoted) — exclude git-imported decisions entirely, since including them just measures import-mix, not intent.
+- Compare a baseline window against a recent window (reusing `score_trend_drift`'s existing baseline-vs-recent pattern) and flag only the *delta* past a threshold, not the absolute level.
+- The claim this can honestly support is narrower than "goal-linkage is low": something like "the manually-captured goal-linkage rate dropped from 60% to 20% over the last N decisions" — a real behavioral signal (something changed in how work is being captured) independent of what the "right" baseline should be.
+
+**Status:** Open, not started. Explicitly deferred — not deemed worth building right now, logged so the reasoning survives for whenever it is revisited.
+
+---
+
 ### 38. Global Horizontal Sub-Navigation Migration
 **Purpose:** Standardize all dashboard sections to use the horizontal tab architecture established in Safety & Alignment.
 **Why:** The left sidebar is suffering from horizontal text overflow and cognitive overload due to the sheer number of features. 
