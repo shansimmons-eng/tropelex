@@ -6,6 +6,43 @@ Tropelex accumulates knowledge across projects (decisions, patterns, preferences
 
 The same mechanisms that make an agent's memory useful also make its behavior auditable: an immutable decision history an agent must cross-reference before acting, drift detection that catches code silently diverging from stated intent, and multi-agent handoff that carries rationale across agent boundaries instead of losing it. See [`SAFETY.md`](SAFETY.md) for how these properties apply to agent safety and alignment work.
 
+```mermaid
+flowchart TD
+    subgraph Clients["Agents and Interfaces"]
+        CC["Claude Code / Cursor<br/>via MCP"]
+        Dash["Web Dashboard"]
+        Emacs["Emacs"]
+        OC["OpenCode plugin"]
+        CLI["CLI"]
+    end
+
+    Server["Tropelex Server<br/>FastAPI · localhost:8766"]
+
+    subgraph Core["Core Engine"]
+        Gates["Safety Gates<br/>require_tag · require_goal_evidence"]
+        MM["Memory Manager"]
+        DT["Decision Tree<br/>supersedes / caused_by / reverts"]
+        TB["Tropebook<br/>citation knowledge graph"]
+    end
+
+    Audit["Audit Log<br/>hash-chained, append-only"]
+    Storage[("memory/*.json<br/>gitignored, local")]
+
+    CC -->|MCP tools| Server
+    Dash -->|REST /api| Server
+    Emacs -->|REST /api| Server
+    OC -->|REST /api| Server
+    CLI -.->|"local storage only,<br/>no server required"| Storage
+
+    Server --> Gates
+    Gates -->|"explicit basis required,<br/>or 422 blocked"| MM
+    MM --> DT
+    MM --> TB
+    Gates --> Audit
+    MM --> Storage
+    Audit --> Storage
+```
+
 ---
 
 ## What it does
@@ -73,6 +110,20 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 ## Safety & Alignment Documentation
 
 Tropelex doubles as empirical safety infrastructure for autonomous agents. For the alignment reframing of its features, threat models, and grant-specific technical summaries, see:
+
+```mermaid
+flowchart LR
+    A["Decision submitted<br/>by agent or human"] --> B{"Safety category<br/>explicit?"}
+    B -->|"no"| C["422 blocked<br/>+ suggested category"]
+    C -.->|"resubmit with an<br/>explicit choice"| A
+    B -->|"yes"| D["Written to memory<br/>content hash computed"]
+    D --> E["Audit event appended<br/>chained to prior entry's hash"]
+    D --> F["Decision Tree updated<br/>supersedes / caused_by / reverts"]
+    F --> G["Drift and Ghost checks<br/>watch for silent contradiction"]
+    E --> H["Provenance Chain<br/>tamper-evident history"]
+```
+
+Nothing here claims the agent's judgment is trustworthy — the claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
 
 - [SAFETY.md](./SAFETY.md): mapping developer features to AI safety & control terminology.
 - [CAIS Grant Technical Summary](./docs/cais-summary.md) (objective drift and reward hacking prevention).
