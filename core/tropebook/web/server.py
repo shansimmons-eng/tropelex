@@ -6425,13 +6425,23 @@ async def get_agent_skills(project: str):
 async def record_agent_skill(project: str, req: SkillRecordRequest):
     """Record a session outcome to update agent skills."""
     project = _sanitise_project(project)
+    from core.agent_identity import normalize_agent_name
     from core.agent_skills import AgentSkillGraph
 
     graph = AgentSkillGraph(str(BASE_DIR))
     graph.record_session_outcome(
         project, req.session_type, req.categories, req.outcome, req.details, req.agent_name
     )
-    return {"recorded": True, "categories": req.categories, "agent_name": req.agent_name}
+    # Echo the *normalized* name that was actually persisted, not the raw
+    # request value -- record_session_outcome folds known aliases (e.g.
+    # "claude-sonnet-5" -> "Claude") before writing, so echoing the raw
+    # value here would tell the caller a name got saved that doesn't
+    # actually exist in storage.
+    return {
+        "recorded": True,
+        "categories": req.categories,
+        "agent_name": normalize_agent_name(req.agent_name),
+    }
 
 
 @app.get("/api/memory/{project}/agent-skills/briefing")
@@ -6448,7 +6458,11 @@ async def get_agent_briefing(project: str):
 @app.get("/api/memory/{project}/agents")
 async def list_project_agents(project: str):
     """Distinct agent names ever recorded for this project, across skills,
-    sessions, and friction scans. Feeds the UI's agent-name autocomplete."""
+    sessions, friction scans, and Decision Market bets. Feeds the UI's
+    agent-name autocomplete -- an agent that has only ever placed a bet
+    (no skill outcome recorded yet) must still show up here, or the
+    "+ Add new agent..." option in the Decision Market select never
+    survives a dropdown refresh."""
     project = _sanitise_project(project)
     from core.agent_skills import AgentSkillGraph
     from core.session_replay import SessionReplay
@@ -6460,7 +6474,13 @@ async def list_project_agents(project: str):
         h.get("agent_name") for h in memory.get("friction_history", [])
         if h.get("agent_name") and h.get("agent_name") != "unspecified"
     }
-    names = sorted(set(graph.list_agents(project)) | set(replay.list_agents(project)) | friction_agents)
+    market_agents = {
+        b.get("agent_name") for b in memory.get("market", {}).get("bets", [])
+        if b.get("agent_name") and b.get("agent_name") != "unspecified"
+    }
+    names = sorted(
+        set(graph.list_agents(project)) | set(replay.list_agents(project)) | friction_agents | market_agents
+    )
     return {"agents": names, "count": len(names)}
 
 

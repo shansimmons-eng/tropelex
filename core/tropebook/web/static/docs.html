@@ -1491,6 +1491,11 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 <div class="space-y-4">
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
+<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">refresh</span> A Panel Shows Empty, Zero, or Unexpectedly Stale Data</h3>
+<p class="text-on-surface-variant text-sm">Try a <strong>hard refresh</strong> (<code>Ctrl+Shift+R</code> on Windows/Linux, <code>Cmd+Shift+R</code> on Mac) before assuming something is broken. If the dashboard server was restarted while your browser tab was already open, a normal refresh can still serve stale page state — this is the single most common cause of "no data" symptoms and is worth trying first, every time, even if it seems unlikely to help.</p>
+</div>
+
+<div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
 <h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">warning</span> "Cannot reach Tropelex" / Connection Refused</h3>
 <p class="text-on-surface-variant text-sm mb-2">The server is not running. Launch it from the repository root:</p>
 <pre><code>python3 -m core.tropebook.web.server</code></pre>

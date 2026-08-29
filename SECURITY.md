@@ -1,9 +1,9 @@
 # Security Policy
 
-This document is about **vulnerability disclosure** — bugs that could let
+This document is about **vulnerability disclosure** => bugs that could let
 someone bypass a security control, leak data, or run something they
 shouldn't. For AI safety and alignment properties (drift detection, decision
-gates, audit trails), see [SAFETY.md](SAFETY.md) instead — different concern,
+gates, audit trails), see [SAFETY.md](SAFETY.md) instead => different concern,
 different document.
 
 ## Supported versions
@@ -23,7 +23,7 @@ GitHub's private vulnerability reporting instead:
    you can.
 
 This opens a private advisory only you and the maintainer can see until it's
-resolved — no email address to guess, and no public exposure while a fix is
+resolved => no email address to guess, and no public exposure while a fix is
 in progress.
 
 If you don't have a GitHub account or the private-reporting flow doesn't
@@ -31,7 +31,7 @@ work for you, open a regular issue that says only "possible security issue,
 please contact me" with no technical detail, and a way to reach you; details
 can follow privately.
 
-## What's actually in scope
+## What's in scope
 
 Tropelex runs entirely locally by default (`localhost:8766`, no external
 service). Realistic vulnerability classes for this project look like:
@@ -49,12 +49,12 @@ service). Realistic vulnerability classes for this project look like:
 
 Reports about things that are already disclosed, expected behavior — e.g.
 "the server has no auth by default when run purely on localhost with no
-port exposed" — are welcome context but not novel findings; check
+port exposed" => are welcome context but not novel findings; check
 [SAFETY.md](SAFETY.md) and this file first if you're not sure something is
 already a known tradeoff.
 
 ## Response
 
 This is a single-maintainer project. There's no SLA, but reports get read
-and taken seriously — expect an initial response, not necessarily an
+and taken seriously. Expect an initial response, not necessarily an
 immediate fix.

@@ -12392,7 +12392,13 @@ document.getElementById('btn-place-bet')?.addEventListener('click', async () => 
         decision_id, agent_name, confidence, category: 'manual'
     });
     if (data) {
-        showToast('Bet placed');
+        // The server may have folded agent_name into an existing canonical
+        // name (known aliases, e.g. "claude-sonnet-5" -> "Claude") -- use
+        // what it actually saved, not what was typed, so the dropdown
+        // reflects reality instead of a name that'll vanish on next refresh.
+        const savedAgent = data.bet?.agent_name || agent_name;
+        showToast(savedAgent === agent_name ? 'Bet placed' : `Bet placed as "${savedAgent}" (existing agent)`);
+        addAgentOptionEverywhere(savedAgent, 'bet-agent');
         document.getElementById('bet-decision-id').value = '';
         document.getElementById('bet-agent').value = '';
         document.getElementById('btn-market-leaderboard')?.click();
@@ -12921,7 +12927,11 @@ document.getElementById('btn-record-skill')?.addEventListener('click', async () 
         session_type: 'manual', categories, outcome, details, agent_name: agentName
     });
     if (data) {
-        showToast(`Skill outcome recorded for ${agentName}`);
+        // As with Decision Market bets, the server may fold agentName into
+        // an existing canonical name -- report and select what was actually
+        // saved so the persona that shows up under btn-personas matches.
+        const savedAgent = data.agent_name || agentName;
+        showToast(savedAgent === agentName ? `Skill outcome recorded for ${savedAgent}` : `Skill outcome recorded for "${savedAgent}" (existing agent, not a new one)`);
         document.getElementById('skill-categories').value = '';
         document.getElementById('skill-details').value = '';
         document.getElementById('btn-personas')?.click();

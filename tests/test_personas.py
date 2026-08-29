@@ -271,6 +271,21 @@ class TestPersonaRouterAgentRegression:
         assert by_agent["Claude"]["accuracy_by_category"]["ui"] == 1.0
         assert by_agent["Gemini"]["accuracy_by_category"]["ui"] == 0.0
 
+    def test_record_response_echoes_normalized_name_not_raw_input(self, client, project):
+        """POST /agent-skills/record must report back the name it actually
+        persisted. Previously it echoed the raw request value verbatim, so
+        a caller sending an alias spelling ("claude-sonnet-5") was told
+        that name was saved -- but agent-skills/record normalizes before
+        writing, so the real stored key was "Claude" and the reported name
+        never actually existed in storage, silently vanishing from every
+        agent list on the next refresh."""
+        res = client.post(
+            f"/api/memory/{project}/agent-skills/record",
+            json={"session_type": "manual", "categories": ["ui"], "outcome": "success", "agent_name": "claude-sonnet-5"},
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["agent_name"] == "Claude"
+
     def test_known_aliases_produce_one_persona_not_two(self, client, project):
         """Skill outcomes recorded under known-alias spellings of the same
         agent ("Claude" vs "Claude Code") must collapse into one persona."""

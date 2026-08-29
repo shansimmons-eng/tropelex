@@ -6105,3 +6105,1213 @@ fab1acd feat: Session Replay with AI Analysis (wishlist #19)
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-24 14:14 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  1 file changed, 12 insertions(+)
+
+**Recent commits:**
+```
+c0f96b3 fix: soft-delete for projects (wishlist #93)
+ed3a58a feat: three wishlist picks -- MCP research tools, safety refactor, decision promotion
+5433ebd feat: slash command parity across AI coding tools (wishlist #92)
+c7f0f86 feat: research deepening (#79-81), goal editing, decision list polish
+0a4f889 fix: bound goals list scroll, fix intermittent Command Hub visibility
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 14:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 34 insertions(+)
+
+**Recent commits:**
+```
+c0f96b3 fix: soft-delete for projects (wishlist #93)
+ed3a58a feat: three wishlist picks -- MCP research tools, safety refactor, decision promotion
+5433ebd feat: slash command parity across AI coding tools (wishlist #92)
+c7f0f86 feat: research deepening (#79-81), goal editing, decision list polish
+0a4f889 fix: bound goals list scroll, fix intermittent Command Hub visibility
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 14:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 56 insertions(+)
+
+**Recent commits:**
+```
+c0f96b3 fix: soft-delete for projects (wishlist #93)
+ed3a58a feat: three wishlist picks -- MCP research tools, safety refactor, decision promotion
+5433ebd feat: slash command parity across AI coding tools (wishlist #92)
+c7f0f86 feat: research deepening (#79-81), goal editing, decision list polish
+0a4f889 fix: bound goals list scroll, fix intermittent Command Hub visibility
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 14:52 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 246 insertions(+)
+
+**Recent commits:**
+```
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+0a2e2eb feat: Research↔Decision UX wins (wishlist #91)
+d2122d0 feat: session-shape/outcome correlation + per-agent safety budget (wishlist #73)
+ab15a38 fix: decision context backfill endpoint (wishlist #94)
+c0f96b3 fix: soft-delete for projects (wishlist #93)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 19:02 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 412 insertions(+)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 19:03 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 434 insertions(+)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 19:08 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 456 insertions(+)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 23:29 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9627 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 23:30 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9649 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 23:34 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9671 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 23:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9693 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-24 23:41 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9715 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-25 13:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 9801 insertions(+), 7735 deletions(-)
+
+**Recent commits:**
+```
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+f10261b feat: deep research budget presets + query-fingerprint caching (wishlist #87)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json plugins/tropelex.js tests/conftest.py vscode-tropelex/src/memoryWebviewPanel.ts FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ tests/test_conftest_cleanup.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-25 17:26 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 9783 insertions(+), 7707 deletions(-)
+
+**Recent commits:**
+```
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+2970ed0 fix: Key Decisions panel sorted by array position instead of timestamp
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md core/tropebook/web/static/api_ref.html core/tropebook/web/static/docs_preview.html memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-25 18:02 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 680 insertions(+)
+
+**Recent commits:**
+```
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-25 18:03 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 702 insertions(+)
+
+**Recent commits:**
+```
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+4c4f3cf feat: adaptive feed scheduling + query rewrite suggestions (wishlist #85)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-26 00:34 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 760 insertions(+)
+
+**Recent commits:**
+```
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-26 00:37 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 782 insertions(+)
+
+**Recent commits:**
+```
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+7f0afab feat: multi-project / shared feeds (wishlist #86)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-26 00:55 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 816 insertions(+)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-26 18:39 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 1402 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 00:05 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 1449 insertions(+), 23 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:15 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 1471 insertions(+), 23 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:20 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  5 files changed, 1493 insertions(+), 23 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json FAQ.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:28 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 1738 insertions(+), 69 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/goals/router.py core/triggers/tag_gate.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_goals.py FAQ.md HANDOFF.md core/triggers/goal_gate.py memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:38 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 1760 insertions(+), 69 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/goals/router.py core/triggers/tag_gate.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_goals.py FAQ.md HANDOFF.md core/triggers/goal_gate.py memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:50 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 1782 insertions(+), 69 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/goals/router.py core/triggers/tag_gate.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_goals.py FAQ.md GRANT_INTRO.md HANDOFF.md core/triggers/goal_gate.py memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 15:57 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  8 files changed, 1804 insertions(+), 69 deletions(-)
+
+**Recent commits:**
+```
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+8110faf feat: research source coverage dashboard (wishlist #88)
+```
+
+**Files in play:** `SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/decision_tree.py core/goals/router.py core/triggers/tag_gate.py core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_goals.py FAQ.md GRANT_INTRO.md HANDOFF.md core/triggers/goal_gate.py memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ tests/test_decision_link_cause.py `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-27 16:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1074 insertions(+)
+
+**Recent commits:**
+```
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+7e4432d fix: root causes of the Tropelex/tropelex project split
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 01:16 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1108 insertions(+)
+
+**Recent commits:**
+```
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 01:25 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1130 insertions(+)
+
+**Recent commits:**
+```
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+1e74983 fix: guide/API reference fact-check + Getting Started blank-page bug
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 01:29 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1164 insertions(+)
+
+**Recent commits:**
+```
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 01:31 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1186 insertions(+)
+
+**Recent commits:**
+```
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 01:41 CDT
+
+**Branch:** `master`
+
+**Diff summary:**  2 files changed, 1208 insertions(+)
+
+**Recent commits:**
+```
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+69ba7d2 fix: caused_by false-positive relationship detection
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 14:55 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1266 insertions(+)
+
+**Recent commits:**
+```
+d1cedd1 docs: add architecture and decision-safety-loop diagrams to README
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 15:04 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1288 insertions(+)
+
+**Recent commits:**
+```
+d1cedd1 docs: add architecture and decision-safety-loop diagrams to README
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 15:06 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1310 insertions(+)
+
+**Recent commits:**
+```
+d1cedd1 docs: add architecture and decision-safety-loop diagrams to README
+e84edf8 docs: log #96 goal-linkage trend metric as a low-priority wish
+2c7d676 fix: Decision Lineage graph blocked all clicks and zoom when 0 edges
+ecae95f feat: citation/decision linking, exports, and a goal-evidence gate
+33286b5 docs: lead with a precise tagline across README and the guide page
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 15:38 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1428 insertions(+)
+
+**Recent commits:**
+```
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+3f5473e fix: Link Cause from the Lineage graph didn't refresh its own edges
+2cc7859 chore: remove stale docs_preview.html and /guide-preview route
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 18:32 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1474 insertions(+)
+
+**Recent commits:**
+```
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+3f5473e fix: Link Cause from the Lineage graph didn't refresh its own edges
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json FAQ.md GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 18:43 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 1520 insertions(+)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 19:29 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1557 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 19:31 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1579 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 19:40 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1601 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 20:31 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1623 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 21:16 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1645 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 21:29 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1667 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:23 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1689 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:28 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  5 files changed, 1711 insertions(+), 16 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:42 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1813 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:48 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1835 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:50 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1857 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:57 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1879 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:58 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1901 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 22:59 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1923 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 23:00 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  9 files changed, 1945 insertions(+), 21 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py memory/prefetch/test-project_genealogy.json tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-28 23:05 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  13 files changed, 1984 insertions(+), 26 deletions(-)
+
+**Recent commits:**
+```
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+99cf9c9 feat: standalone docs site for GitHub Pages + two live-app bugs found along the way
+```
+
+**Files in play:** `CONTRIBUTING.md FAQ.md SAFETY.md SECURITY.md SESSION_LOG.md UI/animated_tropebook_dashboard/code.html core/tropebook/web/server.py core/tropebook/web/static/docs.html memory/prefetch/test-project_genealogy.json site/faq.html site/index.html tests/test_agent_identity_endpoints.py tests/test_personas.py GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+

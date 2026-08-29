@@ -1,8 +1,8 @@
 # Contributing to Tropelex
 
 Thanks for taking a look. This has been a solo project up to now, so if you're
-reading this to make a first contribution, you're likely one of the first —
-expect fast, direct feedback rather than a heavy process.
+reading this to make a first contribution, you're likely one of the first.
+Expect fast, direct feedback rather than a heavy process.
 
 ## Before you start
 
@@ -52,7 +52,7 @@ ruff check .
 ```
 
 Match the conventions already in the file you're editing rather than
-introducing a new pattern for the same problem — this codebase leans on a few
+introducing a new pattern for the same problem.  This codebase leans on a few
 repeated shapes (`Result`/`Ok`/`Err` for pure functions, explicit
 `require_*` gates over silent defaults, hash-chained audit events for
 anything safety-relevant) rather than one-off solutions per feature.
@@ -61,16 +61,15 @@ anything safety-relevant) rather than one-off solutions per feature.
 
 - Keep PRs scoped to one change. A bug fix doesn't need an accompanying
   refactor.
-- Explain the *why*, not just the *what* — the reasoning is what future
+- Explain the *why*, not just the *what* → the reasoning is what future
   readers (human or agent) actually need; the diff already shows the what.
 - Reference the issue it resolves, if there is one.
 
 ## Reporting a security issue
 
-Don't open a public issue for a vulnerability — see [SECURITY.md](SECURITY.md)
+Pleae don't open a public issue for a vulnerability. See [SECURITY.md](SECURITY.md)
 for how to report it privately instead.
 
 ## Questions
 
-Open an issue, or check the [FAQ](https://shansimmons-eng.github.io/tropelex/faq.html)
-first in case it's already answered there.
+Open an issue, or (better) check the [FAQ] first (https://shansimmons-eng.github.io/tropelex/faq.html) and read or string search the docs and/or guide to see if there's already an answer.

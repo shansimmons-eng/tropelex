@@ -116,6 +116,24 @@ class TestListProjectAgents:
         res = client.get(f"/api/memory/{project}/agents")
         assert res.json()["agents"] == ["Claude"]
 
+    def test_collects_agents_from_market_bets(self, client, project):
+        """An agent that has only placed a Decision Market bet (no skill
+        outcome recorded yet) must still show up here -- otherwise the
+        Decision Market select's "+ Add new agent..." entry is wiped out
+        the next time the dropdown is repopulated from this endpoint."""
+        decision = client.post(
+            f"/api/memory/{project}/decisions",
+            json={"decision": "Use React", "context": "", "safety_metadata": {"safety_category": "general"}},
+        ).json()["decision"]
+        res = client.post(
+            f"/api/memory/{project}/market/bet",
+            json={"decision_id": decision["id"], "agent_name": "Big Pickle", "confidence": 0.6, "category": "test"},
+        )
+        assert res.status_code == 200, res.text
+
+        res = client.get(f"/api/memory/{project}/agents")
+        assert res.json()["agents"] == ["Big Pickle"]
+
 
 class TestGetAgentSummary:
     def test_unknown_agent_returns_zeroed_summary_not_404(self, client, project):

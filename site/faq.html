@@ -373,11 +373,12 @@
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
-<p class="text-sm text-on-surface-variant leading-relaxed my-2">If a section displays empty metrics or zero decisions, ensure a project is selected in the top-bar dropdown (<code>#global-project-select</code>) and click the <strong class="text-on-surface font-semibold">Refresh</strong> button on the section panel.</p>
+<p class="text-sm text-on-surface-variant leading-relaxed my-2">Try a <strong class="text-on-surface font-semibold">hard refresh</strong> first (<code>Ctrl+Shift+R</code> / <code>Cmd+Shift+R</code>) — this clears the most common cause of "empty" or stuck data before you go looking for a real bug. If a section still displays empty metrics or zero decisions after that, ensure a project is selected in the top-bar dropdown (<code>#global-project-select</code>) and click the <strong class="text-on-surface font-semibold">Refresh</strong> button on the section panel.</p>
 </div>
 <div class="mt-3 pt-3 border-t border-outline-variant/20">
 <p class="text-sm text-on-surface-variant leading-relaxed my-2">Follow these quick diagnostic steps:</p>
 <ol class="list-decimal list-inside space-y-1.5 my-2 text-sm text-on-surface-variant">
+<li><strong class="text-on-surface font-semibold">Hard refresh the page:</strong> <code>Ctrl+Shift+R</code> (Windows/Linux) or <code>Cmd+Shift+R</code> (Mac). If the dashboard server was restarted while your tab was open, a normal refresh can still serve stale page state — a hard refresh forces a clean reload and resolves this the vast majority of the time.</li>
 <li><strong class="text-on-surface font-semibold">Check Global Project Selection:</strong> Look at the top-right header dropdown. If it displays <code>No project</code>, click to select your active project (e.g., <code>tropelex</code>).</li>
 <li><strong class="text-on-surface font-semibold">Run Diagnostic Self-Test:</strong> Navigate to <strong class="text-on-surface font-semibold">Getting Started</strong> (<code>Help Hub</code>) and click <strong class="text-on-surface font-semibold">Re-test All Systems</strong> to verify FastAPI backend connection and Pytest status.</li>
 <li><strong class="text-on-surface font-semibold">Verify File Memory:</strong> Confirm that <code>memory/&lt;project-name&gt;.json</code> exists in your workspace root. If empty, run <code>/tropelex-show-context</code> or record a starter decision.</li>

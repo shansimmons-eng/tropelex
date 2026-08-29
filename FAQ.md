@@ -77,16 +77,17 @@ No governance metrics or project code files are ever transmitted to third-party 
 
 ### <a id="what-do-i-do-if-i-am-not-seeing-any-results-for-the-active-page"></a>What do I do if I am not seeing any results for the active page?
 
-If a section displays empty metrics or zero decisions, ensure a project is selected in the top-bar dropdown (`#global-project-select`) and click the **Refresh** button on the section panel.
+Try a **hard refresh** first (`Ctrl+Shift+R` / `Cmd+Shift+R`) — this clears the most common cause of "empty" or stuck data before you go looking for a real bug. If a section still displays empty metrics or zero decisions after that, ensure a project is selected in the top-bar dropdown (`#global-project-select`) and click the **Refresh** button on the section panel.
 
 <details>
 <summary>🔍 <b>Expand full answer</b></summary>
 <br>
 
 Follow these quick diagnostic steps:
-1. **Check Global Project Selection:** Look at the top-right header dropdown. If it displays `No project`, click to select your active project (e.g., `tropelex`).
-2. **Run Diagnostic Self-Test:** Navigate to **Getting Started** (`Help Hub`) and click **Re-test All Systems** to verify FastAPI backend connection and Pytest status.
-3. **Verify File Memory:** Confirm that `memory/<project-name>.json` exists in your workspace root. If empty, run `/tropelex-show-context` or record a starter decision.
+1. **Hard refresh the page:** `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac). If the dashboard server was restarted while your tab was open, a normal refresh can still serve stale page state — a hard refresh forces a clean reload and resolves this the vast majority of the time.
+2. **Check Global Project Selection:** Look at the top-right header dropdown. If it displays `No project`, click to select your active project (e.g., `tropelex`).
+3. **Run Diagnostic Self-Test:** Navigate to **Getting Started** (`Help Hub`) and click **Re-test All Systems** to verify FastAPI backend connection and Pytest status.
+4. **Verify File Memory:** Confirm that `memory/<project-name>.json` exists in your workspace root. If empty, run `/tropelex-show-context` or record a starter decision.
 </details>
 
 ---
