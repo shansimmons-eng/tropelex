@@ -1008,10 +1008,10 @@ void main() {
                 </div>
                 <div class="flex items-baseline justify-between">
                     <span id="dash-confidence" class="font-mono text-2xl text-on-surface font-bold">—</span>
-                    <span class="font-mono text-xs text-accent-lavender">STABLE</span>
+                    <span id="dash-confidence-label" class="font-mono text-xs text-accent-lavender">—</span>
                 </div>
                 <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
-                    <div class="bg-accent-lavender h-full rounded-full" style="width: 88%;"></div>
+                    <div id="dash-confidence-bar" class="bg-accent-lavender h-full rounded-full" style="width: 0%;"></div>
                 </div>
             </div>
 
@@ -1021,12 +1021,13 @@ void main() {
                     <span class="material-symbols-outlined text-accent-sky text-sm">shield</span>
                 </div>
                 <div class="flex items-baseline justify-between">
-                    <span class="font-mono text-2xl text-on-surface font-bold">98/100</span>
-                    <span class="font-mono text-xs text-accent-sky">VERIFIED</span>
+                    <span id="dash-safety-score" class="font-mono text-2xl text-on-surface font-bold">—</span>
+                    <span id="dash-safety-label" class="font-mono text-xs text-accent-sky">—</span>
                 </div>
                 <div class="w-full bg-surface-raised h-1.5 rounded-full mt-3 overflow-hidden">
-                    <div class="bg-accent-sky h-full rounded-full" style="width: 98%;"></div>
+                    <div id="dash-safety-bar" class="bg-accent-sky h-full rounded-full" style="width: 0%;"></div>
                 </div>
+                <div id="dash-safety-sub" class="text-[11px] text-outline mt-2"></div>
             </div>
 
             <div id="dash-pending-reviews-card" class="glass-panel rounded-xl p-5 border-l-4 border-yellow-400 relative overflow-hidden">
@@ -1053,6 +1054,55 @@ void main() {
                     <span id="dash-cost-label" class="font-mono text-xs text-accent-periwinkle">TRACKED</span>
                 </div>
                 <div id="dash-cost-sub" class="text-xs text-outline mt-3">Real OpenAI usage, this project</div>
+            </div>
+        </div>
+
+        <!-- Signal Strip — secondary pulse metrics. loadDashboardStatusCards()
+             already fetches all of this on every project load; these cards
+             previously had no element to render into, so the data was
+             fetched and silently discarded. -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-accent-lavender text-sm">insights</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Project Pulse</span>
+                </div>
+                <div id="dash-health"><p class="text-xs text-outline">—</p></div>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-yellow-400 text-sm">bolt</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Friction</span>
+                </div>
+                <div id="dash-friction"><p class="text-xs text-outline">—</p></div>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-accent-sky text-sm">leaderboard</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Prediction Market</span>
+                </div>
+                <div id="dash-market"><p class="text-xs text-outline">—</p></div>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-accent-periwinkle text-sm">commit</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Git Status</span>
+                </div>
+                <div id="dash-git"><p class="text-xs text-outline">—</p></div>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-accent-lime text-sm">trending_up</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Decision Impact</span>
+                </div>
+                <div id="dash-impact"><p class="text-xs text-outline">—</p></div>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <div class="flex items-center gap-1.5 mb-2">
+                    <span class="material-symbols-outlined text-accent-lavender text-sm">flag</span>
+                    <span class="font-mono text-[10px] text-outline uppercase tracking-wider">Goal Alignment</span>
+                </div>
+                <div id="dash-alignment"><p class="text-xs text-outline">—</p></div>
             </div>
         </div>
 
@@ -1088,7 +1138,7 @@ void main() {
         </div>
 
         <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <!-- Decision Risk Mix -->
             <div class="glass-panel rounded-xl p-6">
                 <div class="flex items-center gap-2 mb-4">
@@ -1108,6 +1158,17 @@ void main() {
                 </div>
                 <div id="dash-agent-activity" class="space-y-3">
                     <p class="text-sm text-outline">Select a project to see agent activity.</p>
+                </div>
+            </div>
+
+            <!-- Key Decisions -->
+            <div class="glass-panel rounded-xl p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="material-symbols-outlined text-accent-lavender text-lg">history_edu</span>
+                    <h3 class="font-mono text-sm uppercase tracking-wider text-accent-lavender no-wrap-title">Key Decisions</h3>
+                </div>
+                <div id="dash-decisions-list" class="space-y-2 max-h-48 overflow-y-auto">
+                    <p class="text-sm text-outline">Select a project to see recent decisions.</p>
                 </div>
             </div>
         </div>
@@ -4888,6 +4949,7 @@ function switchGenericTab(parent, tab) {
     }
 
     // Wire tab-specific loaders
+    if (tab === 'dashboard' && typeof loadDashboardStatusCards === 'function') loadDashboardStatusCards();
     if (tab === 'graph' && typeof loadGraph === 'function') loadGraph();
     if (tab === 'health' && typeof loadHealth === 'function') loadHealth();
     if (tab === 'impact' && typeof loadImpact === 'function') loadImpact();
@@ -11390,23 +11452,39 @@ async function loadDashboardStatusCards() {
     // Cache full memory for other renderers (avoids re-fetching 313KB)
     if (projD) { state.decisions = projD.decisions || []; state.cachedMemory = projD; }
 
-    // Health & Insights
-    if (healthEl) {
-        let html = '';
-        if (confD) {
-            const avg = confD.average_confidence ?? confD.average_score ?? confD.avg ?? 0;
+    // Memory Confidence — top HUD card
+    const confEl = document.getElementById('dash-confidence');
+    const confLabelEl = document.getElementById('dash-confidence-label');
+    const confBarEl = document.getElementById('dash-confidence-bar');
+    if (confEl) {
+        const total = confD?.total ?? 0;
+        if (!confD || total === 0) {
+            confEl.textContent = '—';
+            confEl.className = 'font-mono text-2xl text-on-surface font-bold';
+            if (confLabelEl) confLabelEl.textContent = 'NO DATA';
+            if (confBarEl) confBarEl.style.width = '0%';
+        } else {
+            const avg = confD.average_confidence ?? 0;
             const pct = Math.round(avg * 100);
-            const tier = pct >= 80 ? 'text-accent-lime' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
-            html += `<div><span class="${tier} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">avg confidence</span></div>`;
+            const cls = pct >= 80 ? 'text-accent-lime' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+            confEl.textContent = `${pct}%`;
+            confEl.className = `font-mono text-2xl font-bold ${cls}`;
+            if (confLabelEl) confLabelEl.textContent = pct >= 80 ? 'STRONG' : pct >= 50 ? 'STABLE' : 'WEAK';
+            if (confBarEl) confBarEl.style.width = `${pct}%`;
         }
-        if (projD) {
-            const sessCount = (projD.session_history || []).length;
-            const patCount = (projD.patterns || []).length;
-            const stack = (projD.tech_stack || []).join(', ') || 'None';
-            html += `<div class="text-xs mt-1"><span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
+    }
+
+    // Health & Insights (Signal Strip)
+    if (healthEl) {
+        const sessCount = (projD?.session_history || []).length;
+        const patCount = (projD?.patterns || []).length;
+        const stack = (projD?.tech_stack || []).join(', ') || 'None';
+        if (!projD || (sessCount === 0 && patCount === 0)) {
+            healthEl.innerHTML = '<p class="text-xs text-outline">No sessions or patterns recorded yet.</p>';
+        } else {
+            healthEl.innerHTML = `<div class="text-xs"><span class="text-accent-sky">${sessCount}</span> sessions · <span class="text-accent-lime">${patCount}</span> patterns</div>
                 <div class="text-outline text-xs truncate mt-1" title="${escapeHtml(stack)}">Stack: ${escapeHtml(stack)}</div>`;
         }
-        healthEl.innerHTML = html || 'N/A';
     }
     // Friction
     if (frictionEl && frictionD) {
@@ -11414,7 +11492,7 @@ async function loadDashboardStatusCards() {
         const totalScans = frictionD.total_scans ?? hist.length;
         if (totalScans > 0) {
             const recent = hist.slice(-3);
-            const avgScore = recent.reduce((s, f) => s + (f.score || 0), 0) / (recent.length || 1);
+            const avgScore = recent.reduce((s, f) => s + (f.friction_score || 0), 0) / (recent.length || 1);
             const pct = Math.round(avgScore * 100);
             const cls = pct >= 50 ? 'text-red-400' : pct >= 25 ? 'text-yellow-400' : 'text-accent-lime';
             frictionEl.innerHTML = `<span class="${cls} font-mono text-lg">${pct}%</span> <span class="text-xs text-outline">friction · ${totalScans} scan${totalScans !== 1 ? 's' : ''}</span>`;
@@ -11434,15 +11512,19 @@ async function loadDashboardStatusCards() {
     // Git Status
     const gitEl = document.getElementById('dash-git');
     if (gitEl && gitD) {
-        const commits = (gitD.commits || gitD.recent_commits || []).slice(0, 3);
-        const branch = gitD.branch || 'main';
-        const stack = (gitD.stack || []).join(', ') || 'N/A';
-        gitEl.innerHTML = `
-            <div class="text-xs space-y-1">
-                <div class="text-accent-periwinkle font-mono">${escapeHtml(branch)}</div>
-                <div class="text-outline">Stack: ${escapeHtml(stack)}</div>
-                ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || '')}</div>` : ''}
-            </div>`;
+        if (gitD.error) {
+            gitEl.innerHTML = '<p class="text-xs text-outline">No git repo linked.</p>';
+        } else {
+            const commits = (gitD.commits || gitD.recent_commits || []).slice(0, 3);
+            const branch = gitD.branch || 'main';
+            const stack = (gitD.stack || []).join(', ') || 'N/A';
+            gitEl.innerHTML = `
+                <div class="text-xs space-y-1">
+                    <div class="text-accent-periwinkle font-mono">${escapeHtml(branch)}</div>
+                    <div class="text-outline">Stack: ${escapeHtml(stack)}</div>
+                    ${commits.length ? `<div class="text-outline mt-1 truncate">${escapeHtml(commits[0]?.subject || '')}</div>` : ''}
+                </div>`;
+        }
     }
     // Key Decisions (reuse cached projD, no second fetch)
     const decEl = document.getElementById('dash-decisions-list');
@@ -11468,41 +11550,57 @@ async function loadDashboardStatusCards() {
     // Impact
     const impactEl = document.getElementById('dash-impact');
     if (impactEl && impactD) {
-        const highImpact = (impactD.decisions || []).filter(d => (d.impact_score || 0) >= 0.7).length;
-        const total = (impactD.decisions || []).length;
-        const avgScore = impactD.average_impact || 0;
-        const pct = Math.round(avgScore * 100);
-        impactEl.innerHTML = `
-            <div class="text-xs space-y-1">
-                <div><span class="text-accent-lime font-mono text-lg">${highImpact}</span> <span class="text-outline">high-impact decisions</span></div>
-                <div class="text-outline">${total} total · avg score ${pct}%</div>
-            </div>`;
+        const scores = impactD.impact_scores || [];
+        const total = impactD.summary?.total_decisions ?? scores.length;
+        if (total === 0) {
+            impactEl.innerHTML = '<p class="text-xs text-outline">No decisions to analyze yet.</p>';
+        } else {
+            const highImpact = scores.filter(s => (s.impact_score || 0) >= 0.7).length;
+            const avgPct = Math.round((impactD.summary?.avg_impact_score || 0) * 100);
+            impactEl.innerHTML = `
+                <div class="text-xs space-y-1">
+                    <div><span class="text-accent-lime font-mono text-lg">${highImpact}</span> <span class="text-outline">high-impact</span></div>
+                    <div class="text-outline">${total} total · avg ${avgPct}%</div>
+                </div>`;
+        }
     }
-    // Safety Score
-    const safetyEl = document.getElementById('dash-safety');
-    if (safetyEl && safetyD) {
-        const score = Math.round((safetyD.safety_score || 0) * 100);
+    // Safety Score — top HUD card
+    const safetyScoreEl = document.getElementById('dash-safety-score');
+    const safetyLabelEl = document.getElementById('dash-safety-label');
+    const safetyBarEl = document.getElementById('dash-safety-bar');
+    const safetySubEl = document.getElementById('dash-safety-sub');
+    if (safetyScoreEl && safetyD) {
+        const score = Math.round((safetyD.safety_score ?? 0) * 100);
         const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
-        const highRisk = safetyD.high_risk_decisions || 0;
-        const pending = reviewsD?.total_pending || 0;
-        const frictionPenalty = safetyD.friction_penalty || 0;
-        let extra = '';
-        if (pending > 0) extra += `<div class="text-xs mt-1"><span class="text-yellow-400">${pending} pending review${pending === 1 ? '' : 's'}</span></div>`;
-        if (frictionPenalty > 0) extra += `<div class="text-xs mt-1 text-outline">-${(frictionPenalty * 100).toFixed(1)}% from recent friction</div>`;
-        safetyEl.innerHTML = `
-            <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">safety score</span></div>
-            <div class="text-xs mt-1">${highRisk > 0 ? `<span class="text-red-400">${highRisk} high-risk</span> · ` : ''}<span class="text-outline">${safetyD.total_decisions} decisions</span></div>
-            ${extra}`;
+        const noData = (safetyD.total_decisions || 0) === 0;
+        const label = noData ? 'NO DATA' : score >= 80 ? 'VERIFIED' : score >= 50 ? 'CAUTION' : 'AT RISK';
+        safetyScoreEl.textContent = `${score}%`;
+        safetyScoreEl.className = `font-mono text-2xl font-bold ${cls}`;
+        if (safetyLabelEl) safetyLabelEl.textContent = label;
+        if (safetyBarEl) safetyBarEl.style.width = `${score}%`;
+        if (safetySubEl) {
+            const highRisk = safetyD.high_risk_decisions || 0;
+            const pending = reviewsD?.total_pending || 0;
+            const extra = [];
+            if (highRisk > 0) extra.push(`<span class="text-red-400">${highRisk} high-risk</span>`);
+            if (pending > 0) extra.push(`<span class="text-yellow-400">${pending} pending</span>`);
+            safetySubEl.innerHTML = extra.length ? extra.join(' · ') : `${safetyD.total_decisions || 0} decisions, no flags`;
+        }
     }
     // Alignment Score
     const alignmentEl = document.getElementById('dash-alignment');
     if (alignmentEl && alignD) {
-        const score = Math.round((alignD.summary?.alignment_score || 0) * 100);
-        const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
-        const passing = alignD.summary?.passing_count || 0;
-        alignmentEl.innerHTML = `
-            <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">alignment</span></div>
-            <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span> <span class="text-outline">passing criteria</span></div>`;
+        const total = alignD.summary?.total_decisions ?? 0;
+        if (total === 0) {
+            alignmentEl.innerHTML = '<p class="text-xs text-outline">No decisions evaluated yet.</p>';
+        } else {
+            const score = Math.round((alignD.summary?.alignment_score || 0) * 100);
+            const cls = score >= 80 ? 'text-accent-lime' : score >= 50 ? 'text-yellow-400' : 'text-red-400';
+            const passing = alignD.summary?.passing_count || 0;
+            alignmentEl.innerHTML = `
+                <div><span class="${cls} font-mono text-lg">${score}%</span> <span class="text-xs text-outline">alignment</span></div>
+                <div class="text-xs mt-1"><span class="text-accent-lime">${passing}</span>/<span class="text-outline">${total}</span> passing</div>`;
+        }
     }
     // Bottom row — parallelize independent renders
     renderRiskMixChart(document.getElementById('dash-risk-mix'), state.decisions || []);

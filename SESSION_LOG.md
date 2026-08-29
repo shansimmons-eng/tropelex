@@ -7557,3 +7557,47 @@ db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-29 14:10 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  1 file changed, 744 insertions(+)
+
+**Recent commits:**
+```
+6e3eff0 docs: add session-lifecycle workflow diagram to README
+78ec75d fix: restore version badge on hero image, add rotating-screens GIF to README
+84efe72 feat: replace README hero with a real-screenshot fan composite
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 15:35 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 766 insertions(+)
+
+**Recent commits:**
+```
+6e3eff0 docs: add session-lifecycle workflow diagram to README
+78ec75d fix: restore version badge on hero image, add rotating-screens GIF to README
+84efe72 feat: replace README hero with a real-screenshot fan composite
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+```
+
+**Files in play:** `SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
