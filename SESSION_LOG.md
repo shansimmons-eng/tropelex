@@ -7315,3 +7315,179 @@ db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-28 23:09 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  1 file changed, 708 insertions(+)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 08:43 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 731 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 08:48 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 753 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 08:48 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 775 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 09:42 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 797 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 09:44 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 819 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 09:44 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 841 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
+
+---
+
+## Session: 2026-08-29 09:49 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  3 files changed, 863 insertions(+), 11 deletions(-)
+
+**Recent commits:**
+```
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+0b140bc ci: deploy site/ to GitHub Pages on push to main
+```
+
+**Files in play:** `README.md SESSION_LOG.md memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero.jpg memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+

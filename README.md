@@ -16,17 +16,7 @@
 
 ---
 
-<table>
-<tr>
-<td width="50%"><img src="site/images/screenshots/01-engine-core-dashboard.jpg" alt="Engine Core dashboard"/></td>
-<td width="50%"><img src="site/images/screenshots/02-safety-alignment-dashboard.jpg" alt="Safety &amp; Alignment dashboard"/></td>
-</tr>
-<tr>
-<td width="50%"><img src="site/images/screenshots/03-decision-lineage.jpg" alt="Decision Lineage graph with real caused_by edges"/></td>
-<td width="50%"><img src="site/images/screenshots/04-tropebook-linked-citations.jpg" alt="Tropebook citations linked with a named relationship"/></td>
-</tr>
-</table>
-<p align="center"><img src="site/images/screenshots/05-why-do-we.jpg" alt="Why Do We...? causal-chain answer" width="80%"/></p>
+<p align="center"><img src="images/tropelex-hero.jpg" alt="Tropelex — The Rationale Engine for AI"/></p>
 
 > [!NOTE]
 > **AI Memory System with Safety and Alignment Infrastructure**
