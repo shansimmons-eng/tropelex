@@ -7491,3 +7491,25 @@ db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
 
 **Open questions / next steps:** <!-- fill in -->
 
+
+---
+
+## Session: 2026-08-29 09:59 CDT
+
+**Branch:** `main`
+
+**Diff summary:**  2 files changed, 720 insertions(+)
+
+**Recent commits:**
+```
+84efe72 feat: replace README hero with a real-screenshot fan composite
+f1d8eb2 fix: agent identity gaps in Decision Market/Personas, add hard-refresh troubleshooting tip; docs wording pass
+fb97ccc fix: add LICENSE, fix stale test counts, fix broken guide tooltip renderer
+db864bb docs: reconcile README with readme-demo, add CONTRIBUTING/SECURITY
+014e3ff docs: hero screenshots + hosted docs links in README
+```
+
+**Files in play:** `images/tropelex-hero.jpg memory/prefetch/test-project_genealogy.json GRANT_INTRO.md HANDOFF.md images/tropelex-hero-rotating.gif memory/backups/2026-08-19-agent-skills-clear/ memory/backups/2026-08-25-tropelex-merge/ memory/backups/2026-08-26-duplicate-decision-cleanup/ uv.lock `
+
+**Open questions / next steps:** <!-- fill in -->
+
