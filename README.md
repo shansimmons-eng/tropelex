@@ -227,6 +227,37 @@ Visit **http://localhost:8766/hijacker**. Paste any verbose prompt and get it AI
 
 ---
 
+## Workflow
+
+What the loop above actually looks like once an agent is wired up — each session both draws on and adds to the same memory, so context compounds instead of resetting every time:
+
+```mermaid
+flowchart TD
+    subgraph Start["Session Start"]
+        A["Agent or human<br/>opens a project"] --> B["get_context_bundle<br/>pulls relevant past decisions,<br/>budget-aware, impact-ranked"]
+    end
+
+    subgraph During["During the Session"]
+        B --> C["Work happens"]
+        C --> D["capture_decision<br/>MCP tool · dashboard · CLI · Emacs · Slack"]
+        D --> E{"Safety category<br/>explicit?"}
+        E -->|"no"| D
+        E -->|"yes"| F["Written to memory<br/>+ hash-chained audit event"]
+        F --> G["Ghost / Contradiction checks<br/>run against the diff"]
+        G -.->|"drift or conflict found"| H["Flagged for review,<br/>never silently overwritten"]
+        G --> C
+    end
+
+    subgraph Finish["Session End"]
+        C --> I["end_session<br/>summary + structured diff"]
+        I --> J["Patterns, skills, and<br/>session history all updated"]
+    end
+
+    J -.->|"next session"| B
+```
+
+---
+
 ## Web Interface
 
 The dashboard sidebar groups 32 sections into 9 categories, the same grouping used in `wishlist.md` for the feature backlog. Within a category, sections are ordered as they appear in the sidebar. Safety & Alignment is a single sidebar entry that opens onto seven in-page tabs (listed below) rather than seven separate sidebar entries, since those seven are all facets of one thing.
