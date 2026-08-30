@@ -1585,6 +1585,51 @@ Live-verified against the real `tropelex` project via browser: Key Decisions pan
 
 ---
 
+## Distribution & Platform Support (Proposed, 2026-08-30)
+
+Three related but distinct asks, prompted by installing on a second machine with no way to bring it forward from the first. Ordered by scope, cheapest first — deliberately not bundled into one item since they have very different costs and none of them block the others.
+
+### 97. Uninstall Instructions
+**Purpose:** Document how to fully remove a Tropelex install. There's no package manager entry to reverse — it's a git clone plus a couple of local venvs and config files — so "uninstall" today means knowing, without being told, everywhere it wrote something.
+
+**Why:** Directly prompted by the user about to do exactly this on a secondary machine. Every integration point that reaches outside the repo (MCP registration, OpenCode plugin file + config entry, Emacs `load-path`) is currently something you'd only know to remove if you remembered setting it up.
+
+**Features:**
+- A "Uninstalling" section in README.md enumerating every location Tropelex writes to outside the cloned directory: `claude mcp remove tropelex` (or manual `.mcp.json` cleanup) for MCP registration, `~/.config/opencode/plugins/tropelex.js` + its entry in `opencode.json`/`opencode.jsonc` for OpenCode, the `(add-to-list 'load-path ...)` line for Emacs. Everything else (all `memory/` runtime state, `.env` secrets) lives inside the repo directory itself and is gone the moment the clone is deleted — no OS-level registry entries or background services exist today since there's no installer.
+- Deferred, not built this pass: a `scripts/uninstall.sh` that walks the known integration points and removes each with confirmation, instead of leaving the README as the only source of truth. Worth doing once the list above is confirmed complete and stable, not before.
+
+**Status:** Open. Proposed 2026-08-30. Low complexity — mostly documentation.
+
+---
+
+### 98. Update / Upgrade Mechanism
+**Purpose:** A real way to bring an existing install forward, instead of `git pull` (if you remembered to clone rather than download a zip) with no version check, no `memory/` schema-migration handling, and no prompt to refresh dependencies.
+
+**Why:** The direct cause of #97 above — the user is doing a second fresh install specifically because there's no way to update the first one instead.
+
+**Features:**
+- Minimum viable, cheap: document `git pull && uv pip install -r requirements.txt` (and the same for `mcp_server/`/`tui/`'s own venvs) as the supported update path in README.md, with a note that no `memory/` JSON schema is currently versioned, so no migration step exists to run — worth stating explicitly now, before it's untrue.
+- Moderate: a lightweight version-check surfaced in the dashboard — compare a local `VERSION` file (or the version already in `README.md`'s badges) against the latest GitHub tag/release, shown as a passive "update available" indicator. Read-only, no auto-update, no telemetry beyond a single GitHub API call.
+- Large, explicitly out of scope for now: real packaging (a PyPI release, or signed release artifacts) so `pip install --upgrade` or equivalent becomes possible. This is the piece that "implies packaging and other development aspects" — it needs its own scoping pass (versioning discipline, a real release process, backward-compatibility guarantees for `memory/` schema across versions) before committing to it. Don't start here.
+
+**Status:** Open. Proposed 2026-08-30. Ship the documentation-only step first; treat the version-check badge and real packaging as separate, later decisions.
+
+---
+
+### 99. Cross-Platform Support (Windows & macOS)
+**Purpose:** Evaluate — and if it holds up, implement — first-class support beyond Linux. README's own "Moving to Linux" section already claims "no Windows paths are hardcoded," implying someone checked at some point, but the claim has never been verified against an actual non-Linux run.
+
+**Why:** Asked directly by the user ("does this even make sense?") rather than assumed. Worth answering with a real finding instead of a guess.
+
+**Features:**
+- **macOS is very likely fine today, unimplemented only in the sense of "never explicitly tested."** macOS is POSIX/Darwin underneath, and the codebase already leans on POSIX primitives (see next point) that macOS supports natively — the honest scope here is verification, not new code.
+- **Native Windows has a real, concrete blocker, not a hypothetical one:** `core/memory/manager.py` and `core/embeddings.py` both use `fcntl.flock` for write-locking (confirmed by direct grep, not assumed) — `fcntl` is POSIX-only and does not exist in native Windows Python (only under WSL/Cygwin). `MemoryManager` is the module every write path in the app goes through, so this isn't a peripheral feature to patch around — it's core infrastructure. Native Windows support means either swapping to a genuinely cross-platform locking library (e.g. `portalocker`/`filelock`) with equivalent atomicity guarantees, or explicitly scoping Windows support to "via WSL" and documenting that as the supported path rather than pretending native Windows works.
+- Not yet audited, worth a pass before committing to this: the various `.sh` setup scripts (`mcp_server/run.sh`, the `uv venv && uv pip install` sequences shown as bash throughout the docs) assume a POSIX shell — Windows users need either PowerShell/batch equivalents or a documented "use WSL for setup" carve-out.
+
+**Status:** Open. Proposed 2026-08-30. Recommend: verify macOS first (cheap, likely already works), then decide whether native Windows support is worth the `fcntl` swap versus just documenting WSL as the supported Windows path — that decision alone probably resolves most of this item's cost.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
@@ -1786,4 +1831,5 @@ Live-verified against the real `tropelex` project via browser: Key Decisions pan
 **2026-08-19 correction, verified against `git log --grep="wishlist #"` rather than re-guessed:** the paragraph above is stale on several points it stated as open. Actually shipped since: **#19** (Session Replay with AI Analysis — no longer "the one item never picked up"), **#43** (Coordination Drift Detection), **#44** (Goal Re-Anchoring in Context Bundles), **#64** (Draft Policy Schema for Gates), **#69** (Handoff Completeness as a First-Class Policy), **#72** (Generalized Soft-Enforcement + Override-as-Decision), and **#67** (Semantic Intent Layer for Ghost — infra only, per its own commit message). #74–#78 (Adversarial Hardening P0–P8, the memory case-split incident, Repo Seek MVP + Add Citation/Exclude/Scan Item, and a dashboard bug-fix batch — see Phase 16) also shipped this pass. Status of #42, #46, #47, #63, #65, #66, #68, #70, #71, #73 not re-verified this pass — no matching commits found, treat as still open but unconfirmed rather than re-audited.
 **2026-08-21 addition:** Logged #79–91 (Research Deepening, external review) after checking each proposed idea against the actual code first — several of the source material's claims about existing capabilities (#9, #12, #4, #33, #40, `score_citation`, Deep Research hybrid mode) were already accurate and weren't re-logged. #79–81 flagged as near-term picks (reuse existing infra, no new subsystems); #82–91 logged as open ideas, #82 (Decision Promotion from Research) being the highest-leverage but biggest lift of the batch.
 **2026-08-21 same-day follow-up:** All three near-term picks (#79, #80, #81) shipped same day as logged — see each entry's own "Resolved" note for what shifted from the original scoping. Full suite: 2438 passing (was 2422 before this pass). #82–91 remain open.
-**Next Review:** 2026-08-26
+**2026-08-30 addition:** Logged #97–99 (Distribution & Platform Support — uninstall instructions, an update/upgrade mechanism, and cross-platform Windows/macOS support) after the user installed on a second machine with no way to bring it forward from the first. #99 includes a real, verified finding rather than a guess: `core/memory/manager.py` and `core/embeddings.py` both depend on `fcntl.flock`, which is POSIX-only and doesn't exist on native Windows — a concrete blocker for that platform specifically, not a general "needs testing" placeholder. All three logged as Open; none built this pass.
+**Next Review:** 2026-09-06

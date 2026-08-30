@@ -1,0 +1,34 @@
+flowchart TD
+    subgraph Clients["Agents and Interfaces"]
+        CC["Claude Code / Cursor<br/>via MCP"]
+        Dash["Web Dashboard"]
+        Emacs["Emacs"]
+        OC["OpenCode plugin"]
+        CLI["CLI"]
+    end
+
+    Server["Tropelex Server<br/>FastAPI · localhost:8766"]
+
+    subgraph Core["Core Engine"]
+        Gates["Safety Gates<br/>require_tag · require_goal_evidence"]
+        MM["Memory Manager"]
+        DT["Decision Tree<br/>supersedes / caused_by / reverts"]
+        TB["Tropebook<br/>citation knowledge graph"]
+    end
+
+    Audit["Audit Log<br/>hash-chained, append-only"]
+    Storage[("memory/*.json<br/>gitignored, local")]
+
+    CC -->|MCP tools| Server
+    Dash -->|REST /api| Server
+    Emacs -->|REST /api| Server
+    OC -->|REST /api| Server
+    CLI -.->|"local storage only,<br/>no server required"| Storage
+
+    Server --> Gates
+    Gates -->|"explicit basis required,<br/>or 422 blocked"| MM
+    MM --> DT
+    MM --> TB
+    Gates --> Audit
+    MM --> Storage
+    Audit --> Storage

@@ -25,42 +25,13 @@ Tropelex accumulates knowledge across projects (decisions, patterns, preferences
 
 The same mechanisms that make an agent's memory useful also make its behavior auditable: an immutable decision history an agent must cross-reference before acting, drift detection that catches code silently diverging from stated intent, and multi-agent handoff that carries rationale across agent boundaries instead of losing it. See [`SAFETY.md`](SAFETY.md) for how these properties apply to agent safety and alignment work.
 
-```mermaid
-flowchart TD
-    subgraph Clients["Agents and Interfaces"]
-        CC["Claude Code / Cursor<br/>via MCP"]
-        Dash["Web Dashboard"]
-        Emacs["Emacs"]
-        OC["OpenCode plugin"]
-        CLI["CLI"]
-    end
+<p align="center"><img src="images/diagrams/architecture.png" alt="Tropelex architecture: clients (Claude Code/MCP, Web Dashboard, Emacs, OpenCode, CLI) talk to the Tropelex FastAPI server, which routes through Safety Gates into the Memory Manager, Decision Tree, and Tropebook, all persisted to gitignored local JSON with a hash-chained audit log"/></p>
 
-    Server["Tropelex Server<br/>FastAPI · localhost:8766"]
+<!-- Rendered as a static image (source: images/diagrams/architecture.mmd) rather than a
+     live mermaid block -- the GitHub mobile app doesn't render mermaid and falls back to
+     raw code; a pre-rendered image displays correctly everywhere. Regenerate with:
+     npx @mermaid-js/mermaid-cli -i images/diagrams/architecture.mmd -o images/diagrams/architecture.png -b white -s 2 -->
 
-    subgraph Core["Core Engine"]
-        Gates["Safety Gates<br/>require_tag · require_goal_evidence"]
-        MM["Memory Manager"]
-        DT["Decision Tree<br/>supersedes / caused_by / reverts"]
-        TB["Tropebook<br/>citation knowledge graph"]
-    end
-
-    Audit["Audit Log<br/>hash-chained, append-only"]
-    Storage[("memory/*.json<br/>gitignored, local")]
-
-    CC -->|MCP tools| Server
-    Dash -->|REST /api| Server
-    Emacs -->|REST /api| Server
-    OC -->|REST /api| Server
-    CLI -.->|"local storage only,<br/>no server required"| Storage
-
-    Server --> Gates
-    Gates -->|"explicit basis required,<br/>or 422 blocked"| MM
-    MM --> DT
-    MM --> TB
-    Gates --> Audit
-    MM --> Storage
-    Audit --> Storage
-```
 
 **Docs, without running anything:** [Full Guide](https://shansimmons-eng.github.io/tropelex/) · [API Reference](https://shansimmons-eng.github.io/tropelex/api-reference.html) · [Getting Started](https://shansimmons-eng.github.io/tropelex/getting-started.html) · [FAQ](https://shansimmons-eng.github.io/tropelex/faq.html)
 
@@ -140,17 +111,11 @@ flowchart TD
 
 Tropelex doubles as empirical safety infrastructure for autonomous agents. For the alignment reframing of its features, threat models, and grant-specific technical summaries, see:
 
-```mermaid
-flowchart LR
-    A["Decision submitted<br/>by agent or human"] --> B{"Safety category<br/>explicit?"}
-    B -->|"no"| C["422 blocked<br/>+ suggested category"]
-    C -.->|"resubmit with an<br/>explicit choice"| A
-    B -->|"yes"| D["Written to memory<br/>content hash computed"]
-    D --> E["Audit event appended<br/>chained to prior entry's hash"]
-    D --> F["Decision Tree updated<br/>supersedes / caused_by / reverts"]
-    F --> G["Drift and Ghost checks<br/>watch for silent contradiction"]
-    E --> H["Provenance Chain<br/>tamper-evident history"]
-```
+<p align="center"><img src="images/diagrams/safety-gate.png" alt="Safety gate flow: a submitted decision without an explicit safety category is blocked with a suggested category; once written, it gets a content hash, an audit event chained to the prior entry's hash, a Decision Tree update, and ongoing Drift/Ghost contradiction checks"/></p>
+
+<!-- Rendered as a static image (source: images/diagrams/safety-gate.mmd). See the note
+     on the architecture diagram above for why, and the regeneration command. -->
+
 
 > [!IMPORTANT]
 > Nothing here claims the agent's judgment is trustworthy — the claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
@@ -231,30 +196,11 @@ Visit **http://localhost:8766/hijacker**. Paste any verbose prompt and get it AI
 
 What the loop above actually looks like once an agent is wired up — each session both draws on and adds to the same memory, so context compounds instead of resetting every time:
 
-```mermaid
-flowchart TD
-    subgraph Start["Session Start"]
-        A["Agent or human<br/>opens a project"] --> B["get_context_bundle<br/>pulls relevant past decisions,<br/>budget-aware, impact-ranked"]
-    end
+<p align="center"><img src="images/diagrams/workflow.png" alt="Session workflow loop: a session starts by pulling context via get_context_bundle, work happens with capture_decision gated on an explicit safety category and checked by Ghost/Contradiction checks, the session ends with end_session recording a summary and diff, and the updated patterns/skills/history feed the next session's context bundle"/></p>
 
-    subgraph During["During the Session"]
-        B --> C["Work happens"]
-        C --> D["capture_decision<br/>MCP tool · dashboard · CLI · Emacs · Slack"]
-        D --> E{"Safety category<br/>explicit?"}
-        E -->|"no"| D
-        E -->|"yes"| F["Written to memory<br/>+ hash-chained audit event"]
-        F --> G["Ghost / Contradiction checks<br/>run against the diff"]
-        G -.->|"drift or conflict found"| H["Flagged for review,<br/>never silently overwritten"]
-        G --> C
-    end
+<!-- Rendered as a static image (source: images/diagrams/workflow.mmd). See the note
+     on the architecture diagram above for why, and the regeneration command. -->
 
-    subgraph Finish["Session End"]
-        C --> I["end_session<br/>summary + structured diff"]
-        I --> J["Patterns, skills, and<br/>session history all updated"]
-    end
-
-    J -.->|"next session"| B
-```
 
 ---
 

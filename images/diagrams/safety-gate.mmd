@@ -1,0 +1,9 @@
+flowchart LR
+    A["Decision submitted<br/>by agent or human"] --> B{"Safety category<br/>explicit?"}
+    B -->|"no"| C["422 blocked<br/>+ suggested category"]
+    C -.->|"resubmit with an<br/>explicit choice"| A
+    B -->|"yes"| D["Written to memory<br/>content hash computed"]
+    D --> E["Audit event appended<br/>chained to prior entry's hash"]
+    D --> F["Decision Tree updated<br/>supersedes / caused_by / reverts"]
+    F --> G["Drift and Ghost checks<br/>watch for silent contradiction"]
+    E --> H["Provenance Chain<br/>tamper-evident history"]

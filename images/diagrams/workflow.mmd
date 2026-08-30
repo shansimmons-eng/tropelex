@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph Start["Session Start"]
+        A["Agent or human<br/>opens a project"] --> B["get_context_bundle<br/>pulls relevant past decisions,<br/>budget-aware, impact-ranked"]
+    end
+
+    subgraph During["During the Session"]
+        B --> C["Work happens"]
+        C --> D["capture_decision<br/>MCP tool · dashboard · CLI · Emacs · Slack"]
+        D --> E{"Safety category<br/>explicit?"}
+        E -->|"no"| D
+        E -->|"yes"| F["Written to memory<br/>+ hash-chained audit event"]
+        F --> G["Ghost / Contradiction checks<br/>run against the diff"]
+        G -.->|"drift or conflict found"| H["Flagged for review,<br/>never silently overwritten"]
+        G --> C
+    end
+
+    subgraph Finish["Session End"]
+        C --> I["end_session<br/>summary + structured diff"]
+        I --> J["Patterns, skills, and<br/>session history all updated"]
+    end
+
+    J -.->|"next session"| B
