@@ -1388,7 +1388,7 @@ void main() {
             <div class="mb-6">
                 <button id="btn-scan-goals" class="px-3 py-1.5 rounded-lg border border-accent-sky/30 text-accent-sky font-mono text-xs hover:bg-accent-sky/10 transition-all cursor-pointer">Scan for goal candidates</button>
                 <div id="goal-detect-form" class="hidden mt-3 p-4 bg-surface-raised rounded-lg border border-accent-sky/20">
-                    <textarea id="goal-detect-text-input" rows="4" placeholder="Paste a session summary or transcript…" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-3"></textarea>
+                    <textarea id="goal-detect-text-input" rows="4" maxlength="20000" placeholder="Paste a session summary or transcript…" class="w-full bg-surface border border-glass-border rounded-lg px-3 py-2 font-mono text-sm text-on-surface placeholder-outline focus:border-accent-sky focus:outline-none resize-none mb-3"></textarea>
                     <div class="flex gap-2">
                         <button id="btn-run-goal-detect" class="px-4 py-2 rounded-lg bg-accent-sky/20 text-accent-sky font-mono text-xs hover:bg-accent-sky/30 transition-all cursor-pointer">Scan</button>
                         <button id="btn-cancel-goal-detect" class="px-4 py-2 rounded-lg border border-glass-border text-outline font-mono text-xs hover:bg-surface-high transition-all cursor-pointer">Cancel</button>

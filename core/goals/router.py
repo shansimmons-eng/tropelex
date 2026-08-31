@@ -62,7 +62,7 @@ class GoalStatusRequest(BaseModel):
 
 
 class GoalDetectRequest(BaseModel):
-    text: str = Field(..., max_length=5000)
+    text: str = Field(..., max_length=20000)
 
 
 # ---------------------------------------------------------------------------

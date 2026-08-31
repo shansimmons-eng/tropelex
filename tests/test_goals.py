@@ -278,6 +278,27 @@ class TestDetectGoals:
         results = detect_goals("She is trying to achieve full test coverage this quarter")
         assert any(r["type"] == "aim" for r in results)
 
+    def test_detects_structured_purpose_field_at_high_confidence(self):
+        text = "**Purpose:** Add rate limiting to the public API.\n\n**Why:** Prevent abuse."
+        results = detect_goals(text)
+        assert any(
+            r["type"] == "structured_purpose" and r["confidence"] == "high"
+            for r in results
+        )
+        assert not any("Prevent abuse" in r["content"] for r in results)
+
+    def test_structured_purpose_field_stops_before_next_field(self):
+        text = "**Purpose:** Ship the new export flow end to end.\n**Why:** Users keep asking for it."
+        results = detect_goals(text)
+        structured = [r for r in results if r["type"] == "structured_purpose"]
+        assert len(structured) == 1
+        assert structured[0]["content"] == "Ship the new export flow end to end."
+
+    def test_detects_structured_goal_field(self):
+        text = "**Goal:** Reduce median API latency below 100ms.\n\n**Status:** Open."
+        results = detect_goals(text)
+        assert any(r["type"] == "structured_purpose" for r in results)
+
     def test_no_goal_language_returns_empty(self):
         assert detect_goals("The weather is nice today") == []
 
