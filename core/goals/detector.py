@@ -59,6 +59,21 @@ _STRUCTURED_FIELD_PATTERNS: list[tuple[str, str]] = [
 _HIGH_CONFIDENCE_TYPES = {"explicit_goal", "request", "structured_purpose"}
 
 
+def _normalize_content(raw: str) -> str:
+    """Collapse whitespace for display without corrupting hard-wrapped
+    source text. Pasted text (terminal output, some clipboard sources) is
+    often hard-wrapped at a fixed column with no regard for word
+    boundaries -- a newline sitting directly between two word characters
+    is almost always one of those mid-word breaks, not an intentional
+    space, so it's dropped rather than collapsed into " " (which would
+    otherwise turn e.g. "handoff" into "h andoff"). Any other run of
+    whitespace, including a line break at a real word boundary, still
+    collapses to a single space.
+    """
+    joined = re.sub(r"(?<=\w)\n(?=\w)", "", raw)
+    return re.sub(r"\s+", " ", joined).strip()
+
+
 def detect_goals(text: str) -> list[dict[str, str]]:
     """Scan text for goal-shaped phrasings, return up to 5 candidates.
 
@@ -74,7 +89,7 @@ def detect_goals(text: str) -> list[dict[str, str]]:
         matches = re.findall(pattern, text, re.IGNORECASE)
         for match in matches:
             content = " ".join(match) if isinstance(match, tuple) else match
-            content = re.sub(r"\s+", " ", content).strip()
+            content = _normalize_content(content)
             if 10 < len(content) < 500:
                 detected.append({
                     "type": goal_type,
@@ -86,7 +101,7 @@ def detect_goals(text: str) -> list[dict[str, str]]:
         matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
         for match in matches:
             content = " ".join(match) if isinstance(match, tuple) else match
-            content = re.sub(r"\s+", " ", content).strip()
+            content = _normalize_content(content)
             if 10 < len(content) < 500:
                 detected.append({
                     "type": goal_type,

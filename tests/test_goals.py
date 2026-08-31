@@ -299,6 +299,19 @@ class TestDetectGoals:
         results = detect_goals(text)
         assert any(r["type"] == "structured_purpose" for r in results)
 
+    def test_rejoins_hard_wrapped_mid_word_break(self):
+        # Simulates a terminal/clipboard hard-wrap that split "handoff"
+        # and "holding" mid-word with no surrounding whitespace -- these
+        # must be rejoined, not turned into "h andoff" / "holdin g".
+        text = "**Purpose:** Move logic into core/han\ndoff/ without changing existing behavior or holdin\ng anything back."
+        results = detect_goals(text)
+        assert results
+        content = results[0]["content"]
+        assert "core/handoff/" in content
+        assert "holding" in content
+        assert "han doff" not in content
+        assert "holdin g" not in content
+
     def test_no_goal_language_returns_empty(self):
         assert detect_goals("The weather is nice today") == []
 
