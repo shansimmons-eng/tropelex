@@ -302,7 +302,7 @@
 </style>
 </head>
 <body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
-<canvas id="bg-canvas"></canvas>
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
 
 <!-- TopNavBar -->
 <header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
@@ -311,7 +311,7 @@
 <a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
     <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
 </a>
-<nav class="hidden md:flex gap-6">
+<nav class="hidden md:flex gap-6" aria-label="Main navigation">
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
@@ -337,7 +337,7 @@
 <div class="space-y-4">
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-tropelex-and-what-problem-does-it-solve">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is Tropelex and what problem does it solve?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is Tropelex and what problem does it solve?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -350,7 +350,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="where-is-governance-data-ingested-and-stored">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Where is governance data ingested and stored?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">Where is governance data ingested and stored?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -369,7 +369,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-do-i-do-if-i-am-not-seeing-any-results-for-the-active-page">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What do I do if I am not seeing any results for the active page?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What do I do if I am not seeing any results for the active page?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -388,7 +388,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-best-way-to-consistently-record-decisions-and-activity">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the best way to consistently record decisions and activity?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the best way to consistently record decisions and activity?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -406,7 +406,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-can-i-improve-my-general-ai-coding-workflows">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How can I improve my general AI coding workflows?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How can I improve my general AI coding workflows?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -425,7 +425,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-makes-the-ais-job-easier-and-potentially-reduces-token-consumption">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What makes the AI's job easier and potentially reduces token consumption?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What makes the AI's job easier and potentially reduces token consumption?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -443,7 +443,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-context-compression-and-how-does-it-work">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is context compression and how does it work?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is context compression and how does it work?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -461,7 +461,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-tropelex-prevent-ai-hallucinations-and-contradictions">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex prevent AI hallucinations and contradictions?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex prevent AI hallucinations and contradictions?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -474,7 +474,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-synthetic-data">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is synthetic data?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is synthetic data?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -487,7 +487,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="why-should-i-provide-synthetic-data-details">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Why should I provide synthetic data details?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">Why should I provide synthetic data details?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -505,7 +505,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-eu-ai-act-compliance-checker-in-the-synthetic-data-policy">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the EU AI Act compliance checker in the Synthetic Data Policy?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the EU AI Act compliance checker in the Synthetic Data Policy?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -523,7 +523,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-the-pre-write-safety-guard-evaluate-proposed-diffs">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does the Pre-Write Safety Guard evaluate proposed diffs?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How does the Pre-Write Safety Guard evaluate proposed diffs?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -536,7 +536,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-an-architecture-decision-record-adr">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Architecture Decision Record (ADR)?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Architecture Decision Record (ADR)?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -554,7 +554,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-difference-between-a-static-adr-and-a-living-adr">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the difference between a static ADR and a Living ADR?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the difference between a static ADR and a Living ADR?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -572,7 +572,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-are-ghost-decisions-and-why-do-they-matter">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What are Ghost Decisions and why do they matter?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What are Ghost Decisions and why do they matter?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -585,7 +585,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-the-knowledge-graph-and-how-are-decisions-connected">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the Knowledge Graph and how are decisions connected?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is the Knowledge Graph and how are decisions connected?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -604,7 +604,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-does-tropelex-track-developer-friction-and-frustration-signals">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex track developer friction and frustration signals?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How does Tropelex track developer friction and frustration signals?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -617,7 +617,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="what-is-an-agent-handoff-packet-and-when-should-i-use-it">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Agent Handoff Packet and when should I use it?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">What is an Agent Handoff Packet and when should I use it?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -635,7 +635,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="can-tropelex-share-rationale-and-knowledge-across-different-projects">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">Can Tropelex share rationale and knowledge across different projects?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">Can Tropelex share rationale and knowledge across different projects?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -648,7 +648,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-integrate-tropelex-with-emacs-or-vscode">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I integrate Tropelex with Emacs or VSCode?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I integrate Tropelex with Emacs or VSCode?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -667,7 +667,7 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-rollback-memory-or-time-travel-to-a-previous-session">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I rollback memory or time-travel to a previous session?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I rollback memory or time-travel to a previous session?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
@@ -685,12 +685,12 @@
 
 <details class="glass-card rounded-2xl p-6 border-engine group" id="how-do-i-run-the-automated-pytest-suite-to-verify-system-health">
 <summary class="cursor-pointer list-none flex items-start justify-between gap-4">
-  <h3 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I run the automated Pytest suite to verify system health?</h3>
+  <h2 class="font-headline-md text-base font-bold text-on-surface pr-4">How do I run the automated Pytest suite to verify system health?</h2>
   <span class="material-symbols-outlined text-primary shrink-0 transition-transform group-open:rotate-180">expand_more</span>
 </summary>
 <div class="mt-3">
 <p class="text-sm text-on-surface-variant leading-relaxed my-2">Per the Tropelex testing mandate, run <code>pytest</code> directly in your Linux/WSL terminal:</p>
-<pre><code>pytest tests/ -x -q</code></pre>
+<pre tabindex="0"><code>pytest tests/ -x -q</code></pre>
 </div>
 <div class="mt-3 pt-3 border-t border-outline-variant/20">
 <p class="text-sm text-on-surface-variant leading-relaxed my-2">All 2,672 unit tests must pass before declaring features or bug fixes complete. Note: Last30Days engine tests consume external API tokens and are excluded by default; to run them explicitly, run <code>pytest -m last30days</code>.</p>

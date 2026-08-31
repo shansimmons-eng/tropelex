@@ -302,7 +302,7 @@
 </style>
 </head>
 <body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
-<canvas id="bg-canvas"></canvas>
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
 
 <!-- TopNavBar -->
 <header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
@@ -311,7 +311,7 @@
 <a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
     <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
 </a>
-<nav class="hidden md:flex gap-6">
+<nav class="hidden md:flex gap-6" aria-label="Main navigation">
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
 <a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
@@ -348,7 +348,7 @@
 
 <div class="glass-card rounded-2xl p-6 border-engine">
 <h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_one</span> Clone and install</h2>
-<pre><code>git clone https://github.com/shansimmons-eng/tropelex.git
+<pre tabindex="0"><code>git clone https://github.com/shansimmons-eng/tropelex.git
 cd tropelex
 
 # With uv (recommended)
@@ -362,13 +362,13 @@ pip install -r requirements.txt</code></pre>
 <div class="glass-card rounded-2xl p-6 border-engine">
 <h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_two</span> Set your API key (optional)</h2>
 <p class="text-sm text-on-surface-variant leading-relaxed mb-2">Create a <code>.env</code> file in the project root — skip this entirely and Tropelex still runs, with AI compression falling back to dictionary-based rules:</p>
-<pre><code>OPENAI_API_KEY=sk-your-key-here
+<pre tabindex="0"><code>OPENAI_API_KEY=sk-your-key-here
 BRAVE_SEARCH_API_KEY=your-brave-key-here   # optional</code></pre>
 </div>
 
 <div class="glass-card rounded-2xl p-6 border-engine">
 <h2 class="font-headline-md text-lg font-bold text-on-surface mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary">looks_3</span> Start the server</h2>
-<pre><code>python -m core.tropebook.web.server</code></pre>
+<pre tabindex="0"><code>python -m core.tropebook.web.server</code></pre>
 <p class="text-sm text-on-surface-variant leading-relaxed mt-2">Then open <code>http://localhost:8766</code> in your browser.</p>
 </div>
 

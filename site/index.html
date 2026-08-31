@@ -302,7 +302,7 @@
 </style>
 </head>
 <body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
-<canvas id="bg-canvas"></canvas>
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
 
 <!-- TopNavBar -->
 <header class="bg-surface/85 backdrop-blur-2xl border-b border-outline-variant/30 shadow-lg fixed top-0 w-full z-50">
@@ -311,7 +311,7 @@
 <a class="flex items-center gap-2.5" href="index.html" title="Tropelex Documentation">
     <img src="images/tl.png" alt="Tropelex" class="h-9 w-auto" />
 </a>
-<nav class="hidden md:flex gap-6">
+<nav class="hidden md:flex gap-6" aria-label="Main navigation">
 <a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="index.html"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="api-reference.html"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="getting-started.html"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
@@ -343,7 +343,7 @@
   <span class="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 text-[10px] font-mono border border-purple-500/30">v2.0</span>
 </div>
 
-<nav class="flex flex-col gap-4 text-xs font-medium">
+<nav class="flex flex-col gap-4 text-xs font-medium" aria-label="Table of contents">
 
   <!-- Overview Group -->
   <div>
@@ -486,7 +486,7 @@
 <span class="material-symbols-outlined text-purple-400 text-[20px]">download</span> 1. System Prerequisites &amp; Installation
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Tropelex requires Python 3.10+. Clone the repository and install core dependencies:</p>
-<pre><code>git clone https://github.com/shansimmons-eng/tropelex.git
+<pre tabindex="0"><code>git clone https://github.com/shansimmons-eng/tropelex.git
 cd tropelex
 pip install -r requirements.txt</code></pre>
 </div>
@@ -496,7 +496,7 @@ pip install -r requirements.txt</code></pre>
 <span class="material-symbols-outlined text-purple-400 text-[20px]">dns</span> 2. Launch the Tropelex Server
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Start the REST API backend server from the repository root (runs by default at <code>http://localhost:8766</code>):</p>
-<pre><code>python3 -m core.tropebook.web.server</code></pre>
+<pre tabindex="0"><code>python3 -m core.tropebook.web.server</code></pre>
 <p class="text-on-surface-variant text-sm mt-2">All client interfaces (Dashboard, MCP server, VSCode Extension, Emacs, TUI, OpenCode, Devin, Cursor, Aider) communicate with this backend server.</p>
 </div>
 
@@ -631,44 +631,44 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="dashboard">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="dashboard">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">space_dashboard</span> Overview
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Landing overview: quick stats, recent activity timeline, and Getting Started onboarding progress. (<em>UI Tab: Overview</em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="memory">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="memory">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">database</span> Memory
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">View and manage project memory — decisions, session logs, developer preferences, and active patterns. Supports decision context backfilling (<code>PATCH /api/memory/{project}/decisions/{id}/context</code>) and soft-deleting projects (<code>DELETE /api/memory/{project}</code>) with 30-day trash retention. (<em>UI Tab: Memory / MCP <code>get_project_memory</code> / API <code>GET /api/memory/{project}</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="goals">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="goals">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">track_changes</span> Goals
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Goal entity tracking, inline goal editing (text/priority/category), goal-shaped language detection (<code>detect_goals</code>), adherence scoring, and continuous context re-anchoring. (<em>UI Tab: Goals / API <code>GET /api/memory/{project}/goals</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="patterns">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="patterns">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">hub</span> Patterns
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Auto-detected architectural and workflow patterns learned from recorded sessions and git activity. (<em>UI Tab: Patterns / API <code>GET /api/patterns</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="knowledge-graph">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="knowledge-graph">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">account_tree</span> Knowledge Graph
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Visual D3 force-directed graph rendering relationships between decisions (<code>supersedes</code>, <code>caused_by</code>, <code>related_to</code>). (<em>UI Tab: Knowledge Graph</em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20">
-<h4 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="prompt-lab">
+<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-1 flex items-center gap-2" id="prompt-lab">
 <span class="material-symbols-outlined text-purple-400 text-[18px]">science</span> Prompt Lab
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">3-stage prompt preprocessor: compression, context gap checking, and imperative output structuring (TASK / CONSTRAINTS / CONTEXT). (<em>UI Tab: Prompt Lab / API <code>/prompt-lab</code></em>)</p>
 </div>
 </div>
@@ -688,58 +688,58 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="insights">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="insights">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">analytics</span> Insights
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Decision intelligence: confidence scoring, agent proficiency tracking, decision timeline chains, ADR generation, session replay, and cross-project knowledge transfer. (<em>UI Tab: Insights / API <code>GET /api/memory/{project}/insights</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="health-dashboard">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="health-dashboard">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">health_metrics</span> Health
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Aggregate project health score based on decision confidence tiers, session coverage, and pattern stability. (<em>UI Tab: Health / API <code>GET /api/health</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="impact-analysis">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="impact-analysis">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">trending_up</span> Impact
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Calculates downstream decision dependency graphs, identifying high-impact choices, reversal rates, and ROI scoring. (<em>UI Tab: Impact / API <code>GET /api/memory/{project}/decision-impact</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="ghost-decisions">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="ghost-decisions">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">visibility_off</span> Ghost Decisions
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Detects silent code drift by scanning git diffs and code keywords against documented decision constraints. (<em>UI Tab: Ghost Decisions / MCP <code>check_diff_for_conflicts</code> / API <code>POST /api/memory/{project}/ghost-check</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="pre-write-guard">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="pre-write-guard">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">gavel</span> Pre-Write Guard
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Prevents bad edits before writing code. Checks a proposed git diff against active decisions and returns severity-scored compliance alerts. (<em>UI Tab: Pre-Write Guard / MCP <code>check_diff_for_conflicts</code> / API <code>POST /api/memory/{project}/ghost-check</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="friction-mining">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="friction-mining">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">record_voice_over</span> Friction Mining
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Scans conversation transcripts for frustration markers (rephrasing, retry loops, escalation phrases) to capture implicit preferences. (<em>UI Tab: Friction Mining / MCP <code>friction_scan</code> / API <code>POST /api/friction/scan</code> / Emacs <code>C-c t f</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="contradictions">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="contradictions">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">compare_arrows</span> Contradictions
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Scans for opposing decision pairs ("use REST" vs "use GraphQL") and surfaces active conflict warnings with resolution suggestions. (<em>UI Tab: Contradictions / MCP <code>check_contradictions</code> / API <code>GET /api/memory/{project}/contradictions</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20">
-<h4 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="session-shape">
+<h3 class="font-headline-md text-lg font-bold text-cyan-300 mb-1 flex items-center gap-2" id="session-shape">
 <span class="material-symbols-outlined text-cyan-400 text-[18px]">show_chart</span> Session Shape
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Baselining tool-call frequency, token budgets, and latency drift signals per agent. Correlates session-shape deviations against subsequent Ghost overrides or elevated friction scans, reported as lift over the baseline rate. (<em>UI Tab: Session Shape / API <code>GET /api/memory/{project}/agents/{agent}/session-shape</code>, <code>.../session-shape/correlation</code></em>)</p>
 </div>
 </div>
@@ -759,31 +759,31 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-green-950/20 border border-green-500/20">
-<h4 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="explain">
+<h3 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="explain">
 <span class="material-symbols-outlined text-green-400 text-[18px]">forum</span> Why Do We...? Chat
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Ask natural language questions about architectural decisions. Fuses RAG + decision tree + impact analysis into causal answers. (<em>UI Tab: Why Do We...? / MCP <code>explain_why</code> / API <code>POST /api/explain</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-green-950/20 border border-green-500/20">
-<h4 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="prefetch">
+<h3 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="prefetch">
 <span class="material-symbols-outlined text-green-400 text-[18px]">cloud_download</span> Context Prefetch
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Predicts the optimal minimal context bundle for a task, sized to a token budget and prioritized by decision impact score. (<em>UI Tab: Context Prefetch / MCP <code>get_context_bundle</code> / API <code>GET /api/memory/{project}/prefetch</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-green-950/20 border border-green-500/20">
-<h4 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="docmine">
+<h3 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="docmine">
 <span class="material-symbols-outlined text-green-400 text-[18px]">find_in_page</span> Doc Mining
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm mb-2">Scans repository markdown files for doc-vs-decision contradictions, doc-vs-doc drift, and uncaptured decision statements: (<em>UI Tab: Doc Mining / API <code>POST /api/memory/{project}/docmine/scan</code></em>)</p>
-<pre><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{"paths": ["README.md", "docs/"]}'</code></pre>
+<pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/&lt;project&gt;/docmine/scan -d '{"paths": ["README.md", "docs/"]}'</code></pre>
 </div>
 
 <div class="p-4 rounded-xl bg-green-950/20 border border-green-500/20">
-<h4 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="decision-lineage">
+<h3 class="font-headline-md text-lg font-bold text-green-300 mb-1 flex items-center gap-2" id="decision-lineage">
 <span class="material-symbols-outlined text-green-400 text-[18px]">timeline</span> Decision Lineage
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Visual tree showing decision evolution, version history, and parent-child parentage chains across project iterations. (<em>UI Tab: Decision Lineage / API <code>GET /api/memory/{project}/decisions/{id}/versions</code></em>)</p>
 </div>
 </div>
@@ -829,59 +829,59 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-4">
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="safety-dashboard">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="safety-dashboard">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">dashboard</span> Dashboard
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Risk trends, aggregate exposure metrics, and security scoring across project memory. (<em>UI Tab: Dashboard / API <code>GET /api/memory/{project}/safety-dashboard</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="alignment">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="alignment">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">tune</span> Alignment
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Evaluates interpretability, safety, fairness, robustness, and governance drift between evaluation runs. (<em>UI Tab: Alignment / API <code>GET /api/memory/{project}/alignment/evaluate</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="governance">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="governance">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">gavel</span> Governance
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Compliance checks against EU AI Act, NIST, and ISO 42001 frameworks with automated governance report generation. (<em>UI Tab: Governance / API <code>GET /api/memory/{project}/governance/compliance</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="provenance">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="provenance">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">fingerprint</span> Provenance &amp; Integrity
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Immutable provenance chain verification, signature checks, tamper detection, and security audit logging for all decisions. (<em>UI Tab: Provenance / API <code>GET /api/memory/{project}/provenance/chain</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="safety-reviews">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="safety-reviews">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">rate_review</span> Reviews
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Human-in-the-loop review queue for decisions tagged <code>requires_review</code>, offering mitigation advice and audit tracking. (<em>UI Tab: Reviews / API <code>GET /api/memory/{project}/reviews/pending</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="synthetic-data">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="synthetic-data">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">dataset</span> Synthetic Data Policy
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">EU AI Act Art. 10 &amp; 50 registration for synthetic datasets — privacy budget tracking, bias audits, and compliance gate enforcement. (<em>UI Tab: Synthetic Data / API <code>GET /api/memory/{project}/synthetic-data/summary</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="agent-audit">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="agent-audit">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">bug_report</span> Agent Surface Audit
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm mb-2">Audits the agent's harness config (<code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.mcp.json</code>, hooks, skills) for hardcoded secrets, broad permissions, and injection risks (Grades A–F): (<em>UI Tab: Agent Audit / API <code>POST /api/agent-audit/scan</code></em>)</p>
-<pre><code>curl -X POST http://localhost:8766/api/agent-audit/scan?repo_path=/path/to/repo</code></pre>
+<pre tabindex="0"><code>curl -X POST http://localhost:8766/api/agent-audit/scan?repo_path=/path/to/repo</code></pre>
 </div>
 
 <div class="p-4 rounded-xl bg-rose-950/15 border border-rose-500/20">
-<h4 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="drift-bench">
+<h3 class="font-headline-md text-lg font-bold text-rose-300 mb-1 flex items-center gap-2" id="drift-bench">
 <span class="material-symbols-outlined text-rose-400 text-[18px]">speed</span> Drift-Bench
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Continuous safety regression suite evaluating alignment drift and goal stability across multi-turn agent sessions. (<em>UI Tab: Drift-Bench / API <code>GET /api/memory/{project}/alignment/drift</code></em>)</p>
 </div>
 </div>
@@ -901,16 +901,16 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h4 class="font-headline-md text-lg font-bold text-amber-300 mb-1 flex items-center gap-2" id="time-travel">
+<h3 class="font-headline-md text-lg font-bold text-amber-300 mb-1 flex items-center gap-2" id="time-travel">
 <span class="material-symbols-outlined text-amber-400 text-[18px]">history</span> Time Travel
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Inspect project memory state as of any past date. Forensic postmortem debugger tool. (<em>UI Tab: Time Travel / API <code>GET /api/memory/{project}/timetravel</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h4 class="font-headline-md text-lg font-bold text-amber-300 mb-1 flex items-center gap-2" id="compaction">
+<h3 class="font-headline-md text-lg font-bold text-amber-300 mb-1 flex items-center gap-2" id="compaction">
 <span class="material-symbols-outlined text-amber-400 text-[18px]">compress</span> Memory Compaction
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Collapses long, superseded decision chains into epoch summaries to maintain token efficiency. (<em>UI Tab: Compaction / API <code>POST /api/memory/{project}/compact</code></em>)</p>
 </div>
 </div>
@@ -930,44 +930,44 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="feeds">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="feeds">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">rss_feed</span> Research Feeds
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Scheduled research feeds, optionally scoped to one project or shared across several (<code>POST /api/research-feeds/{feed_id}/share</code>), with automatic interval adjustment on novelty/anomaly signals and on-demand LLM query-rewrite suggestions for stagnant feeds (<code>POST /api/research-feeds/{feed_id}/suggest-query-rewrite</code>), plus citation health metrics and bulk config export/import. (<em>UI Tab: Research Feeds / API <code>GET /api/research-feeds</code> / MCP <code>list_research_feeds</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="deep-research">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="deep-research">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">manage_search</span> Deep Research
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Dual-engine research system (Multi-Source Scan + Citation-Grade Web Research) with a quick/thorough budget preset (wall-time and step-count, not token/source caps — the underlying engines don't expose those), query-fingerprint caching for repeat queries, and one-click Decision Promotion (<code>POST /api/memory/{project}/research/promote-candidates</code>) with deterministic citation-diversity confidence scoring. A "Research this decision's rationale" action on any decision card seeds a fresh research run from that decision's own text and attaches results back via <code>PATCH /api/memory/{project}/decisions/{id}/citation-ids</code>. (<em>UI Tab: Deep Research / API <code>POST /api/memory/{project}/deep-research/web-research</code> / MCP <code>run_deep_research</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="source-coverage">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="source-coverage">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">donut_large</span> Source Coverage
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Per-project breakdown of which sources (by domain — GitHub, Reddit, academic, etc.) are actually producing citations a decision has cited, vs. noise, with a per-project suppression list for low-value sources. (<em>API <code>GET /api/memory/{project}/research/source-coverage</code>, <code>GET</code>/<code>PUT /api/memory/{project}/research/disabled-sources</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="tropebook">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="tropebook">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">library_books</span> Tropebook
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Citation library and research knowledge base for storing reference URLs, managing tags, and monitoring flagged citations in Needs Attention. (<em>UI Tab: Tropebook / API <code>GET /api/citations</code> / CLI <code>tropelex</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="repo-seek">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="repo-seek">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">find_in_page</span> Repo Seek
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Automated repository scanner that parses source code for uncaptured citations, external links, and reference docs with Add/Exclude controls and one-click Deep Research scanning. (<em>UI Tab: Repo Seek / API <code>POST /api/reposeek/scan</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/20">
-<h4 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="trending">
+<h3 class="font-headline-md text-lg font-bold text-fuchsia-300 mb-1 flex items-center gap-2" id="trending">
 <span class="material-symbols-outlined text-fuchsia-400 text-[18px]">trending_up</span> Trending
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Analyzes topic velocity, emerging technical keywords, and trend signals across research runs, source coverage dashboards, and scheduled feeds. (<em>UI Tab: Trending / API <code>GET /api/trending</code></em>)</p>
 </div>
 </div>
@@ -987,44 +987,44 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="handoff">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="handoff">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">swap_calls</span> Agent Handoff
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Generates role-aware, token-budgeted context packets for inter-agent delegation. (<em>UI Tab: Agent Handoff / MCP <code>get_handoff_packet</code> / API <code>POST /api/handoff/build</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="pr-bot">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="pr-bot">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">merge_type</span> PR Bot
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Generates pull request comments containing relevant decision context and ghost warnings. (<em>UI Tab: PR Bot / API <code>POST /api/prbot/comment</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="narrative-mode">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="narrative-mode">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">auto_stories</span> Narrative Mode
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Converts decision graphs into human-readable prose with audience presets (new hire, investor, PM). (<em>UI Tab: Narrative / API <code>GET /api/narrative/{project}</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="decision-market">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="decision-market">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">query_stats</span> Decision Market
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Place confidence bets on decisions to track calibration and accuracy over time. (<em>UI Tab: Decision Market / API <code>POST /api/market/bet</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="slack-capture">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="slack-capture">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">chat</span> Slack Capture
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Extracts decisions and implicit architectural rationale directly from Slack chat threads. (<em>UI Tab: Slack Capture / API <code>POST /api/slack/events</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
-<h4 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="personas">
+<h3 class="font-headline-md text-lg font-bold text-indigo-300 mb-1 flex items-center gap-2" id="personas">
 <span class="material-symbols-outlined text-indigo-400 text-[18px]">badge</span> Personas
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Synthesizes readable behavioral personas from agent proficiency metrics. (<em>UI Tab: Personas / API <code>GET /api/personas/{agent}</code></em>)</p>
 </div>
 </div>
@@ -1044,30 +1044,30 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-6">
 <div class="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20">
-<h4 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="git">
+<h3 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="git">
 <span class="material-symbols-outlined text-teal-400 text-[18px]">commit</span> Git Integration
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Tech stack detection, conventional commit decision extraction, and deep diff parsing for rationale and revert chains. (<em>UI Tab: Git / API <code>POST /api/sync/git</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20">
-<h4 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="benchmarks">
+<h3 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="benchmarks">
 <span class="material-symbols-outlined text-teal-400 text-[18px]">bar_chart</span> Benchmarks
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Privacy-preserving cross-project decision metrics and reversal rate comparisons. Supports offline JSON import/export. (<em>UI Tab: Benchmarks / API <code>GET /api/benchmarks</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20">
-<h4 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="cost-ledger">
+<h3 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="cost-ledger">
 <span class="material-symbols-outlined text-teal-400 text-[18px]">payments</span> Cost Ledger
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Tracks actual financial dollars and LLM tokens spent per decision to measure ROI. (<em>UI Tab: Cost Ledger / API <code>GET /api/cost/{project}</code></em>)</p>
 </div>
 
 <div class="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20">
-<h4 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="versioning">
+<h3 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="versioning">
 <span class="material-symbols-outlined text-teal-400 text-[18px]">new_releases</span> Versioning
-</h4>
+</h3>
 <p class="font-body-md text-on-surface-variant text-sm">Two independently-tracked version numbers: the <strong>app version</strong> (shown in the dashboard footer and <code>GET /api/health</code>) and a <strong>memory schema version</strong> that only bumps when the on-disk/export JSON shape changes in a way that could break cross-install compatibility. Check both are on the same app version before moving data between machines — <code>POST /api/account/import</code> 409s on a schema mismatch (or a missing schema_version, from an export predating this field) unless you explicitly confirm, and a mismatched Benchmarks bundle surfaces a real warning instead of an unexplained skip count. See the README's <a href="https://github.com/shansimmons-eng/tropelex#versioning" class="text-teal-300 hover:text-teal-200 underline">Versioning</a> section for the full policy.</p>
 </div>
 </div>
@@ -1090,7 +1090,7 @@ pip install -r requirements.txt</code></pre>
 <div class="space-y-4 mb-6">
 <div>
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-1">Quick Setup</h3>
-<pre><code>cd mcp_server
+<pre tabindex="0"><code>cd mcp_server
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
@@ -1102,7 +1102,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 
 <div>
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-1">Manual Registration</h3>
-<pre><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
+<pre tabindex="0"><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
 </div>
 </div>
 
@@ -1214,7 +1214,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 <p class="font-body-md text-on-surface-variant text-sm mb-4">A Textual-based terminal dashboard in <code>tui/</code> for tmux users. Browse projects, inspect decisions, and record new rationale without leaving the terminal.</p>
 
-<pre><code>cd tui
+<pre tabindex="0"><code>cd tui
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python app.py</code></pre>
@@ -1265,7 +1265,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
 <strong class="text-emerald-200 text-sm block mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">terminal</span> OpenCode Plugin</strong>
 <p class="text-on-surface-variant mb-2">Defined in <code>.opencode/</code> and <code>plugins/tropelex.js</code>. Copy to your OpenCode plugins directory:</p>
-<pre class="my-0"><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
+<pre class="my-0" tabindex="0"><code>cp plugins/tropelex.js ~/.config/opencode/plugins/tropelex.js</code></pre>
 <p class="text-on-surface-variant mt-2">Add <code>"tropelex"</code> to the <code>"plugin"</code> array in <code>~/.config/opencode/opencode.json</code>.</p>
 </div>
 
@@ -1305,7 +1305,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <p class="font-body-md text-on-surface-variant text-sm mb-4">Zero-dependency Emacs package (<code>emacs/tropelex-capture.el</code>) for capturing decisions and friction signals straight from your editor.</p>
 
 <h3 class="font-headline-md text-base font-bold text-pink-300 mb-1">Setup</h3>
-<pre><code>(add-to-list 'load-path "~/Tropelex/emacs")
+<pre tabindex="0"><code>(add-to-list 'load-path "~/Tropelex/emacs")
 (require 'tropelex-capture)
 (tropelex-capture-mode 1)</code></pre>
 
@@ -1369,46 +1369,46 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 <div class="space-y-4">
 <div>
-<h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Idempotent read request" class="method-get font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 1. Record Decision
-</h4>
-<pre><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions \
+</h3>
+<pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions \
   -H "Content-Type: application/json" \
   -d '{"decision": "Using FastAPI", "context": "Requires high performance async endpoints"}'</code></pre>
 </div>
 
 <div>
-<h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Partial update request" class="method-patch font-mono text-xs px-2 py-0.5 rounded font-bold">PATCH</span> 2. Backfill Decision Context
-</h4>
-<pre><code>curl -X PATCH http://localhost:8766/api/memory/my_project/decisions/dec_123/context \
+</h3>
+<pre tabindex="0"><code>curl -X PATCH http://localhost:8766/api/memory/my_project/decisions/dec_123/context \
   -H "Content-Type: application/json" \
   -d '{"context": "Updated context rationale after review"}'</code></pre>
 </div>
 
 <div>
-<h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="State mutation request" class="method-post font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 3. Promote Candidate Decision from Research
-</h4>
-<pre><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions/promote \
+</h3>
+<pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions/promote \
   -H "Content-Type: application/json" \
   -d '{"decision": "Adopt vector search", "context": "Recall was the bottleneck", "citation_ids": ["cit_456"], "safety_metadata": {"safety_category": "general"}}'</code></pre>
 </div>
 
 <div>
-<h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="State mutation request" class="method-post font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 4. Pre-Write Diff Guard (Ghost Check)
-</h4>
-<pre><code>curl -X POST http://localhost:8766/api/memory/my_project/ghost-check \
+</h3>
+<pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/ghost-check \
   -H "Content-Type: application/json" \
   -d '{"diff": "--- a/db.py\n+++ b/db.py\n+import sqlite3"}'</code></pre>
 </div>
 
 <div>
-<h4 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Soft delete request" class="method-delete font-mono text-xs px-2 py-0.5 rounded font-bold">DELETE</span> 5. Soft-Delete Project
-</h4>
-<pre><code>curl -X DELETE http://localhost:8766/api/memory/my_project</code></pre>
+</h3>
+<pre tabindex="0"><code>curl -X DELETE http://localhost:8766/api/memory/my_project</code></pre>
 </div>
 </div>
 </section>
@@ -1473,7 +1473,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 <h3 class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> On-Disk Storage Layout</h3>
 <p class="text-on-surface-variant text-sm mb-2">All project data is stored under the local <code>memory/</code> directory. Each project is one flat JSON file, not a directory of separate files:</p>
-<pre><code>memory/
+<pre tabindex="0"><code>memory/
 ├── &lt;project_name&gt;.json  # One file per project: decisions, goals,
 │                        # session_history, patterns, audit_log, safety
 │                        # and alignment state -- all as keys in a single
@@ -1507,13 +1507,13 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
 <h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">warning</span> "Cannot reach Tropelex" / Connection Refused</h3>
 <p class="text-on-surface-variant text-sm mb-2">The server is not running. Launch it from the repository root:</p>
-<pre><code>python3 -m core.tropebook.web.server</code></pre>
+<pre tabindex="0"><code>python3 -m core.tropebook.web.server</code></pre>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
 <h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">extension_off</span> MCP Server or TUI Fails with <code>ModuleNotFoundError</code></h3>
 <p class="text-on-surface-variant text-sm mb-2">Both tools run in isolated venvs. Set up dependencies in their respective directories:</p>
-<pre><code>uv venv .venv
+<pre tabindex="0"><code>uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 
@@ -1698,7 +1698,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
                 });
             });
 
-            // Auto wrap <pre> blocks with macOS dots and floating copy button
+            // Auto wrap <pre tabindex="0"> blocks with macOS dots and floating copy button
             document.querySelectorAll('pre').forEach(pre => {
                 const wrap = document.createElement('div');
                 wrap.className = 'code-copy-wrap';
