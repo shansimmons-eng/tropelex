@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 *.pyo
+node_modules/
+scripts/a11y/reports/
 .env
 .venv/
 venv/

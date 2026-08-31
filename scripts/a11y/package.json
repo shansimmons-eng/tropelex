@@ -1,0 +1,13 @@
+{
+  "name": "tropelex-a11y-scan",
+  "private": true,
+  "type": "module",
+  "description": "Repeatable WCAG accessibility scan of the Tropelex dashboard and static site, via axe-core (Deque) driven by Playwright.",
+  "scripts": {
+    "scan": "node scan.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.62.1"
+  }
+}
