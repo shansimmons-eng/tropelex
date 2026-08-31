@@ -1630,6 +1630,78 @@ Three related but distinct asks, prompted by installing on a second machine with
 
 ---
 
+## Grant-Strengthening Engineering (Proposed, 2026-08-30)
+
+Five items pulled from a batch of external grant-strengthening guidance, deliberately scoped out of the same pass that produced the `SAFETY.md` mechanism docs and each grant summary's "Evaluation & Limitations" section. That pass was explicitly "docs only" — write down what's real, don't build new engineering to make the docs look better. These five are the new-engineering half of that same guidance, logged rather than built, so the scoping isn't lost once the conversation that produced it fades.
+
+### 100. Drift-Bench Scenario Expansion + Published Metrics Table
+**Purpose:** Add 2-3 more realistic reward-hacking and multi-step drift scenarios to Drift-Bench, and publish the resulting per-category metrics table openly (including categories that currently score 0.0 detection).
+
+**Why:** Directly named in the external guidance as the single highest-priority item across all three grants, and independently corroborated by this pass's own finding: the reward-hacking category is the one place Drift-Bench currently measures 0.0 detection (a keyword-evasion diff beats the keyword-overlap detector outright — see `docs/cais-summary.md`'s Evaluation & Limitations section). Publishing that number honestly, alongside new scenarios that probe it further, is more credible to a reviewer than hiding it.
+
+**Features:**
+- 2-3 new scenarios targeting reward-hacking and multi-step drift specifically, added to the existing 10-scenario/5-category suite in `core/driftbench/`.
+- A published metrics table (per-category detection rate, false-positive rate) checked into the repo or grant docs, explicit about undetected categories rather than only reporting the aggregate.
+- Closing the reward-hacking gap itself is a separate, harder question — likely requires the semantic/LLM-based intent check floated as Ghost's next candidate (see `docs/cais-summary.md`), not just more keyword scenarios.
+
+**Status:** Open. Proposed 2026-08-30.
+
+---
+
+### 101. General Configurable Enforce/Override Policy Language
+**Purpose:** A genuine policy language for expressing enforcement rules — beyond the current bounded 3-tier (`high`/`medium`/`low` → `block`/`warn`/`log_only`) gate-severity mapping documented in `SAFETY.md`'s "Configurable Gate-Severity Policy" section.
+
+**Why:** Named in the external guidance as a high-priority cross-cutting item. This pass's own `SAFETY.md` writeup was explicit that the existing mechanism is "a bounded tier-to-action mapping, not a general policy language" — auditable specifically because it's narrow. Extending it into something more expressive is real design work, not a documentation gap, which is why it wasn't attempted in the docs-only pass.
+
+**Features:**
+- Design a schema capable of expressing richer conditions than tier→action (e.g., conditions over decision metadata, agent identity, or coordination-drift state), while keeping the auditability the current narrow version has.
+- Needs its own scoping pass before implementation: an expressive policy language is also a larger attack surface and harder to reason about than the current mapping — worth being deliberate about, not a quick extension.
+
+**Status:** Open. Proposed 2026-08-30.
+
+---
+
+### 102. Quantitative Pilot Study (Ghost + Preventive Check Detection/Override Rates)
+**Purpose:** A real or carefully constructed set of agent sessions, run and measured, showing detection and override rates for Ghost Decisions and the Preventive Ghost Check gate — the empirical evidence the external guidance argued grant reviewers respond to more than feature lists.
+
+**Why:** Named directly in the external guidance ("Produce one quantitative pilot... showing detection / override rates for Ghost + Preventive checks"). Distinct from Drift-Bench (#100 above): Drift-Bench is synthetic scenarios built to probe specific failure modes; this would be closer to real usage data or realistic constructed sessions, which is a different (and more convincing) kind of evidence for a grant reviewer.
+
+**Features:**
+- Instrument or replay a set of real (or realistically constructed) multi-step coding sessions through the existing Ghost/Preventive pipeline.
+- Report detection rate and override rate as concrete numbers, following the same honesty standard already set by Drift-Bench's published 0.8/0.0 figures.
+- Depends on having enough real session volume to be meaningful — may need to wait on more production usage, or lean on carefully constructed synthetic sessions if real volume isn't there yet.
+
+**Status:** Open. Proposed 2026-08-30.
+
+---
+
+### 103. `core/safety/` Consolidation
+**Purpose:** Consolidate the safety-relevant logic currently scattered across `core/ghost/`, `core/safety_budget.py`, `core/goals/`, `core/contradictions/`, `core/handoff/`, `core/session_shape/`, `core/driftbench/`, `core/market/`, and ~150 inline lines in `core/tropebook/web/server.py` into the `core/safety/` module that today exists as a name holding only one gate.
+
+**Why:** Named in the external guidance's priority table (medium priority) and independently identified in this pass's own SFF "Evaluation & Limitations" section as a genuine reviewability gap: an external auditor trying to review "the safety surface" as a bounded unit can't today, because it isn't one. This is a code-quality/packaging concern specifically relevant to SFF's framing (usable, auditable tooling for external review), not a new-mechanism concern.
+
+**Features:**
+- Move or re-export the scattered safety-relevant modules under `core/safety/` without changing behavior — a reorganization pass, not new logic.
+- Update `SAFETY.md`'s file-path references once the move lands, so the doc stays accurate.
+- Should be sequenced after, not before, any other safety-mechanism work lands (#100-102 above) to avoid moving files mid-development of the things that will live in them.
+
+**Status:** Open. Proposed 2026-08-30.
+
+---
+
+### 104. Public Protocol Documentation (Inter-Agent Handoff Schema)
+**Purpose:** A documented, publishable schema for inter-agent rationale transmission — the Agent Handoff Packet format — independent of the Tropelex codebase itself, so other frameworks (AutoGen, CrewAI, LangGraph) could in principle implement compatibility against it.
+
+**Why:** This is FAR AI grant deliverable #2 ("Open Protocol Specification") called out explicitly in `docs/far-ai-summary.md`, and named in the external guidance's lower-priority tier. `docs/far-ai-summary.md`'s own Evaluation & Limitations section is explicit that cross-framework compatibility is "entirely unproven in practice" today — the packet schema has only ever been exercised against Claude Code/MCP clients. Publishing the schema is a prerequisite to that claim becoming testable by anyone outside this project.
+
+**Features:**
+- Extract the handoff packet schema (`core/handoff/packet_builder.py`) into a standalone, versioned spec document, independent of Python/Tropelex-specific implementation details.
+- No commitment to actually integrating with AutoGen/CrewAI/LangGraph in this item — that's a separate, larger validation effort. This item is just making the schema legible to someone outside the codebase.
+
+**Status:** Open. Proposed 2026-08-30.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
@@ -1832,4 +1904,5 @@ Three related but distinct asks, prompted by installing on a second machine with
 **2026-08-21 addition:** Logged #79–91 (Research Deepening, external review) after checking each proposed idea against the actual code first — several of the source material's claims about existing capabilities (#9, #12, #4, #33, #40, `score_citation`, Deep Research hybrid mode) were already accurate and weren't re-logged. #79–81 flagged as near-term picks (reuse existing infra, no new subsystems); #82–91 logged as open ideas, #82 (Decision Promotion from Research) being the highest-leverage but biggest lift of the batch.
 **2026-08-21 same-day follow-up:** All three near-term picks (#79, #80, #81) shipped same day as logged — see each entry's own "Resolved" note for what shifted from the original scoping. Full suite: 2438 passing (was 2422 before this pass). #82–91 remain open.
 **2026-08-30 addition:** Logged #97–99 (Distribution & Platform Support — uninstall instructions, an update/upgrade mechanism, and cross-platform Windows/macOS support) after the user installed on a second machine with no way to bring it forward from the first. #99 includes a real, verified finding rather than a guess: `core/memory/manager.py` and `core/embeddings.py` both depend on `fcntl.flock`, which is POSIX-only and doesn't exist on native Windows — a concrete blocker for that platform specifically, not a general "needs testing" placeholder. All three logged as Open; none built this pass.
+**2026-08-30 second addition:** Logged #100–104 (Grant-Strengthening Engineering) — the new-engineering half of a batch of external grant-strengthening guidance, deliberately held back from the same-day "docs only" pass that added 6 mechanism sections to `SAFETY.md` and an Evaluation & Limitations section to each grant summary. Covers: Drift-Bench scenario expansion + a published metrics table (#100, highest external priority, and the item most directly tied to the reward-hacking 0.0-detection gap this pass's own docs surfaced), a general enforce/override policy language beyond the current 3-tier gate mapping (#101), a quantitative pilot study of Ghost/Preventive detection and override rates (#102), `core/safety/` consolidation of currently-scattered safety modules (#103, tied to the reviewability gap flagged in SFF's Evaluation & Limitations section), and public protocol documentation for the handoff packet schema (#104, FAR AI grant deliverable #2). All five logged as Open; none built this pass.
 **Next Review:** 2026-09-06
