@@ -67,7 +67,7 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp, plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
 | **Ghost Decisions** | Silent objective-drift detection: code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
-| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows (a working inter-agent coordination protocol) ([SAFETY.md](SAFETY.md#inter-agent-coordination-protocol)) |
+| **Agent Handoff Packets** | Role-aware context bundles for multi-agent workflows (a working inter-agent coordination protocol) ([SAFETY.md](SAFETY.md#inter-agent-coordination-protocol), [protocol spec](docs/protocols/handoff-packet-spec.md)) |
 | **Decision Market** | Confidence bets, calibration tracking, leaderboard: a live calibration and honest-signaling mechanism among cooperating agents ([SAFETY.md](SAFETY.md#calibration--honest-signaling-mechanism)) |
 | **Memory Lens** | IDE inline annotations, like GitLens but for decisions |
 | **Slack Capture** | Bidirectional Slack integration for decision logging |
@@ -124,6 +124,7 @@ Tropelex doubles as empirical safety infrastructure for autonomous agents. For t
 - [CAIS Grant Technical Summary](./docs/cais-summary.md) (objective drift and reward hacking prevention).
 - [FAR AI Grant Technical Summary](./docs/far-ai-summary.md): cooperative multi-agent coordination and calibration.
 - [SFF Grant Technical Summary](./docs/sff-summary.md) (independent developer, open-source safety infrastructure).
+- [Agent Handoff Packet Protocol Spec](./docs/protocols/handoff-packet-spec.md): the wire format, independent of the Python implementation.
 
 ---
 

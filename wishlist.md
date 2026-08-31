@@ -1698,7 +1698,7 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 - Extract the handoff packet schema (`core/handoff/packet_builder.py`) into a standalone, versioned spec document, independent of Python/Tropelex-specific implementation details.
 - No commitment to actually integrating with AutoGen/CrewAI/LangGraph in this item — that's a separate, larger validation effort. This item is just making the schema legible to someone outside the codebase.
 
-**Status:** Open. Proposed 2026-08-30.
+**Status:** ✅ Implemented 2026-08-31. [`docs/protocols/handoff-packet-spec.md`](../docs/protocols/handoff-packet-spec.md) — wire format for `HandoffPacket`/`ContextSlice`/`HandoffCompletenessFinding`, must-survive protection and completeness verification described independent of the Python implementation, and the packet-hashing algorithm (`sha256` over the packet *before* `packet_hash` is added, `sort_keys=True`). That last detail was empirically verified against a real generated packet from the live server, not just transcribed from reading `core/audit.py` — matches, byte-for-byte. Linked from README, `SAFETY.md`, and `docs/far-ai-summary.md`'s deliverable #2. Cross-framework integration itself remains exactly as open as this entry always said it would — publishing the schema doesn't validate it, it just makes validation possible.
 
 ---
 

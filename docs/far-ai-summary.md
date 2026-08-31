@@ -20,7 +20,7 @@ See [SAFETY.md](../SAFETY.md) for the full mapping of these features to alignmen
 
 ## Deliverables & Milestones
 1. **Multi-Agent Coordination Benchmark:** Evaluate context retention and goal alignment across chained sub-agent delegations using Tropelex handoff packets versus naive context passing.
-2. **Open Protocol Specification:** A documented schema for inter-agent rationale transmission, with the goal of compatibility beyond the current Claude Code / MCP integration (e.g., AutoGen, CrewAI, LangGraph) as proposed future work.
+2. **Open Protocol Specification:** ✅ Published 2026-08-31 — [`docs/protocols/handoff-packet-spec.md`](protocols/handoff-packet-spec.md) documents the packet wire format, must-survive protection, completeness verification, and the packet-hashing scheme (empirically verified against a real running instance, not just read off the source) independent of the Python implementation. Actual compatibility beyond the current Claude Code / MCP integration (AutoGen, CrewAI, LangGraph) remains proposed future work — publishing the schema is the prerequisite that makes that a testable claim, not the validation itself.
 3. **Calibration Study:** An empirical report on whether confidence-tracking reduces multi-agent coordination failures in ambiguous-goal environments, building on the existing Decision Market implementation.
 
 ## Evaluation & Limitations

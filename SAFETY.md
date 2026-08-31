@@ -64,7 +64,7 @@ Scans conversation transcripts for rephrasing ("no, actually...", "that's wrong"
 
 **Mechanism:** Agent Handoff Packets (`core/handoff/packet_builder.py`, `core/handoff/router.py`)
 
-Builds role-aware context bundles (not raw state, but state plus the rationale behind it) for handing work between distinct agents (or distinct sessions of the same agent). This is the concrete mechanism for the "how do decentralized agents stay coordinated without a shared context window" problem: the packet is the coordination artifact.
+Builds role-aware context bundles (not raw state, but state plus the rationale behind it) for handing work between distinct agents (or distinct sessions of the same agent). This is the concrete mechanism for the "how do decentralized agents stay coordinated without a shared context window" problem: the packet is the coordination artifact. The wire format, hashing scheme, and the two invariants below (must-survive protection, completeness verification) are documented independent of this implementation in [`docs/protocols/handoff-packet-spec.md`](docs/protocols/handoff-packet-spec.md) — published so cross-framework compatibility becomes a testable claim rather than an assertion.
 
 ## Must-Survive Decision Protection
 
