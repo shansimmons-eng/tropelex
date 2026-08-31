@@ -4,6 +4,8 @@ Tropelex is built as a persistent decision-memory system for AI coding agents. T
 
 This document asserts those properties explicitly, for anyone evaluating Tropelex as safety-relevant infrastructure rather than just a productivity tool. Every mechanism described below is implemented and tested in this repository today: nothing here is a roadmap item. See [`wishlist.md`](wishlist.md) for what's still planned.
 
+**For code review specifically:** [`core/safety/__init__.py`](core/safety/__init__.py) is a single importable index of every pure function/class backing the mechanisms below, each one re-exported from wherever it actually lives (Ghost's detection logic stays in `core/ghost/`, Handoff's packet protection stays in `core/handoff/`, etc. — a re-export index, not a relocation, so nothing below moved). `import core.safety; core.safety.__all__` gives the complete, bounded list in one place; [`tests/test_safety_init.py`](tests/test_safety_init.py) asserts every entry is live and identical to its real source, not a stale copy.
+
 **Scope note:** none of this is a formal alignment guarantee. It's infrastructure that makes certain failure modes (silent objective drift, unresolved conflicting decisions, context loss across agent handoffs) visible and checkable rather than invisible by default. Treat it as a foundation to build evaluations and guardrails on.
 
 ---

@@ -1671,7 +1671,7 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 - Report detection rate and override rate as concrete numbers, following the same honesty standard already set by Drift-Bench's published 0.8/0.0 figures.
 - Depends on having enough real session volume to be meaningful — may need to wait on more production usage, or lean on carefully constructed synthetic sessions if real volume isn't there yet.
 
-**Status:** Open. Proposed 2026-08-30.
+**Status:** ✅ Implemented 2026-08-31, real-data route: the instrumentation this item asked for turned out to already be fully shipped (`core/prevention_report.py`, built for #61, reads the real append-only audit trail). No new code needed — just running it honestly and publishing what it said. Tropelex's own real audit log (249 total events since the gate mechanism shipped 2026-08-09) shows 6 prevention-relevant events over ~3 weeks of real multi-agent development: 2 gate_warned, 4 contradiction_escalated, 0 gate_blocked, 0 overrides. Published in `docs/cais-summary.md`'s Evaluation & Limitations section with an explicit small-sample caveat — 6 events doesn't support a rate claim, and the constructed-session route this entry also allowed for remains open for when real volume grows.
 
 ---
 
@@ -1685,7 +1685,7 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 - Update `SAFETY.md`'s file-path references once the move lands, so the doc stays accurate.
 - Should be sequenced after, not before, any other safety-mechanism work lands (#100-102 above) to avoid moving files mid-development of the things that will live in them.
 
-**Status:** Open. Proposed 2026-08-30.
+**Status:** ✅ Implemented 2026-08-31, re-export route (both options this entry explicitly allowed for). `core/safety/__init__.py` now re-exports the full pure-function surface from `core/ghost/`, `core/contradictions/`, `core/handoff/`, `core/session_shape/`, `core/driftbench/`, `core/gate.py`, `core/market/`, and `core/safety_budget.py` — 31 symbols, `__all__`-bounded, one `import core.safety` away. Deliberately not a physical move: rewriting imports across every router, the MCP server, and ~15 test files for a purely cosmetic reorganization was real risk (a missed import breaks a live gate) for no behavior change. `tests/test_safety_init.py` asserts every entry is identical to its real source, guarding the index against silently drifting stale. `core/goals/`'s own safety-relevant piece (goal re-anchoring) was already covered via `build_handoff_packet`'s re-export rather than added as a separate entry — no standalone safety pure-function exists in `core/goals/` beyond that. The server.py endpoint layer stays deliberately out of scope, same call wishlist #73 already made. `SAFETY.md` and `docs/sff-summary.md` updated to point at the new index.
 
 ---
 
