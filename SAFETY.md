@@ -32,6 +32,18 @@ Scans code changes for keyword/topic overlap against recorded decisions and flag
 
 Runs the same drift-detection logic *before* a diff is committed, not after: `POST /api/memory/{project}/ghost-check` takes a proposed unified diff and returns severity-scored warnings against every active decision it touches. Designed as a literal pre-write hook: call it before finalizing a change.
 
+## Configurable Gate-Severity Policy
+
+**Mechanism:** Gate Policy Schema (`core/ghost/preventive_router.py`)
+
+Each of the three severity tiers the pre-action gate above can raise (`high`/`medium`/`low`) is independently configurable to one of three actions (`block`/`warn`/`log_only`) via a validated schema (`GatePolicyRequest`, extra fields rejected) — `PUT /{project}/gate-policy` sets it, `GET /{project}/gate-policy` shows the effective policy alongside defaults and any overrides. Worth being precise about scope here: this is a bounded tier-to-action mapping, not a general policy language — enforcement is configurable, not arbitrarily programmable.
+
+## Safety-Budget Escalation
+
+**Mechanism:** Safety Budget (`core/safety_budget.py`)
+
+Distinct from any single decision's own risk score: sums a weighted per-agent signal across overrides (weighted highest), gate-blocked/gate-warned severity events, and high/medium-risk decisions captured, and flags when an agent crosses a configurable threshold. This is a cumulative-pattern check — an agent whose individual actions each look acceptable in isolation but who's accumulating overrides and high-severity gate events over a session gets flagged even though no single action triggered it.
+
 ## Conflicting-Objective Surfacing
 
 **Mechanism:** Contradiction Detection (`core/contradictions/detector.py`)
@@ -50,11 +62,35 @@ Scans conversation transcripts for rephrasing ("no, actually...", "that's wrong"
 
 Builds role-aware context bundles (not raw state, but state plus the rationale behind it) for handing work between distinct agents (or distinct sessions of the same agent). This is the concrete mechanism for the "how do decentralized agents stay coordinated without a shared context window" problem: the packet is the coordination artifact.
 
+## Must-Survive Decision Protection
+
+**Mechanism:** Priority-Tiered Packet Selection (`core/handoff/packet_builder.py`)
+
+A decision qualifies as must-survive either explicitly (`must_survive: true`) or automatically (`safety_metadata.risk_level` of `high`/`critical`). Must-survive decisions are exempt from the packet's `max_decisions` cap and protected from removal even when the packet has to be trimmed to fit a token budget — a context-starved handoff can silently drop a routine decision to make room, but not a high-risk one.
+
+## Handoff Completeness Verification
+
+**Mechanism:** Completeness Check (`core/handoff/packet_builder.py`, `core/handoff/router.py`)
+
+A separate check from the protection above: after a packet is built, `_check_completeness()` verifies the must-survive decisions that were *supposed* to make it in actually did, and raises a `HandoffCompletenessFinding` (surfaced via `GET /needs-attention` and a dedicated endpoint) if any didn't. This asks "did the protection actually work" as its own checkable question, distinct from "did we attempt to protect it."
+
+## Goal Re-Anchoring
+
+**Mechanism:** Priority-0 Goal Slices (`core/handoff/packet_builder.py`, `core/prefetch/router.py`)
+
+Active project goals ride in every context bundle and handoff packet at the same priority-0 tier as must-survive decisions — not subject to the relevance-scored knapsack that ranks everything else by impact. The "why are we doing this" framing survives every context handoff intact, not just individual decisions.
+
 ## Calibration & Honest-Signaling Mechanism
 
 **Mechanism:** Decision Market (`core/market/calibration.py`, `core/market/router.py`)
 
 Agents (or reviewers) place confidence bets on decisions; a leaderboard tracks calibration over time: who's overconfident, who's well-calibrated, on which categories. It's a small mechanism-design surface for eliciting and scoring honest confidence reporting rather than just accepting stated confidence at face value.
+
+## Coordination Drift Detection
+
+**Mechanism:** Cross-Agent Agreement Tracking (`core/market/coordination.py`)
+
+Distinct from the per-agent calibration above: detects declining agreement between *multiple* agents' calibration profiles over time. Two agents can each look individually well-calibrated while steadily diverging from each other — this surfaces that pattern directly instead of relying on any single agent's own accuracy trend to reveal it.
 
 ## Forensic State Auditing
 

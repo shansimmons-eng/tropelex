@@ -23,5 +23,12 @@ See [SAFETY.md](../SAFETY.md) for the full mapping of these features to alignmen
 2. **Open Protocol Specification:** A documented schema for inter-agent rationale transmission, with the goal of compatibility beyond the current Claude Code / MCP integration (e.g., AutoGen, CrewAI, LangGraph) as proposed future work.
 3. **Calibration Study:** An empirical report on whether confidence-tracking reduces multi-agent coordination failures in ambiguous-goal environments, building on the existing Decision Market implementation.
 
+## Evaluation & Limitations
+Coordination Drift Detection has no dedicated benchmark yet: it's implemented and unit-tested against synthetic calibration sequences, but there's no quantitative study of detection accuracy across realistic multi-agent divergence scenarios, and no measured false-positive rate under normal (non-diverging) multi-agent variation. That study is exactly what deliverable #1 above would fund — it doesn't exist today.
+
+The mechanism enforcing handoff and coordination behavior (the gate-severity policy documented in `SAFETY.md`'s "Configurable Gate-Severity Policy" section) is deliberately narrow: three severity tiers mapped to three actions (`block`/`warn`/`log_only`), not a general policy or constraint language. It's auditable specifically because it's bounded — extending it to express richer inter-agent contracts is open design work, not a small extension.
+
+Cross-framework protocol compatibility is entirely unproven in practice. The handoff packet schema (`core/handoff/packet_builder.py`) has only ever been exercised against Claude Code / MCP clients; nothing about AutoGen, CrewAI, or LangGraph compatibility has been tested against those frameworks' actual multi-agent runtimes. Deliverable #2 is proposed work, not a retrofit of something already validated elsewhere.
+
 ## Current State
 The handoff packet, decision market, coordination-drift, and cross-install benchmark primitives are implemented in the current codebase (2,674+ passing unit tests as of this writing). Cross-framework protocol compatibility and the formal benchmark suite are proposed work this grant would fund — this is an early-stage open-source project, not a finished research artifact.
