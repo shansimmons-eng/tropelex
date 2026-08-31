@@ -18,7 +18,14 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.audit import append_audit_event
-from core.gate import DEFAULT_GATE_POLICY, GATE_ACTIONS, GATE_SEVERITIES, overridden_ids, policy_for
+from core.gate import (
+    DEFAULT_GATE_POLICY,
+    GATE_ACTIONS,
+    GATE_SEVERITIES,
+    MAX_GATE_RULES,
+    overridden_ids,
+    policy_for,
+)
 from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
 from core.prevention_report import build_prevention_report
@@ -114,6 +121,46 @@ class GatePolicyRequest(BaseModel):
     low: str | None = Field(None, pattern="^(block|warn|log_only)$")
 
 
+class GateRuleCondition(BaseModel):
+    """The "if" half of one gate rule (#101). All three fields are
+    optional and ANDed together; an entirely empty condition matches
+    unconditionally (a deliberate catch-all, see core.gate._rule_matches).
+    Deliberately just three literal-equality fields, not an expression
+    language -- see core.gate.GATE_RULE_CONDITION_KEYS's docstring for why.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    severity: str | None = Field(None, pattern="^(high|medium|low)$")
+    agent_name: str | None = Field(None, min_length=1, max_length=100)
+    category: str | None = Field(None, min_length=1, max_length=64)
+
+
+class GateRule(BaseModel):
+    """One ordered rule: if `if_` matches, resolve to `then`. `if_` is
+    aliased to the bare word "if" on the wire (Python reserves `if`) --
+    populate_by_name lets tests/internal callers construct with either
+    spelling, model_dump(by_alias=True) at the write site always persists
+    the wire spelling, matching what core.gate._rule_matches reads back.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    if_: GateRuleCondition = Field(default_factory=GateRuleCondition, alias="if")
+    then: str = Field(..., pattern="^(block|warn|log_only)$")
+
+
+class GateRulesRequest(BaseModel):
+    """Full replacement for a project's gate_rules list (#101) -- rules are
+    ordered and position is meaningful (first match wins), so this is a
+    PUT-the-whole-list endpoint, not per-rule PATCH/append; a client that
+    wants to add one rule reads the current list first, same as any other
+    ordered-collection API. MAX_GATE_RULES bounds list length so this
+    can't grow into something no one can actually audit by reading it.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    rules: list[GateRule] = Field(..., max_length=MAX_GATE_RULES)
+
+
 @preventive_router.get("/{project}/gate-policy")
 async def get_gate_policy(
     project: str, detector: str = Query("ghost", pattern="^(ghost|contradictions)$"),
@@ -179,6 +226,41 @@ async def set_gate_policy(
     }
 
 
+@preventive_router.get("/{project}/gate-rules")
+async def get_gate_rules(project: str) -> dict[str, Any]:
+    """Read a project's gate rules (#101) -- an ordered list evaluated
+    ahead of gate_policy's flat tier->action mapping, matched against a
+    Ghost warning's severity, the checking agent's name, and the
+    decision's categories (see core.gate._rule_matches). Ghost only: rules
+    are consulted here because ghost_check is the one call site that
+    builds and passes the `context` policy_for needs (#72's shared
+    tier-mapping stays the only mechanism Contradiction Detection gates
+    on -- exposing a gate-rules endpoint for a detector whose call site
+    never passes context would be a config knob that's silently never
+    read, which this project avoids on purpose).
+    """
+    memory = _load_memory(project)
+    rules = memory.get("gate_rules")
+    if not isinstance(rules, list):
+        rules = []
+    return {"project": project, "rules": rules}
+
+
+@preventive_router.put("/{project}/gate-rules")
+async def set_gate_rules(project: str, body: GateRulesRequest) -> dict[str, Any]:
+    """Replace a project's gate rules (#101) in full -- see GateRulesRequest
+    for why this is whole-list PUT rather than per-rule PATCH. Validated at
+    the router boundary (GateRuleCondition/GateRule/GateRulesRequest),
+    same "validate at the boundary" convention set_gate_policy above
+    follows; core.gate._rule_matches's own defensive checks are the second
+    layer, for data that predates this endpoint or was written by hand.
+    """
+    memory = _load_memory(project)
+    memory["gate_rules"] = [r.model_dump(by_alias=True) for r in body.rules]
+    _save_memory(project, memory)
+    return {"project": project, "updated": True, "rules": memory["gate_rules"]}
+
+
 @preventive_router.post("/{project}/ghost-check")
 async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
     """Check a proposed diff against active decisions before writing.
@@ -234,10 +316,22 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
     recommendations = list({w["recommendation"] for w in warnings if w.get("recommendation")})
 
     overridden = overridden_ids(memory)
+    # #101: categories per decision, looked up once rather than per-warning
+    # -- the "category" condition a gate rule can match on comes from the
+    # violated decision itself, which GhostWarning doesn't carry directly.
+    decision_categories = {
+        d.get("id", ""): d.get("categories") or []
+        for d in memory.get("decisions", [])
+        if isinstance(d, dict)
+    }
     blocking: list[dict[str, Any]] = []
     warn_tier: list[dict[str, Any]] = []
     for w in warnings:
-        policy = policy_for(memory, w.get("severity", "low"))
+        context = {
+            "agent_name": body.agent_name,
+            "categories": decision_categories.get(w.get("decision_id", ""), []),
+        }
+        policy = policy_for(memory, w.get("severity", "low"), context=context)
         w["policy"] = policy
         w["overridden"] = w.get("decision_id") in overridden
         if w["overridden"]:

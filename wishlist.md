@@ -1657,7 +1657,7 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 - Design a schema capable of expressing richer conditions than tier→action (e.g., conditions over decision metadata, agent identity, or coordination-drift state), while keeping the auditability the current narrow version has.
 - Needs its own scoping pass before implementation: an expressive policy language is also a larger attack surface and harder to reason about than the current mapping — worth being deliberate about, not a quick extension.
 
-**Status:** Open. Proposed 2026-08-30.
+**Status:** ✅ Implemented 2026-08-31. Took the scoping pass this entry itself called for: presented 3 concrete shapes (a minimal per-category tier override, an ordered rule list, and a full boolean-expression language) with their attack-surface tradeoffs, and shipped the middle option — the one that adds real expressiveness while staying pure data with no expression evaluator. `gate_rules` (`core/gate.py`'s `policy_for`, extended via an opt-in `context` param so every pre-#101 caller keeps byte-identical behavior; `PUT`/`GET /{project}/gate-rules`) is an ordered, first-match-wins list of `{"if": {severity?, agent_name?, category?}, "then": action}` rules — three ANDed literal-equality conditions, no operators, no `eval`. Scoped to Ghost's own gate only this pass (Contradiction Detection's `policy_for` call site doesn't build a `context` yet, so a `gate-rules` endpoint for it would be a silently-dead config option — deliberately not exposed). `SAFETY.md` and `docs/far-ai-summary.md` updated to describe the real mechanism instead of "narrow tier mapping, extension is open work."
 
 ---
 

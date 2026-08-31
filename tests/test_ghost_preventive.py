@@ -1021,6 +1021,234 @@ class TestGatePolicyEndpoint:
 
 
 # ===========================================================================
+#  4c. Gate Rules (#101) — GET/PUT /{project}/gate-rules, ghost-check wiring
+# ===========================================================================
+
+
+@pytest.mark.skipif(not _HAS_ROUTER, reason="preventive_router.py not yet created (subtask 02 pending)")
+class TestGateRulesEndpoint:
+    """GET/PUT /{project}/gate-rules (#101) -- ordered rule list, evaluated
+    ahead of gate_policy's flat tier mapping. Mirrors TestGatePolicyEndpoint
+    above: same round-trip/validation shape, new endpoint."""
+
+    def _get(self, path):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.get(path)
+
+        return asyncio.run(_call())
+
+    def _put(self, path, json_body):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.put(path, json=json_body)
+
+        return asyncio.run(_call())
+
+    def test_get_with_no_rules_returns_empty_list(self):
+        memory = {"decisions": []}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._get("/api/memory/demo/gate-rules")
+        assert resp.status_code == 200
+        assert resp.json()["rules"] == []
+
+    def test_put_valid_rules_persists_with_if_alias(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"severity": "high"}, "then": "warn"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+
+        assert resp.status_code == 200
+        assert memory["gate_rules"] == [{"if": {"severity": "high", "agent_name": None, "category": None}, "then": "warn"}]
+        assert resp.json()["rules"] == memory["gate_rules"]
+
+    def test_put_empty_if_persists_as_catch_all(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {}, "then": "log_only"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 200
+
+    def test_put_missing_if_defaults_to_empty_condition(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"then": "block"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 200
+
+    def test_put_invalid_then_action_422s(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"severity": "high"}, "then": "nuke_it"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 422
+
+    def test_put_invalid_severity_condition_422s(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"severity": "critical"}, "then": "block"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 422
+
+    def test_put_unrecognized_condition_key_422s(self):
+        """extra="forbid" on GateRuleCondition -- a condition key that isn't
+        severity/agent_name/category must be rejected, not silently
+        accepted and then silently never matched by _rule_matches."""
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"risk_level": "critical"}, "then": "block"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 422
+
+    def test_put_too_many_rules_422s(self):
+        from core.gate import MAX_GATE_RULES
+
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"severity": "high"}, "then": "block"} for _ in range(MAX_GATE_RULES + 1)]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory):
+            resp = self._put("/api/memory/demo/gate-rules", body)
+        assert resp.status_code == 422
+
+    def test_put_replaces_whole_list_not_appends(self):
+        memory = {"decisions": [], "gate_rules": [{"if": {"severity": "low"}, "then": "block"}]}
+        body = {"rules": [{"if": {"severity": "high"}, "then": "warn"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            self._put("/api/memory/demo/gate-rules", body)
+
+        assert len(memory["gate_rules"]) == 1
+        assert memory["gate_rules"][0]["if"]["severity"] == "high"
+
+    def test_put_then_get_round_trips(self):
+        memory = {"decisions": []}
+        body = {"rules": [{"if": {"agent_name": "experimental-agent"}, "then": "block"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            self._put("/api/memory/demo/gate-rules", body)
+            get_resp = self._get("/api/memory/demo/gate-rules")
+
+        assert get_resp.json()["rules"][0]["if"]["agent_name"] == "experimental-agent"
+
+
+@pytest.mark.skipif(not _HAS_ROUTER, reason="preventive_router.py not yet created (subtask 02 pending)")
+class TestGhostCheckGateRules:
+    """End-to-end: a PUT-set gate rule changes real ghost-check enforcement,
+    matched against the checking agent's name and the violated decision's
+    categories -- not just what the gate-rules endpoints themselves report."""
+
+    def _put(self, path, json_body):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.put(path, json=json_body)
+
+        return asyncio.run(_call())
+
+    def _post_ghost_check(self, agent_name="unspecified"):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(
+                    "/api/memory/demo/ghost-check",
+                    json={"diff": CAMEL_CASE_DIFF, "agent_name": agent_name},
+                )
+
+        return asyncio.run(_call())
+
+    def test_agent_name_rule_overrides_severity_default(self):
+        from core.result import Ok
+
+        memory = TestGhostCheckGatePolicy._memory()
+        rule_body = {"rules": [{"if": {"agent_name": "experimental-agent"}, "then": "warn"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            assert self._put("/api/memory/demo/gate-rules", rule_body).status_code == 200
+
+            with patch("core.ghost.preventive_router.check_diff_for_warnings",
+                       return_value=Ok(value=[TestGhostCheckGatePolicy._high_severity_warning()])):
+                # Rule-matching agent: warn instead of the tier default's block.
+                matching = self._post_ghost_check(agent_name="experimental-agent")
+                assert matching.status_code == 200
+                assert matching.json()["warnings"][0]["policy"] == "warn"
+
+                # Non-matching agent: falls through to the ordinary tier default.
+                other = self._post_ghost_check(agent_name="claude")
+        assert other.status_code == 409
+
+    def test_category_rule_matches_violated_decisions_category(self):
+        from core.result import Ok
+
+        memory = TestGhostCheckGatePolicy._memory()
+        memory["decisions"][0]["categories"] = ["alignment"]
+        rule_body = {"rules": [{"if": {"category": "alignment"}, "then": "log_only"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            assert self._put("/api/memory/demo/gate-rules", rule_body).status_code == 200
+
+            with patch("core.ghost.preventive_router.check_diff_for_warnings",
+                       return_value=Ok(value=[TestGhostCheckGatePolicy._high_severity_warning()])):
+                resp = self._post_ghost_check()
+
+        assert resp.status_code == 200  # log_only, not blocked
+        assert resp.json()["warnings"][0]["policy"] == "log_only"
+
+    def test_no_rules_configured_behaves_exactly_like_before_101(self):
+        """Backward compatibility: a project with no gate_rules key gets
+        byte-identical enforcement to the pre-#101 tier-only behavior."""
+        from core.result import Ok
+
+        memory = TestGhostCheckGatePolicy._memory()
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None), \
+             patch("core.ghost.preventive_router.check_diff_for_warnings",
+                   return_value=Ok(value=[TestGhostCheckGatePolicy._high_severity_warning()])):
+            resp = self._post_ghost_check()
+
+        assert resp.status_code == 409
+
+    def test_non_matching_rule_falls_through_to_gate_policy_override(self):
+        """When no rule matches, resolution still falls through to
+        gate_policy (#64) before the module default -- rules are an
+        additional layer, not a replacement for the existing one."""
+        from core.result import Ok
+
+        memory = TestGhostCheckGatePolicy._memory()
+        memory["gate_policy"] = {"high": "warn"}
+        rule_body = {"rules": [{"if": {"agent_name": "someone-else"}, "then": "block"}]}
+        with patch("core.ghost.preventive_router._load_memory", return_value=memory), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            assert self._put("/api/memory/demo/gate-rules", rule_body).status_code == 200
+
+            with patch("core.ghost.preventive_router.check_diff_for_warnings",
+                       return_value=Ok(value=[TestGhostCheckGatePolicy._high_severity_warning()])):
+                resp = self._post_ghost_check(agent_name="claude")
+
+        assert resp.status_code == 200
+        assert resp.json()["warnings"][0]["policy"] == "warn"
+
+
+# ===========================================================================
 #  5. Prevention Report (#61) — GET /{project}/prevention-report
 # ===========================================================================
 

@@ -36,7 +36,9 @@ Runs the same drift-detection logic *before* a diff is committed, not after: `PO
 
 **Mechanism:** Gate Policy Schema (`core/ghost/preventive_router.py`)
 
-Each of the three severity tiers the pre-action gate above can raise (`high`/`medium`/`low`) is independently configurable to one of three actions (`block`/`warn`/`log_only`) via a validated schema (`GatePolicyRequest`, extra fields rejected) — `PUT /{project}/gate-policy` sets it, `GET /{project}/gate-policy` shows the effective policy alongside defaults and any overrides. Worth being precise about scope here: this is a bounded tier-to-action mapping, not a general policy language — enforcement is configurable, not arbitrarily programmable.
+Each of the three severity tiers the pre-action gate above can raise (`high`/`medium`/`low`) is independently configurable to one of three actions (`block`/`warn`/`log_only`) via a validated schema (`GatePolicyRequest`, extra fields rejected) — `PUT /{project}/gate-policy` sets it, `GET /{project}/gate-policy` shows the effective policy alongside defaults and any overrides.
+
+On top of that flat mapping, an ordered rule list (`gate_rules`, `PUT`/`GET /{project}/gate-rules`) can override the resolved action for a specific severity, checking agent, or violated decision's category — first matching rule wins, falling through to the flat mapping above if nothing matches. Still deliberately not a general policy language: each rule's condition is a closed set of three literal-equality checks (`severity`/`agent_name`/`category`, ANDed) with no boolean operators and no expression evaluator, so a rule list stays fully readable top to bottom and can't itself become an attack surface the way accepting arbitrary expressions would. Every pre-existing project (no `gate_rules` configured) gets byte-identical enforcement to before this existed.
 
 ## Safety-Budget Escalation
 
