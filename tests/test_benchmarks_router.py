@@ -119,6 +119,55 @@ class TestImport:
         assert body["aggregate"]["decision_count"] == 30
 
 
+class TestSchemaVersion:
+    """Versioning policy (core/version.py): export echoes MEMORY_SCHEMA_
+    VERSION; import surfaces a real diagnostic when a bundle's own
+    schema_version doesn't match, instead of just an opaque skip count."""
+
+    def test_export_includes_current_schema_version(self, client: TestClient) -> None:
+        from core.version import MEMORY_SCHEMA_VERSION
+        resp = client.get("/api/memory/benchmarks/export")
+        assert resp.json()["schema_version"] == MEMORY_SCHEMA_VERSION
+
+    def test_import_no_schema_version_no_warning(self, client: TestClient) -> None:
+        """A bundle predating this field (no schema_version key at all)
+        must still import normally -- optional, not required."""
+        resp = client.post("/api/memory/benchmarks/import", json={"stats": [_stat("h1")]})
+        body = resp.json()
+        assert body["imported"] == 1
+        assert body["warning"] is None
+
+    def test_import_matching_schema_version_no_warning(self, client: TestClient) -> None:
+        from core.version import MEMORY_SCHEMA_VERSION
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [_stat("h1")], "schema_version": MEMORY_SCHEMA_VERSION,
+        })
+        assert resp.json()["warning"] is None
+
+    def test_import_mismatched_schema_version_with_invalid_entries_warns(self, client: TestClient) -> None:
+        from core.version import MEMORY_SCHEMA_VERSION
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [{"not_a_valid": "entry"}],
+            "schema_version": MEMORY_SCHEMA_VERSION + 1,
+        })
+        body = resp.json()
+        assert body["skipped_invalid"] == 1
+        assert body["bundle_schema_version"] == MEMORY_SCHEMA_VERSION + 1
+        assert body["warning"] is not None
+        assert "version mismatch" in body["warning"]
+
+    def test_import_mismatched_schema_version_no_invalid_entries_no_warning(self, client: TestClient) -> None:
+        """A version mismatch alone isn't grounds for a warning -- only
+        when it's actually correlated with skipped entries."""
+        from core.version import MEMORY_SCHEMA_VERSION
+        resp = client.post("/api/memory/benchmarks/import", json={
+            "stats": [_stat("h1")], "schema_version": MEMORY_SCHEMA_VERSION + 1,
+        })
+        body = resp.json()
+        assert body["skipped_invalid"] == 0
+        assert body["warning"] is None
+
+
 class TestLegacyMigration:
     def test_migrates_old_federation_dir_on_first_access(self, client: TestClient, tmp_path: Path) -> None:
         # The `client` fixture already pointed router_mod at tmp_path; seed a

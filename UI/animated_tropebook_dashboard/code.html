@@ -3296,7 +3296,7 @@ void main() {
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold uppercase bg-accent-lime/10 text-accent-lime border border-accent-lime/20">
                             <span class="w-1.5 h-1.5 rounded-full bg-accent-lime animate-pulse"></span> System Active
                         </span>
-                        <span class="text-xs font-mono text-outline">Tropelex v1.2.0</span>
+                        <span id="hub-app-version" class="text-xs font-mono text-outline">Tropelex v1.2.0</span>
                     </div>
                     <h1 class="font-display font-extrabold text-3xl md:text-4xl text-on-surface tracking-tight">
                         Help & Command Hub
@@ -6823,14 +6823,28 @@ document.getElementById('btn-account-export')?.addEventListener('click', async (
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `tropelex-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        const versionTag = data.app_version ? `-v${data.app_version}` : '';
+        a.download = `tropelex-backup${versionTag}-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
         showToast('Account exported');
     }
 });
 
-// Account import
+// Account import -- raw fetch, not the generic api() helper, because a
+// schema_version mismatch (core/version.py) needs its structured 409
+// detail (detected/current schema_version, both app_versions) to build a
+// real confirm dialog, not api()'s generic "API Error 409: ..." toast.
+async function _postAccountImport(data, confirm) {
+    const res = await fetch('/api/account/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, confirm }),
+    });
+    const body = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, body };
+}
+
 document.getElementById('btn-account-import')?.addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -6840,13 +6854,29 @@ document.getElementById('btn-account-import')?.addEventListener('click', () => {
         if (!file) return;
         try {
             const data = JSON.parse(await file.text());
-            const res = await api('/account/import', 'POST', { data, source_type: 'account-import' });
-            if (res) {
-                showToast(`Imported: ${res.imported?.projects || 0} projects, ${res.imported?.citations || 0} citations, ${res.imported?.feeds || 0} feeds`);
-                loadProjects();
-                loadCitations();
-                loadFeeds();
+            let { ok, status, body } = await _postAccountImport(data, false);
+
+            if (!ok && status === 409 && body?.detail) {
+                const d = body.detail;
+                const proceed = confirm(
+                    `Version mismatch: this export is schema_version ${d.detected_schema_version ?? 'unknown'} `
+                    + `(from app v${d.app_version_exported_from}), this install is schema_version `
+                    + `${d.current_schema_version} (app v${d.app_version_here}). Formats can be incompatible `
+                    + `across versions.\n\nImport anyway?`
+                );
+                if (!proceed) { showToast('Import cancelled'); return; }
+                ({ ok, status, body } = await _postAccountImport(data, true));
             }
+
+            if (!ok) {
+                showToast(`Import error: ${describeApiError(body?.detail) || `HTTP ${status}`}`);
+                return;
+            }
+            const res = body;
+            showToast(`Imported: ${res.imported?.projects || 0} projects, ${res.imported?.citations || 0} citations, ${res.imported?.feeds || 0} feeds`);
+            loadProjects();
+            loadCitations();
+            loadFeeds();
         } catch (err) {
             showToast(`Import error: ${err.message}`);
         }
@@ -8012,6 +8042,19 @@ async function checkHealth() {
         if (dot) { dot.className = ok ? 'status-dot' : 'status-dot error'; }
         if (statusText) { statusText.textContent = ok ? 'System Online' : 'System Error'; }
         if (latencyEl) { latencyEl.textContent = latency + 'ms'; }
+        // Real app version (core/version.py, single source of truth) --
+        // replaces what used to be independently hardcoded in this file
+        // twice, free to drift from pyproject.toml and from each other.
+        if (ok) {
+            const body = await res.json().catch(() => null);
+            if (body?.version && body.version !== state.appVersion) {
+                state.appVersion = body.version;
+                const footerEl = document.getElementById('footer-app-version');
+                const hubEl = document.getElementById('hub-app-version');
+                if (footerEl) footerEl.textContent = `Tropelex v${body.version}`;
+                if (hubEl) hubEl.textContent = `Tropelex v${body.version}`;
+            }
+        }
     } catch {
         const dot = document.getElementById('footer-status-dot');
         const statusText = document.getElementById('footer-status-text');
@@ -13351,7 +13394,7 @@ async function pollTelemetry() {
     <div class="divider"></div>
     <span id="footer-interfaces" class="text-outline cursor-pointer hover:text-accent-sky transition-colors" onclick="switchSection('dashboard')" title="Click for detail">0/4 interfaces active</span>
     <div class="flex-1"></div>
-    <span class="text-accent-lavender/60">Tropelex v1.2.0</span>
+    <span id="footer-app-version" class="text-accent-lavender/60">Tropelex v1.2.0</span>
     <div class="divider"></div>
     <span id="footer-latency" class="text-outline">—</span>
 </footer>

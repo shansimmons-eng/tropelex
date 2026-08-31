@@ -932,6 +932,19 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ---
 
+## Versioning
+
+Two different things are versioned independently — know which one you're checking:
+
+- **App version** (e.g. `1.2.0`) — the release identifier, sourced from `pyproject.toml` and shown in the dashboard footer, the Help & Command Hub page, and `GET /api/health`.
+- **Memory schema version** (a plain integer, currently `1`) — bumped only when the on-disk/export JSON *shape* changes in a way that could break cross-version compatibility (a field renamed, removed, or retyped). An app release that doesn't touch data shape does not bump this. Same idea as SQLite separating its release version from its file-format version.
+
+**Before exporting data from one install and importing it into another** (Settings → Export Everything / Import, or a Benchmarks bundle for cross-machine comparison), check that both installs are on the same app version — the export filename and payload both carry it. If the schema versions genuinely differ:
+- **Account export/import** refuses by default: a mismatched or missing `schema_version` gets a 409 with the detected and current versions, and requires an explicit confirm to proceed rather than silently overwriting project files.
+- **Benchmarks export/import** already skips shape-invalid entries safely (never overwrites an existing entry), but a version mismatch now shows up as an explicit warning in the response instead of an unexplained skip count.
+
+---
+
 ## Uninstalling
 
 There's no package manager entry to reverse — Tropelex is a git clone plus a couple of local venvs and config files. Deleting the cloned directory removes everything Tropelex ever wrote *inside* it: all `memory/` runtime state, `.env` secrets, both venvs (`.venv`, `mcp_server/.venv`). What it doesn't remove is anything an integration wrote *outside* the repo, since only you know you set those up:

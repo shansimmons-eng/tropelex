@@ -460,9 +460,12 @@ async def hijacker():
     return RedirectResponse(url="/#section-pipeline", status_code=302)
 
 
+from core.version import APP_VERSION, MEMORY_SCHEMA_VERSION  # noqa: E402
+
+
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "1.2.0"}
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @app.get("/api/tests/count")
@@ -742,7 +745,8 @@ async def account_export():
                     if k not in SECRET_ENV_KEYS:
                         settings[k] = v.strip()
         return {
-            "version": "1.0",
+            "app_version": APP_VERSION,
+            "schema_version": MEMORY_SCHEMA_VERSION,
             "projects": projects,
             "tropebook": tropebook,
             "feeds": feeds,
@@ -753,11 +757,45 @@ async def account_export():
         raise HTTPException(500, f"Account export failed: {e}")
 
 
+class AccountImportRequest(BaseModel):
+    """Purpose-built request model for /api/account/import -- not the
+    shared ImportRequest (used by import_sources for deep-research
+    imports, which has no version concept), matching this codebase's
+    existing pattern of small per-endpoint request models rather than
+    overloading a generic one. `confirm` defaults False so a version
+    mismatch always gates on an explicit retry (see account_import)."""
+    data: dict[str, Any]
+    confirm: bool = False
+
+
 @app.post("/api/account/import")
-async def account_import(req: ImportRequest):
-    """Import a full account export (memory + tropebook + feeds)."""
+async def account_import(req: AccountImportRequest):
+    """Import a full account export (memory + tropebook + feeds).
+
+    Gated on schema_version (#98/versioning policy, core/version.py): an
+    export whose schema_version doesn't match this install's
+    MEMORY_SCHEMA_VERSION -- including one predating this field entirely --
+    409s with the detected/current versions attached instead of silently
+    overwriting project files, unless the caller already confirmed. Same
+    gate-then-override shape as Ghost's gate_blocked (#53): informative
+    refusal first, explicit opt-in to proceed anyway, not a hard block.
+    """
     try:
         data = req.data
+        detected_schema_version = data.get("schema_version")
+        if detected_schema_version != MEMORY_SCHEMA_VERSION and not req.confirm:
+            raise HTTPException(status_code=409, detail={
+                "message": (
+                    "This export's schema_version doesn't match this install's. "
+                    "Formats can be incompatible across versions -- resend with "
+                    "confirm: true to import anyway."
+                ),
+                "detected_schema_version": detected_schema_version,
+                "current_schema_version": MEMORY_SCHEMA_VERSION,
+                "app_version_exported_from": data.get("app_version", "unknown"),
+                "app_version_here": APP_VERSION,
+            })
+
         imported_counts = {"projects": 0, "citations": 0, "feeds": 0}
         # Import projects
         for name, proj_data in (data.get("projects") or {}).items():
@@ -792,6 +830,8 @@ async def account_import(req: ImportRequest):
             except Exception:
                 pass  # Skip duplicates
         return {"imported": imported_counts}
+    except HTTPException:
+        raise  # the schema_version 409 gate above must not be re-wrapped as a 500
     except Exception as e:
         logger.error("account_import failed: %s", e)
         raise HTTPException(500, f"Account import failed: {e}")

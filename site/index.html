@@ -1063,6 +1063,13 @@ pip install -r requirements.txt</code></pre>
 </h4>
 <p class="font-body-md text-on-surface-variant text-sm">Tracks actual financial dollars and LLM tokens spent per decision to measure ROI. (<em>UI Tab: Cost Ledger / API <code>GET /api/cost/{project}</code></em>)</p>
 </div>
+
+<div class="p-4 rounded-xl bg-teal-950/20 border border-teal-500/20">
+<h4 class="font-headline-md text-lg font-bold text-teal-300 mb-1 flex items-center gap-2" id="versioning">
+<span class="material-symbols-outlined text-teal-400 text-[18px]">new_releases</span> Versioning
+</h4>
+<p class="font-body-md text-on-surface-variant text-sm">Two independently-tracked version numbers: the <strong>app version</strong> (shown in the dashboard footer and <code>GET /api/health</code>) and a <strong>memory schema version</strong> that only bumps when the on-disk/export JSON shape changes in a way that could break cross-install compatibility. Check both are on the same app version before moving data between machines — <code>POST /api/account/import</code> 409s on a schema mismatch (or a missing schema_version, from an export predating this field) unless you explicitly confirm, and a mismatched Benchmarks bundle surfaces a real warning instead of an unexplained skip count. See the README's <a href="https://github.com/shansimmons-eng/tropelex#versioning" class="text-teal-300 hover:text-teal-200 underline">Versioning</a> section for the full policy.</p>
+</div>
 </div>
 </section>
 

@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 from core.benchmarks.anonymizer import anonymize_project
 from core.benchmarks.aggregator import aggregate_benchmarks, compare_to_aggregate
 from core.memory.manager import MemoryManager
+from core.version import MEMORY_SCHEMA_VERSION
 
 logger = logging.getLogger("tropelex.benchmarks")
 
@@ -132,6 +133,12 @@ class BenchmarkShareRequest(BaseModel):
 class BenchmarkImportRequest(BaseModel):
     stats: list[dict[str, Any]] = Field(..., description="Bundle exported from another install")
     source_label: str = Field("", max_length=100, description="Optional label for where this came from")
+    schema_version: int | None = Field(
+        None, description="The bundle's own schema_version, echoed from GET /benchmarks/export's "
+        "envelope -- optional so older bundles (predating this field) still import, but if given "
+        "and it doesn't match this install's, invalid-entry skips get a real diagnostic instead of "
+        "an opaque count.",
+    )
 
 
 # --- Endpoints ---
@@ -265,6 +272,7 @@ async def benchmarks_export() -> dict[str, Any]:
     """
     shared = _load_shared_stats()
     return {
+        "schema_version": MEMORY_SCHEMA_VERSION,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "count": len(shared),
         "stats": shared,
@@ -308,10 +316,22 @@ async def benchmarks_import(body: BenchmarkImportRequest) -> dict[str, Any]:
         existing_hashes.add(project_hash)
         imported += 1
 
+    schema_mismatch = (
+        body.schema_version is not None and body.schema_version != MEMORY_SCHEMA_VERSION
+    )
+    warning = (
+        f"Bundle schema_version ({body.schema_version}) doesn't match this install's "
+        f"({MEMORY_SCHEMA_VERSION}) -- the {skipped_invalid} skipped-invalid entr"
+        f"{'y is' if skipped_invalid == 1 else 'ies are'} likely a version mismatch, not corruption."
+        if schema_mismatch and skipped_invalid > 0 else None
+    )
     return {
         "imported": imported,
         "skipped_existing": skipped_existing,
         "skipped_invalid": skipped_invalid,
+        "bundle_schema_version": body.schema_version,
+        "current_schema_version": MEMORY_SCHEMA_VERSION,
+        "warning": warning,
         "source_label": body.source_label,
         "total_local_after_import": len(existing_hashes),
     }
