@@ -5893,6 +5893,26 @@ function fuzzyScore(query, text) {
     return score;
 }
 
+// Decision text is long free-form prose, so word order in a search query
+// often doesn't match word order in the text (e.g. "safety consolidation"
+// vs. "Consolidate the safety-relevant logic..." -- "consolidate" comes
+// BEFORE "safety" there). fuzzyScore requires the whole query to match as
+// one in-order character sequence, so a query like that scores 0 even
+// though every word is genuinely present. Score each query word against
+// the full text independently (order-agnostic) and require every word to
+// match at all -- still an AND across words, just not an ordered one.
+function multiWordFuzzyScore(query, text) {
+    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return 0;
+    let total = 0;
+    for (const w of words) {
+        const s = fuzzyScore(w, text);
+        if (s <= 0) return 0;
+        total += s;
+    }
+    return total;
+}
+
 function cmdkSearch(query) {
     if (!cmdkTabIndex) cmdkTabIndex = buildCmdkTabIndex();
 
@@ -5919,10 +5939,10 @@ function cmdkSearch(query) {
             .map(x => x.item);
 
         decisions = state.decisions
-            .map(d => ({ item: d, score: fuzzyScore(query, d.decision) }))
+            .map(d => ({ item: d, score: multiWordFuzzyScore(query, d.decision) }))
             .filter(x => x.score > 0)
             .sort((a, b) => b.score - a.score)
-            .slice(0, 5)
+            .slice(0, 8)
             .map(x => x.item);
     }
 
