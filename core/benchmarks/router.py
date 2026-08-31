@@ -270,7 +270,16 @@ async def benchmarks_export() -> dict[str, Any]:
     network call) and POST it to /benchmarks/import there to compare
     across machines.
     """
-    shared = _load_shared_stats()
+    try:
+        shared = _load_shared_stats()
+    except OSError as exc:
+        # _load_shared_stats already skips individual corrupt files on its
+        # own; this catches _ensure_benchmarks_dir's mkdir/rename failing
+        # outright (permissions, disk full) -- a real export failure, not
+        # a per-entry data problem, so it's a 500 rather than a silent
+        # empty bundle.
+        logger.error("benchmarks_export failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Benchmarks export failed: {exc}")
     return {
         "schema_version": MEMORY_SCHEMA_VERSION,
         "exported_at": datetime.now(timezone.utc).isoformat(),

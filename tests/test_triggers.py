@@ -3,6 +3,7 @@ built on it, and the tag_gate primitive used by add_decision."""
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -117,6 +118,7 @@ class TestPrePushChecks:
         assert "check_every_endpoint_has_a_test" in names
         assert "check_error_handling_present" in names
         assert "check_drift_bench_coverage" in names
+        assert "check_schema_version_awareness" in names
         for r in results:
             assert isinstance(r.passed, bool)
             assert r.detail
@@ -187,6 +189,170 @@ class TestPrePushChecks:
 
         result = check_error_handling_present({"repo_path": str(tmp_path)})
         assert result.passed is True
+
+    def test_server_py_app_routes_are_now_visible(self, tmp_path):
+        """core/tropebook/web/server.py hosts ~180 routes directly on
+        `app`, not a X_router in its own core/*/router.py file -- the
+        plain glob missed all of them until _EXTRA_ROUTE_FILES was added.
+        This confirms the blind spot is actually closed, not just that
+        the glob doesn't crash on a file that happens to be absent."""
+        from core.triggers.checks import check_error_handling_present
+
+        web_dir = tmp_path / "core" / "tropebook" / "web"
+        web_dir.mkdir(parents=True)
+        (web_dir / "server.py").write_text(
+            '@app.get("/api/widgets/list")\n'
+            "async def list_widgets():\n"
+            "    return []\n"
+        )
+
+        result = check_error_handling_present({"repo_path": str(tmp_path)})
+        assert result.passed is False
+        assert "widgets/list" in result.detail
+
+    def test_server_py_absent_does_not_break_the_scan(self, tmp_path):
+        """No core/tropebook/web/server.py in this tmp tree -- _iter_router_
+        files' is_file() guard must skip it silently, not raise."""
+        from core.triggers.checks import check_every_endpoint_has_a_test
+
+        (tmp_path / "core").mkdir()
+        (tmp_path / "tests").mkdir()
+        result = check_every_endpoint_has_a_test({"repo_path": str(tmp_path)})
+        assert result.passed is True
+
+
+def _git_repo(path: Path) -> None:
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.name", "test"], cwd=path, check=True)
+
+
+def _commit_all(path: Path, msg: str) -> None:
+    subprocess.run(["git", "add", "-A"], cwd=path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", msg], cwd=path, check=True)
+
+
+class TestSchemaVersionAwarenessCheck:
+    """Versioning policy (core/version.py): warns when a push touches a
+    known cross-install wire format without also touching core/version.py.
+    Uses a real local git repo with a faked origin/main ref -- no actual
+    remote/network involved, `git update-ref` alone is enough to give the
+    check something to diff against."""
+
+    def _repo_with_base(self, tmp_path: Path) -> Path:
+        """A repo with an initial commit, and refs/remotes/origin/main
+        pointed at it -- simulates "this is what's already on the
+        remote," so a later local-only commit is what the check sees as
+        the push's actual diff."""
+        _git_repo(tmp_path)
+        (tmp_path / "README.md").write_text("hello\n")
+        _commit_all(tmp_path, "initial")
+        base_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/main", base_sha], cwd=tmp_path, check=True,
+        )
+        return tmp_path
+
+    def test_no_base_ref_skips_gracefully(self, tmp_path):
+        from core.triggers.checks import check_schema_version_awareness
+
+        _git_repo(tmp_path)
+        (tmp_path / "README.md").write_text("hello\n")
+        _commit_all(tmp_path, "initial")
+        # No refs/remotes/origin/main exists at all -- git diff against it fails.
+        result = check_schema_version_awareness({"repo_path": str(tmp_path)})
+        assert result.passed is True
+        assert "unavailable" in result.detail
+
+    def test_no_schema_relevant_files_changed_passes(self, tmp_path):
+        from core.triggers.checks import check_schema_version_awareness
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "README.md").write_text("hello again\n")
+        _commit_all(repo, "unrelated change")
+
+        result = check_schema_version_awareness({"repo_path": str(repo)})
+        assert result.passed is True
+        assert "no schema-relevant files changed" in result.detail
+
+    def test_schema_relevant_file_changed_without_marker_passes(self, tmp_path):
+        """Touching a schema-relevant file at all isn't enough to warn --
+        only touching one of the actual known schema symbols is."""
+        from core.triggers.checks import check_schema_version_awareness
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "core").mkdir()
+        (repo / "core" / "benchmarks").mkdir()
+        (repo / "core" / "benchmarks" / "router.py").write_text(
+            "# unrelated comment change, no schema symbol here\n"
+        )
+        _commit_all(repo, "touch benchmarks router, no schema symbol")
+
+        result = check_schema_version_awareness({"repo_path": str(repo)})
+        assert result.passed is True
+        assert "no known schema symbol touched" in result.detail
+
+    def test_schema_symbol_touched_without_version_bump_warns(self, tmp_path):
+        from core.triggers.checks import check_schema_version_awareness
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "core").mkdir()
+        (repo / "core" / "benchmarks").mkdir()
+        (repo / "core" / "benchmarks" / "router.py").write_text(
+            "async def benchmarks_export():\n    return {}\n"
+        )
+        _commit_all(repo, "add benchmarks_export")
+
+        result = check_schema_version_awareness({"repo_path": str(repo)})
+        assert result.passed is False
+        assert result.severity == "warn"
+        assert "benchmarks_export" in result.detail
+        assert "core/version.py" in result.detail
+
+    def test_schema_symbol_touched_with_version_bump_passes(self, tmp_path):
+        from core.triggers.checks import check_schema_version_awareness
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "core").mkdir()
+        (repo / "core" / "benchmarks").mkdir()
+        (repo / "core" / "benchmarks" / "router.py").write_text(
+            "async def benchmarks_export():\n    return {}\n"
+        )
+        (repo / "core" / "version.py").write_text("MEMORY_SCHEMA_VERSION = 2\n")
+        _commit_all(repo, "add benchmarks_export, bump schema version")
+
+        result = check_schema_version_awareness({"repo_path": str(repo)})
+        assert result.passed is True
+        assert "core/version.py was also touched" in result.detail
+
+    def test_custom_diff_base_is_respected(self, tmp_path):
+        """context['diff_base'] overrides the default origin/main -- for a
+        repo using a different default branch name."""
+        from core.triggers.checks import check_schema_version_awareness
+
+        _git_repo(tmp_path)
+        (tmp_path / "README.md").write_text("hello\n")
+        _commit_all(tmp_path, "initial")
+        base_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/develop", base_sha], cwd=tmp_path, check=True,
+        )
+        (tmp_path / "core").mkdir()
+        (tmp_path / "core" / "benchmarks").mkdir()
+        (tmp_path / "core" / "benchmarks" / "router.py").write_text(
+            "class BenchmarkImportRequest: pass\n"
+        )
+        _commit_all(tmp_path, "add BenchmarkImportRequest")
+
+        result = check_schema_version_awareness(
+            {"repo_path": str(tmp_path), "diff_base": "origin/develop"},
+        )
+        assert result.passed is False
+        assert "BenchmarkImportRequest" in result.detail
 
 
 class TestDriftBenchCheck:

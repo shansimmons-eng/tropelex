@@ -726,10 +726,17 @@ async def account_export():
         mm = get_memory_manager()
         tb = get_tropebook()
         fm = _get_feed_manager()
-        # Memory: all projects
+        # Memory: all projects -- one corrupted project file must not fail
+        # the whole export; skip it and export everything that's readable,
+        # same posture as core.benchmarks.router._load_shared_stats.
         projects = {}
+        skipped_projects: list[str] = []
         for f in mm.memory_dir.glob("*.json"):
-            projects[f.stem] = json.loads(f.read_text())
+            try:
+                projects[f.stem] = json.loads(f.read_text())
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("account_export skipping unreadable project file %s: %s", f, exc)
+                skipped_projects.append(f.stem)
         # Tropebook
         tropebook = tb.export_json()
         # Feeds
@@ -748,6 +755,7 @@ async def account_export():
             "app_version": APP_VERSION,
             "schema_version": MEMORY_SCHEMA_VERSION,
             "projects": projects,
+            "skipped_projects": skipped_projects,
             "tropebook": tropebook,
             "feeds": feeds,
             "settings": settings,
@@ -797,9 +805,28 @@ async def account_import(req: AccountImportRequest):
             })
 
         imported_counts = {"projects": 0, "citations": 0, "feeds": 0}
-        # Import projects
-        for name, proj_data in (data.get("projects") or {}).items():
-            mm = get_memory_manager()
+        skipped_projects: list[str] = []
+        # Import projects. Defensive on two axes: proj_data must actually be
+        # a dict (an untrusted/malformed export could hand us a string, a
+        # list, or null here -- writing that straight to a project's memory
+        # file would silently corrupt it for every future read, not just
+        # fail loudly now), and name is run through the same
+        # _sanitise_project path-traversal guard the rest of this file
+        # already uses for project names -- this loop was writing
+        # `mm.memory_dir / f"{name}.json"` directly from an untrusted key
+        # with no such guard before this fix.
+        projects_data = data.get("projects")
+        if not isinstance(projects_data, dict):
+            projects_data = {}
+        mm = get_memory_manager()
+        for raw_name, proj_data in projects_data.items():
+            if not isinstance(proj_data, dict):
+                skipped_projects.append(str(raw_name))
+                continue
+            name = _sanitise_project(str(raw_name))
+            if not name:
+                skipped_projects.append(str(raw_name))
+                continue
             proj_file = mm.memory_dir / f"{name}.json"
             proj_file.write_text(json.dumps(proj_data, indent=2))
             imported_counts["projects"] += 1
@@ -829,7 +856,7 @@ async def account_import(req: AccountImportRequest):
                 imported_counts["feeds"] += 1
             except Exception:
                 pass  # Skip duplicates
-        return {"imported": imported_counts}
+        return {"imported": imported_counts, "skipped_projects": skipped_projects}
     except HTTPException:
         raise  # the schema_version 409 gate above must not be re-wrapped as a 500
     except Exception as e:
