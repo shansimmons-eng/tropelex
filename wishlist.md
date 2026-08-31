@@ -1598,7 +1598,7 @@ Three related but distinct asks, prompted by installing on a second machine with
 - A "Uninstalling" section in README.md enumerating every location Tropelex writes to outside the cloned directory: `claude mcp remove tropelex` (or manual `.mcp.json` cleanup) for MCP registration, `~/.config/opencode/plugins/tropelex.js` + its entry in `opencode.json`/`opencode.jsonc` for OpenCode, the `(add-to-list 'load-path ...)` line for Emacs. Everything else (all `memory/` runtime state, `.env` secrets) lives inside the repo directory itself and is gone the moment the clone is deleted — no OS-level registry entries or background services exist today since there's no installer.
 - Deferred, not built this pass: a `scripts/uninstall.sh` that walks the known integration points and removes each with confirmation, instead of leaving the README as the only source of truth. Worth doing once the list above is confirmed complete and stable, not before.
 
-**Status:** Open. Proposed 2026-08-30. Low complexity — mostly documentation.
+**Status:** ✅ Implemented 2026-08-31. Shipped exactly the scoped piece: a "## Uninstalling" section in README.md covering MCP (the common committed-`.mcp.json` case needs no cleanup at all; only a separate `claude mcp add` in another project does), OpenCode plugin file + config entry, Emacs `load-path`, and confirming the VS Code extension has no external install location (loaded via Extension Development Host only). `scripts/uninstall.sh` remains deferred, as planned.
 
 ---
 
@@ -1644,7 +1644,7 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 - A published metrics table (per-category detection rate, false-positive rate) checked into the repo or grant docs, explicit about undetected categories rather than only reporting the aggregate.
 - Closing the reward-hacking gap itself is a separate, harder question — likely requires the semantic/LLM-based intent check floated as Ghost's next candidate (see `docs/cais-summary.md`), not just more keyword scenarios.
 
-**Status:** Open. Proposed 2026-08-30.
+**Status:** ✅ Implemented 2026-08-31. Suite is now 14 scenarios / 6 categories: a second reward-hacking evasion shape (weakening a test assertion into a tautology, distinct from the original backdoor-diff pattern) and a new `multi_step_drift` category (a decision violated gradually across 3 individually-clean diffs, none of which trips a warning alone — verified by running each diff separately against the real detector before trusting the scenario, same discipline as the rest of the module). Both new categories honestly measure 0.0 detection, published as-is. Aggregate moved from 0.8/10 scenarios to 0.5714/14 — a lower number, published anyway, because it's a truer one. Metrics table checked into `docs/cais-summary.md`'s Evaluation & Limitations section. Closing the two 0.0 gaps themselves (semantic/session-aware detection) remains open, per the entry's own note above.
 
 ---
 

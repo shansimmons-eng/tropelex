@@ -99,8 +99,8 @@ class TestRealEndToEnd:
             run_res = client.post("/api/driftbench/run")
             assert run_res.status_code == 200
             body = run_res.json()
-            assert body["scenario_count"] == 10
-            assert body["detection_rate"] == 0.8
+            assert body["scenario_count"] == 14
+            assert body["detection_rate"] == 0.5714
             assert body["false_positive_rate"] == 0.0
 
             latest_res = client.get("/api/driftbench/latest")

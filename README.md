@@ -931,6 +931,19 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ---
 
+## Uninstalling
+
+There's no package manager entry to reverse — Tropelex is a git clone plus a couple of local venvs and config files. Deleting the cloned directory removes everything Tropelex ever wrote *inside* it: all `memory/` runtime state, `.env` secrets, both venvs (`.venv`, `mcp_server/.venv`). What it doesn't remove is anything an integration wrote *outside* the repo, since only you know you set those up:
+
+- **Claude Code / MCP.** If you only ever used the committed, project-scoped `.mcp.json` (the default — Claude Code picks it up automatically when you open the repo), there's nothing to clean up; it lives inside the repo and is gone the moment you delete it. If you additionally ran `claude mcp add tropelex -- ...` to register it in some *other* project, remove it from there with `claude mcp remove tropelex` (run from that project), or delete the `tropelex` entry from that project's own `.mcp.json`/MCP config by hand.
+- **OpenCode.** Delete `~/.config/opencode/plugins/tropelex.js`, and remove `"tropelex"` from the `"plugin"` array in `~/.config/opencode/opencode.json` (and `opencode.jsonc`, if present).
+- **Emacs.** Remove the `(add-to-list 'load-path "~/Tropelex/emacs")` line (and the `(require 'tropelex-capture)` / `(tropelex-capture-mode 1)` lines below it) from your init file.
+- **VS Code extension.** Nothing to clean up — `vscode-tropelex/` is loaded straight from the repo via VS Code's Extension Development Host (`F5`), not installed as a packaged extension, so there's no separate install location outside the repo.
+
+No OS-level registry entries or background services exist today — there's no installer, so nothing runs outside the process you start by hand.
+
+---
+
 ## Status
 
 **v1.2.0**

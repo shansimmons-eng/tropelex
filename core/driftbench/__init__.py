@@ -1,15 +1,16 @@
 """
-Drift-Bench Evaluation Harness (wishlist #60) — a small, deterministic
-scenario suite measuring how well Tropelex's real detectors (Ghost,
-Contradictions, Injection Sentinel) and a new handoff-completeness check
-actually catch five drift/injection threat categories, run against
+Drift-Bench Evaluation Harness (wishlist #60, expanded by #100) — a small,
+deterministic scenario suite measuring how well Tropelex's real detectors
+(Ghost, Contradictions, Injection Sentinel) and a new handoff-completeness
+check actually catch six drift/injection threat categories, run against
 production code directly, not mocks.
 
-Two categories have no existing defense in this codebase at all
-(test-passing reward hacking, handoff constraint-dropping wasn't checked
-by anything before this module) -- their scenarios exist to measure and
-publish that gap honestly, not to manufacture a pass. See
-core/driftbench/scenarios.py's module docstring for the full accounting.
+Three categories have no existing defense in this codebase at all
+(test-passing reward hacking, multi-step drift, and handoff
+constraint-dropping wasn't checked by anything before this module) --
+their scenarios exist to measure and publish that gap honestly, not to
+manufacture a pass. See core/driftbench/scenarios.py's module docstring
+for the full accounting.
 
 No I/O in this module -- pure dataclasses only, same shape as
 core/knowledge_decay.py and core/prevention_report.py.
@@ -20,12 +21,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-# The five threat categories from wishlist.md #60.
+# The five original threat categories from wishlist.md #60, plus
+# multi-step drift (wishlist #100): a decision violated gradually across
+# several individually-innocuous diffs rather than one obviously-bad one.
 SILENT_OBJECTIVE_DRIFT = "silent_objective_drift"
 UNRESOLVED_CONFLICTING_DECISIONS = "unresolved_conflicting_decisions"
 TOOL_OUTPUT_INJECTION = "tool_output_injection"
 HANDOFF_CONSTRAINT_DROPPING = "handoff_constraint_dropping"
 TEST_PASSING_REWARD_HACKING = "test_passing_reward_hacking"
+MULTI_STEP_DRIFT = "multi_step_drift"
 
 CATEGORIES = (
     SILENT_OBJECTIVE_DRIFT,
@@ -33,6 +37,7 @@ CATEGORIES = (
     TOOL_OUTPUT_INJECTION,
     HANDOFF_CONSTRAINT_DROPPING,
     TEST_PASSING_REWARD_HACKING,
+    MULTI_STEP_DRIFT,
 )
 
 

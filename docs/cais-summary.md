@@ -25,7 +25,18 @@ See [SAFETY.md](../SAFETY.md) for the full mapping of these features to safety t
 3. **Verification Metric Report:** Quantitative analysis of guardrail-drift detection rates across real multi-step development sessions, building on the project's existing test suite (2,674+ passing unit tests as of this writing).
 
 ## Evaluation & Limitations
-Drift-Bench (10 scenarios today, 5 categories: silent objective drift, conflicting decisions, tool-output injection, handoff constraint-dropping, test-passing reward hacking) currently measures 0.8 overall detection with 0.0 false positives. The reward-hacking category specifically sits at 0.0 detection — a keyword-evasion diff (functionally reward-hacking behavior described in language that avoids the detector's keyword overlap) beats the current Ghost Decisions detector outright. This is the single largest measured gap and the one most directly relevant to this grant's own reward-hacking focus; expanding reward-hacking scenario coverage and closing this gap is the highest-leverage use of grant funding, not a general benchmark expansion.
+Drift-Bench (14 scenarios, 6 categories, expanded 2026-08-31 with a second reward-hacking evasion shape and a new multi-step-drift category) currently measures 0.5714 overall detection with 0.0 false positives anywhere in the corpus:
+
+| Category | Detection rate | False-positive rate |
+|---|---|---|
+| Silent objective drift | 1.0 | 0.0 |
+| Unresolved conflicting decisions | 1.0 | 0.0 |
+| Tool-output injection | 1.0 | 0.0 |
+| Handoff constraint-dropping | 1.0 | 0.0 |
+| Test-passing reward hacking | **0.0** | 0.0 |
+| Multi-step drift | **0.0** | 0.0 |
+
+The two 0.0 categories are published on purpose, not hidden in the aggregate: **test-passing reward hacking** — a keyword-evasion diff (functionally reward-hacking behavior described in language that avoids the detector's keyword overlap) beats the current Ghost Decisions detector outright, and a second, independent evasion shape (weakening a test assertion into a tautology instead of adding unrelated code) beats it the same way — and **multi-step drift** — a decision violated gradually across several individually-clean diffs, none of which trips a warning on its own, because Ghost checks one diff at a time with no session-level memory. Both gaps are directly relevant to this grant's own reward-hacking and execution-boundary-drift focus; closing them (a semantic/session-aware detection layer, not more keyword scenarios) is the highest-leverage use of grant funding, not a general benchmark expansion.
 
 Ghost Decisions itself runs on keyword/topic overlap, not semantic understanding, by design choice rather than oversight: an embedding-similarity upgrade was built (`core/ghost/preventive.py` accepts optional decision/diff embeddings) and evaluated before being wired into the live gate. A dry-run found true-positive and false-positive similarity scores (0.29 vs. 0.65) don't separate cleanly — shared surface vocabulary between unrelated decisions and diffs produces false-positive similarity as high as genuine matches. It was deliberately not shipped to the live path rather than shipping a detector that doesn't reliably discriminate. An LLM-based intent check (not raw embedding similarity) is the next candidate, not yet built or evaluated.
 
