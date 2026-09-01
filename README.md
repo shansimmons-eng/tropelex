@@ -1017,7 +1017,7 @@ No OS-level registry entries or background services exist today — there's no i
 - **Background scheduler**: Automatic periodic tasks with error recovery
 
 ### Quality Metrics
-- **2672 tests passing**
+- **2897 tests passing**
 - AI compression via OpenAI (`gpt-4o-mini`)
 - CORS locked to localhost
 - In-memory rate limiting (no external dependencies)
