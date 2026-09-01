@@ -5,9 +5,21 @@ Import memory data from compressed or plain JSON files.
 
 import gzip
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 REQUIRED_FIELDS = {"projects"}
+
+
+def _exporting_instance_id(import_data: dict) -> str | None:
+    """The exporting install's id, accepting both the wrapped format
+    ({"metadata": {"instance_id": ...}}) and a flat top-level
+    "instance_id" -- same both-formats tolerance _validate_schema already
+    has for "version"."""
+    metadata = import_data.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("instance_id"):
+        return metadata["instance_id"]
+    return import_data.get("instance_id")
 
 
 def _decompress_data(data: bytes) -> str:
@@ -102,11 +114,25 @@ def import_memory_data(
         summary["errors"].extend(errors)
         return summary
 
+    # #provenance: stamp each written project with where it came from
+    # (core/identity.py), same differs-from-own-id guard as account_import
+    # -- re-importing your own earlier backup onto the same machine
+    # shouldn't relabel your own native data as foreign.
+    from core.identity import get_or_create_instance_id
+
+    exporting_instance_id = _exporting_instance_id(import_data)
+    this_instance_id = get_or_create_instance_id(Path(base_path))
+    stamp_provenance = bool(exporting_instance_id) and exporting_instance_id != this_instance_id
+
     for project in import_data.get("projects", []):
         name = project.get("project_name", "")
         if not _is_safe_project_name(name):
             summary["errors"].append(f"Rejected unsafe project name: {name!r}")
             continue
+
+        if stamp_provenance:
+            project["_imported_from_instance_id"] = exporting_instance_id
+            project["_imported_at"] = datetime.now(timezone.utc).isoformat()
 
         try:
             if overwrite:

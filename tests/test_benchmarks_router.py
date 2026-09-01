@@ -119,6 +119,72 @@ class TestImport:
         assert body["aggregate"]["decision_count"] == 30
 
 
+class TestProvenance:
+    """#provenance: core.identity.get_or_create_instance_id stamped into
+    benchmarks data, and the storage-key fix for the cross-install
+    project_hash collision (two different machines with a same-named
+    project produce the identical hash -- see _storage_key)."""
+
+    def test_share_stamps_source_instance_id(self, client: TestClient, tmp_path: Path) -> None:
+        mm = router_mod._mm
+        mm.save_project_memory("proj-a", {
+            "project_name": "proj-a", "decisions": [], "session_history": [],
+        })
+        resp = client.post("/api/memory/proj-a/benchmarks/share", json={"opt_in": True})
+        assert resp.status_code == 200
+        project_hash = resp.json()["project_hash"]
+
+        on_disk = json.loads((router_mod._BENCHMARKS_DIR / f"{project_hash}.json").read_text())
+        assert on_disk["source_instance_id"]
+
+    def test_import_preserves_entrys_own_source_instance_id(self, client: TestClient) -> None:
+        """Never overwritten with the receiving install's own id -- that's
+        what keeps a multi-hop provenance chain honest."""
+        entry = _stat("h1")
+        entry["source_instance_id"] = "install-a-id"
+        resp = client.post("/api/memory/benchmarks/import", json={"stats": [entry]})
+        assert resp.status_code == 200
+        assert resp.json()["imported"] == 1
+
+        on_disk = json.loads((router_mod._BENCHMARKS_DIR / "install-a-id_h1.json").read_text())
+        assert on_disk["source_instance_id"] == "install-a-id"
+
+    def test_same_project_hash_different_instance_does_not_collide(self, client: TestClient) -> None:
+        """The actual bug fix: two machines with a same-named project
+        (identical project_hash, since hash_project_name only hashes the
+        name) must both survive import, not silently alias to one entry."""
+        entry_a = _stat("shared-name-hash", decisions=10)
+        entry_a["source_instance_id"] = "install-a"
+        entry_b = _stat("shared-name-hash", decisions=20)
+        entry_b["source_instance_id"] = "install-b"
+
+        resp = client.post("/api/memory/benchmarks/import", json={"stats": [entry_a, entry_b]})
+        body = resp.json()
+        assert body["imported"] == 2
+        assert body["skipped_existing"] == 0
+
+        agg = client.get("/api/memory/benchmarks/aggregate").json()
+        assert agg["total_projects"] == 2
+
+    def test_reimporting_same_instance_tagged_bundle_is_idempotent(self, client: TestClient) -> None:
+        entry = _stat("h1")
+        entry["source_instance_id"] = "install-a"
+        bundle = {"stats": [entry]}
+
+        first = client.post("/api/memory/benchmarks/import", json=bundle).json()
+        second = client.post("/api/memory/benchmarks/import", json=bundle).json()
+        assert first["imported"] == 1
+        assert second["imported"] == 0
+        assert second["skipped_existing"] == 1
+
+    def test_import_without_source_instance_id_uses_bare_hash(self, client: TestClient) -> None:
+        """Backward compat: a bundle predating this field imports under
+        the same bare-hash filename as before."""
+        resp = client.post("/api/memory/benchmarks/import", json={"stats": [_stat("h1")]})
+        assert resp.status_code == 200
+        assert (router_mod._BENCHMARKS_DIR / "h1.json").exists()
+
+
 class TestSchemaVersion:
     """Versioning policy (core/version.py): export echoes MEMORY_SCHEMA_
     VERSION; import surfaces a real diagnostic when a bundle's own

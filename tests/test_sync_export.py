@@ -5,6 +5,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from core.identity import INSTANCE_ID_ENV_VAR
 from core.sync.exporter import EXPORT_VERSION, export_memory_data
 
 
@@ -95,3 +96,13 @@ class TestExportMemoryData:
 
         assert len(payload["projects"]) == 1
         assert payload["projects"][0] == project
+
+
+class TestExportProvenance:
+    def test_metadata_carries_instance_id(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+        (tmp_path / "memory").mkdir()
+
+        payload = _decompress_export(export_memory_data(str(tmp_path)))
+
+        assert payload["metadata"]["instance_id"]

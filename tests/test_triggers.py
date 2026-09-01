@@ -327,6 +327,26 @@ class TestSchemaVersionAwarenessCheck:
         assert result.passed is True
         assert "core/version.py was also touched" in result.detail
 
+    def test_sync_exporter_symbol_touched_without_version_bump_warns(self, tmp_path):
+        """#provenance: core/sync/exporter.py + importer.py were untracked
+        by this check entirely before -- a real gap, same class of thing
+        the account_export/import blind spot was, fixed here by adding
+        them to _SCHEMA_RELEVANT_FILES/_SCHEMA_RELEVANT_MARKERS."""
+        from core.triggers.checks import check_schema_version_awareness
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "core").mkdir()
+        (repo / "core" / "sync").mkdir()
+        (repo / "core" / "sync" / "exporter.py").write_text(
+            "def export_memory_data(base_path):\n    return b''\n"
+        )
+        _commit_all(repo, "touch sync exporter's schema-relevant function")
+
+        result = check_schema_version_awareness({"repo_path": str(repo)})
+        assert result.passed is False
+        assert result.severity == "warn"
+        assert "export_memory_data" in result.detail
+
     def test_custom_diff_base_is_respected(self, tmp_path):
         """context['diff_base'] overrides the default origin/main -- for a
         repo using a different default branch name."""

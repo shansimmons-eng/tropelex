@@ -183,12 +183,15 @@ _SCHEMA_RELEVANT_FILES = (
     "core/benchmarks/router.py",
     "core/handoff/packet_builder.py",
     "core/safety/classifier.py",
+    "core/sync/exporter.py",
+    "core/sync/importer.py",
 )
 _SCHEMA_RELEVANT_MARKERS = (
     "def account_export", "def account_import", "class AccountImportRequest",
     "def benchmarks_export", "def benchmarks_import", "class BenchmarkImportRequest",
     "class HandoffPacket", "class ContextSlice", "class HandoffCompletenessFinding",
     "class SafetyMetadata",
+    "def export_memory_data", "def import_memory_data",
 )
 
 

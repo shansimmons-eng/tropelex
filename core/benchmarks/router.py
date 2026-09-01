@@ -80,10 +80,15 @@ def _atomic_write(path: Path, data: str) -> None:
         raise
 
 
-def _save_shared_stats(project_hash: str, stats: dict[str, Any]) -> None:
-    """Save anonymized stats to the benchmarks directory."""
+def _save_shared_stats(storage_key: str, stats: dict[str, Any]) -> None:
+    """Save anonymized stats to the benchmarks directory. `storage_key` is
+    a filename stem -- a bare project_hash for natively-shared stats
+    (see benchmarks_share), or a (source_instance_id, project_hash)
+    composite for imported ones (see _storage_key/benchmarks_import),
+    which is what keeps two different installs' same-named projects from
+    colliding on import."""
     bench_dir = _ensure_benchmarks_dir()
-    path = bench_dir / f"{project_hash}.json"
+    path = bench_dir / f"{storage_key}.json"
     try:
         _atomic_write(path, json.dumps(stats, indent=2))
     except (OSError, TypeError) as exc:
@@ -91,10 +96,21 @@ def _save_shared_stats(project_hash: str, stats: dict[str, Any]) -> None:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+def _storage_key(project_hash: str, source_instance_id: str | None) -> str:
+    """#provenance: project_hash alone (core/benchmarks/anonymizer.py's
+    hash_project_name) is a hash of the project *name*, not the install --
+    two machines with a same-named project produce the identical hash.
+    Composite key when an instance id is known (imported entries) avoids
+    that collision; bare project_hash otherwise, preserving the existing
+    on-disk naming for natively-shared entries and for bundles that
+    predate this field."""
+    return f"{source_instance_id}_{project_hash}" if source_instance_id else project_hash
+
+
 _STATS_FIELDS = (
     "project_hash", "tech_stack", "decision_count", "reversal_rate",
     "avg_confidence", "category_distribution", "avg_safety_score",
-    "risk_level_distribution",
+    "risk_level_distribution", "source_instance_id",
 )
 
 
@@ -160,6 +176,13 @@ async def benchmarks_share(
     stats = result.value
 
     if body.opt_in:
+        # #provenance: stamped at the moment data is first shared, not at
+        # export time -- an export bundle can already be a mix of native
+        # and previously-imported entries, so export must pass through
+        # whatever's already stored rather than blanket-overwriting every
+        # entry with this install's own id (see benchmarks_import below).
+        from core.identity import get_or_create_instance_id
+
         # Convert frozen dataclass to dict for storage
         stats_dict = {
             "project_hash": stats.project_hash,
@@ -170,6 +193,7 @@ async def benchmarks_share(
             "category_distribution": dict(stats.category_distribution),
             "avg_safety_score": stats.avg_safety_score,
             "risk_level_distribution": dict(stats.risk_level_distribution),
+            "source_instance_id": get_or_create_instance_id(_mm.base_path),
         }
         _save_shared_stats(stats.project_hash, stats_dict)
 
@@ -293,14 +317,20 @@ async def benchmarks_import(body: BenchmarkImportRequest) -> dict[str, Any]:
     """Import a bundle exported from another install into this install's
     benchmarks directory, so /benchmarks/aggregate and /compare include it.
 
-    Entries are validated and merged by project_hash — an import never
-    overwrites a project_hash already present locally (that would let a
-    malformed or hostile bundle silently clobber this install's own shared
-    stats), so re-importing the same bundle, or importing an overlapping
-    bundle, is safe: pre-existing entries win and only new hashes are added.
+    Entries are validated and merged by storage key (#provenance: project_
+    hash + source_instance_id when the entry carries one, bare project_hash
+    otherwise -- see _storage_key) — an import never overwrites a storage
+    key already present locally (that would let a malformed or hostile
+    bundle silently clobber this install's own shared stats), so
+    re-importing the same bundle, or importing an overlapping bundle, is
+    safe: pre-existing entries win and only new keys are added. Each
+    entry's own source_instance_id is preserved exactly as received, never
+    overwritten with this install's id -- that's what keeps provenance
+    intact across a chain of re-exports (A shares, B imports, B re-exports,
+    C imports: C still sees A as the origin, not B).
     """
     bench_dir = _ensure_benchmarks_dir()
-    existing_hashes = {p.stem for p in bench_dir.glob("*.json")}
+    existing_keys = {p.stem for p in bench_dir.glob("*.json")}
 
     imported = 0
     skipped_existing = 0
@@ -316,13 +346,13 @@ async def benchmarks_import(body: BenchmarkImportRequest) -> dict[str, Any]:
             skipped_invalid += 1
             continue
 
-        project_hash = entry["project_hash"]
-        if project_hash in existing_hashes:
+        storage_key = _storage_key(entry["project_hash"], entry.get("source_instance_id"))
+        if storage_key in existing_keys:
             skipped_existing += 1
             continue
 
-        _save_shared_stats(project_hash, {k: entry.get(k) for k in _STATS_FIELDS})
-        existing_hashes.add(project_hash)
+        _save_shared_stats(storage_key, {k: entry.get(k) for k in _STATS_FIELDS})
+        existing_keys.add(storage_key)
         imported += 1
 
     schema_mismatch = (
@@ -342,5 +372,5 @@ async def benchmarks_import(body: BenchmarkImportRequest) -> dict[str, Any]:
         "current_schema_version": MEMORY_SCHEMA_VERSION,
         "warning": warning,
         "source_label": body.source_label,
-        "total_local_after_import": len(existing_hashes),
+        "total_local_after_import": len(existing_keys),
     }

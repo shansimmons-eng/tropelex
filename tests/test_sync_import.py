@@ -178,3 +178,56 @@ class TestImportMemoryData:
         result = import_memory_data(_encode(export), str(tmp_path))
         assert result["projects_imported"] == 3
         assert result["files_written"] == 3
+
+
+class TestImportProvenance:
+    """core/identity.py -- provenance stamping, mirroring account_import's
+    behavior (core/tropebook/web/server.py)."""
+
+    def test_stamps_provenance_when_source_differs_from_local(self, tmp_path, monkeypatch):
+        from core.identity import INSTANCE_ID_ENV_VAR
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+
+        export = {"metadata": {"instance_id": "some-other-install"}, "projects": [_project("prov-proj")]}
+        result = import_memory_data(_encode(export), str(tmp_path))
+        assert result["projects_imported"] == 1
+
+        written = json.loads((tmp_path / "memory" / "prov-proj.json").read_text())
+        assert written["_imported_from_instance_id"] == "some-other-install"
+        assert "_imported_at" in written
+
+    def test_does_not_self_tag_when_source_matches_local(self, tmp_path, monkeypatch):
+        from core.identity import INSTANCE_ID_ENV_VAR, get_or_create_instance_id
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+        own_id = get_or_create_instance_id(tmp_path)
+
+        export = {"metadata": {"instance_id": own_id}, "projects": [_project("prov-proj")]}
+        result = import_memory_data(_encode(export), str(tmp_path))
+        assert result["projects_imported"] == 1
+
+        written = json.loads((tmp_path / "memory" / "prov-proj.json").read_text())
+        assert "_imported_from_instance_id" not in written
+
+    def test_flat_top_level_instance_id_also_recognized(self, tmp_path, monkeypatch):
+        from core.identity import INSTANCE_ID_ENV_VAR
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+
+        export = {"version": "1.0", "instance_id": "flat-format-install", "projects": [_project("flat-proj")]}
+        result = import_memory_data(_encode(export), str(tmp_path))
+        assert result["projects_imported"] == 1
+
+        written = json.loads((tmp_path / "memory" / "flat-proj.json").read_text())
+        assert written["_imported_from_instance_id"] == "flat-format-install"
+
+    def test_no_instance_id_at_all_does_not_stamp(self, tmp_path, monkeypatch):
+        """Backward compat: a bundle predating this field imports cleanly,
+        without a stamp -- there's nothing to attribute it to."""
+        from core.identity import INSTANCE_ID_ENV_VAR
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+
+        export = _make_export(_project("no-prov-proj"))  # flat, no instance_id key
+        result = import_memory_data(_encode(export), str(tmp_path))
+        assert result["projects_imported"] == 1
+
+        written = json.loads((tmp_path / "memory" / "no-prov-proj.json").read_text())
+        assert "_imported_from_instance_id" not in written

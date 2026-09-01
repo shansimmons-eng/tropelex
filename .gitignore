@@ -26,6 +26,7 @@ memory/feeds/
 memory/agent_skills/
 memory/replays/
 memory/driftbench/
+memory/benchmarks/
 memory/prompt_genealogy/
 memory/reposeek/
 memory/trending/

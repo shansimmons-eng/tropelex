@@ -20,13 +20,18 @@ def _collect_memory_files(memory_dir: Path) -> dict[str, dict]:
     }
 
 
-def _build_export_payload(memory_files: dict[str, dict]) -> dict:
+def _build_export_payload(memory_files: dict[str, dict], instance_id: str) -> dict:
     """Assemble export payload with metadata and project list."""
     return {
         "metadata": {
             "version": EXPORT_VERSION,
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "project_count": len(memory_files),
+            # #provenance: a public, non-secret per-install id (core/
+            # identity.py), distinct from core.auth.shared_secret's
+            # TROPEL_EX_SECRET -- lets a receiving install record which
+            # install this bundle actually came from.
+            "instance_id": instance_id,
         },
         "projects": list(memory_files.values()),
     }
@@ -41,7 +46,9 @@ def export_memory_data(base_path: str) -> bytes:
     Returns:
         Gzip-compressed JSON bytes with metadata and project data.
     """
+    from core.identity import get_or_create_instance_id
+
     memory_dir = Path(base_path) / "memory"
     memory_files = _collect_memory_files(memory_dir) if memory_dir.exists() else {}
-    payload = _build_export_payload(memory_files)
+    payload = _build_export_payload(memory_files, get_or_create_instance_id(Path(base_path)))
     return gzip.compress(json.dumps(payload).encode())
