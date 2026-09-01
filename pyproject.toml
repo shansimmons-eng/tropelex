@@ -21,6 +21,9 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
 ]
+adapters = [
+    "langgraph>=1.2.11",
+]
 
 [project.scripts]
 tropelex = "core.tropebook.cli:main"
