@@ -12,7 +12,7 @@ This document asserts those properties explicitly, for anyone evaluating Tropele
 
 ## Safety Surface v1 — External Review Invitation
 
-`core/safety/__init__.py`'s re-export index above is now a checkpointed, versioned unit: `core.safety.SAFETY_SURFACE_VERSION` (currently `"v1"`) names the exact boundary the 31 symbols in `__all__` define, asserted live by `tests/test_safety_init.py` rather than only claimed in this paragraph. This is a deliberate, standing invitation for external review of *specifically that surface* — narrower and more concrete than a general "contributions welcome": review whether the 31 exported symbols actually cover what they claim to, whether any mechanism below is weaker than its description implies, and whether the boundary itself is drawn in the right place. Report findings the same way as a security vulnerability — see [SECURITY.md](SECURITY.md) — even though these aren't disclosure-sensitive; the private-reporting flow works fine for "I think this claim is wrong" too, or open a public issue directly if you'd rather discuss it there.
+`core/safety/__init__.py`'s re-export index above is now a checkpointed, versioned unit: `core.safety.SAFETY_SURFACE_VERSION` (currently `"v1"`) names the exact boundary the 31 symbols in `__all__` define, asserted live by `tests/test_safety_init.py` rather than only claimed in this paragraph. This is a deliberate, standing invitation for external review of *specifically that surface* — narrower and more concrete than a general "contributions welcome": review whether the 31 exported symbols actually cover what they claim to, whether any mechanism below is weaker than its description implies, and whether the boundary itself is drawn in the right place. Report findings the same way as a security vulnerability (see [SECURITY.md](SECURITY.md)), even though these aren't disclosure-sensitive. The private-reporting flow works fine for, "I think this claim is wrong" too, or open a public issue directly if you'd rather discuss it there.
 
 **One-page threat model**, the flow the mechanisms below actually implement, chained end to end:
 
@@ -20,7 +20,7 @@ This document asserts those properties explicitly, for anyone evaluating Tropele
 2. **Pre-action gate.** Before a diff is written, Preventive Ghost Checks compares it against every active decision and produces severity-scored warnings; Gate Policy resolves each severity to block/warn/log-only, optionally refined by ordered rules matching severity, agent, or decision category.
 3. **Override.** A block isn't silently un-blockable: an agent can override it with an explicit, attributed rationale — but the override itself becomes a permanent, auditable fact, not a way to make the warning disappear.
 4. **Audit trail.** Every gate decision, override, and handoff event is appended to a hash-chained log (`core/audit.py`) at write time — tamper-evident because each decision's stored content hash is cross-checked against the trail's own independent record, not just recomputed from current (possibly-edited) state.
-5. **Forensic replay.** The Time-Travel Debugger reconstructs project memory as it existed as of any past date from that same trail, answering "what would an agent operating at that point actually have known" — the postmortem question every step above exists to make answerable.
+5. **Forensic replay.** The Time-Travel Debugger reconstructs project memory as it existed as of any past date from that same trail, answering "what would an agent operating at that point actually have known": the postmortem question every step above exists to make answerable.
 
 No step in this chain is a formal guarantee; each one is a checkable claim about what's implemented and tested today, which is exactly what external review of this surface would be verifying.
 
@@ -30,25 +30,25 @@ No step in this chain is a formal guarantee; each one is a checkable claim about
 
 **Mechanism:** Context Compressor (`core/context-compressor/`, `core/compression/`)
 
-Strips filler and normalizes prompt content before it reaches the model: using an LLM pass when a key is configured, or deterministic dictionary rules otherwise. A side effect of normalization is a reduction in the surface area available for injected instructions riding along inside otherwise-legitimate context (pasted logs, scraped pages, tool output). This is not a dedicated injection filter: it's a general compression pass that happens to shrink that attack surface as a byproduct of its primary job.
+Strips filler and normalizes prompt content before it reaches the model, using an LLM pass when a key is configured, or deterministic dictionary rules otherwise. A side effect of normalization is a reduction in the surface area available for injected instructions riding along inside otherwise-legitimate context (pasted logs, scraped pages, tool output). This is not a dedicated injection filter, it's a general compression pass that happens to shrink that attack surface as a byproduct of its primary job.
 
 ## Guardrail Ossification Prevention
 
 **Mechanism:** Knowledge Decay (`core/knowledge_decay.py`)
 
-Every decision's confidence score decays over time by default (`half_life_days`-based, currently 90 days). A decision made months ago doesn't retain full authority forever just because nobody revisited it; stale guardrails and policies lose confidence automatically rather than silently continuing to govern behavior as the system and its environment change around them.
+Every decision's confidence score decays over time by default (`half_life_days`-based, currently 90 days). A decision made months ago doesn't retain full authority forever just because nobody revisited it. Stale guardrails and policies lose confidence automatically rather than silently continuing to govern behavior as the system and its environment change around them.
 
 ## Silent Objective-Drift Detection
 
 **Mechanism:** Ghost Decisions (`core/ghost/detector.py`, `core/ghost/pattern_matcher.py`)
 
-Scans code changes for keyword/topic overlap against recorded decisions and flags cases where a change appears to contradict a decision with no one having explicitly revisited or superseded it: the "nobody said anything, but the code stopped matching the stated intent" failure mode.
+Scans code changes for keyword/topic overlap against recorded decisions and flags cases where a change appears to contradict a decision with no one having explicitly revisited or superseded it -> the "nobody said anything, but the code stopped matching the stated intent" failure mode.
 
 ## Pre-Action Policy Compliance Gate
 
 **Mechanism:** Preventive Ghost Checks (`core/ghost/preventive.py`, `core/ghost/preventive_router.py`)
 
-Runs the same drift-detection logic *before* a diff is committed, not after: `POST /api/memory/{project}/ghost-check` takes a proposed unified diff and returns severity-scored warnings against every active decision it touches. Designed as a literal pre-write hook: call it before finalizing a change.
+Runs the same drift-detection logic *before* a diff is committed, not after: `POST /api/memory/{project}/ghost-check` takes a proposed unified diff and returns severity-scored warnings against every active decision it touches. Designed as a literal pre-write hook  (call it before finalizing a change).
 
 ## Configurable Gate-Severity Policy
 
@@ -56,13 +56,13 @@ Runs the same drift-detection logic *before* a diff is committed, not after: `PO
 
 Each of the three severity tiers the pre-action gate above can raise (`high`/`medium`/`low`) is independently configurable to one of three actions (`block`/`warn`/`log_only`) via a validated schema (`GatePolicyRequest`, extra fields rejected) — `PUT /{project}/gate-policy` sets it, `GET /{project}/gate-policy` shows the effective policy alongside defaults and any overrides.
 
-On top of that flat mapping, an ordered rule list (`gate_rules`, `PUT`/`GET /{project}/gate-rules`) can override the resolved action for a specific severity, checking agent, or violated decision's category — first matching rule wins, falling through to the flat mapping above if nothing matches. Still deliberately not a general policy language: each rule's condition is a closed set of three literal-equality checks (`severity`/`agent_name`/`category`, ANDed) with no boolean operators and no expression evaluator, so a rule list stays fully readable top to bottom and can't itself become an attack surface the way accepting arbitrary expressions would. Every pre-existing project (no `gate_rules` configured) gets byte-identical enforcement to before this existed.
+On top of that flat mapping, an ordered rule list (`gate_rules`, `PUT`/`GET /{project}/gate-rules`) can override the resolved action for a specific severity, checking agent, or violated decision's category. The first matching rule wins, falling through to the flat mapping above if nothing matches. Still deliberately not a general policy language: each rule's condition is a closed set of three literal-equality checks (`severity`/`agent_name`/`category`, ANDed) with no boolean operators and no expression evaluator, so a rule list stays fully readable top to bottom and can't itself become an attack surface the way accepting arbitrary expressions would. Every pre-existing project (no `gate_rules` configured) gets byte-identical enforcement to before this existed.
 
 ## Safety-Budget Escalation
 
 **Mechanism:** Safety Budget (`core/safety_budget.py`)
 
-Distinct from any single decision's own risk score: sums a weighted per-agent signal across overrides (weighted highest), gate-blocked/gate-warned severity events, and high/medium-risk decisions captured, and flags when an agent crosses a configurable threshold. This is a cumulative-pattern check — an agent whose individual actions each look acceptable in isolation but who's accumulating overrides and high-severity gate events over a session gets flagged even though no single action triggered it.
+Distinct from any single decision's own risk score: sums a weighted per-agent signal across overrides (weighted highest), gate-blocked/gate-warned severity events, and high/medium-risk decisions captured, and flags when an agent crosses a configurable threshold. This is a cumulative-pattern check. An agent whose individual actions each look acceptable in isolation but who's accumulating overrides and high-severity gate events over a session gets flagged even though no single action triggered it.
 
 ## Conflicting-Objective Surfacing
 
@@ -80,7 +80,7 @@ Scans conversation transcripts for rephrasing ("no, actually...", "that's wrong"
 
 **Mechanism:** Agent Handoff Packets (`core/handoff/packet_builder.py`, `core/handoff/router.py`)
 
-Builds role-aware context bundles (not raw state, but state plus the rationale behind it) for handing work between distinct agents (or distinct sessions of the same agent). This is the concrete mechanism for the "how do decentralized agents stay coordinated without a shared context window" problem: the packet is the coordination artifact. The wire format, hashing scheme, and the two invariants below (must-survive protection, completeness verification) are documented independent of this implementation in [`docs/protocols/handoff-packet-spec.md`](docs/protocols/handoff-packet-spec.md) — published so cross-framework compatibility becomes a testable claim rather than an assertion.
+Builds role-aware context bundles (not raw state, but state plus the rationale behind it) for handing work between distinct agents (or distinct sessions of the same agent). This is the concrete mechanism for the "how do decentralized agents stay coordinated without a shared context window" problem: the packet is the coordination artifact. The wire format, hashing scheme, and the two invariants below (must-survive protection, completeness verification) are documented independent of this implementation in [`docs/protocols/handoff-packet-spec.md`](docs/protocols/handoff-packet-spec.md). This is published so cross-framework compatibility becomes a testable claim rather than an assertion.
 
 ## Must-Survive Decision Protection
 
@@ -98,7 +98,7 @@ A separate check from the protection above: after a packet is built, `_check_com
 
 **Mechanism:** Priority-0 Goal Slices (`core/handoff/packet_builder.py`, `core/prefetch/router.py`)
 
-Active project goals ride in every context bundle and handoff packet at the same priority-0 tier as must-survive decisions — not subject to the relevance-scored knapsack that ranks everything else by impact. The "why are we doing this" framing survives every context handoff intact, not just individual decisions.
+Active project goals ride in every context bundle and handoff packet at the same priority-0 tier as must-survive decisions. These are not subject to the relevance-scored knapsack that ranks everything else by impact. The "why are we doing this" framing survives every context handoff intact, not just individual decisions.
 
 ## Calibration & Honest-Signaling Mechanism
 
@@ -110,7 +110,7 @@ Agents (or reviewers) place confidence bets on decisions; a leaderboard tracks c
 
 **Mechanism:** Cross-Agent Agreement Tracking (`core/market/coordination.py`)
 
-Distinct from the per-agent calibration above: detects declining agreement between *multiple* agents' calibration profiles over time. Two agents can each look individually well-calibrated while steadily diverging from each other — this surfaces that pattern directly instead of relying on any single agent's own accuracy trend to reveal it.
+Distinct from the per-agent calibration above: detects declining agreement between *multiple* agents' calibration profiles over time. Two agents can each look individually well-calibrated while steadily diverging from each other. This surfaces that pattern directly instead of relying on any single agent's own accuracy trend to reveal it.
 
 ## Forensic State Auditing
 
