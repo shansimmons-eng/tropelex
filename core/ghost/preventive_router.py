@@ -26,6 +26,7 @@ from core.gate import (
     overridden_ids,
     policy_for,
 )
+from core.ghost.intent_check import check_intent_conflict
 from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
 from core.reward_hacking.detector import detect_assertion_weakening
@@ -334,6 +335,42 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
             "description": finding.description,
         })
 
+    # #106: LLM-as-intent-check -- narrow and budgeted on purpose, not run
+    # on every warning. Only for the specific gap keyword matching can't
+    # cover: a medium-severity keyword warning against a high/critical-risk
+    # decision, where low surface overlap already dragged the severity down
+    # despite the decision itself being one of the ones that matters most.
+    # Advisory only: a real conflict escalates the existing warning's
+    # severity, it never creates a new warning or a new block path -- the
+    # severity->policy resolution below still runs exactly as it already
+    # does. check_intent_conflict returns None (not a guess) when it
+    # couldn't actually run (no LLM backend, budget spent for today) --
+    # that's treated as "no additional signal," the warning is left alone.
+    decisions_by_id = {
+        d.get("id", ""): d for d in memory.get("decisions", []) if isinstance(d, dict)
+    }
+    intent_check_ran = False
+    for w in warnings:
+        if w.get("match_type") != "keyword" or w.get("severity") != "medium":
+            continue
+        decision = decisions_by_id.get(w.get("decision_id") or "")
+        if not decision:
+            continue
+        risk_level = (decision.get("safety_metadata") or {}).get("risk_level", "low")
+        if risk_level not in ("high", "critical"):
+            continue
+        intent_check_ran = True
+        intent_result = await check_intent_conflict(
+            decision_id=w["decision_id"],
+            decision_text=w.get("decision_text") or decision.get("decision", ""),
+            diff_text=body.diff,
+            memory=memory,
+            project=project,
+        )
+        if intent_result and intent_result["conflict"]:
+            w["severity"] = "high"
+            w["intent_check_rationale"] = intent_result["rationale"]
+
     severity_dist = {"high": 0, "medium": 0, "low": 0}
     for w in warnings:
         sev = w.get("severity", "low")
@@ -374,7 +411,7 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
     # before this, and block/warn tiers only ever wrote an "override" event
     # if an agent later bypassed them — a warning that was correctly
     # obeyed left zero trace. This is what the Prevention Report reads.
-    mutated = False
+    mutated = intent_check_ran
     if blocking:
         append_audit_event(
             memory,
