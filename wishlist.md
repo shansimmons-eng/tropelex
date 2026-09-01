@@ -1851,6 +1851,22 @@ A second external review pass, done after #97-104 shipped — this one explicitl
 
 ---
 
+### 115. Dashboard-Wide Documentation + Research Search
+**Purpose:** Search across the GUIDE, FAQ, Getting Started, API Reference, and README, plus stored research (Research Feeds/Deep Research), from a single widget in the live dashboard.
+
+**Why:** User request, not sourced from an external advisory batch — direct ask for a way to find instructive documentation and prior research without leaving the dashboard.
+
+**Features:**
+- `core/text_search.py` — keyword-overlap scoring extracted out of `core/search_router.py` (second consumer justified the extraction).
+- `core/docs_search.py` + `GET /api/docs-search` — stdlib `html.parser` index over `site/*.html` + `README.md`, no new dependency. "Research" category reuses the existing `GET /api/search` (citations) as-is.
+- New sidebar widget (`UI/animated_tropebook_dashboard/code.html`), pinned in the sidebar's bottom whitespace next to Telemetry, deliberately separate from the existing Cmd+K palette (decisions/tabs/projects stay Cmdk's scope).
+- Real staleness bug found and fixed along the way: `site/*.html` (deployed) and `core/tropebook/web/static/*.html` (served locally at `/guide`, `/api-reference`) had silently diverged — the local `/guide` route was serving pre-accessibility-fix content. New `scripts/sync_local_docs.py` + a new pre-push check (`check_local_docs_in_sync`) close that gap for good. `/faq` and `/getting-started` gained local routes to match.
+- `getting-started.html`/`api-reference.html` headings gained real ids (FAQ already had them via `<details id="...">`); FAQ's `<details>` now auto-expand on a URL-fragment deep link.
+
+**Status:** ✅ Implemented 2026-09-01. Live-verified end to end in a real browser (both search categories, keyboard nav, deep-link auto-expand); `scripts/a11y/scan.mjs` re-run against the dashboard and `site/` — zero violations. 49 new tests across `tests/test_text_search.py`, `tests/test_docs_search.py`, `tests/test_docs_search_router.py`, `tests/test_local_doc_routes.py`, and `tests/test_triggers.py`'s new `TestLocalDocsInSyncCheck`.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
