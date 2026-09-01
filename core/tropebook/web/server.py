@@ -60,10 +60,12 @@ async def lifespan(app_instance):
     """Start background scheduler on startup, stop on shutdown."""
     global _scheduler
     from core.auth.shared_secret import get_or_create_secret
+    from core.identity import get_or_create_instance_id
     from core.scheduler import BackgroundScheduler
     # Compute BASE_DIR at call time (module-level BASE_DIR is set later)
     _base = Path(__file__).parent.parent.parent.parent
     get_or_create_secret(_base)
+    get_or_create_instance_id(_base)
     _scheduler = BackgroundScheduler(base_dir=_base)
     await _scheduler.start()
     logger.info("Tropelex started with background scheduler")
@@ -741,7 +743,15 @@ async def account_export():
         tropebook = tb.export_json()
         # Feeds
         feeds = [feed.to_dict() for feed in fm.list_feeds()]
-        # Settings (exclude secrets)
+        # Settings (exclude secrets). SECRET_ENV_VAR (TROPEL_EX_SECRET) is
+        # excluded explicitly, not via SECRET_ENV_KEYS -- that set is
+        # third-party API keys, and this install's own API-auth credential
+        # was never in it, so every export leaked the live secret in
+        # plaintext until this fix. Imported here rather than added as a
+        # literal to SECRET_ENV_KEYS so a future rename of the env var name
+        # can't silently reopen this gap.
+        from core.auth.shared_secret import SECRET_ENV_VAR
+        from core.identity import get_or_create_instance_id
         settings = {}
         env_path = BASE_DIR / ".env"
         if env_path.exists():
@@ -749,11 +759,21 @@ async def account_export():
                 if "=" in line and not line.startswith("#"):
                     k, v = line.split("=", 1)
                     k = k.strip()
-                    if k not in SECRET_ENV_KEYS:
+                    if k not in SECRET_ENV_KEYS and k != SECRET_ENV_VAR:
                         settings[k] = v.strip()
         return {
             "app_version": APP_VERSION,
             "schema_version": MEMORY_SCHEMA_VERSION,
+            # #provenance: a public, non-secret id (core/identity.py) for
+            # this install, distinct from the API-auth secret above -- lets
+            # a receiving install record which install this bundle actually
+            # came from. Whole-bundle stamp: account_export bundles
+            # everything (memory/tropebook/feeds/settings) as one unit, a
+            # single-owner backup/migrate operation, not a multi-source
+            # merge (contrast with benchmarks_export's per-entry stamping,
+            # core/benchmarks/router.py, needed there because a benchmarks
+            # bundle can itself already be a mix of multiple origins).
+            "exporting_instance_id": get_or_create_instance_id(BASE_DIR),
             "projects": projects,
             "skipped_projects": skipped_projects,
             "tropebook": tropebook,
@@ -819,6 +839,19 @@ async def account_import(req: AccountImportRequest):
         if not isinstance(projects_data, dict):
             projects_data = {}
         mm = get_memory_manager()
+        # #provenance: stamp each imported project with where it came from
+        # (core/identity.py). Only when the export's own id differs from
+        # this install's -- re-importing your own earlier backup onto the
+        # same machine shouldn't relabel your own native data as foreign.
+        # First-write-wins is left to the caller/inspector: this loop
+        # always sets the stamp to the exporting bundle's id, matching
+        # what actually just happened (this import), not preserving an
+        # older stamp already on proj_data from a prior hop -- an account
+        # export/import is a whole-install migrate, not the same
+        # multi-source-merge case benchmarks_import handles.
+        from core.identity import get_or_create_instance_id
+        exporting_instance_id = data.get("exporting_instance_id")
+        this_instance_id = get_or_create_instance_id(BASE_DIR)
         for raw_name, proj_data in projects_data.items():
             if not isinstance(proj_data, dict):
                 skipped_projects.append(str(raw_name))
@@ -827,6 +860,9 @@ async def account_import(req: AccountImportRequest):
             if not name:
                 skipped_projects.append(str(raw_name))
                 continue
+            if exporting_instance_id and exporting_instance_id != this_instance_id:
+                proj_data["_imported_from_instance_id"] = exporting_instance_id
+                proj_data["_imported_at"] = datetime.now(timezone.utc).isoformat()
             proj_file = mm.memory_dir / f"{name}.json"
             proj_file.write_text(json.dumps(proj_data, indent=2))
             imported_counts["projects"] += 1

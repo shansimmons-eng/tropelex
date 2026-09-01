@@ -8,6 +8,7 @@ Same gate-then-override shape as Ghost's gate_blocked (#53).
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import pytest
@@ -141,6 +142,102 @@ class TestDefensiveImportHandling:
             assert (mm.memory_dir / f"{safe_name}.json").exists()
         finally:
             (mm.memory_dir / f"{safe_name}.json").unlink(missing_ok=True)
+
+
+class TestInstanceIdProvenance:
+    """core/identity.py -- provenance stamping across account export/import."""
+
+    def test_export_includes_exporting_instance_id(self, client):
+        resp = client.get("/api/account/export")
+        assert resp.status_code == 200
+        assert resp.json()["exporting_instance_id"]
+
+    def test_import_stamps_provenance_when_source_differs_from_local(
+        self, client, project_name, monkeypatch, tmp_path,
+    ):
+        import core.tropebook.web.server as server_mod
+        from core.identity import INSTANCE_ID_ENV_VAR
+
+        monkeypatch.setattr(server_mod, "BASE_DIR", tmp_path)
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+
+        data = _export_payload(project_name, MEMORY_SCHEMA_VERSION)
+        data["exporting_instance_id"] = "some-other-install-id"
+
+        resp = client.post("/api/account/import", json={"data": data})
+        assert resp.status_code == 200
+
+        mm = MemoryManager()
+        written = json.loads((mm.memory_dir / f"{project_name}.json").read_text())
+        assert written["_imported_from_instance_id"] == "some-other-install-id"
+        assert "_imported_at" in written
+
+    def test_import_does_not_self_tag_when_source_matches_local(
+        self, client, project_name, monkeypatch, tmp_path,
+    ):
+        """Re-importing your own earlier backup onto the same machine
+        must not relabel your own native data as foreign."""
+        import core.tropebook.web.server as server_mod
+        from core.identity import INSTANCE_ID_ENV_VAR, get_or_create_instance_id
+
+        monkeypatch.setattr(server_mod, "BASE_DIR", tmp_path)
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+        own_id = get_or_create_instance_id(tmp_path)
+
+        data = _export_payload(project_name, MEMORY_SCHEMA_VERSION)
+        data["exporting_instance_id"] = own_id
+
+        resp = client.post("/api/account/import", json={"data": data})
+        assert resp.status_code == 200
+
+        mm = MemoryManager()
+        written = json.loads((mm.memory_dir / f"{project_name}.json").read_text())
+        assert "_imported_from_instance_id" not in written
+
+    def test_import_without_exporting_instance_id_does_not_stamp(
+        self, client, project_name, monkeypatch, tmp_path,
+    ):
+        """Backward compat: a bundle predating this field (no
+        exporting_instance_id key at all) must import cleanly, without a
+        stamp -- there's nothing to attribute it to."""
+        import core.tropebook.web.server as server_mod
+        from core.identity import INSTANCE_ID_ENV_VAR
+
+        monkeypatch.setattr(server_mod, "BASE_DIR", tmp_path)
+        monkeypatch.delenv(INSTANCE_ID_ENV_VAR, raising=False)
+
+        data = _export_payload(project_name, MEMORY_SCHEMA_VERSION)  # no exporting_instance_id key
+
+        resp = client.post("/api/account/import", json={"data": data})
+        assert resp.status_code == 200
+
+        mm = MemoryManager()
+        written = json.loads((mm.memory_dir / f"{project_name}.json").read_text())
+        assert "_imported_from_instance_id" not in written
+
+
+class TestExportExcludesInstanceSecret:
+    """Regression test for a real leak found while investigating export
+    provenance: SECRET_ENV_KEYS only ever listed third-party API keys, so
+    TROPEL_EX_SECRET (this install's own API-auth credential, core.auth.
+    shared_secret) was never excluded from account_export's settings dict
+    -- every export leaked the live secret in plaintext. Fixed by
+    excluding SECRET_ENV_VAR explicitly alongside SECRET_ENV_KEYS."""
+
+    def test_instance_secret_is_never_in_exported_settings(self, client, monkeypatch, tmp_path):
+        from core.auth.shared_secret import SECRET_ENV_VAR
+        import core.tropebook.web.server as server_mod
+
+        env_path = tmp_path / ".env"
+        env_path.write_text(f"{SECRET_ENV_VAR}=super-secret-value\nSOME_OTHER_SETTING=keep-me\n")
+        monkeypatch.setattr(server_mod, "BASE_DIR", tmp_path)
+
+        resp = client.get("/api/account/export")
+
+        assert resp.status_code == 200
+        settings = resp.json()["settings"]
+        assert SECRET_ENV_VAR not in settings
+        assert settings.get("SOME_OTHER_SETTING") == "keep-me"
 
 
 class TestExportDefensiveHandling:
