@@ -375,6 +375,73 @@ class TestSchemaVersionAwarenessCheck:
         assert "BenchmarkImportRequest" in result.detail
 
 
+class TestLocalDocsInSyncCheck:
+    """#search: site/*.html (deployed to GitHub Pages) and core/tropebook/
+    web/static/*.html (served locally) were allowed to drift silently
+    before this check existed -- a real staleness bug found and fixed the
+    same day (docs.html was serving pre-accessibility-fix content).
+    Same real-local-git-repo pattern as TestSchemaVersionAwarenessCheck."""
+
+    def _repo_with_base(self, tmp_path: Path) -> Path:
+        _git_repo(tmp_path)
+        (tmp_path / "README.md").write_text("hello\n")
+        _commit_all(tmp_path, "initial")
+        base_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/main", base_sha], cwd=tmp_path, check=True,
+        )
+        return tmp_path
+
+    def test_no_base_ref_skips_gracefully(self, tmp_path):
+        from core.triggers.checks import check_local_docs_in_sync
+
+        _git_repo(tmp_path)
+        (tmp_path / "README.md").write_text("hello\n")
+        _commit_all(tmp_path, "initial")
+        result = check_local_docs_in_sync({"repo_path": str(tmp_path)})
+        assert result.passed is True
+        assert "unavailable" in result.detail
+
+    def test_no_doc_pages_changed_passes(self, tmp_path):
+        from core.triggers.checks import check_local_docs_in_sync
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "README.md").write_text("hello again\n")
+        _commit_all(repo, "unrelated change")
+
+        result = check_local_docs_in_sync({"repo_path": str(repo)})
+        assert result.passed is True
+
+    def test_site_page_changed_without_mirror_warns(self, tmp_path):
+        from core.triggers.checks import check_local_docs_in_sync
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "site").mkdir()
+        (repo / "site" / "faq.html").write_text("<h1>updated faq</h1>\n")
+        _commit_all(repo, "update site faq without syncing local mirror")
+
+        result = check_local_docs_in_sync({"repo_path": str(repo)})
+        assert result.passed is False
+        assert result.severity == "warn"
+        assert "site/faq.html" in result.detail
+        assert "core/tropebook/web/static/faq.html" in result.detail
+
+    def test_site_page_changed_with_mirror_passes(self, tmp_path):
+        from core.triggers.checks import check_local_docs_in_sync
+
+        repo = self._repo_with_base(tmp_path)
+        (repo / "site").mkdir()
+        (repo / "site" / "faq.html").write_text("<h1>updated faq</h1>\n")
+        (repo / "core" / "tropebook" / "web" / "static").mkdir(parents=True)
+        (repo / "core" / "tropebook" / "web" / "static" / "faq.html").write_text("<h1>synced</h1>\n")
+        _commit_all(repo, "update site faq and sync local mirror")
+
+        result = check_local_docs_in_sync({"repo_path": str(repo)})
+        assert result.passed is True
+
+
 class TestDriftBenchCheck:
     """#60: severity must always be "warn", never "block" -- the
     test-passing-reward-hacking category is a known, permanent

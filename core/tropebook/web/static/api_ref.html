@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Tropelex API Reference</title>
+<link rel="icon" type="image/x-icon" href="/images/TL1.ico"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -105,10 +106,12 @@
 <a class="font-display-xl text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-indigo-300 to-cyan-300 tracking-tight flex items-center gap-2.5" href="/">
     Tropelex
 </a>
-<nav class="hidden md:flex gap-6">
+<nav class="hidden md:flex gap-6" aria-label="Main navigation">
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/"><span class="material-symbols-outlined text-[16px]">dashboard</span> Dashboard</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/guide"><span class="material-symbols-outlined text-[16px]">description</span> Documentation</a>
 <a class="nav-link active-nav text-primary font-bold text-sm flex items-center gap-1.5" href="/api-reference"><span class="material-symbols-outlined text-[16px]">api</span> API Reference</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/getting-started"><span class="material-symbols-outlined text-[16px]">rocket_launch</span> Getting Started</a>
+<a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/faq"><span class="material-symbols-outlined text-[16px]">help</span> FAQ</a>
 <a class="nav-link text-on-surface-variant font-medium hover:text-primary transition-colors text-sm flex items-center gap-1.5" href="/docs" target="_blank"><span class="material-symbols-outlined text-[16px]">code</span> OpenAPI Spec</a>
 </nav>
 </div>
@@ -133,9 +136,9 @@
   <span class="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 text-[10px] font-mono border border-purple-500/30">v2.0</span>
 </div>
 
-<nav class="flex flex-col gap-3 text-xs font-medium">
+<nav class="flex flex-col gap-3 text-xs font-medium" aria-label="Table of contents">
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">1. Projects &amp; Memory</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">1. Projects &amp; Memory</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-projects" data-tooltip="List all memory projects" class="sidebar-link text-on-surface-variant hover:text-purple-200 hover:bg-purple-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-get">GET</span> <span class="truncate">/api/projects</span>
@@ -153,7 +156,7 @@
   </div>
 
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">2. Quality &amp; Analysis</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">2. Quality &amp; Analysis</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-insights" data-tooltip="Project insights &amp; quality metrics" class="sidebar-link text-on-surface-variant hover:text-cyan-200 hover:bg-cyan-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-get">GET</span> <span class="truncate">.../memory/{project}/insights</span>
@@ -168,7 +171,7 @@
   </div>
 
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">3. Lineage &amp; Graph</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">3. Lineage &amp; Graph</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-dtree" data-tooltip="Causal decision DAG" class="sidebar-link text-on-surface-variant hover:text-green-200 hover:bg-green-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-get">GET</span> <span class="truncate">.../decision-tree</span>
@@ -180,7 +183,7 @@
   </div>
 
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">4. Safety &amp; Governance</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">4. Safety &amp; Governance</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-safety" data-tooltip="Safety dashboard &amp; violation alerts" class="sidebar-link text-on-surface-variant hover:text-rose-200 hover:bg-rose-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-get">GET</span> <span class="truncate">.../safety-dashboard</span>
@@ -192,7 +195,7 @@
   </div>
 
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">5. Sessions &amp; Compaction</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">5. Sessions &amp; Compaction</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-sessions" data-tooltip="List work sessions" class="sidebar-link text-on-surface-variant hover:text-amber-200 hover:bg-amber-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-get">GET</span> <span class="truncate">.../sessions</span>
@@ -207,7 +210,7 @@
   </div>
 
   <div>
-    <div class="text-[10px] font-mono uppercase tracking-widest text-outline mb-1.5 px-2 font-bold">6. Deep Research &amp; Feeds</div>
+    <div class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-1.5 px-2 font-bold">6. Deep Research &amp; Feeds</div>
     <div class="flex flex-col gap-1">
       <a href="#endpoint-auto-research" data-tooltip="Run auto deep research" class="sidebar-link text-on-surface-variant hover:text-fuchsia-200 hover:bg-fuchsia-500/15 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-2.5">
         <span class="method-post">POST</span> <span class="truncate">/api/research/auto</span>
@@ -233,18 +236,18 @@
       <span class="material-symbols-outlined text-[14px]">api</span> REST API Reference
     </span>
   </div>
-  <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-indigo-100 to-cyan-200 mb-3">Tropelex API Reference</h1>
-  <p class="text-on-surface-variant text-sm leading-relaxed mb-4">Complete HTTP REST API documentation for the Tropelex agent memory system. Base URL runs locally at <code>http://localhost:8766</code>. Native JSON endpoints provide state management, causal Q&amp;A, safety auditing, deep research, and Git sync.</p>
+  <h1 id="tropelex-api-reference" class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-indigo-100 to-cyan-200 mb-3">Tropelex API Reference</h1>
+  <p class="text-on-surface-variant text-sm leading-relaxed mb-4">Complete HTTP REST API documentation for the Tropelex agent memory system. This reference describes the API — it isn't a live instance. Once you're running Tropelex yourself, the base URL is <code>http://localhost:8766</code>; native JSON endpoints provide state management, causal Q&amp;A, safety auditing, deep research, and Git sync.</p>
   <div class="flex flex-wrap gap-3">
-    <a href="/openapi.json" target="_blank" class="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 text-xs font-bold transition-all flex items-center gap-2">
-      <span class="material-symbols-outlined text-[16px]">download</span> Download OpenAPI Schema (.json)
+    <a href="http://localhost:8766/openapi.json" target="_blank" class="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 text-xs font-bold transition-all flex items-center gap-2">
+      <span class="material-symbols-outlined text-[16px]">download</span> Download OpenAPI Schema (.json) — requires a running instance
     </a>
   </div>
 </div>
 
 <!-- 1. Projects & Memory -->
 <div class="flex flex-col gap-6" id="endpoint-projects">
-  <h2 class="text-xl font-bold text-purple-200 flex items-center gap-2 pb-2 border-b border-purple-500/20">
+  <h2 id="1-core-projects-decisions" class="text-xl font-bold text-purple-200 flex items-center gap-2 pb-2 border-b border-purple-500/20">
     <span class="material-symbols-outlined text-[20px]">database</span> 1. Core Projects &amp; Decisions
   </h2>
 
@@ -259,7 +262,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Returns a list of all active project memory containers in Tropelex.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -s http://localhost:8766/api/projects</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/projects</code></pre>
     </div>
     <div class="text-xs font-mono text-emerald-400 bg-emerald-950/30 p-3 rounded-xl border border-emerald-500/20">
       <strong>Response (200 OK):</strong> ["Tropelex", "MyProject"]
@@ -277,7 +280,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Returns full memory details for a project including all decisions, sessions, safety score, and pattern tags.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex</code></pre>
     </div>
   </div>
 
@@ -292,7 +295,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Records a new architectural decision. Requires an explicit <code>safety_metadata.safety_category</code> — no silent default. Optionally takes <code>context</code>, <code>citation_ids</code>, and <code>goal_id</code>.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/memory/Tropelex/decisions   -H "Content-Type: application/json"   -d '{"decision": "Using FastAPI for REST endpoints", "context": "Provides high performance async processing", "safety_metadata": {"safety_category": "general"}}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/Tropelex/decisions   -H "Content-Type: application/json"   -d '{"decision": "Using FastAPI for REST endpoints", "context": "Provides high performance async processing", "safety_metadata": {"safety_category": "general"}}'</code></pre>
     </div>
   </div>
 
@@ -307,14 +310,14 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Backfills or updates rationale context for an existing decision.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X PATCH http://localhost:8766/api/memory/Tropelex/decisions/dec-123/context   -H "Content-Type: application/json"   -d '{"context": "Updated context with benchmark justification"}'</code></pre>
+      <pre tabindex="0"><code>curl -X PATCH http://localhost:8766/api/memory/Tropelex/decisions/dec-123/context   -H "Content-Type: application/json"   -d '{"context": "Updated context with benchmark justification"}'</code></pre>
     </div>
   </div>
 </div>
 
 <!-- 2. Quality & Analysis -->
 <div class="flex flex-col gap-6" id="endpoint-insights">
-  <h2 class="text-xl font-bold text-cyan-200 flex items-center gap-2 pb-2 border-b border-cyan-500/20">
+  <h2 id="2-quality-analysis" class="text-xl font-bold text-cyan-200 flex items-center gap-2 pb-2 border-b border-cyan-500/20">
     <span class="material-symbols-outlined text-[20px]">high_quality</span> 2. Quality &amp; Analysis
   </h2>
 
@@ -329,7 +332,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Computes decision stats, untagged ratios, ghost drift alerts, and friction metrics.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex/insights</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex/insights</code></pre>
     </div>
   </div>
 
@@ -344,7 +347,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Auto-detected usage/workflow patterns (e.g. recurring decision categories) and next-step suggestions. Pass <code>?project=</code> to scope to one project; omitted, aggregates across every project.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s "http://localhost:8766/api/patterns?project=Tropelex"</code></pre>
+      <pre tabindex="0"><code>curl -s "http://localhost:8766/api/patterns?project=Tropelex"</code></pre>
     </div>
   </div>
 
@@ -359,14 +362,14 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Finds other <em>projects</em> with similar tech stacks or learned patterns — not similar decisions within one project (see <code>POST .../rag/context</code> below for that).</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex/similar</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex/similar</code></pre>
     </div>
   </div>
 </div>
 
 <!-- 3. Lineage & Graph -->
 <div class="flex flex-col gap-6" id="endpoint-dtree">
-  <h2 class="text-xl font-bold text-green-200 flex items-center gap-2 pb-2 border-b border-green-500/20">
+  <h2 id="3-lineage-decision-graph" class="text-xl font-bold text-green-200 flex items-center gap-2 pb-2 border-b border-green-500/20">
     <span class="material-symbols-outlined text-[20px]">account_tree</span> 3. Lineage &amp; Decision Graph
   </h2>
 
@@ -381,7 +384,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Returns decision nodes and causal directional links for graph visualization.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex/decision-tree</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex/decision-tree</code></pre>
     </div>
   </div>
 
@@ -396,14 +399,14 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Retrieves the <code>top_k</code> most relevant decisions for a query, formatted as a single context string ready to inject into a prompt.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/memory/Tropelex/rag/context   -H "Content-Type: application/json"   -d '{"query": "why did we choose FastAPI", "top_k": 5}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/Tropelex/rag/context   -H "Content-Type: application/json"   -d '{"query": "why did we choose FastAPI", "top_k": 5}'</code></pre>
     </div>
   </div>
 </div>
 
 <!-- 4. Safety & Governance -->
 <div class="flex flex-col gap-6" id="endpoint-safety">
-  <h2 class="text-xl font-bold text-rose-200 flex items-center gap-2 pb-2 border-b border-rose-500/20">
+  <h2 id="4-safety-governance" class="text-xl font-bold text-rose-200 flex items-center gap-2 pb-2 border-b border-rose-500/20">
     <span class="material-symbols-outlined text-[20px]">shield_lock</span> 4. Safety &amp; Governance
   </h2>
 
@@ -418,7 +421,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Returns composite safety score, active budget balances, and alignment status.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex/safety-dashboard</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex/safety-dashboard</code></pre>
     </div>
   </div>
 
@@ -433,14 +436,14 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Aggregates everything currently waiting on a human for this project: pending reviews, untagged decisions, decayed-confidence items, flagged content, unacknowledged handoffs, and agent-surface findings. Live state meant to be revisited, not a one-time checklist. One source (flagged citations) is intentionally global rather than project-scoped, since Tropebook's citation store isn't split per project.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex/needs-attention</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex/needs-attention</code></pre>
     </div>
   </div>
 </div>
 
 <!-- 5. Sessions & Compaction -->
 <div class="flex flex-col gap-6" id="endpoint-sessions">
-  <h2 class="text-xl font-bold text-amber-200 flex items-center gap-2 pb-2 border-b border-amber-500/20">
+  <h2 id="5-sessions-compaction" class="text-xl font-bold text-amber-200 flex items-center gap-2 pb-2 border-b border-amber-500/20">
     <span class="material-symbols-outlined text-[20px]">history_toggle_off</span> 5. Sessions &amp; Compaction
   </h2>
 
@@ -455,7 +458,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">There's no dedicated <code>/sessions</code> endpoint — session history is the <code>session_history</code> field on the full project memory response, alongside <code>decisions</code>, <code>patterns</code>, and everything else.</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s http://localhost:8766/api/memory/Tropelex | jq '.session_history'</code></pre>
+      <pre tabindex="0"><code>curl -s http://localhost:8766/api/memory/Tropelex | jq '.session_history'</code></pre>
     </div>
   </div>
 
@@ -470,7 +473,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Records a session summary, triggers pattern learning, and (optionally, via <code>session_shape</code>) baselines this session's tool-call/latency profile against the agent's own history.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/memory/Tropelex/sessions/record   -H "Content-Type: application/json"   -d '{"summary": "Built the safety budget endpoint", "agent_name": "Claude"}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/Tropelex/sessions/record   -H "Content-Type: application/json"   -d '{"summary": "Built the safety budget endpoint", "agent_name": "Claude"}'</code></pre>
     </div>
   </div>
 
@@ -485,14 +488,14 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Compresses a prompt via the configured LLM backend (falls back to a deterministic dict/concatenation strategy with no key configured). <code>level</code> (1-3) controls aggressiveness.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/compress   -H "Content-Type: application/json"   -d '{"prompt": "A very long prompt to shrink...", "level": 2}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/compress   -H "Content-Type: application/json"   -d '{"prompt": "A very long prompt to shrink...", "level": 2}'</code></pre>
     </div>
   </div>
 </div>
 
 <!-- 6. Deep Research & Feeds -->
 <div class="flex flex-col gap-6" id="endpoint-auto-research">
-  <h2 class="text-xl font-bold text-fuchsia-200 flex items-center gap-2 pb-2 border-b border-fuchsia-500/20">
+  <h2 id="6-deep-research-feeds" class="text-xl font-bold text-fuchsia-200 flex items-center gap-2 pb-2 border-b border-fuchsia-500/20">
     <span class="material-symbols-outlined text-[20px]">science</span> 6. Deep Research &amp; Feeds
   </h2>
 
@@ -507,7 +510,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Runs a search query against the Tropebook citation pipeline and imports results. Global, not project-scoped — citations land in the shared Tropebook store.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/research/auto   -H "Content-Type: application/json"   -d '{"query": "vector search reranking strategies", "max_results": 5}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/research/auto   -H "Content-Type: application/json"   -d '{"query": "vector search reranking strategies", "max_results": 5}'</code></pre>
     </div>
   </div>
 
@@ -522,7 +525,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Lists scheduled research feeds. Global by default; pass <code>?project=</code> to filter to feeds visible to one project (global feeds, feeds it owns, and feeds shared with it).</p>
     <div class="code-copy-wrap">
-      <pre><code>curl -s "http://localhost:8766/api/research-feeds?project=Tropelex"</code></pre>
+      <pre tabindex="0"><code>curl -s "http://localhost:8766/api/research-feeds?project=Tropelex"</code></pre>
     </div>
   </div>
 
@@ -537,7 +540,7 @@
     </div>
     <p class="text-sm text-on-surface-variant mb-4">Promotes a candidate decision (typically surfaced by <code>POST .../research/promote-candidates</code>) into a real, recorded decision with citation provenance — goes through the same safety-category gate as any manually-added decision.</p>
     <div class="code-copy-wrap mb-3">
-      <pre><code>curl -X POST http://localhost:8766/api/memory/Tropelex/decisions/promote   -H "Content-Type: application/json"   -d '{"decision": "Adopt vector search", "context": "Recall was the bottleneck", "citation_ids": ["cit_456"], "safety_metadata": {"safety_category": "general"}}'</code></pre>
+      <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/Tropelex/decisions/promote   -H "Content-Type: application/json"   -d '{"decision": "Adopt vector search", "context": "Recall was the bottleneck", "citation_ids": ["cit_456"], "safety_metadata": {"safety_category": "general"}}'</code></pre>
     </div>
   </div>
 </div>
@@ -638,7 +641,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre').forEach((pre, idx) => {
-            // Every card in this page already wraps its <pre> in a
+            // Every card in this page already wraps its <pre tabindex="0"> in a
             // code-copy-wrap div in the markup itself (no button inside) --
             // the original guard here only handled a *missing* wrapper, so
             // it silently skipped every one of these and no copy button

@@ -300,6 +300,7 @@ tailwind.config = {
     }
     .sidebar-header { padding: 1.25rem 1rem; border-bottom: 1px solid rgba(165, 128, 250, 0.08); }
     .sidebar-nav { flex: 1; padding: 0.5rem 0; overflow-y: auto; min-height: 0; }
+    .sidebar-footer { padding: 0.75rem; border-top: 1px solid rgba(165, 128, 250, 0.08); }
     @media (max-width: 767px) {
         .sidebar { transform: translateX(-100%); }
         .sidebar.open { transform: translateX(0); }
@@ -888,7 +889,12 @@ void main() {
             </div>
         </div>
     </div>
-    
+    <div class="sidebar-footer">
+        <button id="docs-search-trigger" class="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer hover:bg-surface-raised text-on-surface-variant hover:text-accent-lavender" onclick="openDocsSearch()" aria-haspopup="dialog">
+            <span class="material-symbols-outlined text-lg">search</span>
+            <span class="font-sans text-xs font-medium whitespace-nowrap">Search docs & research</span>
+        </button>
+    </div>
 </aside>
 
 <!-- Slim Top Bar -->
@@ -4608,6 +4614,22 @@ void main() {
     </div>
 </div>
 
+<!-- Documentation & Research Search -->
+<div id="docs-search-modal" class="fixed inset-0 z-50 hidden items-start justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="docs-search-title">
+    <div class="glass-panel rounded-xl w-full max-w-xl mx-4 mt-[12vh] fade-in overflow-hidden">
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-glass-border">
+            <span class="material-symbols-outlined text-outline text-lg" aria-hidden="true">search</span>
+            <label for="docs-search-input" id="docs-search-title" class="sr-only">Search documentation and research</label>
+            <input id="docs-search-input" type="text" autocomplete="off"
+                placeholder="Search the GUIDE, FAQ, README, and stored research..."
+                class="flex-1 bg-transparent font-mono text-sm text-on-surface placeholder-outline focus:outline-none"/>
+            <kbd class="text-xs text-outline font-mono border border-glass-border rounded px-1.5 py-0.5">Esc</kbd>
+        </div>
+        <div id="docs-search-results" class="max-h-96 overflow-y-auto p-2" role="listbox" aria-label="Search results"></div>
+        <div id="docs-search-status" class="sr-only" role="status" aria-live="polite"></div>
+    </div>
+</div>
+
 <!-- Live Telemetry Drawer -->
 <div id="telemetry-drawer" class="fixed left-0 right-0 md:left-[272px] z-30" style="bottom:28px;">
     <button id="telemetry-toggle" class="flex items-center gap-2 px-3 h-6 bg-surface-raised border-t border-glass-border font-mono text-xs text-outline hover:text-accent-lavender w-full md:w-auto cursor-pointer">
@@ -6055,6 +6077,151 @@ document.addEventListener('keydown', e => {
     } else if (e.key === 'Enter') {
         e.preventDefault();
         if (cmdkFlatResults[cmdkActiveIdx]) selectCmdkResult(cmdkFlatResults[cmdkActiveIdx]);
+    }
+});
+
+// --- Documentation & Research Search (sidebar widget, separate from Cmdk) ---
+// Two backends: /api/docs-search (core/docs_search.py -- GUIDE/FAQ/Getting
+// Started/API Reference/README, static keyword index) and /api/search
+// (core/tropebook citations -- covers Deep Research imports and shared
+// Research Feed sources). Deliberately a separate widget/modal from
+// #cmdk-modal per its own scope (decisions/tabs/projects), not merged in.
+let docsSearchDebounceTimer = null;
+let docsSearchFlatResults = [];
+let docsSearchActiveIdx = 0;
+
+function openDocsSearch() {
+    const modal = document.getElementById('docs-search-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const input = document.getElementById('docs-search-input');
+    input.value = '';
+    document.getElementById('docs-search-results').innerHTML = '';
+    document.getElementById('docs-search-status').textContent = '';
+    docsSearchFlatResults = [];
+    docsSearchActiveIdx = 0;
+    input.focus();
+}
+
+function closeDocsSearch() {
+    const modal = document.getElementById('docs-search-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('docs-search-input').blur();
+    const trigger = document.getElementById('docs-search-trigger');
+    if (trigger) trigger.focus();
+}
+
+function docsSearchRow(idx, kind, icon, title, snippet) {
+    return `<div id="docs-search-result-${idx}" data-idx="${idx}" role="option" tabindex="-1"
+        class="px-3 py-2 rounded-lg cursor-pointer flex items-start gap-3 hover:bg-surface-raised"
+        onclick="selectDocsSearchResult(${idx})">
+        <span class="material-symbols-outlined text-base text-outline mt-0.5" aria-hidden="true">${icon}</span>
+        <div class="min-w-0 flex-1">
+            <div class="text-xs font-mono text-on-surface truncate">${escapeHtml(title)}</div>
+            ${snippet ? `<div class="text-[11px] text-outline truncate">${escapeHtml(snippet)}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+async function runDocsSearch(query) {
+    const resultsEl = document.getElementById('docs-search-results');
+    const statusEl = document.getElementById('docs-search-status');
+    docsSearchActiveIdx = 0;
+
+    if (!query.trim()) {
+        resultsEl.innerHTML = '';
+        statusEl.textContent = '';
+        docsSearchFlatResults = [];
+        return;
+    }
+
+    const [docsData, researchData] = await Promise.all([
+        api(`/docs-search?q=${encodeURIComponent(query)}`),
+        api(`/search?q=${encodeURIComponent(query)}`),
+    ]);
+    const docResults = (docsData && docsData.results) || [];
+    const researchResults = (researchData && researchData.results) || [];
+
+    docsSearchFlatResults = [
+        ...docResults.map(r => ({ kind: 'doc', ...r })),
+        ...researchResults.map(r => ({ kind: 'research', ...r })),
+    ];
+
+    let html = '';
+    if (docResults.length) {
+        html += `<div class="px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-outline">Documentation</div>`;
+        docResults.forEach((r, i) => {
+            html += docsSearchRow(i, 'doc', 'description', `${r.title} · ${r.source}`, r.snippet);
+        });
+    }
+    if (researchResults.length) {
+        html += `<div class="px-2 py-1.5 mt-1 font-mono text-[10px] uppercase tracking-wider text-outline">Research</div>`;
+        researchResults.forEach((r, i) => {
+            html += docsSearchRow(docResults.length + i, 'research', 'science', r.title, r.summary);
+        });
+    }
+    if (!docsSearchFlatResults.length) {
+        html = `<div class="px-3 py-6 text-center text-xs text-outline font-mono">No results for "${escapeHtml(query)}"</div>`;
+    }
+    resultsEl.innerHTML = html;
+    statusEl.textContent = docsSearchFlatResults.length === 1
+        ? '1 result' : `${docsSearchFlatResults.length} results`;
+    updateDocsSearchActiveRow();
+}
+
+function updateDocsSearchActiveRow() {
+    docsSearchFlatResults.forEach((_, i) => {
+        const row = document.getElementById(`docs-search-result-${i}`);
+        if (!row) return;
+        const active = i === docsSearchActiveIdx;
+        row.classList.toggle('bg-surface-raised', active);
+        row.classList.toggle('text-accent-lavender', active);
+        row.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const active = document.getElementById(`docs-search-result-${docsSearchActiveIdx}`);
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function selectDocsSearchResult(idx) {
+    const result = docsSearchFlatResults[idx];
+    if (!result) return;
+    closeDocsSearch();
+    if (result.kind === 'doc') {
+        window.open(result.url, '_blank', 'noopener');
+    } else {
+        switchSection('research');
+        if (result.url) window.open(result.url, '_blank', 'noopener');
+    }
+}
+
+document.getElementById('docs-search-input').addEventListener('input', e => {
+    clearTimeout(docsSearchDebounceTimer);
+    const query = e.target.value;
+    docsSearchDebounceTimer = setTimeout(() => runDocsSearch(query), 250);
+});
+document.getElementById('docs-search-modal').addEventListener('click', e => {
+    if (e.target.id === 'docs-search-modal') closeDocsSearch();
+});
+
+document.addEventListener('keydown', e => {
+    const modal = document.getElementById('docs-search-modal');
+    const isOpen = !modal.classList.contains('hidden');
+    if (!isOpen) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDocsSearch();
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        docsSearchActiveIdx = Math.min(docsSearchActiveIdx + 1, docsSearchFlatResults.length - 1);
+        updateDocsSearchActiveRow();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        docsSearchActiveIdx = Math.max(docsSearchActiveIdx - 1, 0);
+        updateDocsSearchActiveRow();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (docsSearchFlatResults[docsSearchActiveIdx]) selectDocsSearchResult(docsSearchActiveIdx);
     }
 });
 

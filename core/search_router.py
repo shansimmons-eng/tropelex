@@ -5,14 +5,14 @@ Provides natural language search across decisions, sessions, and patterns.
 Uses keyword matching as baseline; falls back to embeddings if available.
 """
 
-import json
 import logging
-import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
 from core.memory.manager import MemoryManager
+from core.text_search import keyword_score as _keyword_score
+from core.text_search import tokenize as _tokenize
 
 logger = logging.getLogger("tropelex.search")
 
@@ -25,30 +25,6 @@ def _load_memory(project: str) -> dict[str, Any]:
     if project not in _mm.list_projects():
         raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
     return _mm.get_project_memory(project)
-
-
-_STOP = {
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "have", "has",
-    "had", "do", "does", "did", "will", "would", "could", "should", "may",
-    "might", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from",
-    "as", "and", "but", "or", "not", "so", "if", "then", "that", "this", "it",
-    "its", "we", "our", "i", "my", "you", "your", "about", "what", "which",
-}
-
-
-def _tokenize(text: str) -> set[str]:
-    """Lowercase alphanumeric tokens, minus stopwords."""
-    words = re.findall(r"[a-z][a-z0-9]+", text.lower())
-    return {w for w in words if w not in _STOP and len(w) > 2}
-
-
-def _keyword_score(query_tokens: set[str], text: str) -> float:
-    """Fraction of query tokens found in text."""
-    if not query_tokens:
-        return 0.0
-    text_tokens = _tokenize(text)
-    overlap = query_tokens & text_tokens
-    return len(overlap) / len(query_tokens)
 
 
 def search_memory(

@@ -272,3 +272,62 @@ def check_schema_version_awareness(context: dict[str, Any]) -> CheckResult:
         ),
         severity="warn",
     )
+
+
+# site filename -> its local, FastAPI-served mirror (see
+# scripts/sync_local_docs.py's own docstring for why these are separate
+# files rather than the local routes just reading site/ directly).
+_LOCAL_DOC_MIRRORS = {
+    "site/index.html": "core/tropebook/web/static/docs.html",
+    "site/faq.html": "core/tropebook/web/static/faq.html",
+    "site/getting-started.html": "core/tropebook/web/static/getting_started.html",
+    "site/api-reference.html": "core/tropebook/web/static/api_ref.html",
+}
+
+
+@registry.check(PRE_PUSH)
+def check_local_docs_in_sync(context: dict[str, Any]) -> CheckResult:
+    """Warns when a push touches a site/*.html doc page without also
+    touching its local mirror (core/tropebook/web/static/*.html, served
+    at /guide, /faq, /getting-started, /api-reference) -- these were
+    allowed to silently drift before (a real staleness bug found and
+    fixed the same day this check was added: the local /guide route was
+    serving pre-accessibility-fix content for over a week). Re-run
+    `python3 scripts/sync_local_docs.py` and commit its output alongside
+    the site/ change to satisfy this.
+    """
+    repo_path = Path(context.get("repo_path", "."))
+    base = context.get("diff_base", "origin/main")
+
+    changed_text = _git(repo_path, "diff", "--name-only", f"{base}...HEAD")
+    if changed_text is None:
+        return CheckResult(
+            name="check_local_docs_in_sync", event=PRE_PUSH, passed=True,
+            detail=f"git diff against {base} unavailable (no remote/base configured?) -- skipped",
+            severity="warn",
+        )
+
+    changed = {line for line in changed_text.splitlines() if line.strip()}
+    out_of_sync = [
+        site_file for site_file, mirror in _LOCAL_DOC_MIRRORS.items()
+        if site_file in changed and mirror not in changed
+    ]
+
+    if not out_of_sync:
+        return CheckResult(
+            name="check_local_docs_in_sync", event=PRE_PUSH, passed=True,
+            detail="no site/*.html doc pages changed without their local mirror",
+        )
+
+    return CheckResult(
+        name="check_local_docs_in_sync",
+        event=PRE_PUSH,
+        passed=False,
+        detail=(
+            f"{', '.join(out_of_sync)} changed without the corresponding local mirror "
+            f"({', '.join(_LOCAL_DOC_MIRRORS[f] for f in out_of_sync)}) -- run "
+            "`python3 scripts/sync_local_docs.py` and commit its output too, or the "
+            "local /guide, /faq, /getting-started, /api-reference routes will keep serving stale content."
+        ),
+        severity="warn",
+    )

@@ -239,6 +239,7 @@ from core.tropebook.feed_intelligence_router import feed_intel_router  # noqa: E
 from core.impact.router import impact_router             # noqa: E402
 from core.graph_router import graph_router                # noqa: E402
 from core.search_router import search_router              # noqa: E402
+from core.docs_search_router import docs_search_router    # noqa: E402
 from core.analytics_router import analytics_router        # noqa: E402
 from core.tropebook.alert_router import alert_router      # noqa: E402
 from core.ghost.router import ghost_router                  # noqa: E402
@@ -288,6 +289,7 @@ app.include_router(feed_intel_router)
 app.include_router(impact_router)
 app.include_router(graph_router)
 app.include_router(search_router)
+app.include_router(docs_search_router)
 app.include_router(analytics_router)
 app.include_router(alert_router)
 app.include_router(ghost_router)
@@ -445,6 +447,40 @@ async def docs():
             status_code=404,
         )
     with open(docs_path, encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(
+        content=content,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
+
+@app.get("/faq")
+async def faq():
+    from fastapi.responses import HTMLResponse
+
+    faq_path = SCRIPT_DIR / "static" / "faq.html"
+    if not faq_path.exists():
+        return HTMLResponse(
+            content="<h1>Tropelex FAQ</h1><p>FAQ file faq.html not found.</p>",
+            status_code=404,
+        )
+    with open(faq_path, encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(
+        content=content,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
+
+@app.get("/getting-started")
+async def getting_started():
+    from fastapi.responses import HTMLResponse
+
+    getting_started_path = SCRIPT_DIR / "static" / "getting_started.html"
+    if not getting_started_path.exists():
+        return HTMLResponse(
+            content="<h1>Getting Started</h1><p>Getting-started file getting_started.html not found.</p>",
+            status_code=404,
+        )
+    with open(getting_started_path, encoding="utf-8") as f:
         content = f.read()
     return HTMLResponse(
         content=content,
