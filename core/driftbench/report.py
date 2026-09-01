@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from core.driftbench import CATEGORIES, Scenario, ScenarioResult
+from core.driftbench import CATEGORIES, CORPUS_VERSION, Scenario, ScenarioResult
 
 logger = logging.getLogger("tropelex.driftbench")
 
@@ -96,6 +96,7 @@ def _aggregate(results: list[ScenarioResult]) -> dict[str, Any]:
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "corpus_version": CORPUS_VERSION,
         "scenario_count": len(results),
         "detection_rate": _rate(len(true_positives), len(positives)),
         "false_positive_rate": _rate(len(false_positives), len(negatives)),

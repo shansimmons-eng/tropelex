@@ -1804,7 +1804,7 @@ A second external review pass, done after #97-104 shipped — this one explicitl
 - Short "how to add a scenario" guide.
 - One-command run reproducing the same table already in the CAIS grant doc.
 
-**Status:** Open. Proposed 2026-09-01.
+**Status:** ✅ Implemented 2026-09-01. `core/driftbench/__init__.py`'s `CORPUS_VERSION = "1.0"` (first version tag — the corpus was never explicitly versioned before now) is included in every `_aggregate()` report, so a persisted report or `/api/driftbench/latest` response names exactly which corpus it refers to instead of an implicit, silently-redefinable "whatever the corpus happened to contain that day." `scripts/driftbench_run.py` is the one-command reproduction path — runs the real corpus against real production detectors and prints the exact table published in `docs/cais-summary.md` (verified live: output matches byte-for-byte), with a `--no-persist` flag for a dry run. `core/driftbench/README.md` documents the `Scenario` contract, the real-detector-not-mock convention, how to add a new scenario, and the corpus-versioning bump policy. `docs/cais-summary.md`'s table caption now names the corpus version and points at the script. Two new tests: `_aggregate()`'s pure-function output carries `corpus_version` (`tests/test_driftbench.py`), and the real end-to-end HTTP round trip does too (`tests/test_driftbench_router.py`).
 
 ---
 

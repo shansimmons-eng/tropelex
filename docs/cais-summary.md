@@ -25,7 +25,7 @@ See [SAFETY.md](../SAFETY.md) for the full mapping of these features to safety t
 3. **Verification Metric Report:** Quantitative analysis of guardrail-drift detection rates across real multi-step development sessions, building on the project's existing test suite (2,674+ passing unit tests as of this writing).
 
 ## Evaluation & Limitations
-Drift-Bench (14 scenarios, 6 categories) currently measures 0.7143 overall detection with 0.0 false positives anywhere in the corpus:
+Drift-Bench (corpus v1.0, 14 scenarios, 6 categories) currently measures 0.7143 overall detection with 0.0 false positives anywhere in the corpus. Reproducible externally, from a plain checkout: `python3 scripts/driftbench_run.py` (see [`core/driftbench/README.md`](../core/driftbench/README.md) for the scenario contract and corpus-versioning policy) prints this exact table by running the real corpus against real production detectors, not a canned result:
 
 | Category | Detection rate | False-positive rate |
 |---|---|---|

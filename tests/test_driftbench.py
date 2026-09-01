@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from core.driftbench import CATEGORIES, Scenario, ScenarioResult
+from core.driftbench import CATEGORIES, CORPUS_VERSION, Scenario, ScenarioResult
 from core.driftbench.report import _aggregate, load_latest, run_suite
 from core.driftbench.scenarios import build_corpus
 
@@ -146,6 +146,13 @@ class TestAggregate:
         results = [self._result(expected=False, detected=False)]
         report = _aggregate(results)
         assert report["detection_rate"] is None
+
+    def test_report_carries_corpus_version(self):
+        """#111: a published metric needs to name which corpus it refers
+        to -- this is what makes that a checkable fact instead of an
+        implicit, silently-redefinable claim."""
+        report = _aggregate([self._result()])
+        assert report["corpus_version"] == CORPUS_VERSION
 
     def test_empty_results_does_not_raise(self):
         report = _aggregate([])

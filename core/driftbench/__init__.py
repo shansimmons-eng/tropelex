@@ -40,6 +40,16 @@ CATEGORIES = (
     MULTI_STEP_DRIFT,
 )
 
+# #111: the corpus was never explicitly versioned before this -- a
+# published metric (docs/cais-summary.md's table) implicitly meant
+# "whatever the corpus happened to contain the day someone ran it,"
+# which a later scenario addition could silently redefine without
+# anyone noticing the old number no longer refers to the same test.
+# Bump this on any scenario added/removed, or an existing scenario's
+# expect_detection changed -- not on wording-only tweaks to a
+# description. See core/driftbench/README.md for the full policy.
+CORPUS_VERSION = "1.0"
+
 
 @dataclass(frozen=True)
 class Scenario:
