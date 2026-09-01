@@ -50,3 +50,17 @@ class TestLocalDocRoutes:
         docs.py) is present, not just a bare copy of the deployed site."""
         resp = client.get(path)
         assert "Back to Dashboard" in resp.text
+
+    @pytest.mark.parametrize("path", ["/guide", "/faq", "/getting-started", "/api-reference"])
+    def test_search_highlight_script_loads_from_static_mount(self, client, path):
+        """search-highlight.js's src must be absolute (/static/...) for
+        these extension-less routes -- a bare relative "search-highlight.js"
+        would resolve against the route path itself (e.g. /faq/search-
+        highlight.js), not the actual file location."""
+        resp = client.get(path)
+        assert 'src="/static/search-highlight.js"' in resp.text
+
+    def test_search_highlight_js_served_at_static_mount(self, client):
+        resp = client.get("/static/search-highlight.js")
+        assert resp.status_code == 200
+        assert "getHighlightQuery" in resp.text

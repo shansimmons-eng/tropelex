@@ -6183,12 +6183,27 @@ function updateDocsSearchActiveRow() {
     if (active) active.scrollIntoView({ block: 'nearest' });
 }
 
+// Inserts ?hl=<query> before the URL's #anchor (query string precedes
+// fragment) -- site/search-highlight.js reads it on the target page to
+// scroll/highlight the first occurrence of the actual matched text,
+// refining the heading-level anchor for matches that landed on body
+// text rather than the heading itself.
+function withHighlightParam(url, query) {
+    if (!query) return url;
+    const hashIdx = url.indexOf('#');
+    const path = hashIdx === -1 ? url : url.slice(0, hashIdx);
+    const hash = hashIdx === -1 ? '' : url.slice(hashIdx);
+    const separator = path.includes('?') ? '&' : '?';
+    return `${path}${separator}hl=${encodeURIComponent(query)}${hash}`;
+}
+
 function selectDocsSearchResult(idx) {
     const result = docsSearchFlatResults[idx];
     if (!result) return;
+    const query = document.getElementById('docs-search-input').value;
     closeDocsSearch();
     if (result.kind === 'doc') {
-        window.open(result.url, '_blank', 'noopener');
+        window.open(withHighlightParam(result.url, query), '_blank', 'noopener');
     } else {
         switchSection('research');
         if (result.url) window.open(result.url, '_blank', 'noopener');

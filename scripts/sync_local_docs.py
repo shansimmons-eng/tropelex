@@ -46,6 +46,11 @@ _NAV_LINK_REWRITES = (
 _ASSET_PATH_REWRITES = (
     ('src="images/', 'src="/images/'),
     ('href="images/', 'href="/images/'),
+    # search-highlight.js is copied alongside the synced HTML (see main()
+    # below) into core/tropebook/web/static/, which the app already
+    # serves at /static via StaticFiles -- reusing that existing mount
+    # rather than adding a new route for one file.
+    ('src="search-highlight.js"', 'src="/static/search-highlight.js"'),
 )
 
 # The image-logo pages (index.html, faq.html, getting-started.html) share
@@ -150,6 +155,16 @@ def main() -> int:
         )
         (_STATIC_DIR / local_name).write_text(local_html, encoding="utf-8")
         print(f"synced {site_name} -> core/tropebook/web/static/{local_name}")
+
+    js_path = _SITE_DIR / "search-highlight.js"
+    if js_path.exists():
+        (_STATIC_DIR / "search-highlight.js").write_text(
+            js_path.read_text(encoding="utf-8"), encoding="utf-8",
+        )
+        print("synced search-highlight.js -> core/tropebook/web/static/search-highlight.js")
+    else:
+        print(f"skip: {js_path} not found", file=sys.stderr)
+
     return 0
 
 

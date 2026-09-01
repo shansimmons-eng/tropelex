@@ -41,6 +41,22 @@ class TestBuildDocsIndex:
         assert len(index) > 20  # real content, not a near-empty stub
         assert all(e.title.strip() for e in index)
 
+    def test_guide_subsections_have_distinct_anchors(self):
+        """Regression: GUIDE sub-topics inside a shared <section id="...">
+        (e.g. six numbered "Getting Started" steps) used to all collapse
+        onto that one section-level anchor, since core/docs_search.py's
+        ancestor-id fallback had nothing more specific to resolve to --
+        confirms scripts/anchor_guide_subsections.py's h3 retrofit is
+        real, not just that the fallback degrades gracefully."""
+        index = build_docs_index()
+        guide_by_title = {e.title: e for e in index if e.source == "Guide"}
+        step_two = guide_by_title["2. Launch the Tropelex Server"]
+        step_six = guide_by_title["6. Pick Your Client Interface"]
+        assert step_two.anchor == "2-launch-the-tropelex-server"
+        assert step_six.anchor == "6-pick-your-client-interface"
+        assert step_two.anchor != step_six.anchor
+        assert step_two.url == "/guide#2-launch-the-tropelex-server"
+
     def test_faq_question_entries_have_anchors(self):
         """FAQ's <details id="..."> wraps each question -- confirms the
         streaming parser's ancestor-id resolution works (the heading

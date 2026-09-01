@@ -300,6 +300,7 @@
         }
 
 </style>
+<script src="/static/search-highlight.js" defer></script>
 </head>
 <body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
 <canvas id="bg-canvas" aria-hidden="true"></canvas>
@@ -339,7 +340,7 @@
     <div class="w-6 h-6 rounded-md bg-purple-500/20 flex items-center justify-center text-purple-300">
       <span class="material-symbols-outlined text-[16px]">menu_book</span>
     </div>
-    <h3 class="font-headline-md text-xs font-bold text-purple-200 uppercase tracking-wider">Navigation</h3>
+    <h3 id="navigation" class="font-headline-md text-xs font-bold text-purple-200 uppercase tracking-wider">Navigation</h3>
   </div>
   <span class="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 text-[10px] font-mono border border-purple-500/30">v2.0</span>
 </div>
@@ -483,7 +484,7 @@
 
 <div class="space-y-6 font-body-md text-on-surface">
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="1-system-prerequisites-installation" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">download</span> 1. System Prerequisites &amp; Installation
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Tropelex requires Python 3.10+. Clone the repository and install core dependencies:</p>
@@ -493,7 +494,7 @@ pip install -r requirements.txt</code></pre>
 </div>
 
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="2-launch-the-tropelex-server" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">dns</span> 2. Launch the Tropelex Server
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Start the REST API backend server from the repository root (runs by default at <code>http://localhost:8766</code>):</p>
@@ -502,14 +503,14 @@ pip install -r requirements.txt</code></pre>
 </div>
 
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="3-create-a-project-container" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">create_new_folder</span> 3. Create a Project Container
 </h3>
 <p class="text-on-surface-variant text-sm">Projects are the top-level container for all memory. Open the web dashboard at <code>http://localhost:8766</code>, go to <strong>Memory</strong> in the sidebar, and click <strong>New Project</strong>.</p>
 </div>
 
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="4-record-decisions-end-sessions" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">post_add</span> 4. Record Decisions &amp; End Sessions
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Decisions are the core building block of Tropelex memory. Click <strong>+ Add Decision</strong> in the Memory section to record architectural rationale:</p>
@@ -521,7 +522,7 @@ pip install -r requirements.txt</code></pre>
 </div>
 
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="5-configure-api-keys-optional" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">key</span> 5. Configure API Keys (Optional)
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Set optional environment variables in your shell or <code>.env</code> file to enable advanced AI and search features:</p>
@@ -533,7 +534,7 @@ pip install -r requirements.txt</code></pre>
 </div>
 
 <div>
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
+<h3 id="6-pick-your-client-interface" class="font-headline-md text-lg font-bold text-purple-300 mb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-purple-400 text-[20px]">devices</span> 6. Pick Your Client Interface
 </h3>
 <p class="text-on-surface-variant text-sm mb-2">Tropelex provides 6 integrated ways to interact with project memory:</p>
@@ -1090,24 +1091,24 @@ pip install -r requirements.txt</code></pre>
 
 <div class="space-y-4 mb-6">
 <div>
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-1">Quick Setup</h3>
+<h3 id="quick-setup" class="font-headline-md text-base font-bold text-purple-300 mb-1">Quick Setup</h3>
 <pre tabindex="0"><code>cd mcp_server
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-1">Automatic Registration (Claude Code)</h3>
+<h3 id="automatic-registration-claude-code" class="font-headline-md text-base font-bold text-purple-300 mb-1">Automatic Registration (Claude Code)</h3>
 <p class="text-on-surface-variant text-sm mb-2">A repository-scoped <code>.mcp.json</code> is pre-configured at the repo root. Opening Tropelex in Claude Code registers the MCP server automatically via <code>mcp_server/run.sh</code>.</p>
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-1">Manual Registration</h3>
+<h3 id="manual-registration" class="font-headline-md text-base font-bold text-purple-300 mb-1">Manual Registration</h3>
 <pre tabindex="0"><code>claude mcp add tropelex -- /path/to/Tropelex/mcp_server/.venv/bin/python /path/to/Tropelex/mcp_server/server.py</code></pre>
 </div>
 </div>
 
-<h3 class="font-headline-md text-lg font-bold text-purple-300 mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[20px]">handyman</span> Available MCP Tools</h3>
+<h3 id="available-mcp-tools" class="font-headline-md text-lg font-bold text-purple-300 mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[20px]">handyman</span> Available MCP Tools</h3>
 <div class="rounded-xl overflow-hidden border border-purple-500/20 bg-surface-container-lowest/70 mb-6 shadow-md">
 <table class="w-full text-left border-collapse">
 <thead>
@@ -1140,7 +1141,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </table>
 </div>
 
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> MCP Prompts (Slash Command Parity)</h3>
+<h3 id="mcp-prompts-slash-command-parity" class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> MCP Prompts (Slash Command Parity)</h3>
 <p class="text-on-surface-variant text-sm mb-2">Exposes 4 MCP prompts (defined in <code>mcp_server/server.py</code>) enabling auto-generated slash commands in Devin, Gemini CLI, and Zed — named after their Python function, so the generated command carries the <code>tropelex_</code> prefix:</p>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1 mb-4">
 <li><code>tropelex_show_context</code> — Retrieves accumulated project context bundle</li>
@@ -1149,7 +1150,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 <li><code>tropelex_up</code> — Initializes or updates project description and tech stack</li>
 </ul>
 
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">grid_view</span> AI Tool Support Matrix</h3>
+<h3 id="ai-tool-support-matrix" class="font-headline-md text-base font-bold text-purple-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">grid_view</span> AI Tool Support Matrix</h3>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1">
 <li><strong>Claude Code / OpenCode:</strong> <code>.mcp.json</code> + <code>plugins/tropelex.js</code> plugin</li>
 <li><strong>Cursor &amp; Codex CLI:</strong> Shared Agent Skills standard deployed to <code>.agents/skills/</code> and <code>.cursor/skills/</code></li>
@@ -1171,10 +1172,10 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 <p class="font-body-md text-on-surface-variant text-sm mb-4">The Tropelex VSCode extension (<code>vscode-tropelex/</code>) provides native sidebar memory management and inline editor decision scanning (Memory Lens).</p>
 
-<h3 class="font-headline-md text-base font-bold text-blue-300 mb-1">Installation</h3>
+<h3 id="installation" class="font-headline-md text-base font-bold text-blue-300 mb-1">Installation</h3>
 <p class="text-on-surface-variant text-sm mb-4">Open <code>vscode-tropelex/</code> in VSCode and press <code>F5</code> to launch in extension development mode, or package it using <code>vsce package</code> and install the resulting <code>.vsix</code>.</p>
 
-<h3 class="font-headline-md text-base font-bold text-blue-300 mb-2">Configuration Settings</h3>
+<h3 id="configuration-settings" class="font-headline-md text-base font-bold text-blue-300 mb-2">Configuration Settings</h3>
 <div class="rounded-xl overflow-hidden border border-blue-500/20 bg-surface-container-lowest/70 mb-4 shadow-md">
 <table class="w-full text-left border-collapse">
 <thead>
@@ -1192,7 +1193,7 @@ uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </table>
 </div>
 
-<h3 class="font-headline-md text-base font-bold text-blue-300 mb-1">Contributed Commands &amp; Views</h3>
+<h3 id="contributed-commands-views" class="font-headline-md text-base font-bold text-blue-300 mb-1">Contributed Commands &amp; Views</h3>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1">
 <li><strong>Project Memory View:</strong> Dedicated Activity Bar icon (<code>$(brain)</code>) providing an interactive list of active decisions.</li>
 <li><strong>Editor Context Menu:</strong> Right-click focus in any editor buffer and select <strong>Scan File for Decision References (Memory Lens)</strong> (<code>tropelex.scanFileForDecisions</code>) to view inline annotations linking code to decisions.</li>
@@ -1220,7 +1221,7 @@ uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python app.py</code></pre>
 
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1">Keybindings</h3>
+<h3 id="keybindings" class="font-headline-md text-base font-bold text-amber-300 mb-1">Keybindings</h3>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1">
 <li><code>a</code> — Add new decision modal</li>
 <li><code>r</code> — Refresh decision list</li>
@@ -1241,7 +1242,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 <p class="font-body-md text-on-surface-variant text-sm mb-4">Tropelex exposes unified slash commands across all major AI coding environments. Commands are delivered via OpenCode plugins, MCP prompts, Agent Skills, or shell scripts.</p>
 
-<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> Slash Commands Matrix</h3>
+<h3 id="slash-commands-matrix" class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span> Slash Commands Matrix</h3>
 <div class="rounded-xl overflow-hidden border border-emerald-500/20 bg-surface-container-lowest/70 shadow-md mb-6">
 <table class="w-full text-left border-collapse">
 <thead>
@@ -1260,7 +1261,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </table>
 </div>
 
-<h3 class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">build</span> Tool-by-Tool Integration Guide</h3>
+<h3 id="tool-by-tool-integration-guide" class="font-headline-md text-base font-bold text-emerald-300 mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">build</span> Tool-by-Tool Integration Guide</h3>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-body-md">
 <div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20">
@@ -1305,12 +1306,12 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 <p class="font-body-md text-on-surface-variant text-sm mb-4">Zero-dependency Emacs package (<code>emacs/tropelex-capture.el</code>) for capturing decisions and friction signals straight from your editor.</p>
 
-<h3 class="font-headline-md text-base font-bold text-pink-300 mb-1">Setup</h3>
+<h3 id="setup" class="font-headline-md text-base font-bold text-pink-300 mb-1">Setup</h3>
 <pre tabindex="0"><code>(add-to-list 'load-path "~/Tropelex/emacs")
 (require 'tropelex-capture)
 (tropelex-capture-mode 1)</code></pre>
 
-<h3 class="font-headline-md text-base font-bold text-pink-300 mb-1">Keybindings</h3>
+<h3 id="keybindings-2" class="font-headline-md text-base font-bold text-pink-300 mb-1">Keybindings</h3>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1">
 <li><code>C-c t c</code> — Capture decision with auto-detected buffer context (file, mode, function)</li>
 <li><code>C-c t r</code> — Capture active region (code snippet, log trace) as decision context</li>
@@ -1370,7 +1371,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 <div class="space-y-4">
 <div>
-<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 id="post-1-record-decision" class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Idempotent read request" class="method-get font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 1. Record Decision
 </h3>
 <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions \
@@ -1379,7 +1380,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 id="patch-2-backfill-decision-context" class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Partial update request" class="method-patch font-mono text-xs px-2 py-0.5 rounded font-bold">PATCH</span> 2. Backfill Decision Context
 </h3>
 <pre tabindex="0"><code>curl -X PATCH http://localhost:8766/api/memory/my_project/decisions/dec_123/context \
@@ -1388,7 +1389,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 id="post-3-promote-candidate-decision-from-research" class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="State mutation request" class="method-post font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 3. Promote Candidate Decision from Research
 </h3>
 <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/decisions/promote \
@@ -1397,7 +1398,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 id="post-4-pre-write-diff-guard-ghost-check" class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="State mutation request" class="method-post font-mono text-xs px-2 py-0.5 rounded font-bold">POST</span> 4. Pre-Write Diff Guard (Ghost Check)
 </h3>
 <pre tabindex="0"><code>curl -X POST http://localhost:8766/api/memory/my_project/ghost-check \
@@ -1406,7 +1407,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 
 <div>
-<h3 class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
+<h3 id="delete-5-soft-delete-project" class="font-headline-md text-base font-bold text-indigo-300 mb-1 flex items-center gap-2">
 <span data-tooltip="Soft delete request" class="method-delete font-mono text-xs px-2 py-0.5 rounded font-bold">DELETE</span> 5. Soft-Delete Project
 </h3>
 <pre tabindex="0"><code>curl -X DELETE http://localhost:8766/api/memory/my_project</code></pre>
@@ -1463,7 +1464,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 </div>
 <p class="font-body-md text-on-surface-variant text-sm mb-4">Tropelex is designed with clean architectural boundaries and zero database external dependencies:</p>
 
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">layers</span> Core Technical Stack</h3>
+<h3 id="core-technical-stack" class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">layers</span> Core Technical Stack</h3>
 <ul class="list-disc pl-6 text-on-surface-variant text-sm space-y-1 mb-4">
 <li><strong>FastAPI:</strong> High-performance async REST API server.</li>
 <li><strong>JSON File Engine + <code>fcntl.flock</code>:</strong> Thread-safe and process-safe local persistence with lockfile synchronization.</li>
@@ -1472,7 +1473,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 <li><strong>Pure Business Logic:</strong> Side-effect-free functional decision calculations.</li>
 </ul>
 
-<h3 class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> On-Disk Storage Layout</h3>
+<h3 id="on-disk-storage-layout" class="font-headline-md text-base font-bold text-purple-300 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> On-Disk Storage Layout</h3>
 <p class="text-on-surface-variant text-sm mb-2">All project data is stored under the local <code>memory/</code> directory. Each project is one flat JSON file, not a directory of separate files:</p>
 <pre tabindex="0"><code>memory/
 ├── &lt;project_name&gt;.json  # One file per project: decisions, goals,
@@ -1501,30 +1502,30 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 <div class="space-y-4">
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">refresh</span> A Panel Shows Empty, Zero, or Unexpectedly Stale Data</h3>
+<h3 id="a-panel-shows-empty-zero-or-unexpectedly-stale-data" class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">refresh</span> A Panel Shows Empty, Zero, or Unexpectedly Stale Data</h3>
 <p class="text-on-surface-variant text-sm">Try a <strong>hard refresh</strong> (<code>Ctrl+Shift+R</code> on Windows/Linux, <code>Cmd+Shift+R</code> on Mac) before assuming something is broken. If the dashboard server was restarted while your browser tab was already open, a normal refresh can still serve stale page state — this is the single most common cause of "no data" symptoms and is worth trying first, every time, even if it seems unlikely to help.</p>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">warning</span> "Cannot reach Tropelex" / Connection Refused</h3>
+<h3 id="cannot-reach-tropelex-connection-refused" class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">warning</span> "Cannot reach Tropelex" / Connection Refused</h3>
 <p class="text-on-surface-variant text-sm mb-2">The server is not running. Launch it from the repository root:</p>
 <pre tabindex="0"><code>python3 -m core.tropebook.web.server</code></pre>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">extension_off</span> MCP Server or TUI Fails with <code>ModuleNotFoundError</code></h3>
+<h3 id="mcp-server-or-tui-fails-with-modulenotfounderror" class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">extension_off</span> MCP Server or TUI Fails with <code>ModuleNotFoundError</code></h3>
 <p class="text-on-surface-variant text-sm mb-2">Both tools run in isolated venvs. Set up dependencies in their respective directories:</p>
 <pre tabindex="0"><code>uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt</code></pre>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">link_off</span> VSCode Extension Fails to Connect</h3>
+<h3 id="vscode-extension-fails-to-connect" class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">link_off</span> VSCode Extension Fails to Connect</h3>
 <p class="text-on-surface-variant text-sm">Verify that <code>tropelex.serverUrl</code> matches your running server URL. If server instance auth is enabled, ensure <code>tropelex.instanceSecret</code> contains the matching <code>TROPEL_EX_SECRET</code> key.</p>
 </div>
 
 <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/20">
-<h3 class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">search_off</span> OpenCode Commands Missing from Palette</h3>
+<h3 id="opencode-commands-missing-from-palette" class="font-headline-md text-base font-bold text-amber-300 mb-1 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">search_off</span> OpenCode Commands Missing from Palette</h3>
 <p class="text-on-surface-variant text-sm">Ensure <code>plugins/tropelex.js</code> is copied to <code>~/.config/opencode/plugins/</code> and registered in <code>opencode.json</code> under the <code>"plugin"</code> array.</p>
 </div>
 </div>
