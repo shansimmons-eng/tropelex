@@ -73,6 +73,15 @@ from core.safety.gate import SafetyMetadataRequiredError, require_safety_metadat
 from core.safety_budget import compute_safety_budget
 from core.session_shape.baseline import classify_deviation, compute_baseline, record_session_shape
 
+#112: a plain, checkable version tag for the frozen surface below --
+# deliberately not part of __all__ itself (that list is specifically
+# "every pure function/class backing a safety mechanism"; a version
+# string is a different kind of thing), but still directly importable
+# rather than only asserted in SAFETY.md's prose. Bump this if __all__'s
+# membership changes in a way that changes what "the safety surface"
+# means, not on docstring or comment edits.
+SAFETY_SURFACE_VERSION = "v1"
+
 __all__ = [
     # Safety metadata & required-metadata gate (#54, core/safety/)
     "SafetyMetadata", "SafetyMetadataRequiredError",

@@ -1818,7 +1818,7 @@ A second external review pass, done after #97-104 shipped — this one explicitl
 - An explicit invitation in README or a new SECURITY.md for external review of that surface specifically.
 - A one-page threat model (decision graph → gate → override → audit trail → forensic replay) readable in about two minutes.
 
-**Status:** Open. Proposed 2026-09-01.
+**Status:** ✅ Implemented 2026-09-01. `core/safety/__init__.py` gained `SAFETY_SURFACE_VERSION = "v1"` — a plain, checkable module-level constant (deliberately not part of `__all__` itself, since that list is specifically the safety mechanisms, not a version tag), asserted live by a new test in `tests/test_safety_init.py` rather than only claimed in prose. `SAFETY.md` gained a new "Safety Surface v1 — External Review Invitation" section: names the frozen tag, states an explicit invitation for external review of specifically that surface (distinct from a general contributions-welcome), points at `SECURITY.md`'s existing private-reporting flow as one way to report findings, and a ~5-step one-page threat model (decision graph → pre-action gate → override → audit trail → forensic replay) summarizing the flow the mechanisms documented elsewhere in the same file actually implement end to end.
 
 ---
 

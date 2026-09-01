@@ -19,6 +19,13 @@ class TestSafetyIndexCompleteness:
     def test_no_duplicate_names_in_all(self):
         assert len(safety_index.__all__) == len(set(safety_index.__all__))
 
+    def test_safety_surface_version_is_set(self):
+        """#112: the frozen "Safety Surface v1" checkpoint SAFETY.md
+        points to needs to be a checkable fact, not just prose -- this is
+        what makes it one."""
+        assert isinstance(safety_index.SAFETY_SURFACE_VERSION, str)
+        assert safety_index.SAFETY_SURFACE_VERSION
+
 
 class TestSafetyIndexIdentity:
     """Each re-exported symbol must be the exact same object as its real

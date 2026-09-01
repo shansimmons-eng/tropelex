@@ -10,6 +10,22 @@ This document asserts those properties explicitly, for anyone evaluating Tropele
 
 ---
 
+## Safety Surface v1 — External Review Invitation
+
+`core/safety/__init__.py`'s re-export index above is now a checkpointed, versioned unit: `core.safety.SAFETY_SURFACE_VERSION` (currently `"v1"`) names the exact boundary the 31 symbols in `__all__` define, asserted live by `tests/test_safety_init.py` rather than only claimed in this paragraph. This is a deliberate, standing invitation for external review of *specifically that surface* — narrower and more concrete than a general "contributions welcome": review whether the 31 exported symbols actually cover what they claim to, whether any mechanism below is weaker than its description implies, and whether the boundary itself is drawn in the right place. Report findings the same way as a security vulnerability — see [SECURITY.md](SECURITY.md) — even though these aren't disclosure-sensitive; the private-reporting flow works fine for "I think this claim is wrong" too, or open a public issue directly if you'd rather discuss it there.
+
+**One-page threat model**, the flow the mechanisms below actually implement, chained end to end:
+
+1. **Decision graph.** Every architectural/safety-relevant choice an agent makes gets recorded as a decision with content, categories, and risk metadata — the substrate everything else below reads from.
+2. **Pre-action gate.** Before a diff is written, Preventive Ghost Checks compares it against every active decision and produces severity-scored warnings; Gate Policy resolves each severity to block/warn/log-only, optionally refined by ordered rules matching severity, agent, or decision category.
+3. **Override.** A block isn't silently un-blockable: an agent can override it with an explicit, attributed rationale — but the override itself becomes a permanent, auditable fact, not a way to make the warning disappear.
+4. **Audit trail.** Every gate decision, override, and handoff event is appended to a hash-chained log (`core/audit.py`) at write time — tamper-evident because each decision's stored content hash is cross-checked against the trail's own independent record, not just recomputed from current (possibly-edited) state.
+5. **Forensic replay.** The Time-Travel Debugger reconstructs project memory as it existed as of any past date from that same trail, answering "what would an agent operating at that point actually have known" — the postmortem question every step above exists to make answerable.
+
+No step in this chain is a formal guarantee; each one is a checkable claim about what's implemented and tested today, which is exactly what external review of this surface would be verifying.
+
+---
+
 ## Prompt-Injection & Payload Defense
 
 **Mechanism:** Context Compressor (`core/context-compressor/`, `core/compression/`)
