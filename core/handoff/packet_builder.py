@@ -82,6 +82,12 @@ class HandoffPacket:
     skills_summary: dict[str, Any] | None
     generated_at: str
     completeness_findings: list["HandoffCompletenessFinding"] = field(default_factory=list)
+    # #108: the full must-survive decision id list, not just the ones that
+    # failed completeness (completeness_findings above). Lets a receiving
+    # agent's acknowledgment be checked against what was actually supposed
+    # to survive, not just re-derived by re-running _is_must_survive later
+    # against decisions that may have changed since this packet was built.
+    must_survive_decision_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -483,4 +489,5 @@ def build_handoff_packet(
         skills_summary=skills,
         generated_at=now,
         completeness_findings=completeness_findings,
+        must_survive_decision_ids=[d.get("id", "") for d in must_survive_decisions if d.get("id")],
     )

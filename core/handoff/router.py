@@ -96,6 +96,7 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
         "skills_summary": packet.skills_summary,
         "generated_at": packet.generated_at,
         "completeness_findings": completeness_findings,
+        "must_survive_decision_ids": packet.must_survive_decision_ids,
     }
 
     agent_name = normalize_agent_name(req.agent_name)
@@ -104,6 +105,12 @@ async def generate_handoff(project: str, req: HandoffRequest) -> dict[str, Any]:
         append_audit_event(
             memory, "handoff_created",
             role=req.role, agent_name=agent_name, packet_hash=packet_hash,
+            # #108: acknowledge_handoff only ever receives packet_hash, not
+            # the original packet -- storing the must-survive list here is
+            # what lets it cross-check a later attestation against what
+            # this specific packet actually required, not decisions as
+            # they stand (and may have changed) at acknowledge time.
+            must_survive_decision_ids=packet.must_survive_decision_ids,
         )
         # #69: a must-survive decision dropped despite protection should
         # never happen through the real pipeline (see _check_completeness'
@@ -149,16 +156,31 @@ async def acknowledge_handoff(project: str, req: HandoffAcknowledgeRequest) -> d
         raise HTTPException(status_code=500, detail=str(exc))
 
     audit_log = memory.get("audit_log", [])
-    known = any(
-        isinstance(e, dict) and e.get("event_type") == "handoff_created"
-        and e.get("packet_hash") == req.packet_hash
-        for e in audit_log
+    creation_event = next(
+        (
+            e for e in audit_log
+            if isinstance(e, dict) and e.get("event_type") == "handoff_created"
+            and e.get("packet_hash") == req.packet_hash
+        ),
+        None,
     )
-    if not known:
+    if creation_event is None:
         raise HTTPException(
             status_code=404,
             detail=f"No handoff packet with hash '{req.packet_hash}' was generated for project '{project}'",
         )
+
+    # #108: cross-check against what this specific packet actually required
+    # (stored on its own handoff_created event, #108's own addition above),
+    # not against decisions as they stand now -- those may have changed
+    # since generation. A pre-#108 event has no must_survive_decision_ids
+    # key at all; treat that the same as an empty list rather than raising,
+    # so acknowledging an old packet still works, just with nothing to
+    # attest against.
+    required = creation_event.get("must_survive_decision_ids") or []
+    acknowledged = set(req.acknowledged_constraints)
+    missing_constraints = [d for d in required if d not in acknowledged]
+    fully_attested = not missing_constraints
 
     agent_name = normalize_agent_name(req.agent_name)
     try:
@@ -166,13 +188,17 @@ async def acknowledge_handoff(project: str, req: HandoffAcknowledgeRequest) -> d
             memory, "handoff_acknowledged",
             packet_hash=req.packet_hash, agent_name=agent_name,
             acknowledged_constraints=req.acknowledged_constraints,
+            fully_attested=fully_attested, missing_constraints=missing_constraints,
         )
         _mm.save_project_memory(project, memory)
     except Exception as exc:
         logger.error("handoff-acknowledge save failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return {"acknowledged": True, "packet_hash": req.packet_hash, "agent_name": agent_name}
+    return {
+        "acknowledged": True, "packet_hash": req.packet_hash, "agent_name": agent_name,
+        "fully_attested": fully_attested, "missing_constraints": missing_constraints,
+    }
 
 
 def _unacknowledged_handoffs(memory: dict[str, Any]) -> list[dict[str, Any]]:
@@ -255,6 +281,50 @@ async def list_completeness_violations(project: str) -> dict[str, Any]:
     memory = _mm.get_project_memory(project)
     violations = _completeness_violations(memory)
     return {"violations": violations, "count": len(violations)}
+
+
+def _incompletely_attested_handoffs(memory: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pure helper: handoff_acknowledged entries where fully_attested is
+    explicitly False (#108) -- the receiving agent acknowledged the
+    packet but didn't confirm every must-survive constraint it carried.
+    Same defensive posture as _unacknowledged_handoffs/_completeness_
+    violations. A pre-#108 handoff_acknowledged event has no
+    fully_attested key at all -- excluded here (not "attested", but not
+    known-incomplete either -- see #108's own note in acknowledge_handoff
+    about pre-#108 events having nothing to attest against)."""
+    audit_log = memory.get("audit_log", [])
+    if not isinstance(audit_log, list):
+        return []
+    return [
+        {
+            "packet_hash": e.get("packet_hash"),
+            "agent_name": e.get("agent_name"),
+            "missing_constraints": e.get("missing_constraints") or [],
+            "acknowledged_at": e.get("timestamp"),
+        }
+        for e in audit_log
+        if isinstance(e, dict)
+        and e.get("event_type") == "handoff_acknowledged"
+        and e.get("fully_attested") is False
+    ]
+
+
+@handoff_router.get("/{project}/handoff/incomplete-attestations")
+async def list_incomplete_attestations(project: str) -> dict[str, Any]:
+    """List handoffs that were acknowledged but not fully attested (#108)
+    -- a receiving agent confirmed it saw the packet without confirming
+    every must-survive constraint it carried. Complements
+    /handoff/unacknowledged (never acknowledged at all) and
+    /handoff/completeness-violations (#69, the packet itself failed to
+    carry a must-survive decision) -- this is the third, distinct failure
+    mode: the packet was complete and was acknowledged, but the
+    acknowledgment itself doesn't cover everything it should.
+
+    Same lenient get_project_memory read as the other two list endpoints.
+    """
+    memory = _mm.get_project_memory(project)
+    incomplete = _incompletely_attested_handoffs(memory)
+    return {"incomplete_attestations": incomplete, "count": len(incomplete)}
 
 
 @handoff_router.get("/{project}/handoff/roles")

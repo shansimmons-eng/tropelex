@@ -24,6 +24,7 @@ A packet is a JSON object with these fields:
 | `skills_summary` | object or `null` | `{category: proficiency_level}`, only populated for roles that request it (see [Role profiles](#4-role-profiles)). |
 | `generated_at` | string (ISO 8601, UTC) | When this packet was built. |
 | `completeness_findings` | array of [`HandoffCompletenessFinding`](#6-completeness-verification) | Non-empty only if must-survive protection somehow failed — see §6. Expected to be empty in every correct implementation. |
+| `must_survive_decision_ids` | array of strings | *(added after v1.0's initial publication, additive — see [Versioning](#versioning))* The full list of decision ids that qualified as must-survive for this packet (§5), independent of whether they made it into `context_slices`. This is what [§6.5 constraint attestation](#65-constraint-attestation) checks a receiver's acknowledgment against. |
 | `packet_hash` | string | SHA-256 hex digest — see [§7 Packet hashing](#7-packet-hashing). Added by the transport layer, not part of the packet's own content for hashing purposes. |
 
 ## 3. `ContextSlice`
@@ -66,6 +67,19 @@ Must-survive protection (§5) is a mechanism; completeness verification is a sep
 
 In a correct implementation this list should always be empty — §5's protection is unconditional, so nothing should ever fail this check. It exists as a regression safety net: this check reads the *observable outcome* (did the text land in the slices), not the internals of whichever selection/trimming step might have a bug, so it stays meaningful even if those steps change.
 
+## 6.5. Constraint attestation
+
+§6 checks whether the *packet* carried every must-survive decision. This section checks a separate, later question: whether the *receiving agent* actually confirmed it saw each one. A packet can be complete (§6 passes) and still be acknowledged (§8) without the receiver having reviewed everything it should have — the two failure modes are independent, and this is the one that lives on the human/agent side rather than the packet-building side.
+
+At acknowledge time (`POST /{project}/handoff/acknowledge`, §8), the caller may pass `acknowledged_constraints`: a list of decision ids it confirms it read and intends to respect. The transport layer computes:
+
+```
+missing_constraints = must_survive_decision_ids - acknowledged_constraints
+fully_attested = (missing_constraints is empty)
+```
+
+against the `must_survive_decision_ids` the *originating* packet actually carried (looked up from that packet's own `handoff_created` audit event by `packet_hash`, not re-derived from current project state, which may have changed since generation). Both `fully_attested` and `missing_constraints` are returned in the acknowledge response and logged into the `handoff_acknowledged` audit event. A packet with no must-survive decisions at all is trivially `fully_attested: true` with no `acknowledged_constraints` required.
+
 ## 7. Packet hashing
 
 The transport layer computes a SHA-256 hash over the packet **before** the `packet_hash` field itself is added:
@@ -83,9 +97,10 @@ The wire format above is transport-independent; Tropelex exposes it over HTTP to
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/{project}/handoff` | Build and return a packet. Body: `{role, token_budget?, agent_name?}`. Logs a `handoff_created` audit event (and a `handoff_completeness_violation` event per finding, if any) as a side effect. |
-| `POST` | `/{project}/handoff/acknowledge` | Record that a receiving agent acknowledged a specific packet by hash. Body: `{packet_hash, agent_name?, acknowledged_constraints?}`. 404s if `packet_hash` doesn't match a real `handoff_created` event — rejects acking a packet that was never actually generated. Voluntary: nothing is gated on acknowledgment. |
+| `POST` | `/{project}/handoff/acknowledge` | Record that a receiving agent acknowledged a specific packet by hash. Body: `{packet_hash, agent_name?, acknowledged_constraints?}`. 404s if `packet_hash` doesn't match a real `handoff_created` event — rejects acking a packet that was never actually generated. Voluntary: nothing is gated on acknowledgment. Response includes `fully_attested`/`missing_constraints` — see [§6.5](#65-constraint-attestation). |
 | `GET` | `/{project}/handoff/unacknowledged` | List generated-but-never-acknowledged packets — a triage queue. |
-| `GET` | `/{project}/handoff/completeness-violations` | List any recorded `HandoffCompletenessFinding`s from past packet generations. |
+| `GET` | `/{project}/handoff/completeness-violations` | List any recorded `HandoffCompletenessFinding`s from past packet generations (§6). |
+| `GET` | `/{project}/handoff/incomplete-attestations` | List handoffs that were acknowledged but not fully attested (§6.5) — distinct from the two above: the packet was complete and was acknowledged, but the acknowledgment itself didn't cover every must-survive constraint. |
 | `GET` | `/{project}/handoff/roles` | List available role names and descriptions. |
 
 An MCP tool (`get_handoff_packet`) wraps the same underlying call for MCP-capable clients — see [`mcp_server/README.md`](../../mcp_server/README.md).
@@ -97,3 +112,5 @@ This spec describes what's implemented and tested in this repository (`core/hand
 ## Versioning
 
 v1.0 reflects the schema as of 2026-08-31. Future changes that alter field meaning or remove a field should bump the major version; additive fields (a consumer can safely ignore a field it doesn't recognize) can land under the same major version.
+
+**2026-09-01:** Added `must_survive_decision_ids` (§2) and constraint attestation (§6.5, plus the `incomplete-attestations` endpoint in §8) — additive, no existing field renamed/removed/retyped, so this stays v1.0 per the rule above.
