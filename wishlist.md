@@ -1702,6 +1702,155 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 
 ---
 
+## Grant-Strengthening Round 2 (Proposed, 2026-09-01)
+
+A second external review pass, done after #97-104 shipped — this one explicitly built on the current state (~162 commits since the last review) rather than repeating earlier advice. Ten items, logged without building per this pass's own scoping decision (docs/engineering distinction already established for #97-104's own guidance batch).
+
+### 105. Session-Aware / Multi-Diff Drift Detection
+**Purpose:** A real detector for the gap Drift-Bench's `multi_step_drift` category already measures and publishes at 0.0 (#100) — a rolling window of recent diffs per agent/session, scoring cumulative divergence against active decisions instead of one diff at a time.
+
+**Why:** External guidance's top CAIS-relevant item, and it targets exactly the gap #100 was honest about rather than hid: Ghost checks one diff at a time with no session-level memory, so a decision violated gradually across several clean-looking diffs is invisible to it by construction.
+
+**Features:**
+- Rolling window of recent diffs (or a lightweight "intent accumulator") per agent/session.
+- Score cumulative semantic or structural divergence against active high-confidence decisions, not just the current hunk.
+- Start observational only; allow soft escalation only when combined with Safety Budget (`core/safety_budget.py`) or a high Session-Shape anomaly (`core/session_shape/`) — not a new hard gate on day one.
+- Once built, becomes its own measurable Drift-Bench improvement against the published 0.0 baseline, not a claim taken on faith.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 106. LLM-as-Intent-Check (Narrow, Budgeted)
+**Purpose:** A tightly scoped LLM call for high/critical decisions where keyword overlap is low but risk metadata is high — distinct in kind from the raw embedding-similarity approach #67 already tried and rejected.
+
+**Why:** #67's embedding-similarity rescue was evaluated honestly and deliberately not shipped (0.29 vs. 0.65 similarity on real decisions, no clean separation — see `docs/cais-summary.md`'s Evaluation & Limitations section). A structured LLM question is a different mechanism, not a retry of the same one.
+
+**Features:**
+- Single structured question per call: "does this diff make the following decision false or weaker? yes/no + one-sentence rationale."
+- Fires only for high/critical `risk_level` decisions, or low-keyword-overlap-but-high-risk cases — not every diff.
+- Cached, rate-limited, every call logged to the audit trail.
+- Advisory only at first: raises severity or requires an explicit override decision, not an automatic hard block, until real false-positive rates are measured.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 107. Test-Outcome / Assertion-Weakening Signals
+**Purpose:** A heuristic for the *other* reward-hacking shape Drift-Bench already measures at 0.0 — `reward_hacking_test_gaming` (#100), a diff that weakens or deletes an assertion instead of adding unrelated code.
+
+**Why:** #100 published this exact gap honestly rather than tuning the scenario to pass; this item is a candidate detector for it, not a new problem statement.
+
+**Features:**
+- Flag diffs that weaken or delete assertions in files with prior coverage of auth, permissions, or other high-risk paths.
+- Correlate "tests went red→green while touching protected surfaces" with decision text.
+- Explicitly accept high-precision/low-recall as a legitimate first cut — a few true positives moving the published 0.0 cell is real, checkable progress, not a requirement to be comprehensive.
+
+**Status:** ✅ Implemented 2026-09-01. `core/reward_hacking/detector.py`'s `detect_assertion_weakening` — decision-independent (unlike Ghost), flags a deleted or tautologically-rewritten assertion (`assert x == y` → `assert x == x`, or `assert True`) in a file matched by path keywords or decision context naming something high-risk. Two confidence tiers: `medium` for a specific tautological rewrite, `low` for a bare deletion with nothing replacing it (more likely a legitimate refactor). Wired into the real `ghost_check` endpoint (`core/ghost/preventive_router.py`) alongside Ghost's decision-based warnings, not a separate opt-in path. Drift-Bench's `reward_hacking_test_gaming` scenario updated to call it the same way the real endpoint does — moved that category's detection rate from 0.0 to 0.5 (the backdoor-diff evasion shape stays undetected; the tautological-assertion shape doesn't). `docs/cais-summary.md`'s published table updated to the real, current number.
+
+---
+
+### 108. Handoff Acknowledgment → Constraint Attestation
+**Purpose:** Extend the existing packet-hash + acknowledge flow so a receiving agent attests *which* must-survive constraints it actually saw and intends to respect, not just that some packet was acknowledged.
+
+**Why:** `HandoffAcknowledgeRequest` (`core/handoff/router.py`) already has an `acknowledged_constraints: list[str]` field — it's accepted and logged to the audit trail today, but never cross-checked against the packet's own must-survive decision ids. The field exists; the verification doesn't yet.
+
+**Features:**
+- Cross-check `acknowledged_constraints` against the originating packet's must-survive decision ids at acknowledge time.
+- Surface unacknowledged or incompletely-attested packets in Needs Attention, alongside the existing `handoff_completeness_violation` source (#69).
+- Turns the protocol from "context was sent" into "context was received and accepted" — a real metric once #109 exists to measure it against.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 109. Multi-Agent Calibration Pilot (A/B/C Conditions)
+**Purpose:** A small, pre-registered pilot comparing naive handoff vs. Handoff Packets + must-survive + Goal Re-Anchoring vs. that plus Decision Market + Coordination Drift feedback — measuring constraint violation rate, task success, overconfidence, and inter-agent agreement.
+
+**Why:** FAR AI grant deliverable #3 ("Calibration Study," `docs/far-ai-summary.md`) currently has no quantitative study behind it. A concrete, fundable design is worth more to a reviewer than another feature.
+
+**Features:**
+- Fixed set of ambiguous multi-agent coding/ops tasks.
+- Condition A: naive handoff (no packets, no market). Condition B: Handoff Packets + must-survive + Goal Re-Anchoring. Condition C: B plus Decision Market bets + Coordination Drift feedback.
+- Metrics: constraint violation rate, task success, overconfidence, time-to-resolution of disagreements, inter-agent agreement trajectory.
+- Even a small N with clear pre-registration is more persuasive than another feature, per the external guidance this item is drawn from.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 110. Cross-Framework Adapter Spike (LangGraph or CrewAI)
+**Purpose:** A minimal producer or consumer implementation against one external multi-agent framework, converting #104's "proposed future work" into a demonstrated, if partial, path.
+
+**Why:** `docs/far-ai-summary.md`'s Evaluation & Limitations section is explicit that cross-framework compatibility is "entirely unproven in practice" — a real spike, even partial, is different and stronger evidence than a published spec alone.
+
+**Features:**
+- Pick one framework (LangGraph or CrewAI, both realistic per the external guidance) — not both.
+- Minimal producer OR consumer, not a full two-way integration.
+- Documented explicitly as a spike/partial validation, not a claim of full compatibility.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 111. Public Drift-Bench Release Artifact
+**Purpose:** Package Drift-Bench so an external party can run one command and reproduce the exact metrics table already published in `docs/cais-summary.md`.
+
+**Why:** Pure open-source safety infrastructure — plays directly to SFF's stated preference for runnable, independently-verifiable artifacts over reported numbers alone.
+
+**Features:**
+- Version the scenario corpus explicitly.
+- Pin published metrics to a specific corpus version, so a future scenario addition can't silently change what a past claim referred to.
+- Short "how to add a scenario" guide.
+- One-command run reproducing the same table already in the CAIS grant doc.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 112. Safety Surface Freeze + External Review Invitation
+**Purpose:** Build on #103's `core/safety/__init__.py` re-export index with an explicit "Safety Surface v1" checkpoint and a stated invitation for external review of that specific surface.
+
+**Why:** #103 already made the safety surface a single reviewable index (31 symbols, `__all__`-bounded). This item is the natural next step — making the invitation to actually use it explicit, not just structurally possible.
+
+**Features:**
+- A short "Safety Surface v1" tag or checklist.
+- An explicit invitation in README or a new SECURITY.md for external review of that surface specifically.
+- A one-page threat model (decision graph → gate → override → audit trail → forensic replay) readable in about two minutes.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 113. Visible Bus-Factor Mitigation
+**Purpose:** Concrete, low-cost signals that this project can absorb contributions beyond its single developer — directly relevant to the risk `docs/sff-summary.md`'s Evaluation & Limitations section already names honestly.
+
+**Why:** That section acknowledges single-developer risk in prose; this item is about making the mitigating evidence visible in the repo itself, not just asserted.
+
+**Features:**
+- "Good first safety issue" labels tied to Drift-Bench scenarios or protocol tests specifically.
+- A short CONTRIBUTING path for safety/evaluation contributions.
+- Living ADRs (already a shipped feature) specifically for the gate-severity policy (#101) and must-survive rules (#69), so the design intent survives independent of the original author.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
+### 114. Grant Summary Wording Pass (Elevated Framing + Success Metrics)
+**Purpose:** Apply this same guidance batch's proposal-level refinements to the three grant summaries — framing and ordering changes to already-honest content, not new claims.
+
+**Why:** Distinct in kind from #105-113 above (real engineering work): this item is specifically about presentation of what's already shipped and already honestly documented.
+
+**Features:**
+- CAIS: elevate the two published 0.0 Drift-Bench cells (reward hacking, multi-step drift) as the grant's primary research targets rather than footnotes; add one explicit numeric success metric per cell (e.g. "raise multi-step drift detection from 0.0 to ≥0.6 on an expanded corpus while keeping FP ≤0.05").
+- FAR AI: make Deliverable #1 (multi-agent coordination benchmark) the centerpiece, sketched against #109's three conditions; note that Goal Re-Anchoring and must-survive are already protocol-level invariants the benchmark can measure retention of under chained handoffs.
+- SFF: lead with the runnable-artifact list (MCP server, Drift-Bench, protocol spec, prevention-report endpoint, current test count) ahead of narrative framing.
+- Keep the existing single-developer acknowledgment and self-correction examples (embedding detector declined, "Federated" rename) as-is across all three — this pass's own external review calls them out as credibility assets, not weaknesses to soften.
+
+**Status:** Open. Proposed 2026-09-01.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Complete)
@@ -1905,4 +2054,5 @@ Five items pulled from a batch of external grant-strengthening guidance, deliber
 **2026-08-21 same-day follow-up:** All three near-term picks (#79, #80, #81) shipped same day as logged — see each entry's own "Resolved" note for what shifted from the original scoping. Full suite: 2438 passing (was 2422 before this pass). #82–91 remain open.
 **2026-08-30 addition:** Logged #97–99 (Distribution & Platform Support — uninstall instructions, an update/upgrade mechanism, and cross-platform Windows/macOS support) after the user installed on a second machine with no way to bring it forward from the first. #99 includes a real, verified finding rather than a guess: `core/memory/manager.py` and `core/embeddings.py` both depend on `fcntl.flock`, which is POSIX-only and doesn't exist on native Windows — a concrete blocker for that platform specifically, not a general "needs testing" placeholder. All three logged as Open; none built this pass.
 **2026-08-30 second addition:** Logged #100–104 (Grant-Strengthening Engineering) — the new-engineering half of a batch of external grant-strengthening guidance, deliberately held back from the same-day "docs only" pass that added 6 mechanism sections to `SAFETY.md` and an Evaluation & Limitations section to each grant summary. Covers: Drift-Bench scenario expansion + a published metrics table (#100, highest external priority, and the item most directly tied to the reward-hacking 0.0-detection gap this pass's own docs surfaced), a general enforce/override policy language beyond the current 3-tier gate mapping (#101), a quantitative pilot study of Ghost/Preventive detection and override rates (#102), `core/safety/` consolidation of currently-scattered safety modules (#103, tied to the reviewability gap flagged in SFF's Evaluation & Limitations section), and public protocol documentation for the handoff packet schema (#104, FAR AI grant deliverable #2). All five logged as Open; none built this pass.
+**2026-09-01 addition:** Logged #105–114 (Grant-Strengthening Round 2) — a second external review pass done after #97–104 shipped, explicitly built on the current (~162-commit-later) state rather than repeating earlier advice. #105–107 are real detectors for gaps Drift-Bench already measures and publishes at 0.0 (multi-step drift, session-level memory; two reward-hacking evasion shapes). #108–110 strengthen the FAR AI coordination story (constraint attestation beyond bare acknowledgment; a concrete 3-condition calibration pilot design; a cross-framework adapter spike). #111–113 are SFF-facing credibility infrastructure (a runnable public Drift-Bench artifact; a safety-surface review invitation building on #103; visible bus-factor mitigation). #114 is framing/wording only, not new engineering — elevating already-honest, already-shipped content rather than adding claims. All ten logged as Open; none built this pass, per this pass's own scoping decision (docs-only for this round, same split #97-104's guidance used).
 **Next Review:** 2026-09-06

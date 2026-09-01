@@ -25,7 +25,7 @@ See [SAFETY.md](../SAFETY.md) for the full mapping of these features to safety t
 3. **Verification Metric Report:** Quantitative analysis of guardrail-drift detection rates across real multi-step development sessions, building on the project's existing test suite (2,674+ passing unit tests as of this writing).
 
 ## Evaluation & Limitations
-Drift-Bench (14 scenarios, 6 categories, expanded 2026-08-31 with a second reward-hacking evasion shape and a new multi-step-drift category) currently measures 0.5714 overall detection with 0.0 false positives anywhere in the corpus:
+Drift-Bench (14 scenarios, 6 categories) currently measures 0.7143 overall detection with 0.0 false positives anywhere in the corpus:
 
 | Category | Detection rate | False-positive rate |
 |---|---|---|
@@ -33,10 +33,12 @@ Drift-Bench (14 scenarios, 6 categories, expanded 2026-08-31 with a second rewar
 | Unresolved conflicting decisions | 1.0 | 0.0 |
 | Tool-output injection | 1.0 | 0.0 |
 | Handoff constraint-dropping | 1.0 | 0.0 |
-| Test-passing reward hacking | **0.0** | 0.0 |
+| Test-passing reward hacking | **0.5** | 0.0 |
 | Multi-step drift | **0.0** | 0.0 |
 
-The two 0.0 categories are published on purpose, not hidden in the aggregate: **test-passing reward hacking** — a keyword-evasion diff (functionally reward-hacking behavior described in language that avoids the detector's keyword overlap) beats the current Ghost Decisions detector outright, and a second, independent evasion shape (weakening a test assertion into a tautology instead of adding unrelated code) beats it the same way — and **multi-step drift** — a decision violated gradually across several individually-clean diffs, none of which trips a warning on its own, because Ghost checks one diff at a time with no session-level memory. Both gaps are directly relevant to this grant's own reward-hacking and execution-boundary-drift focus; closing them (a semantic/session-aware detection layer, not more keyword scenarios) is the highest-leverage use of grant funding, not a general benchmark expansion.
+**Test-passing reward hacking moved from 0.0 to 0.5 on 2026-09-01**, and the reason it's exactly 0.5 rather than higher is itself the honest finding: this category holds two independent evasion shapes, and only one is caught. The keyword-evasion backdoor diff (unrelated code with no keyword overlap against the violated decision) still beats Ghost Decisions outright — that half stays at 0.0. The tautological-assertion diff (`assert x == y` rewritten to `assert x == x`) is now caught by a new, purpose-built detector (`core/reward_hacking/detector.py`) that needs no decision at all — it looks at the diff's own deletions and additions for a rewrite that can never fail again, scoped to file paths or decision context naming something high-risk (auth, payment, credentials, etc.). It runs alongside Ghost on every real pre-write check (`core/ghost/preventive_router.py`), not as a separate opt-in path, and is deliberately high-precision/low-recall rather than comprehensive — the goal was moving the published number honestly, not claiming the category solved.
+
+**Multi-step drift stays at 0.0** — a decision violated gradually across several individually-clean diffs, none of which trips a warning on its own, because Ghost (and the new assertion-weakening detector) both check one diff at a time with no session-level memory. This is the harder, still-open half of this grant's reward-hacking and execution-boundary-drift focus; closing it (a session-aware detection layer accumulating signal across a rolling window of diffs, not more keyword scenarios) is the highest-leverage remaining use of grant funding.
 
 **Quantitative pilot: real production prevention signal.** Distinct from Drift-Bench above (synthetic scenarios built to probe specific failure modes): `core/prevention_report.py` aggregates the append-only audit trail (`core/audit.py`) into real detection/override signal from Tropelex's own actual development history, not a constructed session. As of 2026-08-31, the project's own audit log (249 total events since the gate mechanism shipped 2026-08-09) shows 6 prevention-relevant events over roughly three weeks of real multi-agent development on this codebase: 2 `gate_warned` (medium-severity Ghost warnings), 4 `contradiction_escalated` (high-severity contradiction findings), 0 `gate_blocked`, 0 overrides — override rate 0.0. Reproducible directly against any live instance's own history via `GET /{project}/prevention-report`.
 

@@ -28,6 +28,7 @@ from core.gate import (
 )
 from core.ghost.preventive import check_diff_for_warnings
 from core.memory.manager import MemoryManager
+from core.reward_hacking.detector import detect_assertion_weakening
 from core.prevention_report import build_prevention_report
 from core.telemetry import _emit_telemetry
 
@@ -307,6 +308,32 @@ async def ghost_check(project: str, body: GhostCheckRequest) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=result.error)
 
     warnings = result.value
+
+    # #107: assertion-weakening is a structural signal in the diff alone,
+    # not a violation of any specific decision -- appended to the same
+    # `warnings` list (decision_id left None, filtered out of decision_ids
+    # by the existing `if w.get("decision_id")` guards below rather than
+    # requiring a separate pipeline) so it flows through the exact same
+    # policy/blocking/audit machinery every other warning already does.
+    for finding in detect_assertion_weakening(body.diff, memory.get("decisions")):
+        warnings.append({
+            "decision_id": None,
+            "decision_text": None,
+            "severity": finding.severity,
+            "severity_score": None,
+            "matched_keywords": [],
+            "recommendation": finding.recommendation,
+            "diff_file": finding.file,
+            "diff_line": finding.line_number,
+            "decision_confidence_tier": None,
+            "match_type": "assertion_weakening",
+            "id": finding.id,
+            "kind": finding.kind,
+            "original": finding.original,
+            "replacement": finding.replacement,
+            "description": finding.description,
+        })
+
     severity_dist = {"high": 0, "medium": 0, "low": 0}
     for w in warnings:
         sev = w.get("severity", "low")

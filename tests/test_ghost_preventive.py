@@ -685,6 +685,93 @@ class TestPreventiveRouter:
         assert "not found" in body["detail"].lower()
 
 
+class TestGhostCheckAssertionWeakening:
+    """#107: detect_assertion_weakening findings flow through the same
+    ghost-check response/policy/audit pipeline as decision-based Ghost
+    warnings, distinguished by match_type and a None decision_id."""
+
+    def test_tautological_assertion_in_high_risk_file_surfaced(self):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        diff = (
+            "--- a/tests/test_checkout.py\n+++ b/tests/test_checkout.py\n@@ -10,7 +10,7 @@\n"
+            " def test_totals_match():\n     order = build_sample_order()\n"
+            "-    assert order.total == order.expected_total\n"
+            "+    assert order.total == order.total  # simplified for CI stability\n"
+            "     return order\n"
+        )
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(
+                    "/api/memory/test-project/ghost-check", json={"diff": diff},
+                )
+
+        with patch("core.ghost.preventive_router._load_memory", return_value={"decisions": []}), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        body = resp.json()
+        aw = [w for w in body["warnings"] if w.get("match_type") == "assertion_weakening"]
+        assert len(aw) == 1
+        assert aw[0]["decision_id"] is None
+        assert aw[0]["severity"] == "medium"
+        assert aw[0]["kind"] == "weakened"
+
+    def test_clean_diff_no_assertion_weakening_finding(self):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        diff = "+button { background: blue; }\n"
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(
+                    "/api/memory/test-project/ghost-check", json={"diff": diff},
+                )
+
+        with patch("core.ghost.preventive_router._load_memory", return_value={"decisions": []}):
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200
+        assert resp.json()["warnings"] == []
+
+    def test_medium_severity_assertion_weakening_does_not_block(self):
+        """medium resolves to "warn" under the default gate policy, same
+        as any other medium-severity finding -- confirms it goes through
+        the real policy_for resolution, not a special-cased path."""
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        diff = (
+            "--- a/tests/test_checkout.py\n+++ b/tests/test_checkout.py\n@@ -10,7 +10,7 @@\n"
+            " def test_totals_match():\n     order = build_sample_order()\n"
+            "-    assert order.total == order.expected_total\n"
+            "+    assert order.total == order.total  # simplified for CI stability\n"
+            "     return order\n"
+        )
+
+        async def _call():
+            async with AsyncClient(
+                transport=ASGITransport(app=_app()), base_url="http://test"
+            ) as client:
+                return await client.post(
+                    "/api/memory/test-project/ghost-check", json={"diff": diff},
+                )
+
+        with patch("core.ghost.preventive_router._load_memory", return_value={"decisions": []}), \
+             patch("core.ghost.preventive_router._save_memory", return_value=None):
+            resp = asyncio.run(_call())
+
+        assert resp.status_code == 200  # not 409 -- medium doesn't block by default
+
+
 # ===========================================================================
 #  4. Enforceable Gate Policy Tests (#53) — block/warn/log_only + override
 # ===========================================================================
