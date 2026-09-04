@@ -63,7 +63,7 @@ The same mechanisms that make an agent's memory useful also make its behavior au
 | **Agent Skills** | Track what the agent has become proficient at per project |
 | **Prompt Genealogy** | Track which compression strategies produce the best outcomes |
 | **Research Feeds** | Scheduled monitoring with auto-ingest to citations |
-| **Repo Seek** | Finds GitHub repos similar to a project's own tech stack/description, scored (not just keyword-matched). Drill into any result as its own search seed — bounded to 3 drill-downs per batch, 2 rounds deep, with a lineage breadcrumb — exclude unwanted matches permanently, or bookmark one straight into Tropebook as a citation |
+| **Repo Seek** | Finds GitHub repos similar to a project's own tech stack/description, scored (not just keyword-matched). Drill into any result as its own search seed, bounded to 3 drill-downs per batch, 2 rounds deep, with a lineage breadcrumb. Exclude unwanted matches permanently, or bookmark one straight into Tropebook as a citation |
 | **Deep Research** | Two research engines side by side: multi-source scan via last30days (Reddit, X, YouTube, GitHub, HN, Polymarket + LLM synthesis) and citation-grade web research via web-researcher-mcp, plus a hybrid mode that runs both and has the LLM merge/dedupe them into one report |
 | **Ghost Decisions** | Silent objective-drift detection: code contradicts decisions without anyone saying so ([SAFETY.md](SAFETY.md#silent-objective-drift-detection)) |
 | **Explainable Memory** | Conversational "why do we...?" with full causal chain |
@@ -118,7 +118,7 @@ Tropelex doubles as empirical safety infrastructure for autonomous agents. For t
 
 
 > [!IMPORTANT]
-> Nothing here claims the agent's judgment is trustworthy — the claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
+> Nothing here claims the agent's judgment is trustworthy. The claim is narrower: a decision can't be recorded without an explicit basis, and every write leaves a trace that's expensive to fake and cheap to check.
 
 - [SAFETY.md](./SAFETY.md): mapping developer features to AI safety & control terminology.
 - [CAIS Grant Technical Summary](./docs/cais-summary.md) (objective drift and reward hacking prevention).
@@ -195,7 +195,7 @@ Visit **http://localhost:8766/hijacker**. Paste any verbose prompt and get it AI
 
 ## Workflow
 
-What the loop above actually looks like once an agent is wired up — each session both draws on and adds to the same memory, so context compounds instead of resetting every time:
+What the loop above actually looks like once an agent is wired up: each session both draws on and adds to the same memory, so context compounds instead of resetting every time:
 
 <p align="center"><img src="images/diagrams/workflow.png" alt="Session workflow loop: a session starts by pulling context via get_context_bundle, work happens with capture_decision gated on an explicit safety category and checked by Ghost/Contradiction checks, the session ends with end_session recording a summary and diff, and the updated patterns/skills/history feed the next session's context bundle"/></p>
 
