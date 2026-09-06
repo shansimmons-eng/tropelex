@@ -336,7 +336,7 @@ Two independent research engines, laid out side by side so neither buries the ot
 Configure sources for the multi-source scan in Settings → Deep Research Sources. Citation-grade research prefers `BRAVE_SEARCH_API_KEY` when set (falls back to the free DuckDuckGo provider otherwise, which rate-limits more aggressively under repeated use).
 
 #### Repo Seek
-Finds GitHub repositories similar to the current project, scored on tech-stack/language match, description overlap, and star count — not GitHub's own literal keyword search. Each result has three actions:
+Finds GitHub repositories similar to the current project, scored on tech-stack/language match, description overlap, and star count, not GitHub's own literal keyword search. Each result has three actions:
 
 - **Scan Item**: profiles the result as if it were its own project and searches from there, forming a lineage tree (shown as a breadcrumb above the table). Bounded on purpose — at most 3 drill-downs per batch, at most 2 rounds deep — after which the tree is terminal. A search that turns up nothing new (everything found was already excluded, or already in the batch it was derived from) is a normal stopping point, not an error.
 - **Exclude**: permanently removes a repo from this and every future scan for the project.
@@ -934,12 +934,12 @@ This project is Linux-native. No Windows paths are hardcoded. To migrate:
 
 ## Versioning
 
-Two different things are versioned independently — know which one you're checking:
+Two different things are versioned independently. Know which one you're checking:
 
-- **App version** (e.g. `1.2.0`) — the release identifier, sourced from `pyproject.toml` and shown in the dashboard footer, the Help & Command Hub page, and `GET /api/health`.
-- **Memory schema version** (a plain integer, currently `1`) — bumped only when the on-disk/export JSON *shape* changes in a way that could break cross-version compatibility (a field renamed, removed, or retyped). An app release that doesn't touch data shape does not bump this. Same idea as SQLite separating its release version from its file-format version.
+- **App version** (e.g. `1.2.0`) the release identifier, sourced from `pyproject.toml` and shown in the dashboard footer, the Help & Command Hub page, and `GET /api/health`.
+- **Memory schema version** (a plain integer, currently `1`) bumped only when the on-disk/export JSON *shape* changes in a way that could break cross-version compatibility (a field renamed, removed, or retyped). An app release that doesn't touch data shape does not bump this. Same idea as SQLite separating its release version from its file-format version.
 
-**Before exporting data from one install and importing it into another** (Settings → Export Everything / Import, or a Benchmarks bundle for cross-machine comparison), check that both installs are on the same app version — the export filename and payload both carry it. If the schema versions genuinely differ:
+**Before exporting data from one install and importing it into another** (Settings → Export Everything / Import, or a Benchmarks bundle for cross-machine comparison), check that both installs are on the same app version. The export filename and payload both carry it. If the schema versions genuinely differ:
 - **Account export/import** refuses by default: a mismatched or missing `schema_version` gets a 409 with the detected and current versions, and requires an explicit confirm to proceed rather than silently overwriting project files.
 - **Benchmarks export/import** already skips shape-invalid entries safely (never overwrites an existing entry), but a version mismatch now shows up as an explicit warning in the response instead of an unexplained skip count.
 
@@ -949,12 +949,12 @@ Two different things are versioned independently — know which one you're check
 
 There's no package manager entry to reverse — Tropelex is a git clone plus a couple of local venvs and config files. Deleting the cloned directory removes everything Tropelex ever wrote *inside* it: all `memory/` runtime state, `.env` secrets, both venvs (`.venv`, `mcp_server/.venv`). What it doesn't remove is anything an integration wrote *outside* the repo, since only you know you set those up:
 
-- **Claude Code / MCP.** If you only ever used the committed, project-scoped `.mcp.json` (the default — Claude Code picks it up automatically when you open the repo), there's nothing to clean up; it lives inside the repo and is gone the moment you delete it. If you additionally ran `claude mcp add tropelex -- ...` to register it in some *other* project, remove it from there with `claude mcp remove tropelex` (run from that project), or delete the `tropelex` entry from that project's own `.mcp.json`/MCP config by hand.
+- **Claude Code / MCP.** If you only ever used the committed, project-scoped `.mcp.json` (the default: Claude Code picks it up automatically when you open the repo), there's nothing to clean up. It lives inside the repo and is gone the moment you delete it. If you additionally ran `claude mcp add tropelex -- ...` to register it in some *other* project, remove it from there with `claude mcp remove tropelex` (run from that project), or delete the `tropelex` entry from that project's own `.mcp.json`/MCP config by hand.
 - **OpenCode.** Delete `~/.config/opencode/plugins/tropelex.js`, and remove `"tropelex"` from the `"plugin"` array in `~/.config/opencode/opencode.json` (and `opencode.jsonc`, if present).
 - **Emacs.** Remove the `(add-to-list 'load-path "~/Tropelex/emacs")` line (and the `(require 'tropelex-capture)` / `(tropelex-capture-mode 1)` lines below it) from your init file.
 - **VS Code extension.** Nothing to clean up — `vscode-tropelex/` is loaded straight from the repo via VS Code's Extension Development Host (`F5`), not installed as a packaged extension, so there's no separate install location outside the repo.
 
-No OS-level registry entries or background services exist today — there's no installer, so nothing runs outside the process you start by hand.
+There are no OS-level registry entries or background services. There's no installer, so nothing runs outside the process you start by hand.
 
 ---
 
@@ -963,11 +963,11 @@ No OS-level registry entries or background services exist today — there's no i
 **v1.2.0**
 
 ### Recently Added
-- **Manual `caused_by`/`led_to` decision edges**: explicit, user-authored causal links between decisions, created from the timeline or by clicking a node in either graph — the non-heuristic replacement for an earlier auto-detection heuristic that was removed for producing false positives
+- **Manual `caused_by`/`led_to` decision edges**: explicit, user-authored causal links between decisions, created from the timeline or by clicking a node in either graph. This is the non-heuristic replacement for an earlier auto-detection heuristic that was removed for producing false positives
 - **Goal-evidence gate**: a goal can no longer transition to `achieved` with no decision on record for it (`require_goal_evidence`); an explicit override is still available and is written to the audit trail, never silently applied
 - **Multi-citation linking**: select several citations, name the relationship, connect them in one action; a matching viewer shows a citation's links grouped by relationship name
 - **Content exports**: download buttons for ADRs, narrative reports, doc-mining scans, friction reports, and Drift-Bench results, wherever those panels didn't already have one
-- **Standalone docs site**: the guide, API reference, FAQ, and a new Getting Started page, hosted on GitHub Pages independent of a running instance — see the docs links above
+- **Standalone docs site**: the guide, API reference, FAQ, and a new Getting Started page, hosted on GitHub Pages independent of a running instance. See the docs links above
 
 ### Core Features
 - Memory, compression, pattern learning, research KB all working
